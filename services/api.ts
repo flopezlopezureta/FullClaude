@@ -80,6 +80,7 @@ export interface PackageCreationData {
   meliOrderId?: string;
   shopifyOrderId?: string;
   wooOrderId?: string;
+  trackingId?: string;
 }
 
 export interface PackageUpdateData {

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle, IconChecklist, IconX, IconPackage, IconQrcode } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconChecklist, IconX, IconPackage, IconQrcode, IconPencil } from '../Icon';
 import type { Package, User, DriverPermissions } from '../../types';
 import { PackageStatus, MessagingPlan, PickupMode } from '../../constants';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -48,6 +48,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
   const [scannedPackageIds, setScannedPackageIds] = useState<string[]>([]);
   const [isFinishing, setIsFinishing] = useState(false);
   const [isManifestOpen, setIsManifestOpen] = useState(false);
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  const [manualCode, setManualCode] = useState('');
   
   const [isConfirmingCount, setIsConfirmingCount] = useState(false);
   const [manualCount, setManualCount] = useState<number | ''>('');
@@ -104,6 +106,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
 
     let pkg = packages.find(p => 
         p.id === codeForApi || 
+        (p.trackingId && p.trackingId === codeForApi) ||
         (p.meliOrderId && (p.meliOrderId === codeForApi || p.meliOrderId === cleanRawCode)) ||
         (p.shopifyOrderId && p.shopifyOrderId === codeForApi) ||
         (p.wooOrderId && p.wooOrderId === codeForApi)
@@ -369,6 +372,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
 
       <div className="mt-2 flex flex-col gap-3">
         <button 
+          onClick={() => setIsManualEntryOpen(true)}
+          className="w-full px-4 py-2 text-sm font-medium text-white bg-[var(--brand-primary)] rounded-lg hover:bg-[var(--brand-hover)] flex items-center justify-center gap-2"
+        >
+          <IconPencil className="w-5 h-5" /> Ingreso Manual
+        </button>
+        <button 
           onClick={() => setIsManifestOpen(true)}
           className="w-full px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--background-hover)] flex items-center justify-center gap-2"
         >
@@ -454,6 +463,38 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
                     className="w-full px-4 py-3 text-base font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors shadow-sm disabled:bg-slate-400 disabled:cursor-not-allowed"
                 >
                     {isFinishing ? 'Finalizando...' : 'Confirmar y Finalizar'}
+                </button>
+            </div>
+          </div>
+      )}
+
+      {isManualEntryOpen && (
+          <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-70 p-4 animate-fade-in-up">
+            <div className="bg-[var(--background-secondary)] rounded-xl shadow-2xl w-full max-w-md p-6 relative">
+                <button onClick={() => setIsManualEntryOpen(false)} className="absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:bg-[var(--background-hover)] rounded-full"><IconX className="w-6 h-6"/></button>
+                <h3 className="text-lg font-bold text-[var(--text-primary)] text-center mb-4">Ingreso Manual de Código</h3>
+                
+                <div className="mb-6">
+                     <input
+                        type="text"
+                        placeholder="Ingrese código de paquete"
+                        value={manualCode}
+                        onChange={(e) => setManualCode(e.target.value)}
+                        className="block w-full text-center text-xl font-bold py-3 border-2 border-[var(--brand-primary)] rounded-md bg-[var(--background-muted)] text-[var(--text-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--brand-muted)]"
+                        autoFocus
+                    />
+                </div>
+
+                <button 
+                    onClick={() => {
+                        handleScan(manualCode);
+                        setManualCode('');
+                        setIsManualEntryOpen(false);
+                    }}
+                    disabled={!manualCode.trim()}
+                    className="w-full px-4 py-3 text-base font-semibold text-white bg-[var(--brand-primary)] rounded-lg hover:bg-[var(--brand-hover)] transition-colors shadow-sm disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    Agregar Paquete
                 </button>
             </div>
           </div>

@@ -192,6 +192,7 @@ export interface Package {
   meliOrderId?: string;
   wooOrderId?: string;
   shopifyOrderId?: string;
+  trackingId?: string;
 }
 
 // --- New Pickup Management System Types ---

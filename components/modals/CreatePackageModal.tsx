@@ -26,6 +26,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   const [recipientCommune, setRecipientCommune] = useState('');
   const [recipientCity, setRecipientCity] = useState('Santiago');
   const [notes, setNotes] = useState('');
+  const [trackingId, setTrackingId] = useState('');
   const [estimatedDelivery, setEstimatedDelivery] = useState(new Date().toISOString().split('T')[0]);
   const [shippingType, setShippingType] = useState<ShippingType>(ShippingType.SameDay);
 
@@ -52,6 +53,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
       recipientCommune,
       recipientCity,
       notes,
+      trackingId,
       estimatedDelivery: new Date(estimatedDelivery),
       shippingType,
       source: 'MANUAL',
@@ -108,7 +110,12 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                     </select>
                 </div>
             )}
-            <h4 className="text-md font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)] pb-2">Información del Destinatario</h4>
+            <h4 className="text-md font-semibold text-[var(--text-secondary)] border-b border-[var(--border-primary)] pb-2">Identificación y Destinatario</h4>
+            <div>
+              <label htmlFor="trackingId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">ID Único / Código de Seguimiento (Opcional)</label>
+              <input type="text" id="trackingId" value={trackingId} onChange={(e) => setTrackingId(e.target.value.toUpperCase())} className={`${inputClasses} uppercase font-bold`} placeholder="Ej: PKG-123456" />
+              <p className="mt-1 text-xs text-[var(--text-muted)]">Si se deja en blanco, el sistema generará uno automáticamente.</p>
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label htmlFor="recipientName" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nombre Completo</label>

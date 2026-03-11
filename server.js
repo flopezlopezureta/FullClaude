@@ -163,7 +163,9 @@ async function initializeDatabase() {
                 billed BOOLEAN DEFAULT false,
                 source TEXT,
                 "meliOrderId" TEXT,
-                "wooOrderId" TEXT
+                "wooOrderId" TEXT,
+                "shopifyOrderId" TEXT,
+                "trackingId" TEXT
             );
         `);
         console.log('Table "packages" is ready.');
@@ -177,7 +179,9 @@ async function initializeDatabase() {
                 'creatorId TEXT',
                 'deliveryPhotosBase64 JSONB',
                 'billed BOOLEAN DEFAULT false',
-                'source TEXT'
+                'source TEXT',
+                'shopifyOrderId TEXT',
+                'trackingId TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];

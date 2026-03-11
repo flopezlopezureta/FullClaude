@@ -131,7 +131,7 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex})`);
+            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex} OR "trackingId" ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }
@@ -229,7 +229,7 @@ async function addTrackingEvent(packageId, status, location, details) {
 
 // POST /api/packages
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
     
     try {
         const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
@@ -241,8 +241,10 @@ router.post('/', authMiddleware, async (req, res) => {
         const coords = await geocodeAddress(recipientAddress, recipientCommune, recipientCity);
 
         const now = new Date();
+        const packageId = trackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
+        
         const newPackage = {
-            id: `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
+            id: packageId,
             recipientName,
             recipientPhone,
             status: 'PENDIENTE',
@@ -261,6 +263,7 @@ router.post('/', authMiddleware, async (req, res) => {
             meliOrderId,
             shopifyOrderId,
             wooOrderId,
+            trackingId,
             destLatitude: coords.lat,
             destLongitude: coords.lng
         };
@@ -294,7 +297,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
         for (let i = 0; i < packages.length; i++) {
             const pkgData = packages[i];
             try {
-                const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId } = pkgData;
+                const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = pkgData;
                 
                 const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
                 if (creatorRows.length === 0) {
@@ -310,9 +313,11 @@ router.post('/batch', authMiddleware, async (req, res) => {
                 const coords = { lat: null, lng: null };
 
                 const now = new Date();
+                const packageId = trackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
+
                 const newPackage = {
-                    id: `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
-                    recipientName, recipientPhone, status: 'PENDIENTE', shippingType, origin, destination: recipientAddress, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, createdAt: now, updatedAt: now, creatorId, source, meliOrderId, shopifyOrderId, wooOrderId,
+                    id: packageId,
+                    recipientName, recipientPhone, status: 'PENDIENTE', shippingType, origin, destination: recipientAddress, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, createdAt: now, updatedAt: now, creatorId, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId,
                     destLatitude: coords.lat,
                     destLongitude: coords.lng
                 };
@@ -491,9 +496,9 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
     const { id } = req.params;
     const { driverId } = req.body;
     try {
-        // Broad search for package by Internal ID OR External tracking numbers
+        // Broad search for package by Internal ID OR External tracking numbers OR trackingId
         const { rows: pkgRows } = await db.query(
-            'SELECT id, status, "driverId" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1', 
+            'SELECT id, status, "driverId" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1', 
             [id]
         );
         

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const playBeep = () => {
@@ -34,6 +34,8 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [scannedCount, setScannedCount] = useState(0);
   const [scannedInSession, setScannedInSession] = useState<Set<string>>(new Set());
+  const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
+  const [manualCode, setManualCode] = useState('');
 
   const handleScan = useCallback(async (packageId: string) => {
     if (!isScanning || !user || scannedInSession.has(packageId)) return;
@@ -176,12 +178,50 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
 
       <div className="mt-6 flex flex-col gap-3">
         <button 
-          onClick={onBack}
-          className="w-full px-4 py-2 text-base font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--background-hover)]"
+          onClick={() => setIsManualEntryOpen(true)}
+          className="w-full px-4 py-3 text-base font-semibold text-white bg-[var(--brand-primary)] rounded-lg hover:bg-[var(--brand-hover)] transition-all shadow-sm flex items-center justify-center gap-2"
         >
-          Volver
+          <IconPencil className="w-5 h-5" /> Ingreso Manual
+        </button>
+        <button 
+          onClick={onBack}
+          className="w-full px-4 py-2 text-base font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-lg hover:bg-[var(--background-hover)] flex items-center justify-center gap-2"
+        >
+          <IconChevronLeft className="w-5 h-5" /> Volver
         </button>
       </div>
+
+      {isManualEntryOpen && (
+          <div className="fixed inset-0 z-50 flex justify-center items-center bg-black bg-opacity-70 p-4 animate-fade-in-up">
+            <div className="bg-[var(--background-secondary)] rounded-xl shadow-2xl w-full max-w-md p-6 relative">
+                <button onClick={() => setIsManualEntryOpen(false)} className="absolute top-4 right-4 p-2 text-[var(--text-muted)] hover:bg-[var(--background-hover)] rounded-full"><IconX className="w-6 h-6"/></button>
+                <h3 className="text-lg font-bold text-[var(--text-primary)] text-center mb-4">Ingreso Manual de Código</h3>
+                
+                <div className="mb-6">
+                     <input
+                        type="text"
+                        placeholder="Ingrese código de paquete"
+                        value={manualCode}
+                        onChange={(e) => setManualCode(e.target.value)}
+                        className="block w-full text-center text-xl font-bold py-3 border-2 border-[var(--brand-primary)] rounded-md bg-[var(--background-muted)] text-[var(--text-primary)] focus:outline-none focus:ring-4 focus:ring-[var(--brand-muted)]"
+                        autoFocus
+                    />
+                </div>
+
+                <button 
+                    onClick={() => {
+                        handleScan(manualCode);
+                        setManualCode('');
+                        setIsManualEntryOpen(false);
+                    }}
+                    disabled={!manualCode.trim()}
+                    className="w-full px-4 py-3 text-base font-semibold text-white bg-[var(--brand-primary)] rounded-lg hover:bg-[var(--brand-hover)] transition-colors shadow-sm disabled:bg-slate-400 disabled:cursor-not-allowed"
+                >
+                    Despachar Paquete
+                </button>
+            </div>
+          </div>
+      )}
 
       <style>{`
         @keyframes fade-in-up {
