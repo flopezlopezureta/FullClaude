@@ -2,7 +2,8 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode } from './Icon';
+import QRCodeModal from './QRCodeModal';
 
 interface PackageListItemProps {
   pkg: Package;
@@ -90,6 +91,7 @@ const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 };
 
 const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, creatorName, onSelect, onAssign, onEdit, onDelete, onPrint, onMarkForReturn, hideDriverName, isSelected, onSelectionChange, index }) => {
+  const [showQRCode, setShowQRCode] = useState(false);
   const canModify = pkg.status === PackageStatus.Pending;
   const canReassign = onAssign && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned;
   const canMarkForReturn = onMarkForReturn && pkg.status === PackageStatus.Problem;
@@ -199,6 +201,11 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                     )}
                     <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
                         {sourceIcons[pkg.source]}
+                        {pkg.meliFlexCode && (
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-yellow-100 text-yellow-800 border border-yellow-200">
+                                FLEX OK
+                            </span>
+                        )}
                         {pkg.shippingType && shippingTypeIcons[pkg.shippingType]}
                     </div>
                 </div>
@@ -237,8 +244,18 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
         </div>
 
         <div className="ml-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-            {hasActions ? (
-                <ActionsMenu>
+            <div className="flex items-center gap-1">
+                {pkg.meliFlexCode && (
+                    <button 
+                        onClick={() => setShowQRCode(true)}
+                        className="p-2 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors border border-green-200 shadow-sm"
+                        title="Ver Código FLEX QR"
+                    >
+                        <IconQrcode className="w-5 h-5" />
+                    </button>
+                )}
+                {hasActions ? (
+                    <ActionsMenu>
                     {onPrint && (
                          <button onClick={() => onPrint(pkg)} className="w-full text-left flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--background-hover)]">
                             <IconPrinter className="w-4 h-4 mr-3" /> Imprimir Etiqueta
@@ -274,8 +291,16 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                   <IconChevronRight className="w-5 h-5 text-[var(--text-muted)]" />
               </button>
             )}
+            </div>
         </div>
       </div>
+      {showQRCode && pkg.meliFlexCode && (
+        <QRCodeModal 
+            value={pkg.meliFlexCode} 
+            title={`Paquete: ${pkg.id}`} 
+            onClose={() => setShowQRCode(false)} 
+        />
+      )}
     </>
   );
 };

@@ -203,7 +203,8 @@ async function initializeDatabase() {
                 'billed BOOLEAN DEFAULT false',
                 'source TEXT',
                 'shopifyOrderId TEXT',
-                'trackingId TEXT'
+                'trackingId TEXT',
+                'meliFlexCode TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];

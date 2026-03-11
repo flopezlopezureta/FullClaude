@@ -238,7 +238,7 @@ export const api = {
   confirmReturn: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${pkgId}/return`, data),
   markPackagesAsBilled: (packageIds: string[]) => post<void>('/packages/mark-billed', { packageIds }),
   scanPackageForDispatch: (packageId: string, driverId: string) => post<{message: string}>(`/packages/${packageId}/dispatch`, { driverId }),
-  markPackageAsPickedUp: (packageId: string) => post<Package>(`/packages/${packageId}/pickup`, {}),
+  markPackageAsPickedUp: (packageId: string, flexCode?: string) => post<Package>(`/packages/${packageId}/pickup`, { flexCode }),
   confirmBulkPickup: (clientId: string) => post<{count: number, message: string}>('/packages/bulk-pickup-client', { clientId }),
   scanPackageByAdmin: (packageId: string) => post<{message: string}>(`/packages/${packageId}/scan-admin`, {}),
 

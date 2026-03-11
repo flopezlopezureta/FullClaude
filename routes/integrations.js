@@ -99,7 +99,8 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             updatedAt: now,
             creatorId: clientId,
             source: 'MERCADO_LIBRE',
-            meliOrderId: scannedId
+            meliOrderId: scannedId,
+            meliFlexCode: scannedId
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

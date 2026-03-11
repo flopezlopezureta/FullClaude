@@ -1,11 +1,12 @@
 
 import React from 'react';
 import { User } from '../../types';
-import { IconSearch, IconPackage, IconCalendar, IconFileExport, IconFileSpreadsheet } from '../Icon';
+import { IconSearch, IconPackage, IconCalendar, IconFileExport, IconFileSpreadsheet, IconRefresh } from '../Icon';
 
 interface PackageFiltersProps {
   onOpenCreateModal: () => void;
   onOpenImportModal: () => void;
+  onRefresh: () => void;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   drivers: User[];
@@ -29,6 +30,7 @@ interface PackageFiltersProps {
 const PackageFilters: React.FC<PackageFiltersProps> = ({
   onOpenCreateModal,
   onOpenImportModal,
+  onRefresh,
   searchQuery,
   onSearchChange,
   drivers,
@@ -127,6 +129,13 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
           </select>
         </div>
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+            <button
+                onClick={onRefresh}
+                className="flex-shrink-0 inline-flex items-center justify-center p-2 border border-blue-200 text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors shadow-sm"
+                title="Refrescar Datos"
+            >
+                <IconRefresh className="w-5 h-5" />
+            </button>
             {driverFilter && (
                 <button
                     onClick={onExportRoute}

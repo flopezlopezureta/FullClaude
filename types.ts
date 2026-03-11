@@ -193,6 +193,7 @@ export interface Package {
   wooOrderId?: string;
   shopifyOrderId?: string;
   trackingId?: string;
+  meliFlexCode?: string;
 }
 
 // --- New Pickup Management System Types ---

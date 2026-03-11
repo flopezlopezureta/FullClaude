@@ -158,7 +158,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
             }
 
             finalPackageId = pkg.id;
-            await api.markPackageAsPickedUp(finalPackageId);
+            await api.markPackageAsPickedUp(finalPackageId, codeForApi);
             
         } else {
             if (client.integrations?.meli) {

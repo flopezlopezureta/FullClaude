@@ -653,11 +653,12 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
 // POST /api/packages/:id/pickup
 router.post('/:id/pickup', authMiddleware, async (req, res) => {
     const { id } = req.params;
+    const { flexCode } = req.body;
     const driverId = req.user.id;
     try {
          const { rows } = await db.query(
-            'UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3 WHERE id = $4 RETURNING *',
-            ['RETIRADO', driverId, new Date(), id]
+            'UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "meliFlexCode" = $4 WHERE id = $5 RETURNING *',
+            ['RETIRADO', driverId, new Date(), flexCode || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         

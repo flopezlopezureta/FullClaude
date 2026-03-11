@@ -391,6 +391,7 @@ const Dashboard: React.FC = () => {
         <PackageFilters 
             onOpenCreateModal={() => setIsCreateModalOpen(true)}
             onOpenImportModal={() => setIsImportModalOpen(true)}
+            onRefresh={fetchData}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             drivers={drivers}
