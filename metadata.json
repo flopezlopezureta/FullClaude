@@ -1,0 +1,8 @@
+{
+  "name": "FULL ENVIOS - RECUPERADA 25022026",
+  "description": "Sistema recuperado con base de datos restaurada y mejoras en la inicialización.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

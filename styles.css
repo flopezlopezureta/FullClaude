@@ -1,0 +1,292 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom variable styles (from original index.html) */
+:root[data-theme="default"] {
+    --background-primary: #f8fafc;
+    --background-secondary: #ffffff;
+    --background-muted: #f1f5f9;
+    --background-hover: #e2e8f0;
+    --text-primary: #0f172a;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-on-brand: #ffffff;
+    --border-primary: #e2e8f0;
+    --border-secondary: #cbd5e1;
+    --brand-primary: #4f46e5;
+    --brand-secondary: #6366f1;
+    --brand-muted: #e0e7ff;
+    --brand-text: #3730a3;
+    --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
+    --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
+    --status-pending-bg: #f1f5f9; --status-pending-text: #334155; --status-pending-border: #94a3b8; --status-pending-bg-subtle: #f8fafc;
+    --status-pickedup-bg: #f5f3ff; --status-pickedup-text: #7c3aed; --status-pickedup-border: #a78bfa; --status-pickedup-bg-subtle: #faf5ff;
+    --status-intransit-bg: #dbeafe; --status-intransit-text: #2563eb; --status-intransit-border: #60a5fa; --status-intransit-bg-subtle: #eff6ff;
+    --status-delivered-bg: #dcfce7; --status-delivered-text: #16a34a; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
+    --status-delayed-bg: #fefce8; --status-delayed-text: #ca8a04; --status-delayed-border: #facc15; --status-delayed-bg-subtle: #fefce8;
+    --status-problem-bg: #fee2e2; --status-problem-text: #dc2626; --status-problem-border: #f87171; --status-problem-bg-subtle: #fef2f2;
+    --status-pendientedevolucion-bg: #fef3c7; --status-pendientedevolucion-text: #d97706; --status-pendientedevolucion-border: #fbbf24; --status-pendientedevolucion-bg-subtle: #fefce8;
+    --status-devuelto-bg: #e5e7eb; --status-devuelto-text: #4b5563; --status-devuelto-border: #9ca3af; --status-devuelto-bg-subtle: #f9fafb;
+    --status-approved-bg: #dcfce7; --status-approved-text: #166534;
+    --status-disabled-bg: #fee2e2; --status-disabled-text: #991b1b;
+}
+:root[data-theme="light"] {
+    --background-primary: #f8fafc;
+    --background-secondary: #ffffff;
+    --background-muted: #f1f5f9;
+    --background-hover: #f1f5f9;
+    --text-primary: #1e293b;
+    --text-secondary: #475569;
+    --text-muted: #64748b;
+    --text-on-brand: #ffffff;
+    --border-primary: #e2e8f0;
+    --border-secondary: #cbd5e1;
+    --brand-primary: #2563eb;
+    --brand-secondary: #3b82f6;
+    --brand-muted: #dbeafe;
+    --brand-text: #1d4ed8;
+    --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
+    --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
+    --status-pending-bg: #f1f5f9; --status-pending-text: #334155; --status-pending-border: #94a3b8; --status-pending-bg-subtle: #f8fafc;
+    --status-pickedup-bg: #f5f3ff; --status-pickedup-text: #7c3aed; --status-pickedup-border: #a78bfa; --status-pickedup-bg-subtle: #faf5ff;
+    --status-intransit-bg: #dbeafe; --status-intransit-text: #2563eb; --status-intransit-border: #60a5fa; --status-intransit-bg-subtle: #eff6ff;
+    --status-delivered-bg: #dcfce7; --status-delivered-text: #16a34a; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
+    --status-delayed-bg: #fefce8; --status-delayed-text: #ca8a04; --status-delayed-border: #facc15; --status-delayed-bg-subtle: #fefce8;
+    --status-problem-bg: #fee2e2; --status-problem-text: #dc2626; --status-problem-border: #f87171; --status-problem-bg-subtle: #fef2f2;
+    --status-pendientedevolucion-bg: #fef3c7; --status-pendientedevolucion-text: #d97706; --status-pendientedevolucion-border: #fbbf24; --status-pendientedevolucion-bg-subtle: #fefce8;
+    --status-devuelto-bg: #e5e7eb; --status-devuelto-text: #4b5563; --status-devuelto-border: #9ca3af; --status-devuelto-bg-subtle: #f9fafb;
+    --status-approved-bg: #dcfce7; --status-approved-text: #166534;
+    --status-disabled-bg: #fee2e2; --status-disabled-text: #991b1b;
+}
+:root[data-theme="dark"] {
+    --background-primary: #1e293b;
+    --background-secondary: #0f172a;
+    --background-muted: #334155;
+    --background-hover: #334155;
+    --text-primary: #f1f5f9;
+    --text-secondary: #94a3b8;
+    --text-muted: #64748b;
+    --text-on-brand: #ffffff;
+    --border-primary: #334155;
+    --border-secondary: #475569;
+    --brand-primary: #60a5fa;
+    --brand-secondary: #3b82f6;
+    --brand-muted: #1e40af;
+    --brand-text: #dbeafe;
+    --error-bg: #7f1d1d; --error-border: #dc2626; --error-text: #fecaca;
+    --success-bg: #14532d; --success-border: #22c55e; --success-text: #bbf7d0;
+    --status-pending-bg: #334155; --status-pending-text: #e2e8f0; --status-pending-border: #64748b; --status-pending-bg-subtle: #334155;
+    --status-pickedup-bg: #5b21b6; --status-pickedup-text: #ddd6fe; --status-pickedup-border: #8b5cf6; --status-pickedup-bg-subtle: #5b21b6;
+    --status-intransit-bg: #1e40af; --status-intransit-text: #bfdbfe; --status-intransit-border: #3b82f6; --status-intransit-bg-subtle: #1e40af;
+    --status-delivered-bg: #166534; --status-delivered-text: #bbf7d0; --status-delivered-border: #22c55e; --status-delivered-bg-subtle: #166534;
+    --status-delayed-bg: #854d0e; --status-delayed-text: #fef08a; --status-delayed-border: #eab308; --status-delayed-bg-subtle: #854d0e;
+    --status-problem-bg: #991b1b; --status-problem-text: #fecaca; --status-problem-border: #ef4444; --status-problem-bg-subtle: #991b1b;
+    --status-pendientedevolucion-bg: #854d0e; --status-pendientedevolucion-text: #fef08a; --status-pendientedevolucion-border: #eab308; --status-pendientedevolucion-bg-subtle: #854d0e;
+    --status-devuelto-bg: #374151; --status-devuelto-text: #d1d5db; --status-devuelto-border: #6b7280; --status-devuelto-bg-subtle: #4b5563;
+    --status-approved-bg: #166534; --status-approved-text: #bbf7d0;
+    --status-disabled-bg: #991b1b; --status-disabled-text: #fecaca;
+}
+:root[data-theme="corporate"] {
+    --background-primary: #f4f6f9;
+    --background-secondary: #ffffff;
+    --background-muted: #e9ecef;
+    --background-hover: #e9ecef;
+    --text-primary: #212529;
+    --text-secondary: #495057;
+    --text-muted: #6c757d;
+    --text-on-brand: #ffffff;
+    --border-primary: #dee2e6;
+    --border-secondary: #ced4da;
+    --brand-primary: #007bff;
+    --brand-secondary: #0069d9;
+    --brand-muted: #cce5ff;
+    --brand-text: #004085;
+    --error-bg: #f8d7da; --error-border: #f5c6cb; --error-text: #721c24;
+    --success-bg: #d4edda; --success-border: #c3e6cb; --success-text: #155724;
+    --status-pending-bg: #e9ecef; --status-pending-text: #343a40; --status-pending-border: #adb5bd; --status-pending-bg-subtle: #f8f9fa;
+    --status-pickedup-bg: #e2d9f3; --status-pickedup-text: #4d2d88; --status-pickedup-border: #b19cd9; --status-pickedup-bg-subtle: #f2eef9;
+    --status-intransit-bg: #cce5ff; --status-intransit-text: #004085; --status-intransit-border: #b8daff; --status-intransit-bg-subtle: #eef7ff;
+    --status-delivered-bg: #d4edda; --status-delivered-text: #155724; --status-delivered-border: #c3e6cb; --status-delivered-bg-subtle: #ebf7ed;
+    --status-delayed-bg: #fff3cd; --status-delayed-text: #856404; --status-delayed-border: #ffeeba; --status-delayed-bg-subtle: #fff9e9;
+    --status-problem-bg: #f8d7da; --status-problem-text: #721c24; --status-problem-border: #f5c6cb; --status-problem-bg-subtle: #fdedee;
+    --status-pendientedevolucion-bg: #fff3cd; --status-pendientedevolucion-text: #856404; --status-pendientedevolucion-border: #ffeeba; --status-pendientedevolucion-bg-subtle: #fff9e9;
+    --status-devuelto-bg: #e9ecef; --status-devuelto-text: #343a40; --status-devuelto-border: #adb5bd; --status-devuelto-bg-subtle: #f8f9fa;
+    --status-approved-bg: #d4edda; --status-approved-text: #155724;
+    --status-disabled-bg: #f8d7da; --status-disabled-text: #721c24;
+}
+:root[data-theme="ocean"] {
+    --background-primary: #f0f9ff;
+    --background-secondary: #e0f2fe;
+    --background-muted: #bae6fd;
+    --background-hover: #7dd3fc;
+    --text-primary: #0369a1;
+    --text-secondary: #075985;
+    --text-muted: #0c4a6e;
+    --text-on-brand: #ffffff;
+    --border-primary: #7dd3fc;
+    --border-secondary: #38bdf8;
+    --brand-primary: #0891b2;
+    --brand-secondary: #06b6d4;
+    --brand-muted: #67e8f9;
+    --brand-text: #164e63;
+    --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
+    --success-bg: #d1fae5; --success-border: #6ee7b7; --success-text: #065f46;
+    --status-pending-bg: #e0f2fe; --status-pending-text: #0ea5e9; --status-pending-border: #7dd3fc; --status-pending-bg-subtle: #f0f9ff;
+    --status-pickedup-bg: #cffafe; --status-pickedup-text: #0891b2; --status-pickedup-border: #67e8f9; --status-pickedup-bg-subtle: #ecfeff;
+    --status-intransit-bg: #ccfbf1; --status-intransit-text: #0d9488; --status-intransit-border: #5eead4; --status-intransit-bg-subtle: #f0fdfa;
+    --status-delivered-bg: #dcfce7; --status-delivered-text: #16a34a; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
+    --status-delayed-bg: #fef3c7; --status-delayed-text: #d97706; --status-delayed-border: #fcd34d; --status-delayed-bg-subtle: #fffbeb;
+    --status-problem-bg: #ffe4e6; --status-problem-text: #e11d48; --status-problem-border: #fda4af; --status-problem-bg-subtle: #fff1f2;
+    --status-pendientedevolucion-bg: #fef3c7; --status-pendientedevolucion-text: #d97706; --status-pendientedevolucion-border: #fcd34d; --status-pendientedevolucion-bg-subtle: #fffbeb;
+    --status-devuelto-bg: #e0f2fe; --status-devuelto-text: #0ea5e9; --status-devuelto-border: #7dd3fc; --status-devuelto-bg-subtle: #f0f9ff;
+    --status-approved-bg: #dcfce7; --status-approved-text: #16a34a;
+    --status-disabled-bg: #ffe4e6; --status-disabled-text: #e11d48;
+}
+:root[data-theme="nature"] {
+    --background-primary: #fefce8;
+    --background-secondary: #fde68a;
+    --background-muted: #fcd34d;
+    --background-hover: #fbbf24;
+    --text-primary: #3f6212;
+    --text-secondary: #4d7c0f;
+    --text-muted: #65a30d;
+    --text-on-brand: #ffffff;
+    --border-primary: #d97706;
+    --border-secondary: #b45309;
+    --brand-primary: #166534;
+    --brand-secondary: #15803d;
+    --brand-muted: #86efac;
+    --brand-text: #ecfdf5;
+    --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
+    --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
+    --status-pending-bg: #fef3c7; --status-pending-text: #ca8a04; --status-pending-border: #facc15; --status-pending-bg-subtle: #fefce8;
+    --status-pickedup-bg: #fef9c3; --status-pickedup-text: #a16207; --status-pickedup-border: #fde047; --status-pickedup-bg-subtle: #fefce8;
+    --status-intransit-bg: #d9f99d; --status-intransit-text: #65a30d; --status-intransit-border: #a3e635; --status-intransit-bg-subtle: #f7fee7;
+    --status-delivered-bg: #bbf7d0; --status-delivered-text: #22c55e; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
+    --status-delayed-bg: #fed7aa; --status-delayed-text: #f97316; --status-delayed-border: #fb923c; --status-delayed-bg-subtle: #fff7ed;
+    --status-problem-bg: #fecaca; --status-problem-text: #dc2626; --status-problem-border: #f87171; --status-problem-bg-subtle: #fef2f2;
+    --status-pendientedevolucion-bg: #fed7aa; --status-pendientedevolucion-text: #f97316; --status-pendientedevolucion-border: #fb923c; --status-pendientedevolucion-bg-subtle: #fff7ed;
+    --status-devuelto-bg: #d9f99d; --status-devuelto-text: #65a30d; --status-devuelto-border: #a3e635; --status-devuelto-bg-subtle: #f7fee7;
+    --status-approved-bg: #bbf7d0; --status-approved-text: #22c55e;
+    --status-disabled-bg: #fecaca; --status-disabled-text: #dc2626;
+}
+:root[data-theme="midnight"] {
+    --background-primary: #111827;
+    --background-secondary: #1f2937;
+    --background-muted: #374151;
+    --background-hover: #4b5563;
+    --text-primary: #f3f4f6;
+    --text-secondary: #d1d5db;
+    --text-muted: #9ca3af;
+    --text-on-brand: #ffffff;
+    --border-primary: #4b5563;
+    --border-secondary: #6b7280;
+    --brand-primary: #8b5cf6;
+    --brand-secondary: #a78bfa;
+    --brand-muted: #4c1d95;
+    --brand-text: #ddd6fe;
+    --error-bg: #991b1b; --error-border: #ef4444; --error-text: #fecaca;
+    --success-bg: #166534; --success-border: #4ade80; --success-text: #bbf7d0;
+    --status-pending-bg: #374151; --status-pending-text: #d1d5db; --status-pending-border: #6b7280; --status-pending-bg-subtle: #4b5563;
+    --status-pickedup-bg: #4c1d95; --status-pickedup-text: #c4b5fd; --status-pickedup-border: #7c3aed; --status-pickedup-bg-subtle: #5b21b6;
+    --status-intransit-bg: #1e3a8a; --status-intransit-text: #93c5fd; --status-intransit-border: #3b82f6; --status-intransit-bg-subtle: #1e40af;
+    --status-delivered-bg: #14532d; --status-delivered-text: #a7f3d0; --status-delivered-border: #22c55e; --status-delivered-bg-subtle: #166534;
+    --status-delayed-bg: #78350f; --status-delayed-text: #fde68a; --status-delayed-border: #f59e0b; --status-delayed-bg-subtle: #854d0e;
+    --status-problem-bg: #7f1d1d; --status-problem-text: #fca5a5; --status-problem-border: #ef4444; --status-problem-bg-subtle: #991b1b;
+    --status-pendientedevolucion-bg: #78350f; --status-pendientedevolucion-text: #fde68a; --status-pendientedevolucion-border: #f59e0b; --status-pendientedevolucion-bg-subtle: #854d0e;
+    --status-devuelto-bg: #374151; --status-devuelto-text: #d1d5db; --status-devuelto-border: #6b7280; --status-devuelto-bg-subtle: #4b5563;
+    --status-approved-bg: #14532d; --status-approved-text: #a7f3d0;
+    --status-disabled-bg: #7f1d1d; --status-disabled-text: #fca5a5;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.custom-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: var(--background-muted);
+  border-radius: 10px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background-color: var(--border-secondary);
+  border-radius: 10px;
+  border: 2px solid var(--background-muted);
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
+body {
+    font-family: 'Inter', sans-serif;
+    background-color: var(--background-primary);
+}
+
+@keyframes fade-in-up {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.animate-fade-in-up {
+    animation: fade-in-up 0.3s ease-out forwards;
+}
+
+@media print {
+  body {
+    background-color: white !important;
+    font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+    -webkit-print-color-adjust: exact !important;
+    color-adjust: exact !important;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Hide everything by default in print */
+  body * {
+    visibility: hidden;
+  }
+
+  /* Only show the specifically designated printable area and its children */
+  .print-container, .print-container * {
+    visibility: visible;
+  }
+  
+  .print-container {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+  }
+  
+  /* Helper class to hide elements during print */
+  .print-hidden {
+    display: none !important;
+  }
+
+  /* Ensure the root element doesn't constrain the printable area */
+  #root, main {
+    visibility: visible;
+    overflow: visible !important;
+    height: auto !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  
+  /* New print-specific classes */
+  .print\:block { display: block !important; }
+  .print\:hidden { display: none !important; }
+  .print\:bg-white { background-color: white !important; }
+  .print\:border-none { border: none !important; }
+  .print\:shadow-none { box-shadow: none !important; }
+
+  @page {
+    size: letter portrait;
+    margin: 0.5in;
+  }
+}

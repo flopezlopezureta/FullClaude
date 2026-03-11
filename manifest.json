@@ -1,0 +1,8 @@
+{
+  "short_name": "Full Envíos",
+  "name": "FULL ENVIOS - Sistema de Seguimiento",
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#ffffff",
+  "background_color": "#f8fafc"
+}
