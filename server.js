@@ -21,50 +21,72 @@ app.use((req, res, next) => {
 app.use(cors());
 app.use(express.json({ limit: '10mb' })); // Allow larger payloads for photo uploads
 
-// --- API Routes ---
-// Helper to avoid startup crashes if a route file is missing in deploy.
-function tryRequireRoute(modulePath) {
-  try {
-    return require(modulePath);
-  } catch (err) {
-    console.warn(`[WARN] Route module not found: ${modulePath}. Skipping.`, err && err.code ? err.code : err && err.message ? err.message : err);
-    return null;
-  }
+const PORT = process.env.PORT || 3000;
+
+async function startServer() {
+    // --- API Routes ---
+    // Helper to avoid startup crashes if a route file is missing in deploy.
+    function tryRequireRoute(modulePath) {
+      try {
+        return require(modulePath);
+      } catch (err) {
+        console.warn(`[WARN] Route module not found: ${modulePath}. Skipping.`, err && err.code ? err.code : err && err.message ? err.message : err);
+        return null;
+      }
+    }
+    // Define API routes first to ensure they are not overridden by the static file server or SPA fallback.
+    app.get('/api/health', (req, res) => {
+      res.json({ status: 'ok', message: 'Backend is running' });
+    });
+    const authRoute = tryRequireRoute('./routes/auth.js'); if (authRoute) app.use('/api/auth', authRoute);
+    const usersRoute = tryRequireRoute('./routes/users.js'); if (usersRoute) app.use('/api/users', usersRoute);
+    const packagesRoute = tryRequireRoute('./routes/packages.js'); if (packagesRoute) app.use('/api/packages', packagesRoute);
+    const settingsRoute = tryRequireRoute('./routes/settings.js'); if (settingsRoute) app.use('/api/settings', settingsRoute);
+    const zonesRoute = tryRequireRoute('./routes/zones.js'); if (zonesRoute) app.use('/api/zones', zonesRoute);
+    const invoicesRoute = tryRequireRoute('./routes/invoices.js'); if (invoicesRoute) app.use('/api/invoices', invoicesRoute);
+    const billingRoute = tryRequireRoute('./routes/billing.js'); if (billingRoute) app.use('/api/billing', billingRoute);
+    const integrationsRoute = tryRequireRoute('./routes/integrations.js'); if (integrationsRoute) app.use('/api/integrations', integrationsRoute);
+    const geoRoute = tryRequireRoute('./routes/geo.js'); if (geoRoute) app.use('/api/geo', geoRoute);
+    // Montar rutas de pickups directamente
+    const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
+    const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
+    const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
+
+
+    // --- Frontend Serving & SPA Fallback ---
+    if (process.env.NODE_ENV !== 'production') {
+        const { createServer: createViteServer } = require('vite');
+        const vite = await createViteServer({
+            server: { middlewareMode: true },
+            appType: 'spa',
+        });
+        app.use(vite.middlewares);
+    } else {
+        const distPath = path.join(__dirname, 'dist');
+        // Serve static files from the 'dist' directory (Vite's build output).
+        app.use(express.static(distPath));
+
+        // The SPA fallback (catch-all) MUST be the last route.
+        // It handles all GET requests that didn't match an API route or a static file.
+        app.get('*', (req, res) => {
+            res.sendFile(path.join(distPath, 'index.html'));
+        });
+    }
+
+    app.listen(PORT, '0.0.0.0', async () => {
+      console.log(`Server is running on port ${PORT}`);
+      try {
+        await initializeDatabase();
+        await importUsersFromFile();
+        await ensureAdminUser();
+        await seedDatabase();
+      } catch (initErr) {
+        console.error('Failed to initialize database during startup:', initErr);
+      }
+    });
 }
-// Define API routes first to ensure they are not overridden by the static file server or SPA fallback.
-app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', message: 'Backend is running' });
-});
-const authRoute = tryRequireRoute('./routes/auth.js'); if (authRoute) app.use('/api/auth', authRoute);
-const usersRoute = tryRequireRoute('./routes/users.js'); if (usersRoute) app.use('/api/users', usersRoute);
-const packagesRoute = tryRequireRoute('./routes/packages.js'); if (packagesRoute) app.use('/api/packages', packagesRoute);
-const settingsRoute = tryRequireRoute('./routes/settings.js'); if (settingsRoute) app.use('/api/settings', settingsRoute);
-const zonesRoute = tryRequireRoute('./routes/zones.js'); if (zonesRoute) app.use('/api/zones', zonesRoute);
-const invoicesRoute = tryRequireRoute('./routes/invoices.js'); if (invoicesRoute) app.use('/api/invoices', invoicesRoute);
-const billingRoute = tryRequireRoute('./routes/billing.js'); if (billingRoute) app.use('/api/billing', billingRoute);
-const integrationsRoute = tryRequireRoute('./routes/integrations.js'); if (integrationsRoute) app.use('/api/integrations', integrationsRoute);
-const geoRoute = tryRequireRoute('./routes/geo.js'); if (geoRoute) app.use('/api/geo', geoRoute);
-// Montar rutas de pickups directamente
-const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
-const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
-const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
 
-
-// --- Frontend Serving & SPA Fallback ---
-const distPath = path.join(__dirname, 'dist');
-
-// Serve static files from the 'dist' directory (Vite's build output).
-app.use(express.static(distPath));
-
-// The SPA fallback (catch-all) MUST be the last route.
-// It handles all GET requests that didn't match an API route or a static file.
-app.get('*', (req, res) => {
-  res.sendFile(path.join(distPath, 'index.html'));
-});
-
-
-// --- Server & DB Initialization ---
-const PORT = process.env.PORT || 3001;
+startServer();
 
 async function initializeDatabase() {
     console.log('Initializing database schema...');
@@ -517,10 +539,3 @@ async function importUsersFromFile() {
     }
 }
 
-app.listen(PORT, async () => {
-  console.log(`Server is running on port ${PORT}`);
-  await initializeDatabase();
-  await importUsersFromFile();
-  await ensureAdminUser();
-  await seedDatabase();
-});

@@ -154,7 +154,15 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, d
 
               {/* Status Card */}
               <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
-                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-2">Estado Actual: <span className="text-[var(--brand-primary)] font-bold">{pkg.status.replace('_', ' ')}</span></h4>
+                  <div className="flex justify-between items-center mb-2">
+                      <h4 className="text-sm font-semibold text-[var(--text-muted)]">Estado Actual: <span className="text-[var(--brand-primary)] font-bold">{pkg.status.replace('_', ' ')}</span></h4>
+                      {(pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.PickedUp) && (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200">
+                              <IconCheckCircle className="w-3 h-3 mr-1" />
+                              Escaneado
+                          </span>
+                      )}
+                  </div>
                    {problemEvent && (
                     <div className="my-3 p-3 bg-[var(--error-bg)] border-l-4 border-[var(--error-border)] rounded-r-md flex items-start gap-3">
                         <IconAlertTriangle className="w-5 h-5 text-[var(--error-text)] flex-shrink-0 mt-0.5" />

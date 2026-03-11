@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { PackageStatus, User } from '../../types';
+import { User } from '../../types';
 import { IconSearch, IconPackage, IconCalendar, IconFileExport, IconFileSpreadsheet } from '../Icon';
 
 interface PackageFiltersProps {
@@ -22,6 +22,8 @@ interface PackageFiltersProps {
   endDate: string;
   onEndDateChange: (date: string) => void;
   onExportRoute: () => void;
+  scannedFilter: 'all' | 'scanned' | 'not_scanned';
+  onScannedFilterChange: (filter: 'all' | 'scanned' | 'not_scanned') => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -43,6 +45,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   endDate,
   onEndDateChange,
   onExportRoute,
+  scannedFilter,
+  onScannedFilterChange,
 }) => {
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
@@ -101,6 +105,13 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
           <select id="driver-filter" value={driverFilter} onChange={(e) => onDriverChange(e.target.value)} className={selectClasses} aria-label="Filtrar por conductor">
             <option value="">Todos los Conductores</option>
             {drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
+          </select>
+        </div>
+        <div className="flex-shrink-0">
+          <select id="scanned-filter" value={scannedFilter} onChange={(e) => onScannedFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por escaneado">
+            <option value="all">Escaneado: Todos</option>
+            <option value="scanned">Escaneados</option>
+            <option value="not_scanned">No Escaneados</option>
           </select>
         </div>
         <div className="flex-shrink-0">

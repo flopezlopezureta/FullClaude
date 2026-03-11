@@ -101,7 +101,10 @@ router.post('/login', async (req, res) => {
 
     } catch (err) {
         console.error('Error en /api/auth/login:', err);
-        res.status(500).json({ message: 'Error del servidor al iniciar sesión.' });
+        const message = err.message.includes('PostgreSQL') 
+            ? 'Error de conexión a la base de datos. Por favor, configure las variables de entorno.' 
+            : 'Error del servidor al iniciar sesión.';
+        res.status(500).json({ message });
     }
 });
 
@@ -117,7 +120,10 @@ router.get('/me', authMiddleware, async (req, res) => {
         res.json(user);
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Error del servidor.' });
+        const message = err.message.includes('PostgreSQL') 
+            ? 'Error de conexión a la base de datos.' 
+            : 'Error del servidor.';
+        res.status(500).json({ message });
     }
 });
 

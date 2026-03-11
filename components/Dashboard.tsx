@@ -70,6 +70,7 @@ const Dashboard: React.FC = () => {
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<PackageStatus | null>(null);
+  const [scannedFilter, setScannedFilter] = useState<'all' | 'scanned' | 'not_scanned'>('all');
   const [driverFilter, setDriverFilter] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('');
   const [communeFilter, setCommuneFilter] = useState<string>('');
@@ -99,7 +100,16 @@ const Dashboard: React.FC = () => {
             api.getPackages(params),
             api.getUsers()
         ]);
-        setPackages(pkgs);
+        
+        // Client-side filtering for "scanned" status
+        let filtered = pkgs;
+        if (scannedFilter === 'scanned') {
+            filtered = pkgs.filter(p => p.status !== PackageStatus.Pending && p.status !== PackageStatus.PickedUp);
+        } else if (scannedFilter === 'not_scanned') {
+            filtered = pkgs.filter(p => p.status === PackageStatus.Pending || p.status === PackageStatus.PickedUp);
+        }
+
+        setPackages(filtered);
         setTotalPackages(total);
         setUsers(allUsers);
     } catch (error) {
@@ -107,7 +117,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, scannedFilter]);
 
   useEffect(() => {
     fetchData();
@@ -126,6 +136,7 @@ const Dashboard: React.FC = () => {
   const resetFiltersForNewData = () => {
       setSearchQuery('');
       setStatusFilter(null);
+      setScannedFilter('all');
       setDriverFilter('');
       setClientFilter('');
       setCommuneFilter('');
@@ -396,6 +407,8 @@ const Dashboard: React.FC = () => {
             endDate={endDate}
             onEndDateChange={setEndDate}
             onExportRoute={handleExportRoute}
+            scannedFilter={scannedFilter}
+            onScannedFilterChange={setScannedFilter}
         />
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 border-b border-[var(--border-primary)]">
@@ -545,7 +558,7 @@ const Dashboard: React.FC = () => {
           onDeletePackage={(pkg) => { setSelectedPackages(new Set([pkg.id])); setIsDeletePasswordModalOpen(true); }}
           onPrintLabel={(pkg) => setPrintingPackages([pkg])}
           onMarkForReturn={auth?.user?.role === 'ADMIN' ? handleMarkForReturn : undefined}
-          isFiltering={searchQuery !== '' || statusFilter !== null || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== ''}
+          isFiltering={searchQuery !== '' || statusFilter !== null || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || scannedFilter !== 'all'}
           isDateFiltering={isDateFiltering}
           selectedPackages={selectedPackages}
           onSelectionChange={handleSelectPackage}

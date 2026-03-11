@@ -6,7 +6,7 @@
   "description": "Sistema de seguimiento de paquetes full-stack.",
   "scripts": {
     "start": "node server.js",
-    "dev": "vite",
+    "dev": "node server.js",
     "build": "vite build",
     "lint": "tsc --noEmit",
     "postinstall": "npm run build"

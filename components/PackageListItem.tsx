@@ -121,62 +121,70 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
       ? pkg.origin 
       : pkg.recipientAddress;
 
-  return (
-    <>
-      <style>{`
-        @keyframes pulse-border-red {
-          0%, 100% { border-left-color: #ef4444; } /* Tailwind red-500 */
-          50% { border-left-color: #fca5a5; }   /* Tailwind red-300 */
-        }
-        .animate-pulse-border-red {
-          animation: pulse-border-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse-border-yellow {
-          0%, 100% { border-left-color: #f59e0b; } /* Tailwind yellow-500 */
-          50% { border-left-color: #fcd34d; }   /* Tailwind yellow-300 */
-        }
-        .animate-pulse-border-yellow {
-          animation: pulse-border-yellow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse-urgent-bg {
-          0%, 100% { background-color: var(--background-secondary); }
-          50% { background-color: var(--error-bg); }
-        }
-        .animate-pulse-urgent {
-          animation: pulse-urgent-bg 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-      `}</style>
-      <div
-        className={`px-3 py-3 flex items-center hover:bg-[var(--background-hover)] transition-colors duration-200 border-l-4 ${borderClass} ${isUrgent ? 'animate-pulse-urgent' : ''} ${rowBgClass}`}
-      >
-        {onSelectionChange && (
-            <div className="mr-3 flex-shrink-0">
-                 <input
-                    type="checkbox"
-                    className={customCheckboxClass}
-                    checked={!!isSelected}
-                    onChange={() => onSelectionChange(pkg)}
-                    onClick={(e) => e.stopPropagation()}
-                />
-            </div>
-        )}
-        <div onClick={() => onSelect(pkg)} className="flex items-start flex-grow min-w-0 cursor-pointer gap-3">
-            <div className="flex-shrink-0 mt-1">
-                <div className={`p-2 rounded-full ${badgeClass}`}>
-                    {statusIcons[pkg.status]}
-                </div>
-            </div>
-            
-            {/* FORCE COLUMN LAYOUT FOR TEXT TO PREVENT MIXING */}
-            <div className="flex flex-col flex-grow min-w-0 space-y-1.5">
-                {/* 1. Primary Text: Name (Bold & Large) */}
-                <div className="block w-full">
-                    <p className="font-bold text-[var(--text-primary)] text-sm leading-tight truncate">
-                        {primaryText}
-                    </p>
-                </div>
-                
-                {/* 2. Secondary Text: Address (Smaller, different color, new line) */}
+    const isScanned = pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.PickedUp;
+
+    return (
+        <>
+            <style>{`
+                @keyframes pulse-border-red {
+                    0%, 100% { border-left-color: #ef4444; } /* Tailwind red-500 */
+                    50% { border-left-color: #fca5a5; }   /* Tailwind red-300 */
+                }
+                .animate-pulse-border-red {
+                    animation: pulse-border-red 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+                @keyframes pulse-border-yellow {
+                    0%, 100% { border-left-color: #f59e0b; } /* Tailwind yellow-500 */
+                    50% { border-left-color: #fcd34d; }   /* Tailwind yellow-300 */
+                }
+                .animate-pulse-border-yellow {
+                    animation: pulse-border-yellow 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+                @keyframes pulse-urgent-bg {
+                    0%, 100% { background-color: var(--background-secondary); }
+                    50% { background-color: var(--error-bg); }
+                }
+                .animate-pulse-urgent {
+                    animation: pulse-urgent-bg 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+                }
+            `}</style>
+            <div
+                className={`px-3 py-3 flex items-center hover:bg-[var(--background-hover)] transition-colors duration-200 border-l-4 ${borderClass} ${isUrgent ? 'animate-pulse-urgent' : ''} ${rowBgClass}`}
+            >
+                {onSelectionChange && (
+                    <div className="mr-3 flex-shrink-0">
+                        <input
+                            type="checkbox"
+                            className={customCheckboxClass}
+                            checked={!!isSelected}
+                            onChange={() => onSelectionChange(pkg)}
+                            onClick={(e) => e.stopPropagation()}
+                        />
+                    </div>
+                )}
+                <div onClick={() => onSelect(pkg)} className="flex items-start flex-grow min-w-0 cursor-pointer gap-3">
+                    <div className="flex-shrink-0 mt-1">
+                        <div className={`p-2 rounded-full ${badgeClass}`}>
+                            {statusIcons[pkg.status]}
+                        </div>
+                    </div>
+                    
+                    {/* FORCE COLUMN LAYOUT FOR TEXT TO PREVENT MIXING */}
+                    <div className="flex flex-col flex-grow min-w-0 space-y-1.5">
+                        {/* 1. Primary Text: Name (Bold & Large) */}
+                        <div className="flex items-center gap-2 w-full">
+                            <p className="font-bold text-[var(--text-primary)] text-sm leading-tight truncate">
+                                {primaryText}
+                            </p>
+                            {isScanned && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter bg-green-100 text-green-700 border border-green-200">
+                                    <IconCheckCircle className="w-2.5 h-2.5 mr-0.5" />
+                                    Escaneado
+                                </span>
+                            )}
+                        </div>
+                        
+                        {/* 2. Secondary Text: Address (Smaller, different color, new line) */}
                 <div className="flex items-start gap-1.5 text-xs text-[var(--text-secondary)] w-full">
                     <IconMapPin className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
                     <span className="leading-tight block break-words">{addressText}</span>
