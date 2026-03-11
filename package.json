@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.1.0",
-  "versionComment": "Versión 2.1.0: New Server",
+  "version": "2.1.1",
+  "versionComment": "Versión 2.1.1: New Server",
   "private": true,
   "description": "Sistema de seguimiento de paquetes full-stack.",
   "scripts": {
