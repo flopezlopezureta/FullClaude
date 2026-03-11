@@ -46,6 +46,54 @@ async function geocodeAddress(address, commune, city) {
     return { lat: null, lng: null };
 }
 
+let isGeocoding = false;
+async function triggerBackgroundGeocoding() {
+    if (isGeocoding) return;
+    isGeocoding = true;
+    
+    console.log("Starting background geocoding process...");
+    try {
+        while (true) {
+            // Find packages with null coordinates that haven't been tried recently or at all
+            const { rows: pending } = await db.query(
+                'SELECT id, "recipientAddress", "recipientCommune", "recipientCity" FROM packages WHERE "destLatitude" IS NULL LIMIT 10'
+            );
+            
+            if (pending.length === 0) {
+                console.log("No more packages to geocode.");
+                break;
+            }
+            
+            for (const pkg of pending) {
+                console.log(`Geocoding package ${pkg.id}: ${pkg.recipientAddress}, ${pkg.recipientCommune}`);
+                const coords = await geocodeAddress(pkg.recipientAddress, pkg.recipientCommune, pkg.recipientCity);
+                
+                if (coords.lat !== null) {
+                    await db.query(
+                        'UPDATE packages SET "destLatitude" = $1, "destLongitude" = $2 WHERE id = $3',
+                        [coords.lat, coords.lng, pkg.id]
+                    );
+                } else {
+                    // Mark as tried by setting to a very small non-zero value if we want to avoid re-trying
+                    // Or just leave as NULL and we'll retry next time the process runs.
+                    // To avoid infinite loops on bad addresses, let's set to 0.000001
+                    await db.query(
+                        'UPDATE packages SET "destLatitude" = 0.000001, "destLongitude" = 0.000001 WHERE id = $1',
+                        [pkg.id]
+                    );
+                }
+                // Respect Nominatim rate limit (1 request per second)
+                await new Promise(r => setTimeout(r, 1200));
+            }
+        }
+    } catch (error) {
+        console.error("Background geocoding error:", error);
+    } finally {
+        isGeocoding = false;
+        console.log("Background geocoding process finished.");
+    }
+}
+
 // Middleware to authorize dispatch actions
 const dispatchAllowed = (req, res, next) => {
     const allowedRoles = ['ADMIN', 'DRIVER', 'AUXILIAR'];
@@ -239,41 +287,66 @@ router.post('/batch', authMiddleware, async (req, res) => {
         return res.status(400).json({ message: "Se esperaba un array de paquetes." });
     }
 
+    const results = [];
+    const errors = [];
+
     try {
-        const results = [];
+        for (let i = 0; i < packages.length; i++) {
+            const pkgData = packages[i];
+            try {
+                const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId } = pkgData;
+                
+                const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
+                if (creatorRows.length === 0) {
+                    errors.push({ 
+                        index: i, 
+                        recipientName: recipientName || 'Desconocido',
+                        error: `Cliente creador no encontrado.` 
+                    });
+                    continue;
+                }
+                
+                // Geocoding is now handled in the background for speed
+                const coords = { lat: null, lng: null };
 
-        for (const pkgData of packages) {
-            const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId } = pkgData;
-            
-            const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
-            if (creatorRows.length === 0) throw new Error(`Cliente creador no encontrado para uno de los paquetes.`);
-            
-            // Geocode
-            const coords = await geocodeAddress(recipientAddress, recipientCommune, recipientCity);
+                const now = new Date();
+                const newPackage = {
+                    id: `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
+                    recipientName, recipientPhone, status: 'PENDIENTE', shippingType, origin, destination: recipientAddress, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, createdAt: now, updatedAt: now, creatorId, source, meliOrderId, shopifyOrderId, wooOrderId,
+                    destLatitude: coords.lat,
+                    destLongitude: coords.lng
+                };
+                
+                const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+                const values = Object.values(newPackage);
+                const placeholders = values.map((_, i) => `$${i+1}`).join(', ');
 
-            const now = new Date();
-            const newPackage = {
-                id: `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
-                recipientName, recipientPhone, status: 'PENDIENTE', shippingType, origin, destination: recipientAddress, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, createdAt: now, updatedAt: now, creatorId, source, meliOrderId, shopifyOrderId, wooOrderId,
-                destLatitude: coords.lat,
-                destLongitude: coords.lng
-            };
-            
-            const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-            const values = Object.values(newPackage);
-            const placeholders = values.map((_, i) => `$${i+1}`).join(', ');
-
-            await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-            await addTrackingEvent(newPackage.id, 'Creado', origin, 'Paquete creado.');
-            
-            newPackage.history = await getHistory(newPackage.id);
-            results.push(newPackage);
-            
-            // Small delay to respect Nominatim rate limits if batching many
-            if (packages.length > 1) await new Promise(r => setTimeout(r, 1000));
+                await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                await addTrackingEvent(newPackage.id, 'Creado', origin, 'Paquete creado.');
+                
+                // We don't fetch history here to save time in batch
+                results.push(newPackage);
+            } catch (err) {
+                console.error(`Error creating package at index ${i}:`, err);
+                errors.push({ 
+                    index: i, 
+                    recipientName: pkgData.recipientName || 'Desconocido',
+                    error: err.message 
+                });
+            }
         }
         
-        res.status(201).json(results);
+        // Trigger background geocoding without awaiting it
+        setTimeout(() => {
+            triggerBackgroundGeocoding();
+        }, 1000);
+
+        res.status(201).json({ 
+            success: true, 
+            importedCount: results.length, 
+            errorCount: errors.length,
+            errors: errors
+        });
 
     } catch (err) {
         console.error('Error in POST /api/packages/batch:', err);

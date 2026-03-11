@@ -169,14 +169,14 @@ const Dashboard: React.FC = () => {
       }));
 
       try {
-          await api.createMultiplePackages(fullPackagesData);
+          const result = await api.createMultiplePackages(fullPackagesData);
           resetFiltersForNewData();
           fetchData();
-          setIsImportModalOpen(false);
-          alert(`${fullPackagesData.length} paquetes importados correctamente.`);
+          // We don't close the modal here anymore, we let the modal handle the result
+          return result;
       } catch (error) {
           console.error("Failed to import packages", error);
-          alert("Error al importar los paquetes. Inténtelo de nuevo.");
+          throw error;
       }
   };
 

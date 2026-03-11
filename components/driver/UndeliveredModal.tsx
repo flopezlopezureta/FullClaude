@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package } from '../../types';
-import { IconX, IconAlertTriangle, IconCamera } from '../Icon';
+import { IconX, IconAlertTriangle, IconCamera, IconPhoto } from '../Icon';
 
 interface UndeliveredModalProps {
   pkg: Package;
@@ -84,6 +84,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finalReason = reason === "Otro motivo (especificar)" ? customReason : reason;
   const isFormValid = finalReason.trim() !== '' && photosBase64.length > 0;
@@ -104,6 +105,20 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
   
   const handleRemovePhoto = (indexToRemove: number) => {
       setPhotosBase64(prev => prev.filter((_, index) => index !== indexToRemove));
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      Array.from(files).forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotosBase64(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+      e.target.value = '';
+    }
   };
 
   return (
@@ -166,10 +181,24 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                         ))}
                     </div>
                 )}
-                 <button type="button" onClick={() => setIsCameraOpen(true)} className="w-full flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)]">
-                    <IconCamera className="w-10 h-10 mb-2" />
-                    <span className="font-semibold">{photosBase64.length > 0 ? 'Agregar Otra Foto' : 'Tomar Foto de Evidencia'}</span>
-                </button>
+                 <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => setIsCameraOpen(true)} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)]">
+                        <IconCamera className="w-8 h-8 mb-2" />
+                        <span className="text-sm font-semibold">Cámara</span>
+                    </button>
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)]">
+                        <IconPhoto className="w-8 h-8 mb-2" />
+                        <span className="text-sm font-semibold">Galería</span>
+                    </button>
+                </div>
+                <input 
+                    type="file" 
+                    ref={fileInputRef} 
+                    onChange={handleFileChange} 
+                    accept="image/*" 
+                    multiple 
+                    className="hidden" 
+                />
                 {isCameraOpen && <CameraView onCapture={(dataUrl) => { setPhotosBase64(prev => [...prev, dataUrl]); setIsCameraOpen(false); }} onCancel={() => setIsCameraOpen(false)} />}
             </div>
           </div>

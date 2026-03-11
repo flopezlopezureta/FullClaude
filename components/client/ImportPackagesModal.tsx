@@ -9,7 +9,7 @@ declare const XLSX: any;
 
 interface ImportPackagesModalProps {
   onClose: () => void;
-  onImport: (packages: Omit<PackageCreationData, 'origin' | 'creatorId'>[], creatorId?: string) => Promise<void>;
+  onImport: (packages: Omit<PackageCreationData, 'origin' | 'creatorId'>[], creatorId?: string) => Promise<any>;
   clients?: User[]; // Optional list of clients for admin mode
 }
 
@@ -45,6 +45,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
     const [file, setFile] = useState<File | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
+    const [importResult, setImportResult] = useState<{ importedCount: number, errorCount: number, errors: any[] } | null>(null);
     const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
     const [dragActive, setDragActive] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -199,9 +200,11 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
         
         setIsImporting(true);
         try {
-            await onImport(validPackages, selectedClientId);
-        } catch (error) {
+            const result = await onImport(validPackages, selectedClientId);
+            setImportResult(result);
+        } catch (error: any) {
             console.error("Import failed", error);
+            alert("Error al importar: " + (error.message || "Error desconocido"));
         } finally {
             setIsImporting(false);
         }
@@ -222,7 +225,69 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             
             <div className="p-6 flex-1 overflow-y-auto custom-scrollbar">
                 
-                {clients && (
+                {importResult ? (
+                    <div className="text-center py-4">
+                        <div className="mb-6">
+                            {importResult.errorCount === 0 ? (
+                                <div className="flex flex-col items-center">
+                                    <IconCheckCircle className="w-16 h-16 text-green-500 mb-4" />
+                                    <h4 className="text-2xl font-bold text-slate-800">¡Importación Exitosa!</h4>
+                                    <p className="text-slate-600 mt-2">Se han importado {importResult.importedCount} paquetes correctamente.</p>
+                                    <p className="text-sm text-slate-500 mt-4 italic">La geolocalización se está procesando en segundo plano.</p>
+                                </div>
+                            ) : (
+                                <div className="flex flex-col items-center">
+                                    <IconAlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
+                                    <h4 className="text-2xl font-bold text-slate-800">Importación Finalizada con Observaciones</h4>
+                                    <p className="text-slate-600 mt-2">
+                                        Se importaron <span className="font-bold text-green-600">{importResult.importedCount}</span> paquetes.
+                                        Hubo <span className="font-bold text-red-600">{importResult.errorCount}</span> errores en el servidor.
+                                    </p>
+                                </div>
+                            )}
+                        </div>
+
+                        {importResult.errors.length > 0 && (
+                            <div className="text-left mt-8">
+                                <h5 className="font-bold text-slate-700 mb-3 flex items-center">
+                                    <IconAlertTriangle className="w-5 h-5 mr-2 text-red-500" />
+                                    Detalle de Errores del Servidor:
+                                </h5>
+                                <div className="border rounded-lg overflow-hidden max-h-60 overflow-y-auto bg-red-50">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-red-100 sticky top-0">
+                                            <tr>
+                                                <th className="p-2 text-left font-medium text-red-800">Fila Excel</th>
+                                                <th className="p-2 text-left font-medium text-red-800">Destinatario</th>
+                                                <th className="p-2 text-left font-medium text-red-800">Error</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-red-200">
+                                            {importResult.errors.map((err, idx) => (
+                                                <tr key={idx}>
+                                                    <td className="p-2 font-mono text-red-700">{err.index + 2}</td>
+                                                    <td className="p-2 text-red-700 font-medium">{err.recipientName}</td>
+                                                    <td className="p-2 text-red-600">{err.error}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-10">
+                            <button 
+                                onClick={onClose}
+                                className="px-8 py-3 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-colors"
+                            >
+                                Finalizar y Ver Paquetes
+                            </button>
+                        </div>
+                    </div>
+                ) : (
+                    <>
+                        {clients && (
                     <div className="mb-6">
                         <label htmlFor="client-select" className="block text-sm font-medium text-slate-700 mb-2">Asignar a Cliente</label>
                         <select
@@ -308,19 +373,23 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
                         </div>
                     </div>
                 )}
-            </div>
+                </>
+            )}
+        </div>
 
-            <footer className="px-6 py-4 bg-slate-50 rounded-b-xl flex justify-end space-x-3">
-                <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50">Cancelar</button>
-                <button 
-                    type="button" 
-                    onClick={handleSubmit}
-                    disabled={isImporting || validCount === 0 || !file || (clients && !selectedClientId)}
-                    className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
-                >
-                   {isImporting ? 'Importando...' : `Importar ${validCount} Paquetes`}
-                </button>
-            </footer>
+            {!importResult && (
+                <footer className="px-6 py-4 bg-slate-50 rounded-b-xl flex justify-end space-x-3">
+                    <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-md hover:bg-slate-50">Cancelar</button>
+                    <button 
+                        type="button" 
+                        onClick={handleSubmit}
+                        disabled={isImporting || validCount === 0 || !file || (clients && !selectedClientId)}
+                        className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-slate-400"
+                    >
+                       {isImporting ? 'Importando...' : `Importar ${validCount} Paquetes`}
+                    </button>
+                </footer>
+            )}
         </div>
       </div>
     );

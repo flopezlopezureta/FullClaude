@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useContext } from 'react';
 import { Package } from '../../types';
 import { DeliveryConfirmationData } from '../../services/api';
-import { IconX, IconUser, IconId, IconCamera, IconAlertTriangle, IconCheckCircle } from '../Icon';
+import { IconX, IconUser, IconId, IconCamera, IconAlertTriangle, IconCheckCircle, IconPhoto } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 interface DeliveryConfirmationModalProps {
@@ -130,6 +130,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rutError, setRutError] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const auth = useContext(AuthContext);
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
@@ -185,6 +186,24 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
         setRutError('El RUT ingresado no es válido.');
     } else {
         setRutError(null);
+    }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const remaining = requiredPhotos - photosBase64.length;
+      const filesToProcess = Array.from(files).slice(0, remaining);
+      
+      filesToProcess.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          setPhotosBase64(prev => [...prev, reader.result as string]);
+        };
+        reader.readAsDataURL(file);
+      });
+      // Reset input value to allow selecting same file again if needed
+      e.target.value = '';
     }
   };
   
@@ -269,11 +288,29 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                     </div>
                 )}
                 {photosRemaining > 0 ? (
-                    <button type="button" onClick={() => setIsCameraOpen(true)} className={`w-full flex flex-col items-center justify-center p-6 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors ${photosBase64.length > 0 ? 'mt-3' : ''}`}>
-                        <IconCamera className="w-10 h-10 mb-2" />
-                        <span className="font-semibold">{photosBase64.length > 0 ? 'Agregar Otra Foto' : 'Tomar Foto de Entrega'}</span>
-                        <span className="text-xs mt-1">({photosRemaining} restante{photosRemaining > 1 ? 's' : ''})</span>
-                    </button>
+                    <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                            <button type="button" onClick={() => setIsCameraOpen(true)} className={`flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors`}>
+                                <IconCamera className="w-8 h-8 mb-2" />
+                                <span className="text-sm font-semibold">Cámara</span>
+                            </button>
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className={`flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors`}>
+                                <IconPhoto className="w-8 h-8 mb-2" />
+                                <span className="text-sm font-semibold">Galería</span>
+                            </button>
+                        </div>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef} 
+                            onChange={handleFileChange} 
+                            accept="image/*" 
+                            multiple 
+                            className="hidden" 
+                        />
+                        <p className="text-xs text-[var(--text-muted)]">
+                            Faltan {photosRemaining} foto{photosRemaining > 1 ? 's' : ''} requerida{photosRemaining > 1 ? 's' : ''}
+                        </p>
+                    </div>
                 ) : (
                     <p className="text-xs text-green-600 flex items-center justify-center mt-3"><IconCheckCircle className="w-4 h-4 mr-1.5"/> Todas las fotos requeridas han sido capturadas.</p>
                 )}
