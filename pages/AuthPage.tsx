@@ -289,20 +289,15 @@ const AuthPage: React.FC = () => {
             </div>
           </form>
 
-          <p className="text-center text-[var(--text-muted)] text-sm mt-6">
+           <p className="text-center text-[var(--text-muted)] text-sm mt-6">
             {mode === 'login' ? '¿No tienes una cuenta?' : mode === 'register' ? '¿Ya tienes una cuenta?' : '¿Recordaste tu contraseña?'}
             <button onClick={() => switchMode(mode === 'login' ? 'register' : 'login')} className="font-bold text-[var(--brand-primary)] hover:text-[var(--brand-secondary)] ml-2">
                {mode === 'login' ? 'Regístrate' : 'Inicia Sesión'}
             </button>
           </p>
-          <div className="flex flex-col items-center mt-6">
-            <p className="text-center text-xs text-[var(--text-muted)] opacity-50">
-              by SELCOM
-            </p>
-            <p className="text-center text-[10px] text-[var(--text-muted)] opacity-40 mt-1">
-              {import.meta.env.VITE_APP_VERSION} in New Server
-            </p>
-          </div>
+          <p className="text-center text-xs text-[var(--text-muted)] opacity-50 mt-6">
+            by SELCOM
+          </p>
         </div>
       </div>
     </div>

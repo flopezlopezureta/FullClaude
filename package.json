@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
   "version": "2.1.5",
-  "versionComment": "Versión 2.1.5: New Server",
+  "versionComment": "Versión 2.1.5: QR FLEX & Refresh",
   "private": true,
   "description": "Sistema de seguimiento de paquetes full-stack.",
   "scripts": {
