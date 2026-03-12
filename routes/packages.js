@@ -231,6 +231,32 @@ async function addTrackingEvent(packageId, status, location, details) {
 router.post('/', authMiddleware, async (req, res) => {
     const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
     
+    // Validation
+    const requiredFields = {
+        creatorId: 'ID del cliente creador',
+        recipientName: 'Nombre del destinatario',
+        recipientPhone: 'Teléfono del destinatario',
+        recipientAddress: 'Dirección del destinatario',
+        recipientCommune: 'Comuna del destinatario',
+        recipientCity: 'Ciudad del destinatario',
+        estimatedDelivery: 'Fecha de entrega estimada',
+        shippingType: 'Tipo de envío',
+        origin: 'Origen del paquete'
+    };
+
+    const missingFields = [];
+    for (const [field, label] of Object.entries(requiredFields)) {
+        if (!req.body[field]) {
+            missingFields.push(label);
+        }
+    }
+
+    if (missingFields.length > 0) {
+        return res.status(400).json({ 
+            message: `Faltan datos obligatorios o están incompletos: ${missingFields.join(', ')}.` 
+        });
+    }
+
     try {
         const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
         if (creatorRows.length === 0) {
@@ -255,7 +281,7 @@ router.post('/', authMiddleware, async (req, res) => {
             recipientCommune,
             recipientCity,
             notes,
-            estimatedDelivery,
+            estimatedDelivery: new Date(estimatedDelivery),
             createdAt: now,
             updatedAt: now,
             creatorId,
@@ -279,7 +305,23 @@ router.post('/', authMiddleware, async (req, res) => {
         res.status(201).json(newPackage);
     } catch (err) {
         console.error('Error in POST /api/packages:', err);
-        res.status(500).json({ message: 'Error del servidor al crear el paquete.' });
+        
+        // Handle specific database errors
+        if (err.code === '23505') {
+            return res.status(400).json({ 
+                message: 'Ya existe un paquete con este ID o código de seguimiento.' 
+            });
+        }
+        
+        if (err.code === '23502') {
+            return res.status(400).json({ 
+                message: `Faltan datos obligatorios en la base de datos: ${err.column}.` 
+            });
+        }
+
+        res.status(500).json({ 
+            message: 'Error al crear el paquete. Por favor, verifica que todos los datos sean correctos e intenta nuevamente.' 
+        });
     }
 });
 
@@ -297,8 +339,53 @@ router.post('/batch', authMiddleware, async (req, res) => {
         for (let i = 0; i < packages.length; i++) {
             const pkgData = packages[i];
             try {
-                const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = pkgData;
+                const { 
+                    creatorId, 
+                    recipientName, 
+                    recipientPhone, 
+                    recipientAddress, 
+                    recipientCommune, 
+                    recipientCity, 
+                    notes, 
+                    estimatedDelivery, 
+                    shippingType, 
+                    origin, 
+                    source, 
+                    meliOrderId, 
+                    shopifyOrderId, 
+                    wooOrderId, 
+                    trackingId 
+                } = pkgData;
                 
+                // Validate required fields for each package
+                const requiredFields = {
+                    creatorId: 'ID del cliente creador',
+                    recipientName: 'Nombre del destinatario',
+                    recipientPhone: 'Teléfono del destinatario',
+                    recipientAddress: 'Dirección del destinatario',
+                    recipientCommune: 'Comuna del destinatario',
+                    recipientCity: 'Ciudad del destinatario',
+                    estimatedDelivery: 'Fecha de entrega estimada',
+                    shippingType: 'Tipo de envío',
+                    origin: 'Origen del paquete'
+                };
+
+                const missingFields = [];
+                for (const [field, label] of Object.entries(requiredFields)) {
+                    if (!pkgData[field] || (typeof pkgData[field] === 'string' && pkgData[field].trim() === '')) {
+                        missingFields.push(label);
+                    }
+                }
+
+                if (missingFields.length > 0) {
+                    errors.push({
+                        index: i,
+                        recipientName: recipientName || 'Desconocido',
+                        error: `Faltan datos obligatorios: ${missingFields.join(', ')}`
+                    });
+                    continue;
+                }
+
                 const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
                 if (creatorRows.length === 0) {
                     errors.push({ 
@@ -317,7 +404,25 @@ router.post('/batch', authMiddleware, async (req, res) => {
 
                 const newPackage = {
                     id: packageId,
-                    recipientName, recipientPhone, status: 'PENDIENTE', shippingType, origin, destination: recipientAddress, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, createdAt: now, updatedAt: now, creatorId, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId,
+                    recipientName, 
+                    recipientPhone, 
+                    status: 'PENDIENTE', 
+                    shippingType, 
+                    origin, 
+                    destination: recipientAddress, 
+                    recipientAddress, 
+                    recipientCommune, 
+                    recipientCity, 
+                    notes, 
+                    estimatedDelivery: new Date(estimatedDelivery), 
+                    createdAt: now, 
+                    updatedAt: now, 
+                    creatorId, 
+                    source, 
+                    meliOrderId, 
+                    shopifyOrderId, 
+                    wooOrderId, 
+                    trackingId,
                     destLatitude: coords.lat,
                     destLongitude: coords.lng
                 };
@@ -329,14 +434,21 @@ router.post('/batch', authMiddleware, async (req, res) => {
                 await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
                 await addTrackingEvent(newPackage.id, 'Creado', origin, 'Paquete creado.');
                 
-                // We don't fetch history here to save time in batch
                 results.push(newPackage);
             } catch (err) {
                 console.error(`Error creating package at index ${i}:`, err);
+                
+                let errorMessage = err.message;
+                if (err.code === '23505') {
+                    errorMessage = 'Ya existe un paquete con este ID o código de seguimiento.';
+                } else if (err.code === '23502') {
+                    errorMessage = `Faltan datos obligatorios en la base de datos: ${err.column}.`;
+                }
+
                 errors.push({ 
                     index: i, 
                     recipientName: pkgData.recipientName || 'Desconocido',
-                    error: err.message 
+                    error: errorMessage
                 });
             }
         }
