@@ -75,6 +75,7 @@ async function startServer() {
 
     app.listen(PORT, '0.0.0.0', async () => {
       console.log(`Server is running on port ${PORT}`);
+      console.log(`Environment: NODE_ENV=${process.env.NODE_ENV}, VITE_APP_ENV=${process.env.VITE_APP_ENV || 'not set'}`);
       try {
         await initializeDatabase();
         await importUsersFromFile();

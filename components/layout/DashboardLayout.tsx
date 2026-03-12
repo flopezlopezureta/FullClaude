@@ -206,6 +206,14 @@ const DashboardLayout: React.FC = () => {
         </header>
 
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[var(--background-primary)] p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
+           {/* STAGING BANNER */}
+           {import.meta.env.VITE_APP_ENV === 'staging' && (
+             <div className="bg-yellow-500 text-black text-center py-2 font-bold z-50 shadow-md mb-4 rounded flex items-center justify-center">
+               <span className="mr-2">⚠️</span>
+               ESTÁS EN EL AMBIENTE DE PRUEBAS (STAGING)
+               <span className="ml-2">⚠️</span>
+             </div>
+           )}
            {notification && (
                 <div className={`fixed top-20 right-8 z-50 flex items-center p-4 rounded-lg shadow-lg text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
                     <IconCheckCircle className="w-6 h-6 mr-3" />
