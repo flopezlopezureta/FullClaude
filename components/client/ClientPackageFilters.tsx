@@ -56,7 +56,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
           </div>
           <input
             type="text"
-            placeholder="Buscar ID o destinatario..."
+            placeholder="Buscar ID, destinatario o FLEX..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className={`${inputClasses} pl-10`}

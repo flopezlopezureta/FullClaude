@@ -109,7 +109,8 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
         (p.trackingId && p.trackingId === codeForApi) ||
         (p.meliOrderId && (p.meliOrderId === codeForApi || p.meliOrderId === cleanRawCode)) ||
         (p.shopifyOrderId && p.shopifyOrderId === codeForApi) ||
-        (p.wooOrderId && p.wooOrderId === codeForApi)
+        (p.wooOrderId && p.wooOrderId === codeForApi) ||
+        (p.meliFlexCode && p.meliFlexCode === codeForApi)
     );
 
     if (pkg && scannedPackageIds.includes(pkg.id)) {

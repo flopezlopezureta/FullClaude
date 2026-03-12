@@ -131,7 +131,7 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex} OR "trackingId" ILIKE $${paramIndex})`);
+            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex} OR "trackingId" ILIKE $${paramIndex} OR "meliFlexCode" ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }
@@ -496,9 +496,9 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
     const { id } = req.params;
     const { driverId } = req.body;
     try {
-        // Broad search for package by Internal ID OR External tracking numbers OR trackingId
+        // Broad search for package by Internal ID OR External tracking numbers OR trackingId OR meliFlexCode
         const { rows: pkgRows } = await db.query(
-            'SELECT id, status, "driverId" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1', 
+            'SELECT id, status, "driverId", "meliFlexCode" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
             [id]
         );
         
@@ -508,6 +508,12 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         
         if (['ENTREGADO', 'DEVUELTO'].includes(currentPkg.status)) {
             return res.status(400).json({ message: `Paquete ya se encuentra ${currentPkg.status}.` });
+        }
+
+        // If scanned ID is different from internal ID and we don't have a flex code, or it's different, save it.
+        let flexCodeToSave = currentPkg.meliFlexCode;
+        if (id !== realId && !currentPkg.meliFlexCode) {
+            flexCodeToSave = id;
         }
 
         const { rows: driverRows } = await db.query('SELECT name FROM users WHERE id = $1', [driverId]);
@@ -522,8 +528,8 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         }
 
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3 WHERE id = $4 RETURNING *',
-            [driverId, 'EN_TRANSITO', new Date(), realId]
+            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4 WHERE id = $5 RETURNING *',
+            [driverId, 'EN_TRANSITO', new Date(), flexCodeToSave, realId]
         );
 
         await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details);
