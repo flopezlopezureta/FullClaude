@@ -2,9 +2,9 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { api } from '../../services/api';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcode, IconPencil, IconInfo, IconChecklist, IconTrash, IconSettings, IconAlertTriangle, IconTruck } from '../Icon';
+import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcode, IconPencil, IconInfo, IconChecklist, IconTrash, IconAlertTriangle, IconTruck } from '../Icon';
 import { useTheme } from '../../contexts/ThemeContext';
-import DeleteDatabaseModal from '../modals/DeleteDatabaseModal';
+import DeleteDatabaseModal, { ResetType } from '../modals/DeleteDatabaseModal';
 import { MessagingPlan, PickupMode } from '../../constants';
 
 const messagingPlanConfig = {
@@ -46,6 +46,7 @@ const SettingsPage: React.FC = () => {
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isDeleteDbModalOpen, setIsDeleteDbModalOpen] = useState(false);
+    const [resetType, setResetType] = useState<ResetType>('all');
     const auth = useContext(AuthContext);
     const { theme, setTheme } = useTheme();
 
@@ -152,15 +153,47 @@ const SettingsPage: React.FC = () => {
         }
     };
     
-    const handleResetDatabase = async (password: string) => {
+    const handleResetDatabase = async (password: string, type: ResetType) => {
         try {
-            await api.resetDatabase(password);
+            let result;
+            switch(type) {
+                case 'all':
+                    result = await api.resetDatabase(password);
+                    break;
+                case 'packages':
+                    result = await api.resetPackages(password);
+                    break;
+                case 'clients':
+                    result = await api.resetClients(password);
+                    break;
+                case 'drivers':
+                    result = await api.resetDrivers(password);
+                    break;
+                case 'zones':
+                    result = await api.resetZones(password);
+                    break;
+                case 'invoices':
+                    result = await api.resetInvoices(password);
+                    break;
+                default:
+                    throw new Error('Tipo de reinicio no válido');
+            }
             setIsDeleteDbModalOpen(false);
-            auth?.logout();
-        } catch (error) {
-            showError('Hubo un error al borrar la base de datos.');
+            if (type === 'all') {
+                auth?.logout();
+            } else {
+                showSuccess(result.message);
+                window.location.reload();
+            }
+        } catch (error: any) {
+            showError(error.message || 'Hubo un error al procesar la solicitud.');
             console.error("Database reset failed", error);
         }
+    };
+
+    const openResetModal = (type: ResetType) => {
+        setResetType(type);
+        setIsDeleteDbModalOpen(true);
     };
 
     const hasChanges = useMemo(() => {
@@ -388,24 +421,57 @@ const SettingsPage: React.FC = () => {
             {auth?.user?.email === 'admin' && (
                 <>
                     <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6 border-2 border-red-500">
-                        <h2 className="text-xl font-bold text-red-600 mb-2 flex items-center gap-2">
+                        <h2 className="text-xl font-bold text-red-600 mb-4 flex items-center gap-2">
                             <IconTrash className="w-6 h-6"/>
-                            Zona de Peligro
+                            Zona de Peligro - Reinicio de Datos
                         </h2>
-                        <div className="bg-red-50 p-4 rounded-md mb-4 border border-red-100">
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                            <div className="p-4 border border-[var(--border-primary)] rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                                <h3 className="font-bold text-[var(--text-primary)] mb-1">Paquetes e Historial</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-3">Elimina todos los paquetes y eventos de seguimiento.</p>
+                                <button onClick={() => openResetModal('packages')} className="text-xs font-bold text-red-600 hover:underline">BORRAR PAQUETES</button>
+                            </div>
+                            
+                            <div className="p-4 border border-[var(--border-primary)] rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                                <h3 className="font-bold text-[var(--text-primary)] mb-1">Clientes</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-3">Elimina todos los usuarios con rol de Cliente.</p>
+                                <button onClick={() => openResetModal('clients')} className="text-xs font-bold text-red-600 hover:underline">BORRAR CLIENTES</button>
+                            </div>
+                            
+                            <div className="p-4 border border-[var(--border-primary)] rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                                <h3 className="font-bold text-[var(--text-primary)] mb-1">Conductores y Auxiliares</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-3">Elimina conductores, auxiliares y rutas de retiro.</p>
+                                <button onClick={() => openResetModal('drivers')} className="text-xs font-bold text-red-600 hover:underline">BORRAR CONDUCTORES</button>
+                            </div>
+                            
+                            <div className="p-4 border border-[var(--border-primary)] rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                                <h3 className="font-bold text-[var(--text-primary)] mb-1">Zonas de Entrega</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-3">Elimina todas las zonas configuradas.</p>
+                                <button onClick={() => openResetModal('zones')} className="text-xs font-bold text-red-600 hover:underline">BORRAR ZONAS</button>
+                            </div>
+
+                            <div className="p-4 border border-[var(--border-primary)] rounded-lg hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors">
+                                <h3 className="font-bold text-[var(--text-primary)] mb-1">Facturación</h3>
+                                <p className="text-xs text-[var(--text-muted)] mb-3">Reinicia el historial de facturas de los clientes.</p>
+                                <button onClick={() => openResetModal('invoices')} className="text-xs font-bold text-red-600 hover:underline">REINICIAR FACTURACIÓN</button>
+                            </div>
+                        </div>
+
+                        <div className="bg-red-50 dark:bg-red-900/20 p-4 rounded-md mb-4 border border-red-100 dark:border-red-900/40">
                             <div className="flex items-start">
                                 <IconAlertTriangle className="w-5 h-5 text-red-600 mr-2 flex-shrink-0 mt-0.5" />
-                                <p className="text-sm text-red-700">
-                                    Esta acción es <strong>irreversible</strong>. Restablecerá la aplicación a su estado inicial para producción, eliminando todos los datos transaccionales (paquetes, historiales, rutas, facturas) y usuarios (excepto el administrador).
+                                <p className="text-sm text-red-700 dark:text-red-300">
+                                    <strong>Borrado Total:</strong> Restablecerá la aplicación a su estado inicial, eliminando TODOS los datos transaccionales y usuarios (excepto el administrador).
                                 </p>
                             </div>
                         </div>
                         <div className="flex justify-end">
                             <button
-                                onClick={() => setIsDeleteDbModalOpen(true)}
+                                onClick={() => openResetModal('all')}
                                 className="px-4 py-2 text-sm font-bold text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 transition-colors"
                             >
-                                Borrar Base de Datos
+                                Borrado Total del Sistema
                             </button>
                         </div>
                     </div>
@@ -416,6 +482,7 @@ const SettingsPage: React.FC = () => {
                 <DeleteDatabaseModal
                     onClose={() => setIsDeleteDbModalOpen(false)}
                     onConfirm={handleResetDatabase}
+                    type={resetType}
                 />
             )}
         </div>

@@ -2,26 +2,66 @@
 import React, { useState } from 'react';
 import { IconX, IconAlertTriangle } from '../Icon';
 
+export type ResetType = 'all' | 'packages' | 'clients' | 'drivers' | 'zones' | 'invoices';
+
 interface DeleteDatabaseModalProps {
   onClose: () => void;
-  onConfirm: (password: string) => void;
+  onConfirm: (password: string, type: ResetType) => void;
+  type: ResetType;
 }
 
-const DeleteDatabaseModal: React.FC<DeleteDatabaseModalProps> = ({ onClose, onConfirm }) => {
+const DeleteDatabaseModal: React.FC<DeleteDatabaseModalProps> = ({ onClose, onConfirm, type }) => {
   const [confirmationText, setConfirmationText] = useState('');
   const [password, setPassword] = useState('');
   const [isConfirming, setIsConfirming] = useState(false);
 
-  const correctConfirmationText = 'BORRAR TODO';
-  const masterPassword = 'adminborrar';
+  const config = {
+    all: {
+        title: 'Borrado Total del Sistema',
+        confirmText: 'BORRAR TODO',
+        description: 'Se eliminarán permanentemente: Paquetes, Historiales, Zonas, Facturas, Clientes y Conductores.',
+        warning: 'Esta acción dejará la aplicación como nueva.'
+    },
+    packages: {
+        title: 'Borrar Todos los Paquetes',
+        confirmText: 'BORRAR PAQUETES',
+        description: 'Se eliminarán todos los paquetes y sus eventos de seguimiento.',
+        warning: 'No se eliminarán usuarios ni zonas.'
+    },
+    clients: {
+        title: 'Borrar Todos los Clientes',
+        confirmText: 'BORRAR CLIENTES',
+        description: 'Se eliminarán todos los usuarios con rol de Cliente y sus asignaciones de retiro.',
+        warning: 'Los paquetes creados por estos clientes podrían quedar huérfanos.'
+    },
+    drivers: {
+        title: 'Borrar Todos los Conductores',
+        confirmText: 'BORRAR CONDUCTORES',
+        description: 'Se eliminarán todos los usuarios con rol de Conductor y Auxiliar, además de las rutas de retiro.',
+        warning: 'Los paquetes asignados a estos conductores quedarán sin conductor.'
+    },
+    zones: {
+        title: 'Borrar Zonas de Entrega',
+        confirmText: 'BORRAR ZONAS',
+        description: 'Se eliminarán todas las zonas de entrega configuradas.',
+        warning: 'Esto afectará el cálculo de costos de nuevos paquetes.'
+    },
+    invoices: {
+        title: 'Reiniciar Facturación',
+        confirmText: 'REINICIAR FACTURAS',
+        description: 'Se borrará el historial de facturas de todos los clientes y se marcarán los paquetes como no facturados.',
+        warning: 'Esta acción no elimina paquetes ni usuarios.'
+    }
+  };
 
-  const isFormValid = confirmationText === correctConfirmationText && password === masterPassword;
+  const currentConfig = config[type];
+  const isFormValid = confirmationText === currentConfig.confirmText && password.length >= 6;
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (isFormValid) {
         setIsConfirming(true);
-        onConfirm(password);
+        onConfirm(password, type);
     }
   };
 
@@ -37,7 +77,7 @@ const DeleteDatabaseModal: React.FC<DeleteDatabaseModalProps> = ({ onClose, onCo
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
-          <h3 className="text-lg font-bold text-red-600">Limpieza de Sistema</h3>
+          <h3 className="text-lg font-bold text-red-600">{currentConfig.title}</h3>
           <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
             <IconX className="w-6 h-6" />
           </button>
@@ -50,16 +90,16 @@ const DeleteDatabaseModal: React.FC<DeleteDatabaseModalProps> = ({ onClose, onCo
                 <div>
                     <h4 className="font-bold text-red-800 dark:text-red-200">¡Acción Irreversible!</h4>
                     <p className="text-sm text-red-700 dark:text-red-300 mt-1">
-                        Se eliminarán permanentemente: Paquetes, Historiales, Zonas, Facturas y Clientes.
+                        {currentConfig.description}
                         <br/><br/>
-                        <strong>Se conservarán:</strong> Administradores, Conductores y Configuración del Sistema.
+                        <strong>Advertencia:</strong> {currentConfig.warning}
                     </p>
                 </div>
             </div>
             
             <div>
               <label htmlFor="confirmation-text" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                Escribe <span className="font-bold text-red-600">{correctConfirmationText}</span> para confirmar.
+                Escribe <span className="font-bold text-red-600">{currentConfig.confirmText}</span> para confirmar.
               </label>
               <input
                 type="text"
@@ -74,7 +114,7 @@ const DeleteDatabaseModal: React.FC<DeleteDatabaseModalProps> = ({ onClose, onCo
             
              <div>
               <label htmlFor="master-password" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
-                Ingresa la contraseña maestra de borrado.
+                Ingresa tu contraseña de administrador para autorizar.
               </label>
               <input
                 type="password"

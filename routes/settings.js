@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
+const bcrypt = require('bcryptjs');
 
 // Middleware to check for Admin role
 const adminOnly = (req, res, next) => {
@@ -12,6 +13,13 @@ const adminOnly = (req, res, next) => {
     }
     next();
 };
+
+// Helper to verify admin password
+async function verifyAdminPassword(userId, password) {
+    const { rows } = await db.query('SELECT password FROM users WHERE id = $1', [userId]);
+    if (rows.length === 0) return false;
+    return await bcrypt.compare(password, rows[0].password);
+}
 
 // GET /api/settings/system
 router.get('/system', async (req, res) => {
@@ -85,16 +93,13 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
 // POST /api/settings/reset-database
 router.post('/reset-database', authMiddleware, adminOnly, async (req, res) => {
     const { password } = req.body;
-    if (password !== 'adminborrar') {
-        return res.status(403).json({ message: 'Contraseña maestra incorrecta.' });
+    
+    if (!(await verifyAdminPassword(req.user.id, password))) {
+        return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
+
     const client = await db.getClient();
     try {
-        const { rows } = await client.query('SELECT email FROM users WHERE id = $1', [req.user.id]);
-        if (rows.length === 0 || rows[0].email !== 'admin') {
-            client.release();
-            return res.status(403).json({ message: 'Acción no autorizada.' });
-        }
         await client.query('BEGIN');
         await client.query('TRUNCATE TABLE tracking_events, packages, assignment_events, pickup_assignments, pickup_runs RESTART IDENTITY CASCADE');
         await client.query(`UPDATE users SET "assignedDriverId" = NULL, "lastAssignmentTimestamp" = NULL, "invoices" = '[]'::jsonb`);
@@ -103,9 +108,109 @@ router.post('/reset-database', authMiddleware, adminOnly, async (req, res) => {
         res.status(200).json({ message: 'Sistema limpio para producción.' });
     } catch (err) {
         await client.query('ROLLBACK');
+        console.error(err);
         res.status(500).json({ message: 'Error al limpiar la base de datos.' });
     } finally {
         client.release();
+    }
+});
+
+// POST /api/settings/reset-packages
+router.post('/reset-packages', authMiddleware, adminOnly, async (req, res) => {
+    const { password } = req.body;
+    if (!(await verifyAdminPassword(req.user.id, password))) {
+        return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
+    }
+
+    try {
+        await db.query('BEGIN');
+        await db.query('TRUNCATE TABLE tracking_events, packages RESTART IDENTITY CASCADE');
+        await db.query('COMMIT');
+        res.status(200).json({ message: 'Paquetes e historial eliminados con éxito.' });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error(err);
+        res.status(500).json({ message: 'Error al eliminar paquetes.' });
+    }
+});
+
+// POST /api/settings/reset-clients
+router.post('/reset-clients', authMiddleware, adminOnly, async (req, res) => {
+    const { password } = req.body;
+    if (!(await verifyAdminPassword(req.user.id, password))) {
+        return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
+    }
+
+    try {
+        await db.query('BEGIN');
+        // First remove assignments related to clients
+        await db.query("DELETE FROM assignment_events WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
+        await db.query("DELETE FROM pickup_assignments WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
+        // Then delete clients
+        await db.query("DELETE FROM users WHERE role = 'CLIENT'");
+        await db.query('COMMIT');
+        res.status(200).json({ message: 'Clientes eliminados con éxito.' });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error(err);
+        res.status(500).json({ message: 'Error al eliminar clientes.' });
+    }
+});
+
+// POST /api/settings/reset-drivers
+router.post('/reset-drivers', authMiddleware, adminOnly, async (req, res) => {
+    const { password } = req.body;
+    if (!(await verifyAdminPassword(req.user.id, password))) {
+        return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
+    }
+
+    try {
+        await db.query('BEGIN');
+        // Unassign packages from drivers
+        await db.query('UPDATE packages SET "driverId" = NULL');
+        // Delete runs and assignments
+        await db.query('TRUNCATE TABLE assignment_events, pickup_assignments, pickup_runs RESTART IDENTITY CASCADE');
+        // Delete drivers
+        await db.query("DELETE FROM users WHERE role = 'DRIVER'");
+        await db.query('COMMIT');
+        res.status(200).json({ message: 'Conductores y auxiliares eliminados con éxito.' });
+    } catch (err) {
+        await db.query('ROLLBACK');
+        console.error(err);
+        res.status(500).json({ message: 'Error al eliminar conductores.' });
+    }
+});
+
+// POST /api/settings/reset-zones
+router.post('/reset-zones', authMiddleware, adminOnly, async (req, res) => {
+    const { password } = req.body;
+    if (!(await verifyAdminPassword(req.user.id, password))) {
+        return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
+    }
+
+    try {
+        await db.query('TRUNCATE TABLE delivery_zones RESTART IDENTITY CASCADE');
+        res.status(200).json({ message: 'Zonas de entrega eliminadas con éxito.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al eliminar zonas.' });
+    }
+});
+
+// POST /api/settings/reset-invoices
+router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
+    const { password } = req.body;
+    if (!(await verifyAdminPassword(req.user.id, password))) {
+        return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
+    }
+
+    try {
+        await db.query("UPDATE users SET invoices = '[]'::jsonb, \"pickupCost\" = 0");
+        await db.query("UPDATE packages SET billed = false");
+        res.status(200).json({ message: 'Historial de facturación reiniciado con éxito.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al reiniciar facturación.' });
     }
 });
 

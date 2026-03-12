@@ -246,6 +246,11 @@ export const api = {
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
   updateSystemSettings: (data: Partial<SystemSettings>) => put<SystemSettings>('/settings/system', data),
   resetDatabase: (password: string) => post<{message: string}>('/settings/reset-database', { password }),
+  resetPackages: (password: string) => post<{message: string}>('/settings/reset-packages', { password }),
+  resetClients: (password: string) => post<{message: string}>('/settings/reset-clients', { password }),
+  resetDrivers: (password: string) => post<{message: string}>('/settings/reset-drivers', { password }),
+  resetZones: (password: string) => post<{message: string}>('/settings/reset-zones', { password }),
+  resetInvoices: (password: string) => post<{message: string}>('/settings/reset-invoices', { password }),
   
   // Integrations
   getIntegrationSettings: () => get<IntegrationSettings>('/settings/integrations'),
