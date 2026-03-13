@@ -7,7 +7,7 @@ import { api } from '../../services/api';
 import { AuthContext } from '../../contexts/AuthContext';
 import PackageList from '../PackageList';
 import PackageDetailModal from '../PackageDetailModal';
-import { IconPackage, IconCalendar, IconCheckCircle, IconArchive, IconArrowUturnLeft, IconWhatsapp, IconCube, IconRefresh } from '../Icon';
+import { IconCalendar, IconCheckCircle, IconArchive, IconArrowUturnLeft, IconWhatsapp, IconCube, IconRefresh } from '../Icon';
 
 declare const html2pdf: any;
 

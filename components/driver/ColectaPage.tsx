@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { IconPackage, IconMapPin, IconPhone, IconCheckCircle, IconLoader, IconRefresh, IconCalendar, IconTruck } from '../Icon';
 import { PickupShift } from '../../constants';
 
-const ColectaPage: React.FC<{ onBack: () => void }> = () => {
+const ColectaPage: React.FC = () => {
     const [availableColectas, setAvailableColectas] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [claimingId, setClaimingId] = useState<string | null>(null);

@@ -43,7 +43,7 @@ const ClientDashboard: React.FC = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage] = useState(10);
 
   const auth = useContext(AuthContext);
   const [isExporting, setIsExporting] = useState(false);
@@ -287,7 +287,6 @@ const ClientDashboard: React.FC = () => {
             statusFilter={statusFilter}
             onStatusChange={setStatusFilter}
             communes={uniqueCommunes}
-            packageCount={totalPackages}
         />
 
         <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">

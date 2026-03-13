@@ -3,13 +3,13 @@ import React, { useState, ReactNode } from 'react';
 import { api, PackageCreationData } from '../../services/api';
 import { User } from '../../types';
 import { PackageSource, ShippingType } from '../../constants';
-import { IconX, IconCheckCircle, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader } from '../Icon';
+import { IconX, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader } from '../Icon';
 
 interface ExternalImportModalProps {
     client: User;
     source: PackageSource;
     onClose: () => void;
-    onImport: (packages: Omit<PackageCreationData, 'creatorId' | 'origin'>[]) => Promise<void>;
+    onImport: (packages: Omit<PackageCreationData, 'creatorId' | 'origin'>[]) => Promise<any>;
 }
 
 const sourceConfig: { [key in Exclude<PackageSource, 'MANUAL'>]: { title: string; icon: ReactNode; fetchFn: (clientId: string) => Promise<any[]>; orderIdField: 'meliOrderId' | 'wooOrderId' | 'shopifyOrderId' } } = {

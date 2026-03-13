@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PickupAssignment } from '../../types';
-import { IconX, IconPackage, IconCheckCircle, IconPlus, IconTrash } from '../Icon';
+import { IconX, IconCheckCircle } from '../Icon';
 
 interface ConfirmPickupModalProps {
     assignment: PickupAssignment;

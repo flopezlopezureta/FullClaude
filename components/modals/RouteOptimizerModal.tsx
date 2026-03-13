@@ -1,7 +1,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import type { Package } from '../../types';
-import { IconX, IconRoute, IconMapPin, IconCheckCircle } from '../Icon';
+import { IconX, IconRoute, IconCheckCircle } from '../Icon';
 import { optimizeRoute } from '../../services/routeOptimizer';
 import { cityCoordinates } from '../../services/api';
 

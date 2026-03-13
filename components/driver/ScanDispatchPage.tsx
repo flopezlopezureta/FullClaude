@@ -21,7 +21,7 @@ const playBeep = () => {
 };
 
 interface ScanDispatchPageProps {
-  onBack: () => void;
+  onBack?: () => void;
 }
 
 export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) => {

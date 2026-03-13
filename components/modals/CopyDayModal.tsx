@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import type { PickupRun, PickupShift } from '../../types';
-import { IconX, IconCopy, IconLoader, IconCheckCircle, IconChevronLeft, IconChevronRight, IconTruck } from '../Icon';
+import { IconX, IconCopy, IconLoader, IconChevronLeft, IconChevronRight, IconTruck } from '../Icon';
 import { parseDateString, getISODate } from '../../services/api';
 
 const dayNamesShort = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];

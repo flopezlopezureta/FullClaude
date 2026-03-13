@@ -1,10 +1,10 @@
 
 // Force refresh for UI updates v2
-import React, { useState, useEffect, useMemo, useCallback, useRef, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Role, PackageStatus, PickupStatus, PickupShift } from '../../constants';
 import type { User, Package, PickupRun, PickupAssignment } from '../../types';
 import { api, parseDateString, getISODate } from '../../services/api';
-import { IconUser, IconTruck, IconPackage, IconPlus, IconWhatsapp, IconPencil, IconRefresh, IconClock, IconCheckCircle, IconTrash, IconCalendar, IconHistory, IconEye, IconCopy, IconX, IconLoader, IconChevronRight, IconSearch } from '../Icon';
+import { IconTruck, IconPlus, IconWhatsapp, IconPencil, IconRefresh, IconClock, IconCheckCircle, IconTrash, IconCalendar, IconCopy, IconX, IconSearch } from '../Icon';
 import CreatePickupRunModal from '../modals/CreatePickupRunModal';
 import EditAssignmentCostModal from '../modals/EditAssignmentCostModal';
 import ReassignAssignmentModal from '../modals/ReassignAssignmentModal';

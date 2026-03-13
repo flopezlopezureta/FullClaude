@@ -217,13 +217,16 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_shop_url, shopify_access_token FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
             meliClientSecret: rows[0].meli_client_secret,
             shopifyShopUrl: rows[0].shopify_shop_url,
             shopifyAccessToken: rows[0].shopify_access_token,
+            githubToken: rows[0].github_token,
+            githubRepo: rows[0].github_repo,
+            githubOwner: rows[0].github_owner,
         });
     } catch (err) {
         console.error(err);
@@ -233,7 +236,7 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
 
 // PUT /api/settings/integrations
 router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
-    const { meliAppId, meliClientSecret, shopifyShopUrl, shopifyAccessToken } = req.body;
+    const { meliAppId, meliClientSecret, shopifyShopUrl, shopifyAccessToken, githubToken, githubRepo, githubOwner } = req.body;
 
     try {
         // Ensure the row exists
@@ -259,6 +262,18 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`shopify_access_token = $${idx++}`);
             values.push(shopifyAccessToken);
         }
+        if (githubToken !== undefined) {
+            updates.push(`github_token = $${idx++}`);
+            values.push(githubToken);
+        }
+        if (githubRepo !== undefined) {
+            updates.push(`github_repo = $${idx++}`);
+            values.push(githubRepo);
+        }
+        if (githubOwner !== undefined) {
+            updates.push(`github_owner = $${idx++}`);
+            values.push(githubOwner);
+        }
 
         if (updates.length > 0) {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
@@ -270,7 +285,10 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 meliAppId: saved.meli_app_id,
                 meliClientSecret: saved.meli_client_secret,
                 shopifyShopUrl: saved.shopify_shop_url,
-                shopifyAccessToken: saved.shopify_access_token
+                shopifyAccessToken: saved.shopify_access_token,
+                githubToken: saved.github_token,
+                githubRepo: saved.github_repo,
+                githubOwner: saved.github_owner,
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });
@@ -332,6 +350,84 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
 
     reqApi.write(postData);
     reqApi.end();
+});
+
+// POST /api/settings/github-backup
+router.post('/github-backup', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT github_token, github_repo, github_owner FROM integration_settings WHERE id = 1');
+        if (rows.length === 0 || !rows[0].github_token || !rows[0].github_repo || !rows[0].github_owner) {
+            return res.status(400).json({ message: 'Configuración de GitHub incompleta.' });
+        }
+
+        const { github_token, github_repo, github_owner } = rows[0];
+
+        // 1. Get all data to backup
+        const { rows: users } = await db.query('SELECT * FROM users');
+        const { rows: packages } = await db.query('SELECT * FROM packages');
+        const { rows: tracking } = await db.query('SELECT * FROM tracking_events');
+
+        const backupData = {
+            timestamp: new Date().toISOString(),
+            users,
+            packages,
+            tracking
+        };
+
+        const content = Buffer.from(JSON.stringify(backupData, null, 2)).toString('base64');
+        const fileName = `backups/backup-${new Date().toISOString().split('T')[0]}.json`;
+
+        const pushToBranch = async (branch) => {
+            const options = {
+                hostname: 'api.github.com',
+                path: `/repos/${github_owner}/${github_repo}/contents/${fileName}`,
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${github_token}`,
+                    'User-Agent': 'Full-Envios-App',
+                    'Content-Type': 'application/json'
+                }
+            };
+
+            // Check if file exists to get SHA (optional, but good for updates)
+            // For backups, we usually want new files, so we use a timestamped name.
+
+            const body = JSON.stringify({
+                message: `Backup auto-generado ${new Date().toISOString()}`,
+                content: content,
+                branch: branch
+            });
+
+            return new Promise((resolve, reject) => {
+                const reqGh = https.request(options, (resGh) => {
+                    let data = '';
+                    resGh.on('data', (chunk) => { data += chunk; });
+                    resGh.on('end', () => {
+                        if (resGh.statusCode >= 200 && resGh.statusCode < 300) {
+                            resolve(JSON.parse(data));
+                        } else {
+                            reject(new Error(`GitHub API Error (${branch}): ${resGh.statusCode} - ${data}`));
+                        }
+                    });
+                });
+                reqGh.on('error', (e) => reject(e));
+                reqGh.write(body);
+                reqGh.end();
+            });
+        };
+
+        // Push to both branches as requested
+        await Promise.all([
+            pushToBranch('main'),
+            pushToBranch('developer')
+        ]);
+
+        res.json({ message: 'Respaldo enviado con éxito a GitHub (main y developer).' });
+
+    } catch (err) {
+        console.error('Error in GitHub backup:', err);
+        res.status(500).json({ message: `Error al realizar el respaldo: ${err.message}` });
+    }
 });
 
 module.exports = router;

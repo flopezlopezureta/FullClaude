@@ -2,7 +2,7 @@ import React, { useEffect, useState, useContext } from 'react';
 import QRCode from 'qrcode';
 import { Package } from '../../types';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconMercadoLibre, IconCube, IconAlertTriangle } from '../Icon';
+import { IconMercadoLibre, IconAlertTriangle } from '../Icon';
 
 interface ShippingLabelProps {
   pkg: Package;

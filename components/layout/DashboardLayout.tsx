@@ -4,27 +4,23 @@ import { AuthContext } from '../../contexts/AuthContext';
 import Sidebar from './Sidebar';
 import Dashboard from '../Dashboard';
 import UserManagement from '../admin/UserManagement';
-import DriverDashboard from '../driver/DriverDashboard';
 import { Role } from '../../constants';
-import ScanPickupPage from '../driver/ScanPickupPage';
 import ClientDashboard from '../client/ClientDashboard';
 import { IconMenu, IconCube, IconCheckCircle, IconX } from '../Icon';
 import SettingsPage from '../admin/SettingsPage';
 import IntegrationSettingsPage from '../admin/IntegrationSettingsPage';
 import ImportOrdersPage from '../admin/ImportOrdersPage';
-import { ScanDispatchPage } from '../driver/ScanDispatchPage';
 import BillingReportPage from '../admin/BillingReportPage';
 import ZoneSettingsPage from '../admin/ZoneSettingsPage';
 import { DriverPerformanceReportPage } from '../admin/DriverPerformanceReportPage';
 import ClientPerformanceReportPage from '../client/ClientPerformanceReportPage';
-import DeliveryHistoryPage from '../driver/DeliveryHistoryPage';
-import DriverMobileLayout from '../driver/DriverMobileLayout';
 import GlobalBillingPage from '../admin/GlobalBillingPage';
 import DispatchScanner from '../auxiliar/DispatchScanner';
 import { PickupDashboard } from '../admin/PickupDashboard';
 import PickupReportPage from '../admin/PickupReportPage';
 import LiveMap from '../admin/LiveMap';
 import GeolocatePage from '../admin/GeolocatePage';
+import DriverMobileLayout from '../driver/DriverMobileLayout';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;

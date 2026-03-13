@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { api } from '../../services/api';
 import type { IntegrationSettings } from '../../types';
-import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre } from '../Icon';
+import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload } from '../Icon';
 
 const IntegrationSettingsPage: React.FC = () => {
     const [settings, setSettings] = useState<Partial<IntegrationSettings>>({
@@ -10,16 +10,22 @@ const IntegrationSettingsPage: React.FC = () => {
         meliClientSecret: '',
         shopifyShopUrl: '',
         shopifyAccessToken: '',
+        githubToken: '',
+        githubRepo: '',
+        githubOwner: '',
     });
     const [passwordVisibility, setPasswordVisibility] = useState({
         meliClientSecret: false,
         shopifyAccessToken: false,
+        githubToken: false,
     });
     const [isLoading, setIsLoading] = useState(true);
     
     // Independent Loading States
     const [isSavingMeli, setIsSavingMeli] = useState(false);
     const [isSavingShopify, setIsSavingShopify] = useState(false);
+    const [isSavingGithub, setIsSavingGithub] = useState(false);
+    const [isBackingUp, setIsBackingUp] = useState(false);
     
     // Meli Test State
     const [isTestingMeli, setIsTestingMeli] = useState(false);
@@ -29,6 +35,9 @@ const IntegrationSettingsPage: React.FC = () => {
     // Shopify Test State
     const [isTestingShopify, setIsTestingShopify] = useState(false);
     const [shopifyTestResult, setShopifyTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+    // GitHub Backup State
+    const [backupResult, setBackupResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -86,6 +95,53 @@ const IntegrationSettingsPage: React.FC = () => {
             alert('Error al guardar configuración de Shopify.');
         } finally {
             setIsSavingShopify(false);
+        }
+    };
+
+    const handleSaveGithub = async () => {
+        setIsSavingGithub(true);
+        setBackupResult(null);
+        try {
+            await api.updateIntegrationSettings({
+                githubToken: settings.githubToken,
+                githubRepo: settings.githubRepo,
+                githubOwner: settings.githubOwner
+            });
+            alert('Configuración de GitHub guardada con éxito.');
+        } catch (err: any) {
+            alert('Error al guardar configuración de GitHub.');
+        } finally {
+            setIsSavingGithub(false);
+        }
+    };
+
+    const handleManualBackup = async () => {
+        if (!settings.githubToken || !settings.githubRepo || !settings.githubOwner) {
+            alert('Por favor, configure GitHub antes de realizar un respaldo.');
+            return;
+        }
+
+        setIsBackingUp(true);
+        setBackupResult(null);
+        try {
+            const response = await fetch('/api/settings/github-backup', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+            const data = await response.json();
+            if (response.ok) {
+                setBackupResult({ type: 'success', message: data.message });
+            } else {
+                setBackupResult({ type: 'error', message: data.message || 'Error al realizar el respaldo.' });
+            }
+        } catch (err) {
+            console.error(err);
+            setBackupResult({ type: 'error', message: 'Error de conexión al realizar el respaldo.' });
+        } finally {
+            setIsBackingUp(false);
         }
     };
 
@@ -316,6 +372,95 @@ const IntegrationSettingsPage: React.FC = () => {
                             <div className={`p-3 rounded-md flex items-center text-sm font-medium ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                 {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
                                 {shopifyTestResult.message}
+                            </div>
+                        )}
+                    </div>
+                </div>
+                {/* GitHub Backup Section */}
+                <div className="bg-[var(--background-paper)] rounded-xl shadow-sm border border-[var(--border-color)] overflow-hidden">
+                    <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-lg bg-gray-900 flex items-center justify-center text-white">
+                                <IconGithub className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h2 className="text-lg font-bold text-[var(--text-primary)]">Respaldo en GitHub</h2>
+                                <p className="text-sm text-[var(--text-secondary)]">Respalda tus datos en un repositorio de GitHub (main y developer)</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6 space-y-6">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">GitHub Owner (Usuario o Org)</label>
+                                <input
+                                    type="text"
+                                    name="githubOwner"
+                                    value={settings.githubOwner || ''}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--background-muted)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    placeholder="ej: mi-usuario"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">GitHub Repository Name</label>
+                                <input
+                                    type="text"
+                                    name="githubRepo"
+                                    value={settings.githubRepo || ''}
+                                    onChange={handleChange}
+                                    className="w-full px-4 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--background-muted)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                    placeholder="ej: mi-repo-respaldo"
+                                />
+                            </div>
+                            <div className="space-y-2 md:col-span-2">
+                                <label className="text-sm font-medium text-[var(--text-secondary)]">GitHub Personal Access Token</label>
+                                <div className="relative">
+                                    <input
+                                        type={passwordVisibility.githubToken ? 'text' : 'password'}
+                                        name="githubToken"
+                                        value={settings.githubToken || ''}
+                                        onChange={handleChange}
+                                        className="w-full pl-4 pr-12 py-2 rounded-lg border border-[var(--border-color)] bg-[var(--background-muted)] text-[var(--text-primary)] focus:ring-2 focus:ring-blue-500 outline-none transition-all"
+                                        placeholder="ghp_xxxxxxxxxxxx"
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={() => togglePasswordVisibility('githubToken')}
+                                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                                    >
+                                        {passwordVisibility.githubToken ? <IconEyeOff className="w-5 h-5" /> : <IconEye className="w-5 h-5" />}
+                                    </button>
+                                </div>
+                                <p className="text-xs text-[var(--text-secondary)]">Requiere permisos de 'repo' o 'contents:write'.</p>
+                            </div>
+                        </div>
+
+                        <div className="flex flex-wrap items-center gap-4 pt-4 border-t border-[var(--border-color)]">
+                            <button
+                                onClick={handleSaveGithub}
+                                disabled={isSavingGithub}
+                                className="px-6 py-2 bg-gray-900 hover:bg-black text-white rounded-lg font-medium transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isSavingGithub ? <IconLoader className="w-5 h-5 animate-spin" /> : <IconCheckCircle className="w-5 h-5" />}
+                                Guardar Configuración GitHub
+                            </button>
+
+                            <button
+                                onClick={handleManualBackup}
+                                disabled={isBackingUp}
+                                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition-all flex items-center gap-2 disabled:opacity-50"
+                            >
+                                {isBackingUp ? <IconLoader className="w-5 h-5 animate-spin" /> : <IconDownload className="w-5 h-5" />}
+                                Realizar Respaldo Manual
+                            </button>
+                        </div>
+
+                        {backupResult && (
+                            <div className={`p-4 rounded-lg flex items-center gap-3 ${backupResult.type === 'success' ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                                {backupResult.type === 'success' ? <IconCheckCircle className="w-5 h-5" /> : <IconAlertTriangle className="w-5 h-5" />}
+                                <span className="text-sm font-medium">{backupResult.message}</span>
                             </div>
                         )}
                     </div>

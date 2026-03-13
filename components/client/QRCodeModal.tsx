@@ -2,7 +2,7 @@
 
 import React, { useEffect, useState, useContext, useMemo } from 'react';
 import QRCode from 'qrcode';
-import { IconX, IconCube, IconMercadoLibre, IconAlertTriangle, IconPhone, IconUser, IconWhatsapp } from '../Icon';
+import { IconX, IconCube, IconAlertTriangle, IconWhatsapp } from '../Icon';
 import { Package, User } from '../../types';
 import { AuthContext } from '../../contexts/AuthContext';
 

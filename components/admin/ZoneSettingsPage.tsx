@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { api } from '../../services/api';
 import { DeliveryZone } from '../../types';
-import { IconMapPin, IconPlus, IconPencil, IconTrash, IconLoader } from '../Icon';
+import { IconMapPin, IconPlus, IconPencil, IconTrash } from '../Icon';
 import ZoneSettingsModal from '../modals/ZoneSettingsModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import { communeGeoJsonData } from '../../services/communesGeo';
@@ -81,7 +81,7 @@ const ZoneSettingsPage: React.FC = () => {
         Object.values(geoJsonLayersRef.current).forEach((layer: any) => layer.remove());
         geoJsonLayersRef.current = {};
 
-        const communeLayer = L.geoJSON(communeGeoJsonData, {
+        L.geoJSON(communeGeoJsonData, {
             style: {
                 color: 'var(--text-muted)',
                 weight: 1,

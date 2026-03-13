@@ -3,7 +3,6 @@ import { AuthContext } from '../contexts/AuthContext';
 import { IconCube, IconEye, IconEyeOff } from '../components/Icon';
 import { api, RegisterData } from '../services/api';
 import { Role } from '../constants';
-import type { User } from '../types';
 
 type FormMode = 'login' | 'register' | 'forgot';
 

@@ -376,7 +376,10 @@ async function initializeDatabase() {
                 meli_app_id TEXT,
                 meli_client_secret TEXT,
                 shopify_shop_url TEXT,
-                shopify_access_token TEXT
+                shopify_access_token TEXT,
+                github_token TEXT,
+                github_repo TEXT,
+                github_owner TEXT
             );
         `);
         console.log('Table "integration_settings" is ready.');
@@ -393,6 +396,26 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "shopify_access_token" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_access_token):', err); }
+        }
+
+        // --- MIGRATIONS: Add GitHub fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN github_token TEXT');
+            console.log('MIGRATION APPLIED: Column "github_token" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (github_token):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN github_repo TEXT');
+            console.log('MIGRATION APPLIED: Column "github_repo" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (github_repo):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN github_owner TEXT');
+            console.log('MIGRATION APPLIED: Column "github_owner" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (github_owner):', err); }
         }
         
         // --- MIGRATIONS: Add missing package fields ---

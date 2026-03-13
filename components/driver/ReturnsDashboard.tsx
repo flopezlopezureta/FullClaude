@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { PackageStatus } from '../../constants';
 import type { Package, User } from '../../types';
 import { api, DeliveryConfirmationData } from '../../services/api';
@@ -6,7 +6,6 @@ import PackageList from '../PackageList';
 import PackageDetailModal from '../PackageDetailModal';
 import ReturnConfirmationModal from './ReturnConfirmationModal';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconArrowUturnLeft } from '../Icon';
 
 const ReturnsDashboard: React.FC = () => {
   const [returnPackages, setReturnPackages] = useState<Package[]>([]);
@@ -45,7 +44,7 @@ const ReturnsDashboard: React.FC = () => {
 
   const handleConfirmReturn = async (pkgId: string, data: DeliveryConfirmationData) => {
     try {
-      const updatedPackage = await api.confirmReturn(pkgId, data);
+      await api.confirmReturn(pkgId, data);
       setReturnPackages(prev => prev.filter(p => p.id !== pkgId));
       setReturningPackage(null);
     } catch (error: any) {

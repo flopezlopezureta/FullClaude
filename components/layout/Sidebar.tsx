@@ -3,7 +3,6 @@ import React, { useContext, useState } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { IconCube, IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconFileInvoice, IconPlugConnected, IconDownload, IconMap } from '../Icon';
 import { Role } from '../../constants';
-import type { User } from '../../types';
 
 interface SidebarProps {
   activeView: string;

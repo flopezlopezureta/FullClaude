@@ -5,7 +5,6 @@ import Dashboard from '../Dashboard';
 import UserManagement from './UserManagement';
 import { IconPackage, IconUsers } from '../Icon';
 import { Role } from '../../constants';
-import type { User } from '../../types';
 
 type Tab = 'packages' | 'users';
 type UserRoleView = 'clients' | 'drivers' | 'admins' | 'facturacion' | 'retiros' | 'auxiliares';

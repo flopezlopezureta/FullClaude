@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle, IconChecklist, IconX, IconPackage, IconQrcode, IconPencil } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconChecklist, IconX, IconPencil } from '../Icon';
 import type { Package, User, DriverPermissions } from '../../types';
 import { PackageStatus, MessagingPlan, PickupMode } from '../../constants';
 import { AuthContext } from '../../contexts/AuthContext';
@@ -246,7 +246,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
                 video.onloadedmetadata = () => {
                     const playPromise = video.play();
                     if (playPromise !== undefined) {
-                        playPromise.catch(err => {
+                        playPromise.catch(() => {
                             setCameraError("No se pudo iniciar la reproducción de la cámara.");
                         });
                     }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AssignmentEvent, User } from '../../types';
-import { IconX, IconWhatsapp, IconPackage, IconUserCheck, IconUser } from '../Icon';
+import { IconX, IconWhatsapp, IconPackage, IconUser } from '../Icon';
 
 interface PickupSummaryModalProps {
     events: AssignmentEvent[];

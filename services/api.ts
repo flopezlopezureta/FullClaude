@@ -7,7 +7,6 @@ import {
   IntegrationSettings,
   MeliOrder,
   PickupRun,
-  PickupAssignment,
   AssignmentEvent,
   DriverPermissions
 } from '../types';

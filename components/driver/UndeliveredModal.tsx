@@ -30,7 +30,7 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
                 const video = videoRef.current;
                 if (video) {
                     video.srcObject = mediaStream;
-                    video.onloadedmetadata = () => video.play().catch(err => setCameraError("No se pudo iniciar la cámara."));
+                    video.onloadedmetadata = () => video.play().catch(() => setCameraError("No se pudo iniciar la cámara."));
                 }
             } catch (err: any) {
                 let message = "No se pudo acceder a la cámara. Revisa los permisos.";

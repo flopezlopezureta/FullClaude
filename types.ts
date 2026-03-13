@@ -102,6 +102,9 @@ export interface IntegrationSettings {
     meliClientSecret?: string;
     shopifyShopUrl?: string;
     shopifyAccessToken?: string;
+    githubToken?: string;
+    githubRepo?: string;
+    githubOwner?: string;
 }
 
 export interface MeliOrder {

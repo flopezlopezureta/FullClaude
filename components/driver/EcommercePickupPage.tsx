@@ -5,7 +5,7 @@ import { api } from '../../services/api';
 import OrderScanner from './OrderScanner';
 import { IconChevronRight, IconBuildingStore } from '../Icon';
 
-const EcommercePickupPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const EcommercePickupPage: React.FC = () => {
     const [selectedClient, setSelectedClient] = useState<User | null>(null);
     const [integratedClients, setIntegratedClients] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);

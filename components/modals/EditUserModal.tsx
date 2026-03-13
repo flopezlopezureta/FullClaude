@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconBuildingStore, IconPlugConnected, IconMercadoLibre, IconWoocommerce, IconLoader, IconCheckCircle, IconAlertTriangle, IconShopify } from '../Icon';
+import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify } from '../Icon';
 import type { User, Vehicle, UserPricing, IntegrationSettings } from '../../types';
 import { Role } from '../../constants';
 import { UserUpdateData, api } from '../../services/api';

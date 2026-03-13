@@ -15,7 +15,6 @@ interface ClientPackageFiltersProps {
   statusFilter: PackageStatus | null;
   onStatusChange: (status: PackageStatus | null) => void;
   communes: string[];
-  packageCount: number;
 }
 
 const statusOptions: { label: string; value: PackageStatus | null }[] = [
@@ -42,7 +41,6 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
   statusFilter,
   onStatusChange,
   communes,
-  packageCount,
 }) => {
   const inputClasses = "w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] sm:text-sm";
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";

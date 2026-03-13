@@ -3,7 +3,7 @@ import { api } from '../../services/api';
 import type { Package } from '../../types';
 import { PackageStatus, PackageSource } from '../../constants';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconPrinter, IconMail, IconChecklist, IconClock, IconRoute, IconAlertTriangle, IconPackage, IconCalendar, IconCube } from '../Icon';
+import { IconPrinter, IconMail, IconChecklist, IconClock, IconRoute, IconPackage, IconCalendar, IconCube } from '../Icon';
 
 declare const Chart: any;
 

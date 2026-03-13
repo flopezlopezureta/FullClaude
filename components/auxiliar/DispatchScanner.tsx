@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle, IconUser, IconChevronRight, IconSearch, IconTruck, IconChevronDown } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconChevronRight, IconSearch, IconTruck, IconChevronDown } from '../Icon';
 import type { User } from '../../types';
 import { Role } from '../../constants';
 

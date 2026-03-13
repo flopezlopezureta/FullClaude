@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import type { PickupRun } from '../../types';
-import { IconX, IconCopy, IconLoader, IconCheckCircle, IconChevronLeft, IconChevronRight } from '../Icon';
+import { IconX, IconCopy, IconChevronLeft, IconChevronRight } from '../Icon';
 import { parseDateString, getISODate } from '../../services/api';
 
 interface CopyRunModalProps {

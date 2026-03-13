@@ -1,7 +1,7 @@
 
 
 import React from 'react';
-import { IconX, IconAlertTriangle } from '../Icon';
+import { IconAlertTriangle } from '../Icon';
 
 interface ConfirmationModalProps {
   title: string;

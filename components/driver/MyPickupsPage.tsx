@@ -1,18 +1,16 @@
 
-import React, { useState, useEffect, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import type { PickupRun, PickupAssignment, PickupShift as PickupShiftType } from '../../types';
 import { PickupStatus, PickupShift } from '../../constants';
 import { api } from '../../services/api';
-import { AuthContext } from '../../contexts/AuthContext';
-import { IconUser, IconPackage, IconMapPin, IconPhone, IconCheckCircle, IconTruck, IconLoader, IconRefresh, IconCalendar } from '../Icon';
+import { IconPackage, IconMapPin, IconPhone, IconCheckCircle, IconTruck, IconLoader, IconRefresh, IconCalendar } from '../Icon';
 import ConfirmPickupModal from './ConfirmPickupModal';
 
-const MyPickupsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+const MyPickupsPage: React.FC = () => {
     const [runs, setRuns] = useState<PickupRun[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [confirmingPickup, setConfirmingPickup] = useState<PickupAssignment | null>(null);
-    const { user } = useContext(AuthContext)!;
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);

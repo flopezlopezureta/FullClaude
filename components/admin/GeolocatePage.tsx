@@ -3,7 +3,7 @@ import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { Package } from '../../types';
 import { PackageStatus } from '../../constants';
 import { api, cityCoordinates } from '../../services/api';
-import { IconMap, IconRefresh, IconCheckCircle, IconTruck, IconRoute, IconLoader, IconMapPin, IconAlertTriangle, IconBuildingStore, IconClock, IconSearch } from '../Icon';
+import { IconMap, IconRoute, IconLoader, IconMapPin, IconClock, IconSearch } from '../Icon';
 import { optimizeMultiDriverRoute } from '../../services/routeOptimizer';
 
 declare const L: any;
@@ -23,7 +23,6 @@ const ROUTE_COLORS = [
 
 const GeolocatePage: React.FC = () => {
     const [packages, setPackages] = useState<Package[]>([]);
-    const [loading, setLoading] = useState(true);
     const [driverCount, setDriverCount] = useState(3);
     const [endTime, setEndTime] = useState('21:00');
     const [optimizedRoutes, setOptimizedRoutes] = useState<Package[][]>([]);
@@ -49,7 +48,6 @@ const GeolocatePage: React.FC = () => {
     }, [startCommune, customStartLocation]);
 
     const fetchPackages = async () => {
-        setLoading(true);
         try {
             const { packages: allPkgs } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Pending });
             setPackages(allPkgs);
@@ -58,8 +56,6 @@ const GeolocatePage: React.FC = () => {
             // setOptimizedRoutes([]); 
         } catch (error) {
             console.error("Failed to fetch packages", error);
-        } finally {
-            setLoading(false);
         }
     };
 

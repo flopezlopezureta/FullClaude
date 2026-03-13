@@ -51,7 +51,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
         {/* --- Printable Area --- */}
         <div className="hidden print:block">
             <div className="space-y-4">
-                 {packages.map((pkg, index) => (
+                 {packages.map((pkg) => (
                     <div key={pkg.id} className="page-break">
                         <ShippingLabel pkg={pkg} creatorName={creatorName} />
                     </div>

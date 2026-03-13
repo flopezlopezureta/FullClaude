@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
 import { IconCheckCircle, IconAlertTriangle } from '../Icon';

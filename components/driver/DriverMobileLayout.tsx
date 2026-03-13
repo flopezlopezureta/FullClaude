@@ -97,8 +97,8 @@ const DriverMobileLayout: React.FC = () => {
         switch (activeView) {
             case 'my-packages': return <DriverDashboard />;
             case 'scan-pickups': return <ScanPickupPage />;
-            case 'colectas': return <ColectaPage onBack={() => setActiveView('menu')} />;
-            case 'scan-dispatch': return <ScanDispatchPage onBack={() => setActiveView('menu')} />;
+            case 'colectas': return <ColectaPage />;
+            case 'scan-dispatch': return <ScanDispatchPage />;
             case 'returns': return <ReturnsDashboard />;
             case 'delivery-history': return <DeliveryHistoryPage />;
             default: return null;
