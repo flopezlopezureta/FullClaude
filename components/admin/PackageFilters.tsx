@@ -24,8 +24,8 @@ interface PackageFiltersProps {
   onEndDateChange: (date: string) => void;
   onExportRoute: () => void;
   isExporting?: boolean;
-  scannedFilter: 'all' | 'scanned' | 'not_scanned';
-  onScannedFilterChange: (filter: 'all' | 'scanned' | 'not_scanned') => void;
+  flexFilter: 'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled';
+  onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled') => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -49,8 +49,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onEndDateChange,
   onExportRoute,
   isExporting = false,
-  scannedFilter,
-  onScannedFilterChange,
+  flexFilter,
+  onFlexFilterChange,
 }) => {
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
@@ -112,10 +112,13 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
           </select>
         </div>
         <div className="flex-shrink-0">
-          <select id="scanned-filter" value={scannedFilter} onChange={(e) => onScannedFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por escaneado">
-            <option value="all">Escaneado: Todos</option>
-            <option value="scanned">Escaneados</option>
-            <option value="not_scanned">No Escaneados</option>
+          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por Flex">
+            <option value="all">Flex: Todos</option>
+            <option value="flexed">Flexeados</option>
+            <option value="not_flexed">No Flexeados</option>
+            <option value="closed">Cerrados</option>
+            <option value="cancelled">Cancelados</option>
+            <option value="rescheduled">Reprogramados</option>
           </select>
         </div>
         <div className="flex-shrink-0">

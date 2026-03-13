@@ -28,6 +28,8 @@
     --status-problem-bg: #fee2e2; --status-problem-text: #dc2626; --status-problem-border: #f87171; --status-problem-bg-subtle: #fef2f2;
     --status-pendientedevolucion-bg: #fef3c7; --status-pendientedevolucion-text: #d97706; --status-pendientedevolucion-border: #fbbf24; --status-pendientedevolucion-bg-subtle: #fefce8;
     --status-devuelto-bg: #e5e7eb; --status-devuelto-text: #4b5563; --status-devuelto-border: #9ca3af; --status-devuelto-bg-subtle: #f9fafb;
+    --status-cancelled-bg: #f1f5f9; --status-cancelled-text: #64748b; --status-cancelled-border: #cbd5e1; --status-cancelled-bg-subtle: #f8fafc;
+    --status-rescheduled-bg: #fff7ed; --status-rescheduled-text: #c2410c; --status-rescheduled-border: #fdba74; --status-rescheduled-bg-subtle: #fffaf5;
     --status-approved-bg: #dcfce7; --status-approved-text: #166534;
     --status-disabled-bg: #fee2e2; --status-disabled-text: #991b1b;
 }
@@ -56,6 +58,8 @@
     --status-problem-bg: #fee2e2; --status-problem-text: #dc2626; --status-problem-border: #f87171; --status-problem-bg-subtle: #fef2f2;
     --status-pendientedevolucion-bg: #fef3c7; --status-pendientedevolucion-text: #d97706; --status-pendientedevolucion-border: #fbbf24; --status-pendientedevolucion-bg-subtle: #fefce8;
     --status-devuelto-bg: #e5e7eb; --status-devuelto-text: #4b5563; --status-devuelto-border: #9ca3af; --status-devuelto-bg-subtle: #f9fafb;
+    --status-cancelled-bg: #f1f5f9; --status-cancelled-text: #64748b; --status-cancelled-border: #cbd5e1; --status-cancelled-bg-subtle: #f8fafc;
+    --status-rescheduled-bg: #fff7ed; --status-rescheduled-text: #c2410c; --status-rescheduled-border: #fdba74; --status-rescheduled-bg-subtle: #fffaf5;
     --status-approved-bg: #dcfce7; --status-approved-text: #166534;
     --status-disabled-bg: #fee2e2; --status-disabled-text: #991b1b;
 }
@@ -84,6 +88,8 @@
     --status-problem-bg: #991b1b; --status-problem-text: #fecaca; --status-problem-border: #ef4444; --status-problem-bg-subtle: #991b1b;
     --status-pendientedevolucion-bg: #854d0e; --status-pendientedevolucion-text: #fef08a; --status-pendientedevolucion-border: #eab308; --status-pendientedevolucion-bg-subtle: #854d0e;
     --status-devuelto-bg: #374151; --status-devuelto-text: #d1d5db; --status-devuelto-border: #6b7280; --status-devuelto-bg-subtle: #4b5563;
+    --status-cancelled-bg: #1e293b; --status-cancelled-text: #94a3b8; --status-cancelled-border: #475569; --status-cancelled-bg-subtle: #0f172a;
+    --status-rescheduled-bg: #431407; --status-rescheduled-text: #fdba74; --status-rescheduled-border: #ea580c; --status-rescheduled-bg-subtle: #431407;
     --status-approved-bg: #166534; --status-approved-text: #bbf7d0;
     --status-disabled-bg: #991b1b; --status-disabled-text: #fecaca;
 }
@@ -112,6 +118,8 @@
     --status-problem-bg: #f8d7da; --status-problem-text: #721c24; --status-problem-border: #f5c6cb; --status-problem-bg-subtle: #fdedee;
     --status-pendientedevolucion-bg: #fff3cd; --status-pendientedevolucion-text: #856404; --status-pendientedevolucion-border: #ffeeba; --status-pendientedevolucion-bg-subtle: #fff9e9;
     --status-devuelto-bg: #e9ecef; --status-devuelto-text: #343a40; --status-devuelto-border: #adb5bd; --status-devuelto-bg-subtle: #f8f9fa;
+    --status-cancelled-bg: #f8f9fa; --status-cancelled-text: #6c757d; --status-cancelled-border: #dee2e6; --status-cancelled-bg-subtle: #ffffff;
+    --status-rescheduled-bg: #fff3cd; --status-rescheduled-text: #856404; --status-rescheduled-border: #ffeeba; --status-rescheduled-bg-subtle: #fff9e9;
     --status-approved-bg: #d4edda; --status-approved-text: #155724;
     --status-disabled-bg: #f8d7da; --status-disabled-text: #721c24;
 }
@@ -140,6 +148,8 @@
     --status-problem-bg: #ffe4e6; --status-problem-text: #e11d48; --status-problem-border: #fda4af; --status-problem-bg-subtle: #fff1f2;
     --status-pendientedevolucion-bg: #fef3c7; --status-pendientedevolucion-text: #d97706; --status-pendientedevolucion-border: #fcd34d; --status-pendientedevolucion-bg-subtle: #fffbeb;
     --status-devuelto-bg: #e0f2fe; --status-devuelto-text: #0ea5e9; --status-devuelto-border: #7dd3fc; --status-devuelto-bg-subtle: #f0f9ff;
+    --status-cancelled-bg: #f0f9ff; --status-cancelled-text: #0c4a6e; --status-cancelled-border: #7dd3fc; --status-cancelled-bg-subtle: #e0f2fe;
+    --status-rescheduled-bg: #fffbeb; --status-rescheduled-text: #92400e; --status-rescheduled-border: #fcd34d; --status-rescheduled-bg-subtle: #fffbeb;
     --status-approved-bg: #dcfce7; --status-approved-text: #16a34a;
     --status-disabled-bg: #ffe4e6; --status-disabled-text: #e11d48;
 }
@@ -168,6 +178,8 @@
     --status-problem-bg: #fecaca; --status-problem-text: #dc2626; --status-problem-border: #f87171; --status-problem-bg-subtle: #fef2f2;
     --status-pendientedevolucion-bg: #fed7aa; --status-pendientedevolucion-text: #f97316; --status-pendientedevolucion-border: #fb923c; --status-pendientedevolucion-bg-subtle: #fff7ed;
     --status-devuelto-bg: #d9f99d; --status-devuelto-text: #65a30d; --status-devuelto-border: #a3e635; --status-devuelto-bg-subtle: #f7fee7;
+    --status-cancelled-bg: #fefce8; --status-cancelled-text: #65a30d; --status-cancelled-border: #d97706; --status-cancelled-bg-subtle: #fde68a;
+    --status-rescheduled-bg: #fff7ed; --status-rescheduled-text: #9a3412; --status-rescheduled-border: #fb923c; --status-rescheduled-bg-subtle: #ffedd5;
     --status-approved-bg: #bbf7d0; --status-approved-text: #22c55e;
     --status-disabled-bg: #fecaca; --status-disabled-text: #dc2626;
 }
@@ -196,6 +208,8 @@
     --status-problem-bg: #7f1d1d; --status-problem-text: #fca5a5; --status-problem-border: #ef4444; --status-problem-bg-subtle: #991b1b;
     --status-pendientedevolucion-bg: #78350f; --status-pendientedevolucion-text: #fde68a; --status-pendientedevolucion-border: #f59e0b; --status-pendientedevolucion-bg-subtle: #854d0e;
     --status-devuelto-bg: #374151; --status-devuelto-text: #d1d5db; --status-devuelto-border: #6b7280; --status-devuelto-bg-subtle: #4b5563;
+    --status-cancelled-bg: #1f2937; --status-cancelled-text: #9ca3af; --status-cancelled-border: #4b5563; --status-cancelled-bg-subtle: #111827;
+    --status-rescheduled-bg: #7c2d12; --status-rescheduled-text: #ffedd5; --status-rescheduled-border: #ea580c; --status-rescheduled-bg-subtle: #431407;
     --status-approved-bg: #14532d; --status-approved-text: #a7f3d0;
     --status-disabled-bg: #7f1d1d; --status-disabled-text: #fca5a5;
 }

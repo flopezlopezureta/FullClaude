@@ -51,6 +51,7 @@ async function startServer() {
     const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
     const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
     const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
+    const notificationsRoute = tryRequireRoute('./routes/notifications.js'); if (notificationsRoute) app.use('/api/notifications', notificationsRoute);
 
 
     // --- Frontend Serving & SPA Fallback ---
@@ -80,6 +81,13 @@ async function startServer() {
         await importUsersFromFile();
         await ensureAdminUser();
         await seedDatabase();
+        
+        // Start background services
+        const meliPollingService = tryRequireRoute('./services/meliPollingService.js');
+        if (meliPollingService && typeof meliPollingService.start === 'function') {
+            meliPollingService.start();
+            console.log('Background Service: Mercado Libre Polling started.');
+        }
       } catch (initErr) {
         console.error('Failed to initialize database during startup:', initErr);
       }
@@ -323,6 +331,20 @@ async function initializeDatabase() {
             );
         `);
         console.log('Table "delivery_zones" is ready.');
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id TEXT PRIMARY KEY,
+                "userId" TEXT NOT NULL,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                type TEXT NOT NULL,
+                read BOOLEAN DEFAULT false,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                "relatedId" TEXT
+            );
+        `);
+        console.log('Table "notifications" is ready.');
 
         // --- NEW PICKUP TABLES ---
         await db.query(`

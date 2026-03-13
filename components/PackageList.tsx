@@ -31,6 +31,8 @@ const statusPriority: { [key in PackageStatus]: number } = {
   [PackageStatus.InTransit]: 6,
   [PackageStatus.Delivered]: 7,
   [PackageStatus.Returned]: 8,
+  [PackageStatus.Cancelled]: 9,
+  [PackageStatus.Rescheduled]: 10,
 };
 
 const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange }) => {

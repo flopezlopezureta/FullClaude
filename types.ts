@@ -201,6 +201,16 @@ export interface Package {
   flexedAt?: Date;
 }
 
+export interface Notification {
+  id: string;
+  userId: string;
+  title: string;
+  message: string;
+  type: string;
+  read: boolean;
+  createdAt: Date;
+}
+
 // --- New Pickup Management System Types ---
 
 export interface TrackingEvent {

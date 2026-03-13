@@ -20,6 +20,8 @@ const statusColors: { [key in PackageStatus]: string } = {
   [PackageStatus.Problem]: '#ef4444', // red-500
   [PackageStatus.ReturnPending]: '#d97706', // amber-600
   [PackageStatus.Returned]: '#374151', // gray-700
+  [PackageStatus.Cancelled]: '#94a3b8', // slate-400
+  [PackageStatus.Rescheduled]: '#fb923c', // orange-400
 };
 
 

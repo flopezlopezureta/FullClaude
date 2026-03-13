@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX } from './Icon';
 import QRCodeModal from './QRCodeModal';
 
 interface PackageListItemProps {
@@ -30,6 +30,8 @@ const statusIcons: { [key in PackageStatus]: React.ReactNode } = {
   [PackageStatus.Problem]: <IconAlertTriangle className="h-5 w-5" />,
   [PackageStatus.ReturnPending]: <IconArrowUturnLeft className="h-5 w-5" />,
   [PackageStatus.Returned]: <IconArchive className="h-5 w-5" />,
+  [PackageStatus.Cancelled]: <IconX className="h-5 w-5" />,
+  [PackageStatus.Rescheduled]: <IconClock className="h-5 w-5" />,
 };
 
 const shippingTypeIcons: { [key in ShippingType]: React.ReactNode } = {

@@ -23,6 +23,8 @@ export enum PackageStatus {
   Problem = 'PROBLEMA',
   ReturnPending = 'PENDIENTE_DEVOLUCION',
   Returned = 'DEVUELTO',
+  Cancelled = 'CANCELADO',
+  Rescheduled = 'REPROGRAMADO',
 }
 
 export enum ShippingType {

@@ -31,6 +31,8 @@ const statusOptions: { label: string; value: PackageStatus | null }[] = [
     { label: 'Problema', value: PackageStatus.Problem },
     { label: 'Pend. Devolución', value: PackageStatus.ReturnPending },
     { label: 'Devuelto', value: PackageStatus.Returned },
+    { label: 'Cancelado', value: PackageStatus.Cancelled },
+    { label: 'Reprogramado', value: PackageStatus.Rescheduled },
 ];
 
 const getStatusSelectStyles = (status: PackageStatus | null): string => {
@@ -70,7 +72,7 @@ const Dashboard: React.FC = () => {
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<PackageStatus | null>(null);
-  const [scannedFilter, setScannedFilter] = useState<'all' | 'scanned' | 'not_scanned'>('all');
+  const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled'>('all');
   const [driverFilter, setDriverFilter] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('');
   const [communeFilter, setCommuneFilter] = useState<string>('');
@@ -101,12 +103,18 @@ const Dashboard: React.FC = () => {
             api.getUsers()
         ]);
         
-        // Client-side filtering for "scanned" status
+        // Client-side filtering for Flex status
         let filtered = pkgs;
-        if (scannedFilter === 'scanned') {
-            filtered = pkgs.filter(p => p.status !== PackageStatus.Pending);
-        } else if (scannedFilter === 'not_scanned') {
-            filtered = pkgs.filter(p => p.status === PackageStatus.Pending);
+        if (flexFilter === 'flexed') {
+            filtered = pkgs.filter(p => p.isFlexed === true);
+        } else if (flexFilter === 'not_flexed') {
+            filtered = pkgs.filter(p => p.isFlexed !== true);
+        } else if (flexFilter === 'closed') {
+            filtered = pkgs.filter(p => p.status === PackageStatus.Delivered || p.status === PackageStatus.Returned);
+        } else if (flexFilter === 'cancelled') {
+            filtered = pkgs.filter(p => p.status === PackageStatus.Cancelled);
+        } else if (flexFilter === 'rescheduled') {
+            filtered = pkgs.filter(p => p.status === PackageStatus.Rescheduled);
         }
 
         setPackages(filtered);
@@ -117,7 +125,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, scannedFilter]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter]);
 
   useEffect(() => {
     fetchData();
@@ -136,7 +144,7 @@ const Dashboard: React.FC = () => {
   const resetFiltersForNewData = () => {
       setSearchQuery('');
       setStatusFilter(null);
-      setScannedFilter('all');
+      setFlexFilter('all');
       setDriverFilter('');
       setClientFilter('');
       setCommuneFilter('');
@@ -395,7 +403,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedPackages(new Set());
-  }, [searchQuery, statusFilter, driverFilter, communeFilter, cityFilter, clientFilter, itemsPerPage, startDate, endDate]);
+  }, [searchQuery, statusFilter, driverFilter, communeFilter, cityFilter, clientFilter, itemsPerPage, startDate, endDate, flexFilter]);
 
   const handleSelectPackage = (pkg: Package) => {
     setSelectedPackages(prev => {
@@ -483,8 +491,8 @@ const Dashboard: React.FC = () => {
             onEndDateChange={setEndDate}
             onExportRoute={handleExportRoute}
             isExporting={isExporting}
-            scannedFilter={scannedFilter}
-            onScannedFilterChange={setScannedFilter}
+            flexFilter={flexFilter}
+            onFlexFilterChange={setFlexFilter}
         />
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 border-b border-[var(--border-primary)]">
@@ -638,7 +646,7 @@ const Dashboard: React.FC = () => {
           onDeletePackage={(pkg) => { setSelectedPackages(new Set([pkg.id])); setIsDeletePasswordModalOpen(true); }}
           onPrintLabel={(pkg) => setPrintingPackages([pkg])}
           onMarkForReturn={auth?.user?.role === 'ADMIN' ? handleMarkForReturn : undefined}
-          isFiltering={searchQuery !== '' || statusFilter !== null || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || scannedFilter !== 'all'}
+          isFiltering={searchQuery !== '' || statusFilter !== null || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all'}
           isDateFiltering={isDateFiltering}
           selectedPackages={selectedPackages}
           onSelectionChange={handleSelectPackage}

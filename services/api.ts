@@ -8,7 +8,8 @@ import {
   MeliOrder,
   PickupRun,
   AssignmentEvent,
-  DriverPermissions
+  DriverPermissions,
+  Notification
 } from '../types';
 import { PackageStatus, ShippingType, Role } from '../constants';
 
@@ -315,4 +316,9 @@ export const api = {
   // Colectas
   getAvailableColectas: () => get<any[]>('/pickups/colectas/available'),
   claimColecta: (clientId: string, shift: string) => post<any>('/pickups/colectas/claim', { clientId, shift }),
+
+  // Notifications
+  getNotifications: () => get<Notification[]>('/notifications'),
+  markNotificationAsRead: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  deleteNotification: (id: string) => del<void>(`/notifications/${id}`),
 };

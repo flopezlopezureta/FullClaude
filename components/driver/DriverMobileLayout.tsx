@@ -1,14 +1,14 @@
 
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconHistory, IconLogOut, IconUser, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube } from '../Icon';
+import { IconHistory, IconLogOut, IconUser, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube, IconX, IconCheck } from '../Icon';
 import DriverDashboard from './DriverDashboard';
 import ScanDispatchPage from './ScanDispatchPage';
 import DeliveryHistoryPage from './DeliveryHistoryPage';
 import ReturnsDashboard from './ReturnsDashboard';
 import ScanPickupPage from './ScanPickupPage';
 import ColectaPage from './ColectaPage';
-import { DriverPermissions } from '../../types';
+import { DriverPermissions, Notification } from '../../types';
 import { api } from '../../services/api';
 
 type DriverView = 'my-packages' | 'scan-dispatch' | 'scan-pickups' | 'colectas' | 'returns' | 'delivery-history';
@@ -25,6 +25,43 @@ const menuItems: { id: DriverView; label: string; subtitle?: string; icon: React
 const DriverMobileLayout: React.FC = () => {
     const { user, logout, isPushSubscribed, isPushLoading, subscribeToPush, unsubscribeFromPush, systemSettings } = useContext(AuthContext)!;
     const [activeView, setActiveView] = useState<DriverView | 'menu'>('menu');
+    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [showNotifications, setShowNotifications] = useState(false);
+    
+    const fetchNotifications = useCallback(async () => {
+        try {
+            const data = await api.getNotifications();
+            setNotifications(data);
+        } catch (error) {
+            console.error("Error fetching notifications:", error);
+        }
+    }, []);
+
+    useEffect(() => {
+        fetchNotifications();
+        const interval = setInterval(fetchNotifications, 60000); // Poll every minute
+        return () => clearInterval(interval);
+    }, [fetchNotifications]);
+
+    const unreadCount = useMemo(() => notifications.filter(n => !n.read).length, [notifications]);
+
+    const handleMarkAsRead = async (id: string) => {
+        try {
+            await api.markNotificationAsRead(id);
+            setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+        } catch (error) {
+            console.error("Error marking notification as read:", error);
+        }
+    };
+
+    const handleDeleteNotification = async (id: string) => {
+        try {
+            await api.deleteNotification(id);
+            setNotifications(prev => prev.filter(n => n.id !== id));
+        } catch (error) {
+            console.error("Error deleting notification:", error);
+        }
+    };
     
     // Automatic background location tracking
     useEffect(() => {
@@ -118,6 +155,18 @@ const DriverMobileLayout: React.FC = () => {
                             </div>
                         </div>
                         <div className="flex items-center space-x-1">
+                            <button
+                                onClick={() => setShowNotifications(!showNotifications)}
+                                className="p-2 text-[var(--text-muted)] hover:bg-[var(--background-hover)] rounded-md transition-colors relative"
+                                aria-label="Notificaciones"
+                            >
+                                <IconBell className={`h-5 w-5 ${unreadCount > 0 ? 'text-blue-600' : ''}`} />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1 right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white">
+                                        {unreadCount}
+                                    </span>
+                                )}
+                            </button>
                              <button
                                 onClick={handleSubscriptionToggle}
                                 disabled={isPushLoading}
@@ -151,6 +200,47 @@ const DriverMobileLayout: React.FC = () => {
                     </>
                 )}
             </header>
+
+            {showNotifications && (
+                <div className="fixed inset-0 z-50 flex flex-col bg-white">
+                    <header className="flex items-center justify-between h-16 px-4 border-b">
+                        <h2 className="text-lg font-bold">Notificaciones</h2>
+                        <button onClick={() => setShowNotifications(false)} className="p-2">
+                            <IconX className="w-6 h-6" />
+                        </button>
+                    </header>
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {notifications.length === 0 ? (
+                            <div className="flex flex-col items-center justify-center h-full text-gray-400">
+                                <IconBellOff className="w-12 h-12 mb-2 opacity-20" />
+                                <p>No tienes notificaciones</p>
+                            </div>
+                        ) : (
+                            notifications.map(n => (
+                                <div key={n.id} className={`p-4 rounded-xl border ${n.read ? 'bg-gray-50 border-gray-100' : 'bg-blue-50 border-blue-100'}`}>
+                                    <div className="flex justify-between items-start mb-1">
+                                        <h3 className={`font-bold ${n.read ? 'text-gray-700' : 'text-blue-900'}`}>{n.title}</h3>
+                                        <div className="flex space-x-2">
+                                            {!n.read && (
+                                                <button onClick={() => handleMarkAsRead(n.id)} className="text-blue-600 p-1">
+                                                    <IconCheck className="w-4 h-4" />
+                                                </button>
+                                            )}
+                                            <button onClick={() => handleDeleteNotification(n.id)} className="text-red-400 p-1">
+                                                <IconX className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <p className="text-sm text-gray-600 mb-2">{n.message}</p>
+                                    <span className="text-[10px] text-gray-400 uppercase font-bold">
+                                        {new Date(n.createdAt).toLocaleString()}
+                                    </span>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </div>
+            )}
 
             <main className="flex-1 overflow-y-auto no-scrollbar bg-gray-50">
                 {activeView === 'menu' ? (
