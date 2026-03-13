@@ -96,6 +96,16 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
     const [error, setError] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const passwordRequirements = [
+        { label: "Mínimo 8 caracteres", test: (p: string) => p.length >= 8 },
+        { label: "Al menos una mayúscula", test: (p: string) => /[A-Z]/.test(p) },
+        { label: "Al menos una minúscula", test: (p: string) => /[a-z]/.test(p) },
+        { label: "Al menos un número", test: (p: string) => /[0-9]/.test(p) },
+    ];
+
+    const isPasswordValid = !password || passwordRequirements.every(req => req.test(password));
 
     useEffect(() => {
         if (user) {
@@ -212,7 +222,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
         }
     };
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
          if (!formData.name || !formData.email || !formData.phone) {
             setError("Nombre, correo y teléfono son obligatorios.");
@@ -222,8 +232,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
             setError("Las contraseñas no coinciden.");
             return;
         }
-        if (password && password.length < 6) {
-            setError("La nueva contraseña debe tener al menos 6 caracteres.");
+        if (password && !isPasswordValid) {
+            setError("La nueva contraseña no cumple con los requisitos mínimos de seguridad.");
             return;
         }
         if (!validateRut(formData.personalRut || '') || !validateRut(formData.companyRut || '') || !validateRut(formData.billingRut || '')) {
@@ -258,7 +268,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
             };
         }
 
-        onUpdate(user.id, updateData);
+        setIsSubmitting(true);
+        try {
+            await onUpdate(user.id, updateData);
+        } catch (err: any) {
+            setError(err.message || "Ocurrió un error al actualizar el usuario.");
+            setIsSubmitting(false);
+        }
     };
 
     const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -472,12 +488,34 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                     <div><div className="relative"><input type={showPassword ? 'text' : 'password'} placeholder="Nueva Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClasses} pr-10`} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">{showPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}</button></div></div>
                                     <div><div className="relative"><input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirmar" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={`${inputClasses} pr-10`} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">{showConfirmPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}</button></div></div>
                                 </div>
+                                {password && (
+                                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                        {passwordRequirements.map((req, idx) => (
+                                            <div key={idx} className="flex items-center gap-2">
+                                                <div className={`w-2 h-2 rounded-full ${req.test(password) ? 'bg-green-500' : 'bg-[var(--border-primary)]'}`} />
+                                                <span className={`text-xs ${req.test(password) ? 'text-green-600 font-medium' : 'text-[var(--text-muted)]'}`}>
+                                                    {req.label}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
                     <footer className="px-6 py-4 bg-[var(--background-muted)] rounded-b-xl flex justify-end space-x-3">
-                        <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
-                        <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-[var(--brand-primary)] border rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">Guardar Cambios</button>
+                        <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border rounded-md hover:bg-[var(--background-hover)] disabled:opacity-50">Cancelar</button>
+                        <button type="submit" disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-white bg-[var(--brand-primary)] border rounded-md shadow-sm hover:bg-[var(--brand-secondary)] disabled:opacity-50 flex items-center">
+                            {isSubmitting ? (
+                                <>
+                                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    Guardando...
+                                </>
+                            ) : 'Guardar Cambios'}
+                        </button>
                     </footer>
                 </form>
             </div>

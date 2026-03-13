@@ -84,18 +84,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   };
 
   const handleCreateUser = async (data: UserCreationData) => {
-    const newUser = await api.createUser(data);
-    if (newUser.role === roleFilter) {
-        setUsers(prev => [...prev, newUser]);
+    try {
+        const newUser = await api.createUser(data);
+        if (newUser.role === roleFilter) {
+            setUsers(prev => [...prev, newUser]);
+        }
+        setIsCreateModalOpen(false);
+    } catch (error: any) {
+        console.error("Failed to create user:", error);
+        throw error; // Re-throw so the modal can catch it and display the message
     }
-    setIsCreateModalOpen(false);
   };
 
   const handleUpdateUser = async (userId: string, data: UserUpdateData) => {
-    const updatedUser = await api.updateUser(userId, data);
-    setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
-    setEditingUser(null);
-    setEditingDriverRates(null);
+    try {
+        const updatedUser = await api.updateUser(userId, data);
+        setUsers(prev => prev.map(u => u.id === userId ? updatedUser : u));
+        setEditingUser(null);
+        setEditingDriverRates(null);
+    } catch (error: any) {
+        console.error("Failed to update user:", error);
+        throw error; // Re-throw so the modal can catch it and display the message
+    }
   };
 
   const handleDeleteUser = async (userId: string) => {
