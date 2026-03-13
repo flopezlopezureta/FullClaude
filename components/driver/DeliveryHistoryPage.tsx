@@ -369,7 +369,6 @@ const DeliveryHistoryPage: React.FC = () => {
             isFullScreen={true} 
             pkg={selectedPackage} 
             onClose={() => setSelectedPackage(null)} 
-            driver={users.find(u => u.id === selectedPackage.driverId)}
             creator={users.find(u => u.id === selectedPackage.creatorId)}
           />
         )}

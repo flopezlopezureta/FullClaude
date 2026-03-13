@@ -80,7 +80,6 @@ const ReturnsDashboard: React.FC = () => {
             isFullScreen={true}
             pkg={selectedPackage} 
             onClose={() => setSelectedPackage(null)}
-            driver={users.find(u => u.id === selectedPackage.driverId)}
             creatorForReturn={users.find(u => u.id === selectedPackage.creatorId)}
             onStartReturn={(pkg) => {
                 setSelectedPackage(null);

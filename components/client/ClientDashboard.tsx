@@ -368,6 +368,7 @@ const ClientDashboard: React.FC = () => {
                 pkg={selectedPackage} 
                 onClose={() => setSelectedPackage(null)} 
                 isFullScreen={true}
+                companyName={auth?.systemSettings.companyName}
             />
         )}
         {deletingPackage && (

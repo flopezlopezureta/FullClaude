@@ -1,6 +1,6 @@
 {
-  "short_name": "Full Envíos",
-  "name": "FULL ENVIOS - Sistema de Seguimiento",
+  "short_name": "Envíos",
+  "name": "Sistema de Envíos",
   "start_url": ".",
   "display": "standalone",
   "theme_color": "#ffffff",

@@ -158,7 +158,7 @@ const DriverMobileLayout: React.FC = () => {
                         <div className="mb-6 rounded-3xl bg-gradient-to-r from-blue-700 to-indigo-600 p-6 text-white shadow-lg relative overflow-hidden">
                             <div className="relative z-10">
                                 <p className="text-xs font-medium opacity-80 mb-1">EMPRESA</p>
-                                <h2 className="text-2xl font-bold tracking-tight">FULL ENVIOS</h2>
+                                <h2 className="text-2xl font-bold tracking-tight">{systemSettings.companyName}</h2>
                             </div>
                             <IconCube className="absolute -right-4 -bottom-4 w-32 h-32 text-white opacity-10 rotate-12" />
                         </div>

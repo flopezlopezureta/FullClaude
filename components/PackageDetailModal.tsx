@@ -3,16 +3,14 @@
 import React, { useState } from 'react';
 import { PackageStatus, ShippingType } from '../constants';
 import type { Package, User } from '../types';
-import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconPrinter, IconQrcode, IconChevronLeft, IconCamera, IconTruck, IconId, IconArrowUturnLeft } from './Icon';
+import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageDetailModalProps {
   pkg: Package;
   onClose: () => void;
-  driver?: User;
   onStartDelivery?: (pkg: Package) => void;
   onReportProblem?: (pkg: Package) => void;
-  onPrintLabel?: (pkg: Package) => void;
   isFullScreen?: boolean;
   companyName?: string;
   creatorForReturn?: User;
@@ -20,7 +18,7 @@ interface PackageDetailModalProps {
   creator?: User | null;
 }
 
-const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, driver, onStartDelivery, onReportProblem, onStartReturn, onPrintLabel, isFullScreen = false, companyName = "FULL ENVIOS", creatorForReturn, creator }) => {
+const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator }) => {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
 

@@ -1,10 +1,11 @@
 
 
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useContext } from 'react';
 import { api } from '../../services/api';
 import { Role, PackageStatus, ShippingType } from '../../constants';
 import type { User, Package, DeliveryZone } from '../../types';
 import { IconPrinter, IconCube, IconCalendar, IconChecklist, IconPackage, IconDollarSign, IconFileSpreadsheet } from '../Icon';
+import { AuthContext } from '../../contexts/AuthContext';
 
 // Declare Chart.js in the global scope to avoid TypeScript errors
 declare const Chart: any;
@@ -25,6 +26,7 @@ const KpiCard: React.FC<{ icon: React.ReactNode, title: string, value: string | 
 );
 
 const BillingReportPage: React.FC = () => {
+    const auth = useContext(AuthContext);
     const [packages, setPackages] = useState<Package[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [zones, setZones] = useState<DeliveryZone[]>([]);
@@ -475,7 +477,7 @@ const BillingReportPage: React.FC = () => {
                             <h1 className="text-3xl font-bold text-gray-900">ESTADO DE CUENTA</h1>
                         </div>
                         <div className="text-right">
-                             <h2 className="text-xl font-semibold text-gray-800">FULL ENVIOS</h2>
+                             <h2 className="text-xl font-semibold text-gray-800">{auth?.systemSettings.companyName || 'FULL ENVIOS'}</h2>
                              <p className="text-sm text-gray-600">Servicios de Logística</p>
                         </div>
                     </header>

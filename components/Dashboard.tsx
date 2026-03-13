@@ -650,8 +650,8 @@ const Dashboard: React.FC = () => {
         <PackageDetailModal 
             pkg={selectedPackage} 
             onClose={() => setSelectedPackage(null)} 
-            driver={users.find(u => u.id === selectedPackage.driverId)}
             creator={users.find(u => u.id === selectedPackage.creatorId)}
+            companyName={auth?.systemSettings.companyName}
         />
       )}
       {assigningPackage && (

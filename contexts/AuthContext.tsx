@@ -80,6 +80,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [token]);
 
   useEffect(() => {
+    if (systemSettings.companyName) {
+      document.title = systemSettings.companyName;
+    }
+  }, [systemSettings.companyName]);
+
+  useEffect(() => {
     if ('serviceWorker' in navigator && 'PushManager' in window) {
         navigator.serviceWorker.ready.then(registration => {
             registration.pushManager.getSubscription().then(subscription => {
