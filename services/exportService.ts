@@ -1,6 +1,6 @@
 
 import ExcelJS from 'exceljs';
-import { Package } from '../types';
+import { Package, User } from '../types';
 import { PackageStatus } from '../constants';
 
 const mapStatus = (status: PackageStatus): string => {
@@ -19,9 +19,11 @@ const mapStatus = (status: PackageStatus): string => {
     }
 };
 
-export const exportToExcel = async (packages: Package[], filename: string) => {
+export const exportToExcel = async (packages: Package[], filename: string, users: User[] = []) => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('BASE');
+
+    const userMap = new Map(users.map(u => [u.id, u.name]));
 
     // Define columns
     worksheet.columns = [
@@ -34,6 +36,7 @@ export const exportToExcel = async (packages: Package[], filename: string) => {
         { header: 'CORREO', key: 'correo', width: 25 },
         { header: 'ESTADO_PICK', key: 'estado', width: 15 },
         { header: 'BULTOS', key: 'bultos', width: 10 },
+        { header: 'CONDUCTOR', key: 'conductor', width: 20 },
     ];
 
     // Add rows
@@ -47,7 +50,8 @@ export const exportToExcel = async (packages: Package[], filename: string) => {
             comuna: pkg.recipientCommune,
             correo: '',
             estado: mapStatus(pkg.status),
-            bultos: 1
+            bultos: 1,
+            conductor: pkg.driverId ? (userMap.get(pkg.driverId) || 'No encontrado') : 'No asignado'
         });
     });
 
@@ -110,7 +114,8 @@ export const exportToExcel = async (packages: Package[], filename: string) => {
     window.URL.revokeObjectURL(url);
 };
 
-export const exportToCSV = (packages: Package[], filename: string) => {
+export const exportToCSV = (packages: Package[], filename: string, users: User[] = []) => {
+    const userMap = new Map(users.map(u => [u.id, u.name]));
     const headers = [
         'ID Paquete',
         'Fecha Creación',
@@ -119,7 +124,8 @@ export const exportToCSV = (packages: Package[], filename: string) => {
         'Dirección',
         'Comuna',
         'Ciudad',
-        'Tipo Envío'
+        'Tipo Envío',
+        'Conductor'
     ];
 
     const escapeCSV = (val: any) => {
@@ -135,7 +141,8 @@ export const exportToCSV = (packages: Package[], filename: string) => {
         pkg.recipientAddress,
         pkg.recipientCommune,
         pkg.recipientCity,
-        pkg.shippingType
+        pkg.shippingType,
+        pkg.driverId ? (userMap.get(pkg.driverId) || 'No encontrado') : 'No asignado'
     ].map(escapeCSV).join(','));
 
     const csvContent = [headers.join(','), ...rows].join('\n');
