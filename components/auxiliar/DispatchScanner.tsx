@@ -70,7 +70,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         scannedInSession.current.add(rawCode);
 
         try {
-          await api.scanPackageForDispatch(codeToUse, currentDriverId);
+          await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode);
           playBeep();
           setScannedCount(prev => prev + 1);
           setScanResult({ type: 'success', message: `Paquete #${scannedCount + 1} asignado a ${currentDriver.name}` });

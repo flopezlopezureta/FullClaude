@@ -159,12 +159,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
             }
 
             finalPackageId = pkg.id;
-            await api.markPackageAsPickedUp(finalPackageId, codeForApi);
+            await api.markPackageAsPickedUp(finalPackageId, cleanRawCode);
             
         } else {
             if (client.integrations?.meli) {
                  try {
-                    const response = await api.importScannedMeliOrder(client.id, codeForApi);
+                    const response = await api.importScannedMeliOrder(client.id, codeForApi, cleanRawCode);
                     pkg = response.pkg;
                     finalPackageId = pkg.id;
                     isExternalImport = true;

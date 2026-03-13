@@ -606,7 +606,7 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
 // POST /api/packages/:id/dispatch
 router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) => {
     const { id } = req.params;
-    const { driverId } = req.body;
+    const { driverId, flexCode } = req.body;
     try {
         // Broad search for package by Internal ID OR External tracking numbers OR trackingId OR meliFlexCode
         const { rows: pkgRows } = await db.query(
@@ -622,9 +622,10 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             return res.status(400).json({ message: `Paquete ya se encuentra ${currentPkg.status}.` });
         }
 
-        // If scanned ID is different from internal ID and we don't have a flex code, or it's different, save it.
-        let flexCodeToSave = currentPkg.meliFlexCode;
-        if (id !== realId && !currentPkg.meliFlexCode) {
+        // If a flexCode is explicitly provided in the body, use it.
+        // Otherwise, if scanned ID is different from internal ID and we don't have a flex code, save it.
+        let flexCodeToSave = flexCode || currentPkg.meliFlexCode;
+        if (!flexCode && id !== realId && !currentPkg.meliFlexCode) {
             flexCodeToSave = id;
         }
 
@@ -933,6 +934,33 @@ router.post('/:id/return', authMiddleware, async (req, res) => {
     } catch(err) {
         console.error(err);
         res.status(500).json({ message: 'Error al confirmar la devolución.' });
+    }
+});
+
+// POST /api/packages/:id/scan-admin
+router.post('/:id/scan-admin', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { rows: pkgRows } = await db.query(
+            'SELECT id, status, "meliFlexCode" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
+            [id]
+        );
+        
+        if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        const currentPkg = pkgRows[0];
+        const realId = currentPkg.id;
+        
+        let flexCodeToSave = currentPkg.meliFlexCode;
+        if (id !== realId && !currentPkg.meliFlexCode) {
+            flexCodeToSave = id;
+            await db.query('UPDATE packages SET "meliFlexCode" = $1 WHERE id = $2', [flexCodeToSave, realId]);
+        }
+        
+        res.json({ message: `Paquete ${realId} escaneado correctamente.`, package: { ...currentPkg, meliFlexCode: flexCodeToSave } });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al escanear paquete por admin.' });
     }
 });
 

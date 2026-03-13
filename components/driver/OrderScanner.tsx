@@ -39,7 +39,7 @@ const OrderScanner: React.FC<OrderScannerProps> = ({ client, onBack }) => {
     const [scannedCount, setScannedCount] = useState(0);
     const scannedInSession = useRef(new Set<string>());
 
-    const handleScan = useCallback(async (scannedId: string) => {
+    const handleScan = useCallback(async (scannedId: string, rawCode: string) => {
         if (!isScanning || scannedInSession.current.has(scannedId)) return;
         
         setIsScanning(false);
@@ -54,7 +54,7 @@ const OrderScanner: React.FC<OrderScannerProps> = ({ client, onBack }) => {
         };
         
         try {
-            const result = await api.importScannedMeliOrder(client.id, scannedId);
+            const result = await api.importScannedMeliOrder(client.id, scannedId, rawCode);
             playBeep();
             setScannedCount(prev => prev + 1);
             showFeedbackAndResume('success', result.message, 2000);
@@ -81,7 +81,7 @@ const OrderScanner: React.FC<OrderScannerProps> = ({ client, onBack }) => {
                 if (code) {
                     const scannedId = code.data.replace(/[^0-9]/g, ''); // Clean the ID
                     if (scannedId.length > 5) { // Basic validation
-                         handleScan(scannedId);
+                         handleScan(scannedId, code.data);
                     }
                 }
             }

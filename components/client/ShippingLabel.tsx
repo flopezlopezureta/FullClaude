@@ -14,10 +14,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
     const { systemSettings } = useContext(AuthContext)!;
 
     const isMeli = !!pkg.meliOrderId;
-    const qrContent = isMeli ? `https://mercadoenvios.com/flex/shipping/${String(pkg.meliOrderId).trim()}` : pkg.id;
+    const hasCapturedFlex = !!pkg.meliFlexCode;
+    const qrContent = pkg.meliFlexCode || (isMeli ? `https://mercadoenvios.com/flex/shipping/${String(pkg.meliOrderId).trim()}` : pkg.id);
 
     useEffect(() => {
-        if (isMeli) return; // Do not generate QR for ML packages
+        // Only skip QR generation for ML packages if we DON'T have a captured flex code
+        if (isMeli && !hasCapturedFlex) return; 
         
         const generateQR = async () => {
             if (!qrContent) return;
@@ -35,9 +37,9 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
             }
         };
         generateQR();
-    }, [qrContent, isMeli]);
+    }, [qrContent, isMeli, hasCapturedFlex]);
 
-    if (isMeli) {
+    if (isMeli && !hasCapturedFlex) {
         return (
              <div className="bg-white p-4 border-2 border-dashed border-red-400 font-sans text-black w-full max-w-[380px] mx-auto overflow-hidden flex flex-col items-center text-center">
                 <IconMercadoLibre className="w-10 h-10 text-yellow-500 mb-2"/>
@@ -63,12 +65,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
     // --- DISEÑO ESTÁNDAR (Para envíos manuales / internos) ---
     return (
         <div className="bg-white p-4 border border-slate-300 rounded-md font-sans text-black relative overflow-hidden w-full max-w-[380px] mx-auto">
-             <div 
+            <div 
                 className="absolute inset-0 flex items-center justify-center z-0 pointer-events-none"
                 style={{ transform: 'rotate(-20deg)' }}
             >
-                <span className="text-7xl font-black text-gray-200 opacity-50 select-none">
-                    USO INTERNO
+                <span className="text-6xl font-black text-gray-200 opacity-50 select-none text-center uppercase">
+                    {hasCapturedFlex ? 'Etiqueta\nReimpresa' : 'Uso Interno'}
                 </span>
             </div>
             <div className="grid grid-cols-3 gap-4 border-b-2 border-black pb-2 relative z-10">
@@ -111,7 +113,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
                     <p className="font-mono text-[10px] text-slate-500">ID Interno</p>
                     <p className="font-mono font-bold text-lg leading-none">{pkg.id}</p>
                     <div className="mt-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold self-end">
-                        PARA USO INTERNO DEL CONDUCTOR
+                        {hasCapturedFlex ? 'ETIQUETA CAPTURADA POR ESCÁNER' : 'PARA USO INTERNO DEL CONDUCTOR'}
                     </div>
                 </div>
             </div>

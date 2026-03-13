@@ -50,7 +50,7 @@ const makeMeliPostRequest = (path, postData) => makeMeliRequest({
 
 // POST /api/integrations/import/meli-scanned
 router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
-    const { clientId, scannedId } = req.body;
+    const { clientId, scannedId, flexCode } = req.body;
 
     try {
         // 1. Get Client Tokens
@@ -100,7 +100,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             creatorId: clientId,
             source: 'MERCADO_LIBRE',
             meliOrderId: scannedId,
-            meliFlexCode: scannedId
+            meliFlexCode: flexCode || scannedId
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

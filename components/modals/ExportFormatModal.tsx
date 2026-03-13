@@ -11,7 +11,25 @@ interface ExportFormatModalProps {
 const ExportFormatModal: React.FC<ExportFormatModalProps> = ({ onClose, onSelect, isExporting }) => {
     return (
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-            <div className="bg-[var(--background-secondary)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="bg-[var(--background-secondary)] rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200 relative">
+                {isExporting && (
+                    <div className="absolute inset-0 z-10 bg-[var(--background-secondary)]/80 backdrop-blur-[2px] flex flex-col items-center justify-center p-6 animate-in fade-in duration-300">
+                        <div className="relative">
+                            <div className="w-20 h-20 border-4 border-[var(--brand-primary-subtle)] border-t-[var(--brand-primary)] rounded-full animate-spin"></div>
+                            <div className="absolute inset-0 flex items-center justify-center">
+                                <IconFileSpreadsheet className="w-8 h-8 text-[var(--brand-primary)] animate-pulse" />
+                            </div>
+                        </div>
+                        <h4 className="mt-6 text-xl font-bold text-[var(--text-primary)]">Generando archivo...</h4>
+                        <p className="mt-2 text-[var(--text-secondary)] text-center">
+                            Estamos procesando la información de los paquetes. Por favor, no cierres esta ventana.
+                        </p>
+                        <div className="mt-8 w-full max-w-[200px] h-1.5 bg-[var(--border-primary)] rounded-full overflow-hidden">
+                            <div className="h-full bg-[var(--brand-primary)] animate-progress-indeterminate"></div>
+                        </div>
+                    </div>
+                )}
+
                 <div className="flex items-center justify-between p-6 border-b border-[var(--border-primary)]">
                     <div className="flex items-center gap-3">
                         <div className="p-2 bg-[var(--brand-primary-subtle)] rounded-lg">

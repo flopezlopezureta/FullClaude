@@ -242,7 +242,7 @@ export const api = {
   markPackageAsProblem: (pkgId: string, reason: string, photos: string[]) => post<Package>(`/packages/${pkgId}/problem`, { reason, photosBase64: photos }),
   confirmReturn: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${pkgId}/return`, data),
   markPackagesAsBilled: (packageIds: string[]) => post<void>('/packages/mark-billed', { packageIds }),
-  scanPackageForDispatch: (packageId: string, driverId: string) => post<{message: string, package: Package}>(`/packages/${packageId}/dispatch`, { driverId }),
+  scanPackageForDispatch: (packageId: string, driverId: string, flexCode?: string) => post<{message: string, package: Package}>(`/packages/${packageId}/dispatch`, { driverId, flexCode }),
   markPackageAsFlexed: (packageId: string, isFlexed: boolean) => post<Package>(`/packages/${packageId}/flex`, { isFlexed }),
   markPackageAsPickedUp: (packageId: string, flexCode?: string) => post<Package>(`/packages/${packageId}/pickup`, { flexCode }),
   confirmBulkPickup: (clientId: string) => post<{count: number, message: string}>('/packages/bulk-pickup-client', { clientId }),
@@ -268,7 +268,7 @@ export const api = {
   fetchShopifyOrders: (clientId: string) => get<any[]>(`/integrations/${clientId}/shopify/orders`),
   fetchWooCommerceOrders: (clientId: string) => get<any[]>(`/integrations/${clientId}/woocommerce/orders`),
   fetchFalabellaOrders: (clientId: string) => get<any[]>(`/integrations/${clientId}/falabella/orders`),
-  importScannedMeliOrder: (clientId: string, scannedId: string) => post<{message: string, pkg: Package}>(`/integrations/import/meli-scanned`, { clientId, scannedId }),
+  importScannedMeliOrder: (clientId: string, scannedId: string, flexCode?: string) => post<{message: string, pkg: Package}>(`/integrations/import/meli-scanned`, { clientId, scannedId, flexCode }),
   checkMeliShipmentStatus: (shipmentId: string) => get<{status: string, substatus: string}>(`/integrations/status/${shipmentId}`),
 
   // Push Notifications

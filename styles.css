@@ -249,6 +249,14 @@ body {
     animation: fade-in-up 0.3s ease-out forwards;
 }
 
+@keyframes progress-indeterminate {
+    0% { transform: translateX(-100%); }
+    100% { transform: translateX(100%); }
+}
+.animate-progress-indeterminate {
+    animation: progress-indeterminate 1.5s infinite linear;
+}
+
 @media print {
   body {
     background-color: white !important;
