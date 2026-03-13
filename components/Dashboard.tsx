@@ -17,7 +17,7 @@ import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
 import ExportFormatModal from './modals/ExportFormatModal';
-import * as XLSX from 'xlsx';
+import { exportToExcel, exportToCSV } from '../services/exportService';
 
 // Fix: declare Chart.js if needed
 
@@ -319,101 +319,12 @@ const Dashboard: React.FC = () => {
             return;
         }
 
-        const userMap = new Map(users.map(u => [u.id, u]));
         const dateStr = new Date().toISOString().split('T')[0];
 
         if (format === 'excel') {
-            const data = packagesToExport.map(pkg => {
-                const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
-                const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
-                const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
-
-                return {
-                    'ID Paquete': pkg.id,
-                    'Fecha Creación': new Date(pkg.createdAt).toLocaleString('es-CL'),
-                    'Fecha Entrega': deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
-                    'Estado': pkg.status.replace('_', ' '),
-                    'Tipo Envío': pkg.shippingType,
-                    'Destinatario': pkg.recipientName,
-                    'Dirección': pkg.recipientAddress,
-                    'Comuna': pkg.recipientCommune,
-                    'Ciudad': pkg.recipientCity,
-                    'Conductor': driver ? driver.name : 'No asignado',
-                    'Cliente': creator ? creator.name : 'Desconocido',
-                    'Recibido por': pkg.deliveryReceiverName || '',
-                    'RUT Recibe': pkg.deliveryReceiverId || ''
-                };
-            });
-
-            const worksheet = XLSX.utils.json_to_sheet(data);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Paquetes");
-            XLSX.writeFile(workbook, `Reporte_Paquetes_${dateStr}.xlsx`);
+            await exportToExcel(packagesToExport, `Reporte_Paquetes_${dateStr}.xlsx`);
         } else {
-            // CSV Generation
-            const headers = [
-                'ID Paquete',
-                'Fecha Creación',
-                'Fecha Entrega',
-                'Estado',
-                'Tipo Envío',
-                'Destinatario',
-                'Dirección',
-                'Comuna',
-                'Ciudad',
-                'Conductor',
-                'Cliente',
-                'Recibido por',
-                'RUT Recibe'
-            ];
-
-            const escapeCSV = (val: any) => {
-                const str = String(val || '').replace(/"/g, '""');
-                return `"${str}"`;
-            };
-
-            const CHUNK_SIZE = 500;
-            let rows: string[] = [];
-            
-            for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
-                const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
-                const chunkRows = chunk.map(pkg => {
-                    const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
-                    const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
-                    const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
-                    
-                    return [
-                        pkg.id,
-                        new Date(pkg.createdAt).toLocaleString('es-CL'),
-                        deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
-                        pkg.status.replace('_', ' '),
-                        pkg.shippingType,
-                        pkg.recipientName,
-                        pkg.recipientAddress,
-                        pkg.recipientCommune,
-                        pkg.recipientCity,
-                        driver ? driver.name : 'No asignado',
-                        creator ? creator.name : 'Desconocido',
-                        pkg.deliveryReceiverName || '',
-                        pkg.deliveryReceiverId || ''
-                    ].map(escapeCSV).join(',');
-                });
-                rows = rows.concat(chunkRows);
-                await new Promise(resolve => setTimeout(resolve, 0));
-            }
-
-            const csvContent = [headers.join(','), ...rows].join('\n');
-            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Reporte_Paquetes_${dateStr}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(url);
+            exportToCSV(packagesToExport, `Reporte_Paquetes_${dateStr}.csv`);
         }
 
         setIsExportModalOpen(false);
