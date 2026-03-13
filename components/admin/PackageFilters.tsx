@@ -58,7 +58,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
         <div className="relative flex-grow sm:flex-grow-0 sm:w-64 min-w-[200px]">
           <input
             type="text"
-            placeholder="Buscar por ID, destinatario o FLEX..."
+            placeholder="Buscar por ID, destinatario, dirección o FLEX..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] placeholder-[var(--text-muted)] focus:outline-none focus:placeholder-[var(--text-secondary)] focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm"

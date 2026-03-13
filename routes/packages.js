@@ -131,7 +131,7 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex} OR "trackingId" ILIKE $${paramIndex} OR "meliFlexCode" ILIKE $${paramIndex})`);
+            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR "recipientAddress" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex} OR "trackingId" ILIKE $${paramIndex} OR "meliFlexCode" ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }

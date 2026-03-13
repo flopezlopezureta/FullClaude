@@ -123,7 +123,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
       ? pkg.origin 
       : pkg.recipientAddress;
 
-    const isScanned = pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.PickedUp;
+    const isScanned = pkg.status !== PackageStatus.Pending;
 
     return (
         <>

@@ -92,15 +92,27 @@ const LiveMap: React.FC = () => {
             const isActive = activeDriverIds.has(driver.id);
             const activeDriverData = isActive ? activeDrivers.find(d => d.id === driver.id) : null;
             
+            const driverPackages = packages.filter(p => p.driverId === driver.id);
+            const total = driverPackages.length;
+            const delivered = driverPackages.filter(p => p.status === PackageStatus.Delivered).length;
+            const scanned = driverPackages.filter(p => 
+                p.status === PackageStatus.PickedUp || 
+                p.status === PackageStatus.InTransit || 
+                p.status === PackageStatus.Delivered
+            ).length;
+
             return {
                 ...driver,
                 isOnline: isActive,
                 latitude: activeDriverData?.latitude ?? driver.latitude,
                 longitude: activeDriverData?.longitude ?? driver.longitude,
-                lastUpdate: activeDriverData?.lastLocationUpdate ? new Date(activeDriverData.lastLocationUpdate) : (driver.lastLocationUpdate ? new Date(driver.lastLocationUpdate) : null)
+                lastUpdate: activeDriverData?.lastLocationUpdate ? new Date(activeDriverData.lastLocationUpdate) : (driver.lastLocationUpdate ? new Date(driver.lastLocationUpdate) : null),
+                deliveredCount: delivered,
+                scannedCount: scanned,
+                totalCount: total
             };
         });
-    }, [allApprovedDrivers, activeDrivers]);
+    }, [allApprovedDrivers, activeDrivers, packages]);
 
     useEffect(() => {
         if (!mapRef.current || !markersLayerRef.current) return;
@@ -112,8 +124,13 @@ const LiveMap: React.FC = () => {
             className: '', iconSize: [40, 40], iconAnchor: [20, 40]
         });
 
-        const packageIcon = L.divIcon({
+        const packageIconPending = L.divIcon({
             html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#ef4444" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`,
+            className: '', iconSize: [28, 28], iconAnchor: [14, 28]
+        });
+
+        const packageIconScanned = L.divIcon({
+            html: `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="#2563eb" stroke="#ffffff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" style="filter: drop-shadow(0 2px 2px rgba(0,0,0,0.5));"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path><circle cx="12" cy="10" r="3"></circle></svg>`,
             className: '', iconSize: [28, 28], iconAnchor: [14, 28]
         });
 
@@ -129,15 +146,34 @@ const LiveMap: React.FC = () => {
             }
         });
 
-        const pendingPackages = packages.filter(p => 
-            (p.status === PackageStatus.Pending || p.status === PackageStatus.InTransit) && p.destLatitude && p.destLongitude
+        const visiblePackages = packages.filter(p => 
+            (p.status === PackageStatus.Pending || p.status === PackageStatus.PickedUp || p.status === PackageStatus.InTransit) && 
+            p.destLatitude && p.destLongitude
         );
 
-        pendingPackages.forEach(pkg => {
+        visiblePackages.forEach(pkg => {
             const position: [number, number] = [pkg.destLatitude!, pkg.destLongitude!];
             const assignedDriver = allUsers.find(u => u.id === pkg.driverId);
-            const popupContent = `<b>Paquete: ${pkg.id}</b><br>Dest: ${pkg.recipientName}<br>Dir: ${pkg.recipientAddress}<br>Conductor: ${assignedDriver?.name || 'No asignado'}`;
-            const marker = L.marker(position, { icon: packageIcon }).bindPopup(popupContent);
+            const isScanned = pkg.status === PackageStatus.PickedUp || pkg.status === PackageStatus.InTransit;
+            
+            const statusLabel = pkg.status === PackageStatus.Pending ? 'Pendiente' : 
+                               pkg.status === PackageStatus.PickedUp ? 'Retirado (Escaneado)' : 'En Tránsito';
+
+            const popupContent = `
+                <div class="p-1">
+                    <b class="text-sm">Paquete: ${pkg.id}</b><br>
+                    ${pkg.meliFlexCode ? `<span class="text-[10px] bg-yellow-100 text-yellow-800 px-1 rounded font-bold">FLEX: ${pkg.meliFlexCode}</span><br>` : ''}
+                    <span class="text-xs font-bold ${isScanned ? 'text-blue-600' : 'text-red-600'}">Estado: ${statusLabel}</span><br>
+                    <span class="text-xs">Dest: ${pkg.recipientName}</span><br>
+                    <span class="text-xs">Dir: ${pkg.recipientAddress}</span><br>
+                    <span class="text-xs">Conductor: ${assignedDriver?.name || 'No asignado'}</span><br>
+                    <span class="text-[10px] text-gray-500">Act: ${formatTimeAgo(new Date(pkg.updatedAt))}</span>
+                </div>
+            `;
+            
+            const marker = L.marker(position, { 
+                icon: isScanned ? packageIconScanned : packageIconPending 
+            }).bindPopup(popupContent);
             markersLayerRef.current.addLayer(marker);
         });
 
@@ -178,8 +214,29 @@ const LiveMap: React.FC = () => {
                 .driver-name-tooltip.leaflet-tooltip-top:before { border-top-color: var(--border-secondary); }
             `}</style>
             <div className="flex flex-col md:flex-row gap-4" style={{ height: '75vh' }}>
-                <div className="flex-grow bg-[var(--background-secondary)] shadow-md rounded-lg p-4 h-full">
+                <div className="flex-grow bg-[var(--background-secondary)] shadow-md rounded-lg p-4 h-full relative">
                     <div ref={mapContainerRef} className="h-full w-full rounded-md" style={{ zIndex: 0 }} />
+                    
+                    {/* Map Legend */}
+                    <div className="absolute bottom-8 left-8 bg-[var(--background-secondary)] p-3 rounded-lg shadow-lg border border-[var(--border-primary)] z-[1000] text-xs">
+                        <h4 className="font-bold mb-2 border-b border-[var(--border-primary)] pb-1">Leyenda</h4>
+                        <div className="space-y-2">
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-[#ef4444] rounded-full border border-white"></div>
+                                <span>Pendiente</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-3 h-3 bg-[#2563eb] rounded-full border border-white"></div>
+                                <span>Escaneado / En Ruta</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                                <div className="w-4 h-4 bg-[var(--brand-primary)] rounded-full flex items-center justify-center">
+                                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                                </div>
+                                <span>Conductor</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 
                 <div className="w-full md:w-80 lg:w-96 flex-shrink-0 bg-[var(--background-secondary)] shadow-md rounded-lg flex flex-col h-full">
@@ -211,7 +268,17 @@ const LiveMap: React.FC = () => {
                             >
                                 <span className={`w-3 h-3 rounded-full flex-shrink-0 ${driver.isOnline ? 'bg-green-500 animate-pulse' : 'bg-slate-400'}`}></span>
                                 <div className="flex-grow min-w-0">
-                                    <p className="font-semibold text-sm truncate text-[var(--text-primary)]">{driver.name}</p>
+                                    <div className="flex justify-between items-start">
+                                        <p className="font-semibold text-sm truncate text-[var(--text-primary)]">{driver.name}</p>
+                                        <div className="flex flex-col items-end gap-1">
+                                            <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100">
+                                                Escaneados: {driver.scannedCount}/{driver.totalCount}
+                                            </span>
+                                            <span className="text-[10px] font-bold text-green-600 bg-green-50 px-1.5 py-0.5 rounded border border-green-100">
+                                                Entregados: {driver.deliveredCount}/{driver.totalCount}
+                                            </span>
+                                        </div>
+                                    </div>
                                     <p className="text-xs text-[var(--text-muted)]">
                                         Últ. act: {formatTimeAgo(driver.lastUpdate)}
                                     </p>

@@ -104,9 +104,9 @@ const Dashboard: React.FC = () => {
         // Client-side filtering for "scanned" status
         let filtered = pkgs;
         if (scannedFilter === 'scanned') {
-            filtered = pkgs.filter(p => p.status !== PackageStatus.Pending && p.status !== PackageStatus.PickedUp);
+            filtered = pkgs.filter(p => p.status !== PackageStatus.Pending);
         } else if (scannedFilter === 'not_scanned') {
-            filtered = pkgs.filter(p => p.status === PackageStatus.Pending || p.status === PackageStatus.PickedUp);
+            filtered = pkgs.filter(p => p.status === PackageStatus.Pending);
         }
 
         setPackages(filtered);
