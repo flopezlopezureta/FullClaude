@@ -43,12 +43,6 @@ const getStatusSelectStyles = (status: PackageStatus | null): string => {
     return `bg-[var(--status-${slug}-bg)] border-[var(--status-${slug}-border)] text-[var(--status-${slug}-text)] font-medium`;
 }
 
-const getStatusOptionClasses = (status: PackageStatus | null): string => {
-    if (status === null) return 'text-[var(--text-primary)] hover:bg-[var(--background-hover)]';
-    const slug = status.toLowerCase().replace('_', '');
-    return `bg-[var(--status-${slug}-bg-subtle)] hover:bg-[var(--status-${slug}-bg)] text-[var(--status-${slug}-text)]`;
-}
-
 const Dashboard: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
   const [totalPackages, setTotalPackages] = useState(0);
@@ -74,7 +68,7 @@ const Dashboard: React.FC = () => {
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<PackageStatus | null>(null);
+  const [statusFilter, setStatusFilter] = useState<PackageStatus[]>([]);
   const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled'>('all');
   const [driverFilter, setDriverFilter] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('');
@@ -93,7 +87,7 @@ const Dashboard: React.FC = () => {
             page: currentPage,
             limit: itemsPerPage,
             searchQuery,
-            statusFilter,
+            statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null,
             driverFilter,
             clientFilter,
             communeFilter,
@@ -146,7 +140,7 @@ const Dashboard: React.FC = () => {
 
   const resetFiltersForNewData = () => {
       setSearchQuery('');
-      setStatusFilter(null);
+      setStatusFilter([]);
       setFlexFilter('all');
       setDriverFilter('');
       setClientFilter('');
@@ -259,10 +253,17 @@ const Dashboard: React.FC = () => {
 
     setIsExporting(true);
     try {
-        const { packages: allFilteredPackages } = await api.getPackages({ 
-            limit: 0, 
-            searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
-        });
+            const { packages: allFilteredPackages } = await api.getPackages({ 
+                limit: 0, 
+                searchQuery, 
+                statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null, 
+                driverFilter, 
+                clientFilter, 
+                communeFilter, 
+                cityFilter, 
+                startDate, 
+                endDate
+            });
 
         const dateStr = new Date().toISOString().split('T')[0];
         const driverName = driver.name.replace(/\s+/g, '_');
@@ -297,19 +298,22 @@ const Dashboard: React.FC = () => {
     
     setIsExporting(true);
     try {
-        let packagesToExport: Package[] = [];
+        const { packages: allFiltered } = await api.getPackages({
+            limit: 0,
+            searchQuery, 
+            statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null, 
+            driverFilter, 
+            clientFilter, 
+            communeFilter, 
+            cityFilter, 
+            startDate, 
+            endDate
+        });
 
+        let packagesToExport: Package[] = [];
         if (selectedPackages.size > 0) {
-            const { packages: allFiltered } = await api.getPackages({
-                limit: 0,
-                searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
-            });
             packagesToExport = allFiltered.filter(p => selectedPackages.has(p.id));
         } else {
-            const { packages: allFiltered } = await api.getPackages({
-                limit: 0,
-                searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
-            });
             packagesToExport = allFiltered;
         }
 
@@ -486,31 +490,63 @@ const Dashboard: React.FC = () => {
             <div className="flex items-center justify-start flex-wrap gap-x-6 gap-y-3">
                 <div className="flex items-center gap-2">
                     <label className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Ver:</label>
-                    <div className="relative w-40" ref={statusDropdownRef}>
+                    <div className="relative w-48" ref={statusDropdownRef}>
                         <button
                             type="button"
                             onClick={() => setIsStatusDropdownOpen(prev => !prev)}
-                            className={`w-full border rounded-md py-1.5 pl-3 pr-8 text-sm text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] transition-colors ${getStatusSelectStyles(statusFilter)}`}
+                            className="w-full border rounded-md py-1.5 pl-3 pr-8 text-sm text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] transition-colors bg-[var(--background-secondary)] border-[var(--border-secondary)] text-[var(--text-primary)]"
                             aria-haspopup="listbox"
                             aria-expanded={isStatusDropdownOpen}
                         >
-                            <span className="block truncate">{statusOptions.find(o => o.value === statusFilter)?.label || 'Todos'}</span>
+                            <span className="block truncate">
+                                {statusFilter.length === 0 
+                                    ? 'Todos los estados' 
+                                    : statusFilter.length === 1 
+                                        ? statusOptions.find(o => o.value === statusFilter[0])?.label 
+                                        : `${statusFilter.length} estados`}
+                            </span>
                             <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
                                 <IconChevronDown className="w-5 h-5 text-[var(--text-muted)]" />
                             </span>
                         </button>
                         {isStatusDropdownOpen && (
-                            <ul className="absolute z-10 mt-1 w-full bg-[var(--background-secondary)] shadow-lg rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm text-[var(--text-primary)]">
-                                {statusOptions.filter(o => o.value !== statusFilter).map(({ label, value }) => (
+                            <ul className="absolute z-20 mt-1 w-full bg-[var(--background-secondary)] shadow-xl rounded-md py-1 text-base ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm text-[var(--text-primary)] max-h-60 overflow-auto">
+                                <li
+                                    onClick={() => setStatusFilter([])}
+                                    className={`cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-[var(--background-hover)] transition-colors flex items-center gap-2 ${statusFilter.length === 0 ? 'bg-[var(--background-hover)] font-bold' : ''}`}
+                                >
+                                    <input 
+                                        type="checkbox" 
+                                        checked={statusFilter.length === 0} 
+                                        readOnly 
+                                        className={customCheckboxClass}
+                                    />
+                                    Todos
+                                </li>
+                                {statusOptions.filter(o => o.value !== null).map(({ label, value }) => (
                                     <li
                                         key={label}
-                                        onClick={() => {
-                                            setStatusFilter(value);
-                                            setIsStatusDropdownOpen(false);
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setStatusFilter(prev => {
+                                                if (prev.includes(value as PackageStatus)) {
+                                                    return prev.filter(s => s !== value);
+                                                } else {
+                                                    return [...prev, value as PackageStatus];
+                                                }
+                                            });
                                         }}
-                                        className={`cursor-pointer select-none relative py-2 pl-4 pr-4 transition-colors font-medium rounded-sm mx-1 ${getStatusOptionClasses(value)}`}
+                                        className={`cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-[var(--background-hover)] transition-colors flex items-center gap-2 ${statusFilter.includes(value as PackageStatus) ? 'bg-[var(--background-hover)] font-bold' : ''}`}
                                     >
-                                        {label}
+                                        <input 
+                                            type="checkbox" 
+                                            checked={statusFilter.includes(value as PackageStatus)} 
+                                            readOnly 
+                                            className={customCheckboxClass}
+                                        />
+                                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusSelectStyles(value as PackageStatus)}`}>
+                                            {label}
+                                        </span>
                                     </li>
                                 ))}
                             </ul>
@@ -583,7 +619,7 @@ const Dashboard: React.FC = () => {
           onDeletePackage={(pkg) => { setSelectedPackages(new Set([pkg.id])); setIsDeletePasswordModalOpen(true); }}
           onPrintLabel={(pkg) => setPrintingPackages([pkg])}
           onMarkForReturn={auth?.user?.role === 'ADMIN' ? handleMarkForReturn : undefined}
-          isFiltering={searchQuery !== '' || statusFilter !== null || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all'}
+          isFiltering={searchQuery !== '' || statusFilter.length > 0 || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all'}
           isDateFiltering={isDateFiltering}
           selectedPackages={selectedPackages}
           onSelectionChange={handleSelectPackage}

@@ -137,8 +137,13 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (statusFilter) {
-            whereClauses.push(`status = $${paramIndex++}`);
-            queryParams.push(statusFilter);
+            const statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
+            if (statuses.length > 0) {
+                const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
+                whereClauses.push(`status IN (${placeholders})`);
+                queryParams.push(...statuses);
+                paramIndex += statuses.length;
+            }
         }
 
         if (driverFilter) {
