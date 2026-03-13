@@ -194,6 +194,8 @@ export interface Package {
   shopifyOrderId?: string;
   trackingId?: string;
   meliFlexCode?: string;
+  isFlexed?: boolean;
+  flexedAt?: Date;
 }
 
 // --- New Pickup Management System Types ---

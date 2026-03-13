@@ -201,10 +201,18 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                     )}
                     <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
                         {sourceIcons[pkg.source]}
-                        {pkg.meliFlexCode && (
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-yellow-100 text-yellow-800 border border-yellow-200">
-                                FLEX OK
-                            </span>
+                        {pkg.source === 'MERCADO_LIBRE' && (
+                            pkg.isFlexed ? (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-green-100 text-green-800 border border-green-200">
+                                    FLEX OK
+                                </span>
+                            ) : (
+                                pkg.status === PackageStatus.InTransit && (
+                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-red-100 text-red-800 border border-red-200 animate-pulse">
+                                        NO FLEX
+                                    </span>
+                                )
+                            )
                         )}
                         {pkg.shippingType && shippingTypeIcons[pkg.shippingType]}
                     </div>

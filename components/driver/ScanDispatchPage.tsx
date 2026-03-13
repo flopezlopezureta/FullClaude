@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft, IconRefresh } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
+import type { Package } from '../../types';
 
 const playBeep = () => {
     if (window.AudioContext || (window as any).webkitAudioContext) {
@@ -26,7 +27,7 @@ interface ScanDispatchPageProps {
 export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) => {
   const { user } = useContext(AuthContext)!;
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [scanResult, setScanResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+  const [scanResult, setScanResult] = useState<{ type: 'success' | 'error'; message: string; package?: Package } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -36,6 +37,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const [scannedInSession, setScannedInSession] = useState<Set<string>>(new Set());
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualCode, setManualCode] = useState('');
+  const [isFlexing, setIsFlexing] = useState(false);
 
   const handleScan = useCallback(async (packageId: string) => {
     if (!isScanning || !user || scannedInSession.has(packageId)) return;
@@ -47,11 +49,25 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
       const result = await api.scanPackageForDispatch(packageId, user.id);
       playBeep();
       setScannedCount(prev => prev + 1);
-      setScanResult({ type: 'success', message: `¡Paquete #${scannedCount + 1} despachado!` });
-      setTimeout(() => {
-          setScanResult(null);
-          setIsScanning(true);
-      }, 1500);
+      
+      const pkg = result.package;
+      const isMeli = pkg?.source === 'MERCADO_LIBRE';
+      const needsFlex = isMeli && !pkg?.isFlexed;
+
+      setScanResult({ 
+        type: 'success', 
+        message: `¡Paquete #${scannedCount + 1} despachado!`,
+        package: pkg
+      });
+
+      // If it doesn't need flex, clear result after 1.5s and resume scanning
+      if (!needsFlex) {
+        setTimeout(() => {
+            setScanResult(null);
+            setIsScanning(true);
+        }, 1500);
+      }
+      // If it needs flex, we stay in the result state until they click "Marcar Flex" or "Continuar"
     } catch (error: any) {
       setScannedInSession(prev => {
           const newSet = new Set(prev);
@@ -65,6 +81,25 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
       }, 4000);
     }
   }, [isScanning, user, scannedInSession, scannedCount]);
+
+  const handleMarkAsFlexed = async () => {
+    if (!scanResult?.package || isFlexing) return;
+    setIsFlexing(true);
+    try {
+      await api.markPackageAsFlexed(scanResult.package.id, true);
+      setScanResult(null);
+      setIsScanning(true);
+    } catch (error) {
+      console.error("Error marking as flexed:", error);
+    } finally {
+      setIsFlexing(false);
+    }
+  };
+
+  const handleContinue = () => {
+    setScanResult(null);
+    setIsScanning(true);
+  };
 
   const scanLoop = useCallback(() => {
     if (!isScanning) return;
@@ -165,11 +200,31 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
         <span className="ml-2 text-3xl font-extrabold text-[var(--brand-primary)]">{scannedCount}</span>
       </div>
       
-      <div className="h-16 mt-4 flex items-center justify-center">
+      <div className="h-24 mt-4 flex items-center justify-center">
         {scanResult ? (
-            <div className={`flex items-center p-4 rounded-md text-white animate-fade-in-up ${scanResult.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-                {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : <IconAlertTriangle className="w-6 h-6 mr-3" />}
-                <span className="font-medium">{scanResult.message}</span>
+            <div className={`flex flex-col items-center p-4 rounded-md text-white animate-fade-in-up w-full ${scanResult.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
+                <div className="flex items-center">
+                    {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : <IconAlertTriangle className="w-6 h-6 mr-3" />}
+                    <span className="font-medium">{scanResult.message}</span>
+                </div>
+                {scanResult.type === 'success' && scanResult.package?.source === 'MERCADO_LIBRE' && !scanResult.package?.isFlexed && (
+                    <div className="mt-3 flex gap-2 w-full">
+                        <button 
+                            onClick={handleMarkAsFlexed}
+                            disabled={isFlexing}
+                            className="flex-grow px-3 py-1.5 bg-white text-green-600 rounded font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-50 transition-colors"
+                        >
+                            {isFlexing ? <IconRefresh className="w-4 h-4 animate-spin" /> : <IconCheckCircle className="w-4 h-4" />}
+                            MARCAR FLEX
+                        </button>
+                        <button 
+                            onClick={handleContinue}
+                            className="px-3 py-1.5 bg-green-600 text-white border border-white/30 rounded font-medium text-sm hover:bg-green-700 transition-colors"
+                        >
+                            Continuar
+                        </button>
+                    </div>
+                )}
             </div>
         ) : (
              <p className="text-center text-[var(--text-muted)]">Apunta la cámara al código QR para agregarlo a tu ruta de despacho.</p>

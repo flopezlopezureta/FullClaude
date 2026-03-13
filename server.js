@@ -187,7 +187,9 @@ async function initializeDatabase() {
                 "meliOrderId" TEXT,
                 "wooOrderId" TEXT,
                 "shopifyOrderId" TEXT,
-                "trackingId" TEXT
+                "trackingId" TEXT,
+                "isFlexed" BOOLEAN DEFAULT false,
+                "flexedAt" TIMESTAMPTZ
             );
         `);
         console.log('Table "packages" is ready.');
@@ -204,7 +206,9 @@ async function initializeDatabase() {
                 'source TEXT',
                 'shopifyOrderId TEXT',
                 'trackingId TEXT',
-                'meliFlexCode TEXT'
+                'meliFlexCode TEXT',
+                'isFlexed BOOLEAN DEFAULT false',
+                'flexedAt TIMESTAMPTZ'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];

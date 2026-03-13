@@ -652,6 +652,10 @@ const Dashboard: React.FC = () => {
             onClose={() => setSelectedPackage(null)} 
             creator={users.find(u => u.id === selectedPackage.creatorId)}
             companyName={auth?.systemSettings.companyName}
+            onUpdatePackage={(updatedPkg) => {
+                setPackages(prev => prev.map(p => p.id === updatedPkg.id ? updatedPkg : p));
+                setSelectedPackage(updatedPkg);
+            }}
         />
       )}
       {assigningPackage && (

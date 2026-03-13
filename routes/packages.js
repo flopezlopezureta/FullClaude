@@ -646,11 +646,39 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
 
         await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details);
         
-        res.json({ message: `Paquete ${realId} asignado a ${driverName} y en tránsito.` });
-
+        const updatedPkg = rows[0];
+        updatedPkg.history = await getHistory(realId);
+        
+        res.json({ 
+            message: `Paquete ${realId} asignado a ${driverName} y en tránsito.`,
+            package: updatedPkg
+        });
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al despachar paquete.' });
+    }
+});
+
+// POST /api/packages/:id/flex
+router.post('/:id/flex', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    const { isFlexed } = req.body;
+    try {
+        const { rows } = await db.query(
+            'UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3 WHERE id = $4 RETURNING *',
+            [isFlexed, isFlexed ? new Date() : null, new Date(), id]
+        );
+        if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        const statusText = isFlexed ? 'Flexeado' : 'No Flexeado';
+        await addTrackingEvent(id, statusText, 'Centro de Distribución', `Paquete marcado como ${statusText}.`);
+        
+        const updatedPackage = rows[0];
+        updatedPackage.history = await getHistory(id);
+        res.json(updatedPackage);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al actualizar estado Flex.' });
     }
 });
 

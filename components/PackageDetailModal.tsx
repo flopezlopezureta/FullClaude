@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { PackageStatus, ShippingType } from '../constants';
 import type { Package, User } from '../types';
-import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft } from './Icon';
+import { api } from '../services/api';
+import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageDetailModalProps {
@@ -16,11 +17,13 @@ interface PackageDetailModalProps {
   creatorForReturn?: User;
   onStartReturn?: (pkg: Package) => void;
   creator?: User | null;
+  onUpdatePackage?: (updatedPkg: Package) => void;
 }
 
-const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator }) => {
+const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator, onUpdatePackage }) => {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+  const [isFlexing, setIsFlexing] = useState(false);
 
   const isReturn = pkg.status === PackageStatus.ReturnPending && !!onStartReturn;
 
@@ -30,6 +33,21 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
   
   const canInteract = onStartDelivery && onReportProblem && !isReturn;
   const canReturnInteract = onStartReturn && isReturn;
+
+  const handleToggleFlex = async () => {
+    if (isFlexing) return;
+    setIsFlexing(true);
+    try {
+      const updatedPkg = await api.markPackageAsFlexed(pkg.id, !pkg.isFlexed);
+      if (onUpdatePackage) {
+        onUpdatePackage(updatedPkg);
+      }
+    } catch (error) {
+      console.error("Error toggling flex status:", error);
+    } finally {
+      setIsFlexing(false);
+    }
+  };
 
   const recipientPhoneForNotif = isReturn ? creatorForReturn?.phone : pkg.recipientPhone;
   const enRouteMessage = isReturn
@@ -61,6 +79,9 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
   const problemEvent = pkg.status === PackageStatus.Problem 
     ? pkg.history.find(event => event.status === PackageStatus.Problem)
     : null;
+
+  const isMeli = pkg.source === 'MERCADO_LIBRE';
+  const needsFlex = isMeli && pkg.status === PackageStatus.InTransit && !pkg.isFlexed;
 
   return (
     <>
@@ -116,6 +137,17 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
           </header>
 
           <div className="p-4 overflow-y-auto custom-scrollbar space-y-4">
+              {/* Flex Status Alert */}
+              {needsFlex && (
+                  <div className="bg-red-50 border-l-4 border-red-500 p-4 rounded-md flex items-start gap-3 animate-pulse">
+                      <IconAlertTriangle className="w-6 h-6 text-red-600 flex-shrink-0" />
+                      <div>
+                          <p className="text-sm font-bold text-red-800">¡PAQUETE NO FLEXEADO!</p>
+                          <p className="text-xs text-red-700 mt-1">Este paquete está en tránsito pero aún no ha sido marcado como "Flexeado" en el sistema de Mercado Libre.</p>
+                      </div>
+                  </div>
+              )}
+
               {/* Recipient Info Card */}
               <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
                   <div className="flex justify-between items-start mb-3">
@@ -157,12 +189,24 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
               <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
                   <div className="flex justify-between items-center mb-2">
                       <h4 className="text-sm font-semibold text-[var(--text-muted)]">Estado Actual: <span className="text-[var(--brand-primary)] font-bold">{pkg.status.replace('_', ' ')}</span></h4>
-                      {(pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.PickedUp) && (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-green-100 text-green-700 border border-green-200">
-                              <IconCheckCircle className="w-3 h-3 mr-1" />
-                              Escaneado
-                          </span>
-                      )}
+                      <div className="flex items-center gap-2">
+                        {isMeli && (
+                            <button 
+                                onClick={handleToggleFlex}
+                                disabled={isFlexing}
+                                className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide border transition-colors ${pkg.isFlexed ? 'bg-green-100 text-green-700 border-green-200' : 'bg-gray-100 text-gray-600 border-gray-200 hover:bg-gray-200'}`}
+                            >
+                                {isFlexing ? <IconRefresh className="w-3 h-3 mr-1 animate-spin" /> : <IconCheckCircle className="w-3 h-3 mr-1" />}
+                                {pkg.isFlexed ? 'Flexeado' : 'Marcar Flex'}
+                            </button>
+                        )}
+                        {(pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.PickedUp) && (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-blue-100 text-blue-700 border border-blue-200">
+                                <IconCheckCircle className="w-3 h-3 mr-1" />
+                                Escaneado
+                            </span>
+                        )}
+                      </div>
                   </div>
                    {problemEvent && (
                     <div className="my-3 p-3 bg-[var(--error-bg)] border-l-4 border-[var(--error-border)] rounded-r-md flex items-start gap-3">
