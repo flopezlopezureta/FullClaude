@@ -17,8 +17,7 @@ import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
 
-// Fix: declare XLSX as it is loaded via global script tag in index.html
-declare const XLSX: any;
+// Fix: declare Chart.js if needed
 
 const customCheckboxClass = "appearance-none h-4 w-4 border border-[var(--border-secondary)] rounded bg-[var(--background-secondary)] checked:bg-[var(--brand-primary)] checked:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] checked:bg-[url(\"data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e\")]";
 
@@ -337,27 +336,38 @@ const Dashboard: React.FC = () => {
             return `"${str}"`;
         };
 
-        const rows = packagesToExport.map(pkg => {
-            const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
-            const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
-            const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
+        // Chunked processing to avoid freezing the UI
+        const CHUNK_SIZE = 500;
+        let rows: string[] = [];
+        
+        for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
+            const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
+            const chunkRows = chunk.map(pkg => {
+                const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
+                const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
+                const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
+                
+                return [
+                    pkg.id,
+                    new Date(pkg.createdAt).toLocaleString('es-CL'),
+                    deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
+                    pkg.status.replace('_', ' '),
+                    pkg.shippingType,
+                    pkg.recipientName,
+                    pkg.recipientAddress,
+                    pkg.recipientCommune,
+                    pkg.recipientCity,
+                    driver ? driver.name : 'No asignado',
+                    creator ? creator.name : 'Desconocido',
+                    pkg.deliveryReceiverName || '',
+                    pkg.deliveryReceiverId || ''
+                ].map(escapeCSV).join(',');
+            });
+            rows = rows.concat(chunkRows);
             
-            return [
-                pkg.id,
-                new Date(pkg.createdAt).toLocaleString('es-CL'),
-                deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
-                pkg.status.replace('_', ' '),
-                pkg.shippingType,
-                pkg.recipientName,
-                pkg.recipientAddress,
-                pkg.recipientCommune,
-                pkg.recipientCity,
-                driver ? driver.name : 'No asignado',
-                creator ? creator.name : 'Desconocido',
-                pkg.deliveryReceiverName || '',
-                pkg.deliveryReceiverId || ''
-            ].map(escapeCSV).join(',');
-        });
+            // Yield to main thread every chunk
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
 
         const csvContent = [headers.join(','), ...rows].join('\n');
         const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });

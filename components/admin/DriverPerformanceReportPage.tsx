@@ -5,9 +5,8 @@ import { Role, PackageStatus, ShippingType } from '../../constants';
 import type { User, Package, AssignmentEvent, PickupRun } from '../../types';
 import { IconPrinter, IconWhatsapp, IconMail, IconChecklist, IconClock, IconRoute, IconAlertTriangle, IconCalendar, IconFileSpreadsheet, IconRefresh } from '../Icon';
 
-// Declare Chart.js and SheetJS (XLSX) in the global scope to avoid TypeScript errors
+// Declare Chart.js in the global scope to avoid TypeScript errors
 declare const Chart: any;
-declare const XLSX: any;
 
 const getISODate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -383,14 +382,22 @@ export const DriverPerformanceReportPage: React.FC = () => {
 
             csvContent += escapeCSV("Listado de Paquetes Entregados") + '\n';
             csvContent += escapeCSV("ID Paquete") + ',' + escapeCSV("Destinatario") + ',' + escapeCSV("Comuna") + ',' + escapeCSV("Fecha Entrega") + ',' + escapeCSV("Tipo Envío") + ',' + escapeCSV("Pago Conductor") + '\n';
-            deliveredPackages.forEach(pkg => {
-                csvContent += escapeCSV(pkg.id) + ',' + 
-                              escapeCSV(pkg.recipientName) + ',' + 
-                              escapeCSV(pkg.recipientCommune) + ',' + 
-                              escapeCSV(new Date(pkg.history[0].timestamp).toLocaleDateString('es-CL')) + ',' + 
-                              escapeCSV(pkg.shippingType) + ',' + 
-                              escapeCSV(getPayRate(pkg)) + '\n';
-            });
+            
+            // Chunked processing for the package list
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < deliveredPackages.length; i += CHUNK_SIZE) {
+                const chunk = deliveredPackages.slice(i, i + CHUNK_SIZE);
+                chunk.forEach(pkg => {
+                    csvContent += escapeCSV(pkg.id) + ',' + 
+                                  escapeCSV(pkg.recipientName) + ',' + 
+                                  escapeCSV(pkg.recipientCommune) + ',' + 
+                                  escapeCSV(new Date(pkg.history[0].timestamp).toLocaleDateString('es-CL')) + ',' + 
+                                  escapeCSV(pkg.shippingType) + ',' + 
+                                  escapeCSV(getPayRate(pkg)) + '\n';
+                });
+                // Yield to main thread
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
 
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");

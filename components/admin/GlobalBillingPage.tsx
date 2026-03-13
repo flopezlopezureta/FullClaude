@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
 import { Role, PackageStatus, ShippingType } from '../../constants';
 import type { User, Package, DeliveryZone } from '../../types';
-import { IconDollarSign, IconFileInvoice, IconChevronLeft, IconChevronRight, IconPackage, IconCheckCircle, IconRefresh } from '../Icon';
+import { IconFileInvoice, IconChevronLeft, IconChevronRight, IconCheckCircle, IconFileSpreadsheet } from '../Icon';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import ClientInvoiceHistoryModal from '../modals/ClientInvoiceHistoryModal';
 
@@ -33,6 +33,8 @@ const GlobalBillingPage: React.FC = () => {
     const [isConfirming, setIsConfirming] = useState(false);
     const [isBilling, setIsBilling] = useState(false);
     const [viewingInvoicesClient, setViewingInvoicesClient] = useState<User | null>(null);
+
+    const [isExporting, setIsExporting] = useState(false);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -218,6 +220,51 @@ const GlobalBillingPage: React.FC = () => {
     
     const clientsToBillForConfirmation = billingData.filter(d => d.status === 'PENDIENTE' || d.status === 'REFACTURAR');
 
+    const handleExportCSV = async () => {
+        if (isExporting) return;
+        setIsExporting(true);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 100));
+            const escapeCSV = (val: any) => {
+                const str = String(val || '').replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            let csvContent = '\uFEFF'; // BOM for Excel
+            csvContent += escapeCSV("Resumen de Facturación Global") + '\n';
+            csvContent += escapeCSV("Mes:") + ',' + escapeCSV(`${monthNames[currentDate.getMonth()]} ${currentDate.getFullYear()}`) + '\n\n';
+            csvContent += escapeCSV("Cliente") + ',' + escapeCSV("Estado") + ',' + escapeCSV("Envíos") + ',' + escapeCSV("Retiros") + ',' + escapeCSV("Monto Teórico") + '\n';
+
+            const CHUNK_SIZE = 100;
+            for (let i = 0; i < billingData.length; i += CHUNK_SIZE) {
+                const chunk = billingData.slice(i, i + CHUNK_SIZE);
+                chunk.forEach(data => {
+                    csvContent += escapeCSV(data.clientName) + ',' + 
+                                  escapeCSV(data.status) + ',' + 
+                                  escapeCSV(data.deliveredPackagesInPeriod.length) + ',' + 
+                                  escapeCSV(data.pickupCount) + ',' + 
+                                  escapeCSV(`$${data.theoreticalTotalCost.toLocaleString('es-CL')}`) + '\n';
+                });
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Facturacion_Global_${monthNames[currentDate.getMonth()]}_${currentDate.getFullYear()}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Error al exportar.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const formatCurrency = (value: number) => value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
     
     const getStatusComponent = (status: BillingStatus, amount: number) => {
@@ -257,14 +304,24 @@ const GlobalBillingPage: React.FC = () => {
              <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
                 <div className="p-4 flex justify-between items-center border-b border-[var(--border-primary)]">
                     <h3 className="text-lg font-semibold text-[var(--text-primary)]">Resumen por Cliente</h3>
-                     <button 
-                        onClick={handleBatchBillClick}
-                        disabled={clientsToBillForConfirmation.length === 0 || isBilling}
-                        className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none disabled:bg-slate-400"
-                    >
-                        <IconCheckCircle className="w-5 h-5 mr-2 -ml-1"/>
-                        {isBilling ? 'Facturando...' : 'Facturar Pendientes'}
-                    </button>
+                    <div className="flex gap-2">
+                        <button 
+                            onClick={handleExportCSV} 
+                            disabled={isExporting || billingData.length === 0}
+                            className="inline-flex items-center px-4 py-2 border border-[var(--border-secondary)] shadow-sm text-sm font-medium rounded-md text-[var(--text-primary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50"
+                        >
+                            <IconFileSpreadsheet className={`w-4 h-4 mr-2 ${isExporting ? 'animate-spin' : ''}`}/>
+                            {isExporting ? 'Exportando...' : 'Exportar CSV'}
+                        </button>
+                        <button 
+                            onClick={handleBatchBillClick}
+                            disabled={clientsToBillForConfirmation.length === 0 || isBilling}
+                            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 focus:outline-none disabled:bg-slate-400"
+                        >
+                            <IconCheckCircle className="w-5 h-5 mr-2 -ml-1"/>
+                            {isBilling ? 'Facturando...' : 'Facturar Pendientes'}
+                        </button>
+                    </div>
                 </div>
                 
                 {isLoading ? <p className="text-center p-8 text-[var(--text-muted)]">Calculando...</p> : (

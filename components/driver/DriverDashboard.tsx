@@ -13,7 +13,6 @@ import { IconArchive, IconTruck, IconFileExport, IconRoute } from '../Icon';
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
 import RouteOptimizerModal from '../modals/RouteOptimizerModal';
 
-declare const XLSX: any;
 
 const DriverDashboard: React.FC = () => {
   const [myPackages, setMyPackages] = useState<Package[]>([]);
@@ -175,10 +174,22 @@ const DriverDashboard: React.FC = () => {
             return `"${str}"`;
         };
         const circuitHeaders = ['Address', 'Name'];
-        const circuitRows = pendingPackages.map(p => [
-            `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
-            p.recipientName
-        ].map(escapeCsvField).join(','));
+        
+        // Chunked processing to avoid freezing the UI
+        const CHUNK_SIZE = 500;
+        let circuitRows: string[] = [];
+        
+        for (let i = 0; i < pendingPackages.length; i += CHUNK_SIZE) {
+            const chunk = pendingPackages.slice(i, i + CHUNK_SIZE);
+            const chunkRows = chunk.map(p => [
+                `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
+                p.recipientName
+            ].map(escapeCsvField).join(','));
+            circuitRows = circuitRows.concat(chunkRows);
+            
+            // Yield to main thread every chunk
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
 
         const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
         const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel compatibility

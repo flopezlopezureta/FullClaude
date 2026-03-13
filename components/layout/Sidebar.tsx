@@ -231,6 +231,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
                 <IconLogOut className="h-5 w-5" />
             </button>
         </div>
+        <div className="text-center">
+            <p className="text-[10px] text-[var(--text-muted)] font-mono">v2.2.0</p>
+        </div>
       </div>
     </aside>
   );

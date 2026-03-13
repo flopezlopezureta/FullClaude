@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { api } from '../../services/api';
 import { Role, PackageStatus, ShippingType } from '../../constants';
 import type { User, Package, DeliveryZone } from '../../types';
-import { IconPrinter, IconCube, IconCalendar, IconChecklist, IconTrendingUp, IconPackage, IconDollarSign, IconFileInvoice } from '../Icon';
+import { IconPrinter, IconCube, IconCalendar, IconChecklist, IconPackage, IconDollarSign, IconFileSpreadsheet } from '../Icon';
 
 // Declare Chart.js in the global scope to avoid TypeScript errors
 declare const Chart: any;
@@ -29,6 +29,7 @@ const BillingReportPage: React.FC = () => {
     const [users, setUsers] = useState<User[]>([]);
     const [zones, setZones] = useState<DeliveryZone[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
     
@@ -43,7 +44,7 @@ const BillingReportPage: React.FC = () => {
     const chartInstances = useRef<{ status?: any; volume?: any }>({});
 
     const finalizedPackageStatuses: PackageStatus[] = [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned];
-    
+
     const fetchData = async () => {
         setIsLoading(true);
         try {
@@ -261,6 +262,68 @@ const BillingReportPage: React.FC = () => {
     }, [packagesInPeriod, selectedClient]);
 
 
+    const handleExportCSV = async () => {
+        if (!selectedClient || isExporting) return;
+        
+        setIsExporting(true);
+        try {
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const escapeCSV = (val: any) => {
+                const str = String(val || '').replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            let csvContent = '\uFEFF'; // BOM for Excel
+
+            // Section 1: Summary
+            csvContent += escapeCSV("Estado de Cuenta - Informe de Facturación") + '\n';
+            csvContent += escapeCSV("Cliente:") + ',' + escapeCSV(selectedClient.name) + '\n';
+            csvContent += escapeCSV("Período:") + ',' + escapeCSV(`${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`) + '\n\n';
+
+            csvContent += escapeCSV("Resumen General") + '\n';
+            csvContent += escapeCSV("Concepto") + ',' + escapeCSV("Valor") + '\n';
+            csvContent += escapeCSV("Total Envíos Entregados") + ',' + escapeCSV(deliveredInPeriodCount) + '\n';
+            csvContent += escapeCSV("Tasa de Éxito") + ',' + escapeCSV(performanceStats.successRate) + '\n';
+            csvContent += escapeCSV("Total Días con Retiros") + ',' + escapeCSV(pickupActionsCount) + '\n';
+            csvContent += escapeCSV("TOTAL A FACTURAR") + ',' + escapeCSV(grandTotal) + '\n\n';
+
+            // Section 2: Detailed List
+            csvContent += escapeCSV("Detalle de Envíos") + '\n';
+            csvContent += escapeCSV("ID Paquete") + ',' + escapeCSV("Destinatario") + ',' + escapeCSV("Tipo Envío") + ',' + escapeCSV("Fecha Entrega") + ',' + escapeCSV("Costo") + '\n';
+            
+            // Chunked processing for the package list
+            const CHUNK_SIZE = 500;
+            for (let i = 0; i < billablePackages.length; i += CHUNK_SIZE) {
+                const chunk = billablePackages.slice(i, i + CHUNK_SIZE);
+                chunk.forEach(pkg => {
+                    csvContent += escapeCSV(pkg.id) + ',' + 
+                                  escapeCSV(pkg.recipientName) + ',' + 
+                                  escapeCSV(pkg.shippingType) + ',' + 
+                                  escapeCSV(new Date(pkg.history.find(e => e.status === 'ENTREGADO')?.timestamp || pkg.updatedAt).toLocaleDateString('es-CL')) + ',' + 
+                                  escapeCSV(getPackageCost(pkg)) + '\n';
+                });
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Estado_Cuenta_${selectedClient.name.replace(/\s+/g, '_')}_${startDate}_${endDate}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        } catch (error) {
+            console.error("Export failed", error);
+            alert("Error al exportar.");
+        } finally {
+            setIsExporting(false);
+        }
+    };
+
     const handleGenerateAndBill = async () => {
         if (!selectedClient) return;
         const packageIdsToBill = billablePackages.map(p => p.id);
@@ -339,11 +402,23 @@ const BillingReportPage: React.FC = () => {
                     <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
                          <div className="flex justify-between items-center mb-4">
                             <h3 className="text-lg font-semibold text-[var(--text-primary)]">Detalle para Facturación</h3>
-                            {(billablePackages.length > 0 || pickupActionsCount > 0) && (
-                                <button onClick={handleGenerateAndBill} className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-on-brand)] bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">
-                                    <IconPrinter className="w-4 h-4 mr-2"/> Generar y Facturar
-                                </button>
-                            )}
+                            <div className="flex gap-2">
+                                {(billablePackages.length > 0 || pickupActionsCount > 0) && (
+                                    <>
+                                        <button 
+                                            onClick={handleExportCSV} 
+                                            disabled={isExporting}
+                                            className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md shadow-sm hover:bg-[var(--background-hover)] disabled:opacity-50"
+                                        >
+                                            <IconFileSpreadsheet className={`w-4 h-4 mr-2 ${isExporting ? 'animate-spin' : ''}`}/>
+                                            {isExporting ? 'Exportando...' : 'Exportar CSV'}
+                                        </button>
+                                        <button onClick={handleGenerateAndBill} className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-on-brand)] bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">
+                                            <IconPrinter className="w-4 h-4 mr-2"/> Generar y Facturar
+                                        </button>
+                                    </>
+                                )}
+                            </div>
                          </div>
                         <div className="border border-[var(--border-primary)] rounded-lg overflow-hidden">
                             <table className="min-w-full divide-y divide-[var(--border-primary)]">

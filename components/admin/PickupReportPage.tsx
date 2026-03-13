@@ -8,7 +8,6 @@ import { AuthContext } from '../../contexts/AuthContext';
 import PickupReportPDF from './PickupReportPDF';
 
 // Declare external libraries
-declare const XLSX: any;
 
 const KpiCard: React.FC<{ icon: ReactNode, title: string, value: string | number, subtext?: string }> = ({ icon, title, value, subtext }) => (
     <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)] flex items-center print:border-gray-200 print:shadow-none">
@@ -110,15 +109,26 @@ const PickupReportPage: React.FC = () => {
                 return `"${str}"`;
             };
 
-            const rows = filteredAssignments.map(a => [
-                parseDateString(a.date).toLocaleDateString('es-CL'),
-                a.shift,
-                a.driverName,
-                a.clientName,
-                a.status.replace('_', ' '),
-                a.cost,
-                a.packagesPickedUp || 0
-            ].map(escapeCSV).join(','));
+            // Chunked processing to avoid freezing the UI
+            const CHUNK_SIZE = 500;
+            let rows: string[] = [];
+            
+            for (let i = 0; i < filteredAssignments.length; i += CHUNK_SIZE) {
+                const chunk = filteredAssignments.slice(i, i + CHUNK_SIZE);
+                const chunkRows = chunk.map(a => [
+                    parseDateString(a.date).toLocaleDateString('es-CL'),
+                    a.shift,
+                    a.driverName,
+                    a.clientName,
+                    a.status.replace('_', ' '),
+                    a.cost,
+                    a.packagesPickedUp || 0
+                ].map(escapeCSV).join(','));
+                rows = rows.concat(chunkRows);
+                
+                // Yield to main thread every chunk
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
 
             const csvContent = [headers.join(','), ...rows].join('\n');
             const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });

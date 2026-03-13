@@ -10,7 +10,7 @@ import CreatePackageModal from '../modals/CreatePackageModal';
 import ClientPackageFilters from './ClientPackageFilters';
 import ShippingLabelModal from './ShippingLabelModal';
 import BatchShippingLabelModal from './BatchShippingLabelModal';
-import { IconPlus, IconRefresh, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconTrash, IconMercadoLibre, IconCheckCircle, IconDownload, IconWoocommerce, IconFalabella, IconFileText, IconShopify } from '../Icon';
+import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconMercadoLibre, IconDownload, IconWoocommerce, IconFalabella, IconFileText, IconShopify } from '../Icon';
 import ImportPackagesModal from './ImportPackagesModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
@@ -46,6 +46,7 @@ const ClientDashboard: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const auth = useContext(AuthContext);
+  const [isExporting, setIsExporting] = useState(false);
 
   const fetchData = async () => {
     if (!auth?.user) return;
@@ -132,6 +133,81 @@ const ClientDashboard: React.FC = () => {
       }
   };
 
+  const handleExportCSV = async () => {
+    if (!auth?.user || totalPackages === 0 || isExporting) return;
+    
+    setIsExporting(true);
+    try {
+        let packagesToExport: Package[] = [];
+
+        if (selectedPackages.size > 0) {
+            const { packages: allFiltered } = await api.getPackages({
+                limit: 0,
+                searchQuery, statusFilter, communeFilter, startDate, endDate,
+                clientFilter: auth.user.id
+            });
+            packagesToExport = allFiltered.filter(p => selectedPackages.has(p.id));
+        } else {
+            const { packages: allFiltered } = await api.getPackages({
+                limit: 0,
+                searchQuery, statusFilter, communeFilter, startDate, endDate,
+                clientFilter: auth.user.id
+            });
+            packagesToExport = allFiltered;
+        }
+
+        if (packagesToExport.length === 0) {
+            alert("No hay datos para exportar.");
+            setIsExporting(false);
+            return;
+        }
+
+        const headers = ['ID Paquete', 'Fecha Creación', 'Estado', 'Destinatario', 'Dirección', 'Comuna', 'Ciudad', 'Tipo Envío'];
+        
+        const escapeCSV = (val: any) => {
+            const str = String(val || '').replace(/"/g, '""');
+            return `"${str}"`;
+        };
+
+        // Chunked processing
+        const CHUNK_SIZE = 500;
+        let rows: string[] = [];
+        
+        for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
+            const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
+            const chunkRows = chunk.map(pkg => [
+                pkg.id,
+                new Date(pkg.createdAt).toLocaleString('es-CL'),
+                pkg.status.replace('_', ' '),
+                pkg.recipientName,
+                pkg.recipientAddress,
+                pkg.recipientCommune,
+                pkg.recipientCity,
+                pkg.shippingType
+            ].map(escapeCSV).join(','));
+            rows = rows.concat(chunkRows);
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Mis_Paquetes_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    } catch (error) {
+        console.error("Export failed", error);
+        alert("Error al exportar.");
+    } finally {
+        setIsExporting(false);
+    }
+  };
+
   const uniqueCommunes = useMemo(() => {
       // In a real app with pagination, we might want to fetch all communes from the API
       // For now, we collect from current page + maybe a separate API endpoint for filter options
@@ -160,6 +236,14 @@ const ClientDashboard: React.FC = () => {
                 <p className="text-sm text-[var(--text-muted)]">Gestiona tus envíos y seguimiento.</p>
             </div>
             <div className="flex gap-2">
+                <button 
+                    onClick={handleExportCSV} 
+                    disabled={totalPackages === 0 || isExporting}
+                    className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
+                >
+                    <IconFileSpreadsheet className={`w-5 h-5 ${isExporting ? 'animate-spin' : ''}`}/>
+                    {isExporting ? 'Exportando...' : 'Exportar CSV'}
+                </button>
                 <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-primary)] text-white rounded-md shadow hover:bg-[var(--brand-secondary)] transition-colors">
                     <IconPlus className="w-5 h-5"/> Crear Paquete
                 </button>
