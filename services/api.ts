@@ -227,7 +227,12 @@ export const api = {
       return get<{ packages: Package[], total: number }>(`/packages?${searchParams.toString()}`);
   },
   createPackage: (data: PackageCreationData) => post<Package>('/packages', data),
-  createMultiplePackages: (packages: PackageCreationData[]) => post<Package[]>('/packages/batch', { packages }),
+  createMultiplePackages: (packages: PackageCreationData[]) => post<{ 
+      success: boolean, 
+      importedCount: number, 
+      errorCount: number, 
+      errors: any[] 
+  }>('/packages/batch', { packages }),
   updatePackage: (pkgId: string, data: PackageUpdateData) => put<Package>(`/packages/${pkgId}`, data),
   deletePackage: (pkgId: string) => del<void>(`/packages/${pkgId}`),
   assignDriverToPackage: (pkgId: string, driverId: string | null, newDeliveryDate: Date) => post<Package>(`/packages/${pkgId}/assign-driver`, { driverId, newDeliveryDate }),

@@ -45,7 +45,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
     const [file, setFile] = useState<File | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
-    const [importResult, setImportResult] = useState<{ importedCount: number, errorCount: number, errors: any[] } | null>(null);
+    const [importResult, setImportResult] = useState<{ importedCount: number, errorCount: number, errors: any[], clientErrors: ParsedRow[] } | null>(null);
     const [parsedRows, setParsedRows] = useState<ParsedRow[]>([]);
     const [dragActive, setDragActive] = useState(false);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
@@ -84,6 +84,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
         setFile(null);
         setIsParsing(false);
         setParsedRows([]);
+        setImportResult(null);
     };
 
     const validateAndParseRow = (row: (string|number)[], rowIndex: number, headers: string[]): ParsedRow => {
@@ -196,12 +197,20 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             return;
         }
         const validPackages = parsedRows.filter(r => r.isValid && r.packageData).map(r => r.packageData!);
-        if (validPackages.length === 0) return;
+        const clientErrors = parsedRows.filter(r => !r.isValid);
+        
+        if (validPackages.length === 0) {
+            alert('No hay paquetes válidos para importar. Revisa los errores en la tabla.');
+            return;
+        }
         
         setIsImporting(true);
         try {
             const result = await onImport(validPackages, selectedClientId);
-            setImportResult(result);
+            setImportResult({
+                ...result,
+                clientErrors
+            });
         } catch (error: any) {
             console.error("Import failed", error);
             alert("Error al importar: " + (error.message || "Error desconocido"));
@@ -228,7 +237,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
                 {importResult ? (
                     <div className="text-center py-4">
                         <div className="mb-6">
-                            {importResult.errorCount === 0 ? (
+                            {importResult.errorCount === 0 && importResult.clientErrors.length === 0 ? (
                                 <div className="flex flex-col items-center">
                                     <IconCheckCircle className="w-16 h-16 text-green-500 mb-4" />
                                     <h4 className="text-2xl font-bold text-slate-800">¡Importación Exitosa!</h4>
@@ -238,22 +247,54 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
                             ) : (
                                 <div className="flex flex-col items-center">
                                     <IconAlertTriangle className="w-16 h-16 text-amber-500 mb-4" />
-                                    <h4 className="text-2xl font-bold text-slate-800">Importación Finalizada con Observaciones</h4>
+                                    <h4 className="text-2xl font-bold text-slate-800">Importación Finalizada</h4>
                                     <p className="text-slate-600 mt-2">
                                         Se importaron <span className="font-bold text-green-600">{importResult.importedCount}</span> paquetes.
-                                        Hubo <span className="font-bold text-red-600">{importResult.errorCount}</span> errores en el servidor.
                                     </p>
+                                    {(importResult.errorCount > 0 || importResult.clientErrors.length > 0) && (
+                                        <p className="text-red-600 font-medium mt-1">
+                                            Se omitieron {importResult.errorCount + importResult.clientErrors.length} filas debido a errores.
+                                        </p>
+                                    )}
+                                    <p className="text-sm text-slate-500 mt-4 italic">La geolocalización de los paquetes válidos se procesa en segundo plano.</p>
                                 </div>
                             )}
                         </div>
 
-                        {importResult.errors.length > 0 && (
+                        {importResult.clientErrors.length > 0 && (
                             <div className="text-left mt-8">
                                 <h5 className="font-bold text-slate-700 mb-3 flex items-center">
-                                    <IconAlertTriangle className="w-5 h-5 mr-2 text-red-500" />
-                                    Detalle de Errores del Servidor:
+                                    <IconAlertTriangle className="w-5 h-5 mr-2 text-amber-500" />
+                                    Errores de Formato en Excel (No enviados):
                                 </h5>
-                                <div className="border rounded-lg overflow-hidden max-h-60 overflow-y-auto bg-red-50">
+                                <div className="border rounded-lg overflow-hidden max-h-40 overflow-y-auto bg-amber-50">
+                                    <table className="min-w-full text-sm">
+                                        <thead className="bg-amber-100 sticky top-0">
+                                            <tr>
+                                                <th className="p-2 text-left font-medium text-amber-800">Fila Excel</th>
+                                                <th className="p-2 text-left font-medium text-amber-800">Error</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody className="divide-y divide-amber-200">
+                                            {importResult.clientErrors.map((err, idx) => (
+                                                <tr key={idx}>
+                                                    <td className="p-2 font-mono text-amber-700">{err.rowNumber}</td>
+                                                    <td className="p-2 text-amber-700">{err.error}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        )}
+
+                        {importResult.errors.length > 0 && (
+                            <div className="text-left mt-6">
+                                <h5 className="font-bold text-slate-700 mb-3 flex items-center">
+                                    <IconAlertTriangle className="w-5 h-5 mr-2 text-red-500" />
+                                    Errores del Servidor (Rechazados):
+                                </h5>
+                                <div className="border rounded-lg overflow-hidden max-h-40 overflow-y-auto bg-red-50">
                                     <table className="min-w-full text-sm">
                                         <thead className="bg-red-100 sticky top-0">
                                             <tr>

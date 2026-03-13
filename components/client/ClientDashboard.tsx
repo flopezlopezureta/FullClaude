@@ -105,14 +105,13 @@ const ClientDashboard: React.FC = () => {
       }));
 
       try {
-          const createdPackages = await api.createMultiplePackages(fullPackagesData);
+          const result = await api.createMultiplePackages(fullPackagesData);
           fetchData();
-          setIsImportModalOpen(false);
-          setImportSource(null);
-          alert(`${createdPackages.length} paquetes importados correctamente.`);
+          // We don't close the modal here anymore, we let the modal handle the result
+          return result;
       } catch (error: any) {
           console.error("Failed to import packages", error);
-          alert(error.message || "Error al importar paquetes");
+          throw error;
       }
   };
 
