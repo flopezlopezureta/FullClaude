@@ -1,5 +1,5 @@
 {
-  "name": "FULL ENVIOS v2.1.5",
+  "name": "FULL ENVIOS v2.2.1",
   "description": "Sistema con escaneo QR FLEX, botón de refrescar y mejoras en la trazabilidad.",
   "requestFramePermissions": [
     "camera",
