@@ -14,6 +14,8 @@ import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileS
 import ImportPackagesModal from './ImportPackagesModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
+import ExportFormatModal from '../modals/ExportFormatModal';
+import * as XLSX from 'xlsx';
 
 const getISODate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -25,6 +27,7 @@ const ClientDashboard: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [importSource, setImportSource] = useState<PackageSource | null>(null);
   const [deletingPackage, setDeletingPackage] = useState<Package | null>(null);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
@@ -132,7 +135,7 @@ const ClientDashboard: React.FC = () => {
       }
   };
 
-  const handleExportCSV = async () => {
+  const handleExportData = async (format: 'excel' | 'csv' = 'csv') => {
     if (!auth?.user || totalPackages === 0 || isExporting) return;
     
     setIsExporting(true);
@@ -161,44 +164,65 @@ const ClientDashboard: React.FC = () => {
             return;
         }
 
-        const headers = ['ID Paquete', 'Fecha Creación', 'Estado', 'Destinatario', 'Dirección', 'Comuna', 'Ciudad', 'Tipo Envío'];
-        
-        const escapeCSV = (val: any) => {
-            const str = String(val || '').replace(/"/g, '""');
-            return `"${str}"`;
-        };
+        const dateStr = new Date().toISOString().split('T')[0];
 
-        // Chunked processing
-        const CHUNK_SIZE = 500;
-        let rows: string[] = [];
-        
-        for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
-            const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
-            const chunkRows = chunk.map(pkg => [
-                pkg.id,
-                new Date(pkg.createdAt).toLocaleString('es-CL'),
-                pkg.status.replace('_', ' '),
-                pkg.recipientName,
-                pkg.recipientAddress,
-                pkg.recipientCommune,
-                pkg.recipientCity,
-                pkg.shippingType
-            ].map(escapeCSV).join(','));
-            rows = rows.concat(chunkRows);
-            await new Promise(resolve => setTimeout(resolve, 0));
+        if (format === 'excel') {
+            const data = packagesToExport.map(pkg => ({
+                'ID Paquete': pkg.id,
+                'Fecha Creación': new Date(pkg.createdAt).toLocaleString('es-CL'),
+                'Estado': pkg.status.replace('_', ' '),
+                'Destinatario': pkg.recipientName,
+                'Dirección': pkg.recipientAddress,
+                'Comuna': pkg.recipientCommune,
+                'Ciudad': pkg.recipientCity,
+                'Tipo Envío': pkg.shippingType
+            }));
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Mis Paquetes");
+            XLSX.writeFile(workbook, `Mis_Paquetes_${dateStr}.xlsx`);
+        } else {
+            const headers = ['ID Paquete', 'Fecha Creación', 'Estado', 'Destinatario', 'Dirección', 'Comuna', 'Ciudad', 'Tipo Envío'];
+            
+            const escapeCSV = (val: any) => {
+                const str = String(val || '').replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            const CHUNK_SIZE = 500;
+            let rows: string[] = [];
+            
+            for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
+                const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
+                const chunkRows = chunk.map(pkg => [
+                    pkg.id,
+                    new Date(pkg.createdAt).toLocaleString('es-CL'),
+                    pkg.status.replace('_', ' '),
+                    pkg.recipientName,
+                    pkg.recipientAddress,
+                    pkg.recipientCommune,
+                    pkg.recipientCity,
+                    pkg.shippingType
+                ].map(escapeCSV).join(','));
+                rows = rows.concat(chunkRows);
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            const csvContent = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Mis_Paquetes_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
-
-        const csvContent = [headers.join(','), ...rows].join('\n');
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Mis_Paquetes_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        setIsExportModalOpen(false);
     } catch (error) {
         console.error("Export failed", error);
         alert("Error al exportar.");
@@ -236,12 +260,12 @@ const ClientDashboard: React.FC = () => {
             </div>
             <div className="flex gap-2">
                 <button 
-                    onClick={handleExportCSV} 
+                    onClick={() => setIsExportModalOpen(true)} 
                     disabled={totalPackages === 0 || isExporting}
                     className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
                 >
                     <IconFileSpreadsheet className={`w-5 h-5 ${isExporting ? 'animate-spin' : ''}`}/>
-                    {isExporting ? 'Exportando...' : 'Exportar CSV'}
+                    {isExporting ? 'Exportando...' : 'Exportar'}
                 </button>
                 <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-primary)] text-white rounded-md shadow hover:bg-[var(--brand-secondary)] transition-colors">
                     <IconPlus className="w-5 h-5"/> Crear Paquete
@@ -376,6 +400,13 @@ const ClientDashboard: React.FC = () => {
                 confirmText="Sí, eliminar"
                 onClose={() => setDeletingPackage(null)}
                 onConfirm={handleDeletePackage}
+            />
+        )}
+        {isExportModalOpen && (
+            <ExportFormatModal
+                onClose={() => setIsExportModalOpen(false)}
+                onSelect={handleExportData}
+                isExporting={isExporting}
             />
         )}
         {printingPackages.length > 0 && auth?.user && (

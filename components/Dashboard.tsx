@@ -16,6 +16,8 @@ import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronD
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
+import ExportFormatModal from './modals/ExportFormatModal';
+import * as XLSX from 'xlsx';
 
 // Fix: declare Chart.js if needed
 
@@ -61,6 +63,7 @@ const Dashboard: React.FC = () => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
+  const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
 
@@ -289,7 +292,7 @@ const Dashboard: React.FC = () => {
     }
   };
     
-  const handleExportData = async () => {
+  const handleExportData = async (format: 'excel' | 'csv' = 'csv') => {
     if (totalPackages === 0 || isExporting) return;
     
     setIsExporting(true);
@@ -297,15 +300,12 @@ const Dashboard: React.FC = () => {
         let packagesToExport: Package[] = [];
 
         if (selectedPackages.size > 0) {
-            // If we have selected packages, we fetch all filtered and then filter by selection
-            // to ensure we have all selected packages even if they are on different pages.
             const { packages: allFiltered } = await api.getPackages({
                 limit: 0,
                 searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
             });
             packagesToExport = allFiltered.filter(p => selectedPackages.has(p.id));
         } else {
-            // Export all filtered
             const { packages: allFiltered } = await api.getPackages({
                 limit: 0,
                 searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
@@ -319,78 +319,104 @@ const Dashboard: React.FC = () => {
             return;
         }
 
-        // Optimization: Create a map for users
         const userMap = new Map(users.map(u => [u.id, u]));
+        const dateStr = new Date().toISOString().split('T')[0];
 
-        // CSV Generation is much faster and doesn't block the UI as much as XLSX
-        const headers = [
-            'ID Paquete',
-            'Fecha Creación',
-            'Fecha Entrega',
-            'Estado',
-            'Tipo Envío',
-            'Destinatario',
-            'Dirección',
-            'Comuna',
-            'Ciudad',
-            'Conductor',
-            'Cliente',
-            'Recibido por',
-            'RUT Recibe'
-        ];
-
-        const escapeCSV = (val: any) => {
-            const str = String(val || '').replace(/"/g, '""');
-            return `"${str}"`;
-        };
-
-        // Chunked processing to avoid freezing the UI
-        const CHUNK_SIZE = 500;
-        let rows: string[] = [];
-        
-        for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
-            const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
-            const chunkRows = chunk.map(pkg => {
+        if (format === 'excel') {
+            const data = packagesToExport.map(pkg => {
                 const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
                 const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
                 const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
-                
-                return [
-                    pkg.id,
-                    new Date(pkg.createdAt).toLocaleString('es-CL'),
-                    deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
-                    pkg.status.replace('_', ' '),
-                    pkg.shippingType,
-                    pkg.recipientName,
-                    pkg.recipientAddress,
-                    pkg.recipientCommune,
-                    pkg.recipientCity,
-                    driver ? driver.name : 'No asignado',
-                    creator ? creator.name : 'Desconocido',
-                    pkg.deliveryReceiverName || '',
-                    pkg.deliveryReceiverId || ''
-                ].map(escapeCSV).join(',');
+
+                return {
+                    'ID Paquete': pkg.id,
+                    'Fecha Creación': new Date(pkg.createdAt).toLocaleString('es-CL'),
+                    'Fecha Entrega': deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
+                    'Estado': pkg.status.replace('_', ' '),
+                    'Tipo Envío': pkg.shippingType,
+                    'Destinatario': pkg.recipientName,
+                    'Dirección': pkg.recipientAddress,
+                    'Comuna': pkg.recipientCommune,
+                    'Ciudad': pkg.recipientCity,
+                    'Conductor': driver ? driver.name : 'No asignado',
+                    'Cliente': creator ? creator.name : 'Desconocido',
+                    'Recibido por': pkg.deliveryReceiverName || '',
+                    'RUT Recibe': pkg.deliveryReceiverId || ''
+                };
             });
-            rows = rows.concat(chunkRows);
+
+            const worksheet = XLSX.utils.json_to_sheet(data);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Paquetes");
+            XLSX.writeFile(workbook, `Reporte_Paquetes_${dateStr}.xlsx`);
+        } else {
+            // CSV Generation
+            const headers = [
+                'ID Paquete',
+                'Fecha Creación',
+                'Fecha Entrega',
+                'Estado',
+                'Tipo Envío',
+                'Destinatario',
+                'Dirección',
+                'Comuna',
+                'Ciudad',
+                'Conductor',
+                'Cliente',
+                'Recibido por',
+                'RUT Recibe'
+            ];
+
+            const escapeCSV = (val: any) => {
+                const str = String(val || '').replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            const CHUNK_SIZE = 500;
+            let rows: string[] = [];
             
-            // Yield to main thread every chunk
-            await new Promise(resolve => setTimeout(resolve, 0));
+            for (let i = 0; i < packagesToExport.length; i += CHUNK_SIZE) {
+                const chunk = packagesToExport.slice(i, i + CHUNK_SIZE);
+                const chunkRows = chunk.map(pkg => {
+                    const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
+                    const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
+                    const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
+                    
+                    return [
+                        pkg.id,
+                        new Date(pkg.createdAt).toLocaleString('es-CL'),
+                        deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
+                        pkg.status.replace('_', ' '),
+                        pkg.shippingType,
+                        pkg.recipientName,
+                        pkg.recipientAddress,
+                        pkg.recipientCommune,
+                        pkg.recipientCity,
+                        driver ? driver.name : 'No asignado',
+                        creator ? creator.name : 'Desconocido',
+                        pkg.deliveryReceiverName || '',
+                        pkg.deliveryReceiverId || ''
+                    ].map(escapeCSV).join(',');
+                });
+                rows = rows.concat(chunkRows);
+                await new Promise(resolve => setTimeout(resolve, 0));
+            }
+
+            const csvContent = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Reporte_Paquetes_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         }
 
-        const csvContent = [headers.join(','), ...rows].join('\n');
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        const dateStr = new Date().toISOString().split('T')[0];
-        
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Reporte_Paquetes_${dateStr}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-
+        setIsExportModalOpen(false);
     } catch(error) {
         console.error("Failed to export data", error);
         alert("Error al exportar los datos.");
@@ -533,8 +559,8 @@ const Dashboard: React.FC = () => {
                         <IconTrash className="w-5 h-5 text-[var(--text-secondary)]" />
                     </button>
                     <button 
-                        onClick={handleExportData} 
-                        title={selectedPackages.size > 0 ? "Exportar Seleccionados a CSV" : "Exportar Vista a CSV"} 
+                        onClick={() => setIsExportModalOpen(true)} 
+                        title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
                         className={`p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
                         disabled={totalPackages === 0 || isExporting}>
                         {isExporting ? (
@@ -707,6 +733,13 @@ const Dashboard: React.FC = () => {
         <DeletePasswordModal
             onClose={() => setIsDeletePasswordModalOpen(false)}
             onConfirm={handleDeleteSelected}
+        />
+      )}
+      {isExportModalOpen && (
+        <ExportFormatModal
+            onClose={() => setIsExportModalOpen(false)}
+            onSelect={handleExportData}
+            isExporting={isExporting}
         />
       )}
       {printingPackages.length > 0 && auth?.user && (
