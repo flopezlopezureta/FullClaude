@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect, useMemo, useRef, ReactNode, useContext } from 'react';
+import React, { useState, useEffect, useMemo, useContext, ReactNode } from 'react';
 import { api, parseDateString, getISODate } from '../../services/api';
 import { Role, PickupStatus } from '../../constants';
 import type { User, PickupRun, PickupAssignment, PickupShift } from '../../types';
-import { IconCalendar, IconPrinter, IconFileSpreadsheet, IconWhatsapp, IconPackage, IconTruck, IconUsers, IconDollarSign, IconCube } from '../Icon';
+import { IconPrinter, IconFileSpreadsheet, IconWhatsapp, IconPackage, IconTruck, IconUsers, IconDollarSign } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 import PickupReportPDF from './PickupReportPDF';
 
@@ -25,6 +25,7 @@ const PickupReportPage: React.FC = () => {
     const [runs, setRuns] = useState<PickupRun[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const auth = useContext(AuthContext);
     const [copySuccess, setCopySuccess] = useState(false);
     
@@ -94,20 +95,33 @@ const PickupReportPage: React.FC = () => {
     const formatCurrency = (value: number) => value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
     const handleExportPdf = () => window.print();
 
-    const handleExportExcel = () => {
-        const dataToExport = filteredAssignments.map(a => ({
-            'Fecha': parseDateString(a.date).toLocaleDateString('es-CL'),
-            'Turno': a.shift,
-            'Conductor': a.driverName,
-            'Cliente': a.clientName,
-            'Estado': a.status.replace('_', ' '),
-            'Costo': a.cost,
-            'Paquetes Retirados': a.packagesPickedUp || 0,
-        }));
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Retiros");
-        XLSX.writeFile(workbook, `Reporte_Retiros_${startDate}_${endDate}.xlsx`);
+    const handleExportExcel = async () => {
+        if (isExporting) return;
+        
+        setIsExporting(true);
+        try {
+            // Small delay to allow UI to show loading state
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const dataToExport = filteredAssignments.map(a => ({
+                'Fecha': parseDateString(a.date).toLocaleDateString('es-CL'),
+                'Turno': a.shift,
+                'Conductor': a.driverName,
+                'Cliente': a.clientName,
+                'Estado': a.status.replace('_', ' '),
+                'Costo': a.cost,
+                'Paquetes Retirados': a.packagesPickedUp || 0,
+            }));
+            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+            const workbook = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Retiros");
+            XLSX.writeFile(workbook, `Reporte_Retiros_${startDate}_${endDate}.xlsx`);
+        } catch (error) {
+            console.error("Excel export failed", error);
+            alert("Error al exportar a Excel.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     const handleShareWhatsApp = () => {
@@ -166,7 +180,14 @@ const PickupReportPage: React.FC = () => {
                 </div>
                 <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-primary)] pt-4">
                     <button onClick={handleExportPdf} className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-100 rounded-md hover:bg-red-200"><IconPrinter className="w-4 h-4"/> PDF</button>
-                    <button onClick={handleExportExcel} className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-100 rounded-md hover:bg-green-200"><IconFileSpreadsheet className="w-4 h-4"/> Excel</button>
+                    <button 
+                        onClick={handleExportExcel} 
+                        disabled={isExporting}
+                        className={`flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
+                    >
+                        <IconFileSpreadsheet className={`w-4 h-4 ${isExporting ? 'animate-spin' : ''}`}/> 
+                        {isExporting ? 'Exportando...' : 'Excel'}
+                    </button>
                     <button onClick={handleShareWhatsApp} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${copySuccess ? 'bg-green-600 text-white' : 'bg-teal-100 text-teal-700 hover:bg-teal-200'}`}>
                         <IconWhatsapp className="w-4 h-4"/> {copySuccess ? '¡Copiado!' : 'Copiar para WA'}
                     </button>

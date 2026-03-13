@@ -22,6 +22,7 @@ const DriverDashboard: React.FC = () => {
   const [deliveringPackage, setDeliveringPackage] = useState<Package | null>(null);
   const [reportingProblemPackage, setReportingProblemPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
   const [isOptimizerOpen, setIsOptimizerOpen] = useState(false);
@@ -157,34 +158,45 @@ const DriverDashboard: React.FC = () => {
     }
   };
   
-  const handleExportRoute = () => {
-    if (!auth?.user || pendingPackages.length === 0) return;
+  const handleExportRoute = async () => {
+    if (!auth?.user || pendingPackages.length === 0 || isExporting) return;
 
-    const dateStr = new Date().toISOString().split('T')[0];
-    const driverName = auth.user.name.replace(/\s+/g, '_');
+    setIsExporting(true);
+    try {
+        // Small delay to allow UI to show loading state
+        await new Promise(resolve => setTimeout(resolve, 100));
 
-    // Export simplified CSV for Circuit with only Address and Name
-    const escapeCsvField = (field: any) => {
-        const str = String(field || '').replace(/"/g, '""');
-        return `"${str}"`;
-    };
-    const circuitHeaders = ['Address', 'Name'];
-    const circuitRows = pendingPackages.map(p => [
-        `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
-        p.recipientName
-    ].map(escapeCsvField).join(','));
+        const dateStr = new Date().toISOString().split('T')[0];
+        const driverName = auth.user.name.replace(/\s+/g, '_');
 
-    const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
-    const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel compatibility
-    const link = document.createElement("a");
-    if (link.download !== undefined) {
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Circuit_${driverName}_${dateStr}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        // Export simplified CSV for Circuit with only Address and Name
+        const escapeCsvField = (field: any) => {
+            const str = String(field || '').replace(/"/g, '""');
+            return `"${str}"`;
+        };
+        const circuitHeaders = ['Address', 'Name'];
+        const circuitRows = pendingPackages.map(p => [
+            `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
+            p.recipientName
+        ].map(escapeCsvField).join(','));
+
+        const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel compatibility
+        const link = document.createElement("a");
+        if (link.download !== undefined) {
+            const url = URL.createObjectURL(blob);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Circuit_${driverName}_${dateStr}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+    } catch (error) {
+        console.error("Export failed", error);
+        alert("Error al exportar.");
+    } finally {
+        setIsExporting(false);
     }
   };
 
@@ -223,11 +235,11 @@ const DriverDashboard: React.FC = () => {
             )}
             <button
                 onClick={handleExportRoute}
-                disabled={pendingPackages.length === 0}
-                className="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[var(--text-on-brand)] bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] disabled:bg-slate-400 disabled:cursor-not-allowed"
+                disabled={pendingPackages.length === 0 || isExporting}
+                className={`flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[var(--text-on-brand)] bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] disabled:bg-slate-400 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse' : ''}`}
             >
-                <IconFileExport className="w-5 h-5 mr-2 -ml-1"/>
-                Exportar
+                <IconFileExport className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
+                {isExporting ? 'Exportando...' : 'Exportar'}
             </button>
         </div>
         <span className="ml-auto bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">

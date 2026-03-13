@@ -12,7 +12,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import PackageFilters from './admin/PackageFilters';
 import ShippingLabelModal from './client/ShippingLabelModal';
 import BatchShippingLabelModal from './client/BatchShippingLabelModal';
-import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus } from './Icon';
+import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader } from './Icon';
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
@@ -61,6 +61,7 @@ const Dashboard: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Selection and Pagination states
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
@@ -242,10 +243,11 @@ const Dashboard: React.FC = () => {
   }, [packages]);
 
   const handleExportRoute = async () => {
-    if (!driverFilter || totalPackages === 0) return;
+    if (!driverFilter || totalPackages === 0 || isExporting) return;
     const driver = drivers.find(d => d.id === driverFilter);
     if (!driver) return;
 
+    setIsExporting(true);
     try {
         const { packages: allFilteredPackages } = await api.getPackages({ 
             limit: 0, 
@@ -275,19 +277,41 @@ const Dashboard: React.FC = () => {
     } catch (error) {
         console.error("Failed to export route data", error);
         alert("Error al exportar la ruta.");
+    } finally {
+        setIsExporting(false);
     }
   };
     
   const handleExportExcel = async () => {
-    if (totalPackages === 0) return;
+    if (totalPackages === 0 || isExporting) return;
+    
+    setIsExporting(true);
     try {
+        // Fetch all filtered packages (limit: 0 means no limit in our API)
         const { packages: allFilteredPackages } = await api.getPackages({
              limit: 0,
-             searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
+             searchQuery, 
+             statusFilter, 
+             driverFilter, 
+             clientFilter, 
+             communeFilter, 
+             cityFilter, 
+             startDate, 
+             endDate
         });
+
+        if (!allFilteredPackages || allFilteredPackages.length === 0) {
+            alert("No hay datos para exportar con los filtros actuales.");
+            setIsExporting(false);
+            return;
+        }
+
+        // Optimization: Create a map for users to avoid O(N*M) lookup
+        const userMap = new Map(users.map(u => [u.id, u]));
+
         const dataToExport = allFilteredPackages.map(pkg => {
-            const creator = users.find(u => u.id === pkg.creatorId);
-            const driver = users.find(u => u.id === pkg.driverId);
+            const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
+            const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
             const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
 
             return {
@@ -305,6 +329,9 @@ const Dashboard: React.FC = () => {
             };
         });
 
+        // Use a small timeout to allow UI to update before heavy processing
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         const worksheet = XLSX.utils.json_to_sheet(dataToExport);
         const workbook = XLSX.utils.book_new();
         XLSX.utils.book_append_sheet(workbook, worksheet, "Paquetes");
@@ -313,7 +340,9 @@ const Dashboard: React.FC = () => {
         XLSX.writeFile(workbook, `Reporte_Paquetes_${dateStr}.xlsx`);
     } catch(error) {
         console.error("Failed to export Excel data", error);
-        alert("Error al exportar a Excel.");
+        alert("Error al exportar a Excel. Es posible que el volumen de datos sea demasiado grande o haya un problema de conexión.");
+    } finally {
+        setIsExporting(false);
     }
   };
 
@@ -408,6 +437,7 @@ const Dashboard: React.FC = () => {
             endDate={endDate}
             onEndDateChange={setEndDate}
             onExportRoute={handleExportRoute}
+            isExporting={isExporting}
             scannedFilter={scannedFilter}
             onScannedFilterChange={setScannedFilter}
         />
@@ -452,9 +482,13 @@ const Dashboard: React.FC = () => {
                     <button 
                         onClick={handleExportExcel} 
                         title="Exportar Vista a Excel" 
-                        className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={totalPackages === 0}>
-                        <IconFileSpreadsheet className="w-5 h-5 text-[var(--text-secondary)]" />
+                        className={`p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
+                        disabled={totalPackages === 0 || isExporting}>
+                        {isExporting ? (
+                            <IconLoader className="w-5 h-5 text-blue-600 animate-spin" />
+                        ) : (
+                            <IconFileSpreadsheet className="w-5 h-5 text-[var(--text-secondary)]" />
+                        )}
                     </button>
                 </div>
             </div>

@@ -30,6 +30,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const [assignmentEvents, setAssignmentEvents] = useState<AssignmentEvent[]>([]);
     const [pickupRuns, setPickupRuns] = useState<PickupRun[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [isExporting, setIsExporting] = useState(false);
     const [selectedDriverId, setSelectedDriverId] = useState<string>('');
     const [driverSearchQuery, setDriverSearchQuery] = useState<string>('');
     
@@ -318,68 +319,80 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const emailSubject = `Resumen de Pago - ${selectedDriver?.name} - ${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`;
     const emailBody = `Hola ${selectedDriver?.name},\n\nAdjunto encontrarás el resumen de tu pago para el período del ${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} al ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}.\n\n*Resumen General:*\n*Total a Pagar:* ${formatForCurrency(paymentStats.grandTotal)}\n\n*Desglose:*\n- Total por Entregas: ${formatForCurrency(paymentStats.totalDeliveryCost)}\n- Total por Retiros: ${formatForCurrency(paymentStats.totalPickupCost)}\n\nSi tienes alguna pregunta, no dudes en contactarnos.\n\nSaludos cordiales,\nEl equipo de administración.`;
     
-    const handleExcelExport = () => {
-        if (!selectedDriver) return;
-        const rates = selectedDriver.pricing || { sameDay: 0, express: 0, nextDay: 0 };
-    
-        const summaryData = [
-            ["Informe de Rendimiento y Pago"],
-            ["Conductor:", selectedDriver.name],
-            ["Período:", `${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`],
-            [],
-            ["Métricas de Rendimiento (KPIs)"],
-            ["Métrica", "Valor"],
-            ["Total Entregados", reportStats.totalDelivered],
-            ["Tasa de Entregas a Tiempo", reportStats.onTimeRate],
-            ["Tiempo Promedio de Entrega", reportStats.avgDeliveryHours],
-            ["Total Paquetes con Problema", reportStats.totalProblems],
-            [],
-            ["Liquidación de Pagos"],
-            ["Concepto", "Cantidad", "Tarifa", "Subtotal"],
-            ...paymentStats.deliveryBreakdown.map(item => [`Entregas ${item.label}`, item.count, item.rate, item.total]),
-            ["Retiros Realizados", paymentStats.pickupCount, paymentStats.pickupRate, paymentStats.totalPickupCost],
-            [],
-            ["TOTAL A PAGAR", "", "", paymentStats.grandTotal]
-        ];
-        const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
-    
-        const dailyDataForExport = [
-            ["Detalle Diario"],
-            ["Fecha", "N° Entregas", "Pago Entregas", "N° Retiros", "Pago Retiros", "Total Día"],
-            ...dailyBreakdown.map(day => [new Date(day.date + 'T00:00:00').toLocaleDateString('es-CL'), day.deliveries, day.deliveryPay, day.pickups, day.pickupPay, day.totalPay])
-        ];
-        const ws_daily = XLSX.utils.aoa_to_sheet(dailyDataForExport);
-    
-        const deliveredPackages = filteredPackages.filter(p => p.status === PackageStatus.Delivered);
-        const getPayRate = (pkg: Package) => {
-            if (!rates) return 0;
-            switch(pkg.shippingType) {
-                case ShippingType.SameDay: return rates.sameDay;
-                case ShippingType.Express: return rates.express;
-                case ShippingType.NextDay: return rates.nextDay;
-                default: return 0;
-            }
-        };
-        const packageListData = [
-            ["Listado de Paquetes Entregados"],
-            ["ID Paquete", "Destinatario", "Comuna", "Fecha Entrega", "Tipo Envío", "Pago Conductor"],
-            ...deliveredPackages.map(pkg => [
-                pkg.id,
-                pkg.recipientName,
-                pkg.recipientCommune,
-                new Date(pkg.history[0].timestamp).toLocaleDateString('es-CL'),
-                pkg.shippingType,
-                getPayRate(pkg)
-            ])
-        ];
-        const ws_packages = XLSX.utils.aoa_to_sheet(packageListData);
+    const handleExcelExport = async () => {
+        if (!selectedDriver || isExporting) return;
         
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws_summary, "Resumen");
-        XLSX.utils.book_append_sheet(wb, ws_daily, "Detalle Diario");
-        XLSX.utils.book_append_sheet(wb, ws_packages, "Listado Paquetes");
-    
-        XLSX.writeFile(wb, `Liquidacion_${selectedDriver.name.replace(' ', '_')}_${startDate}_${endDate}.xlsx`);
+        setIsExporting(true);
+        try {
+            // Small delay to allow UI to show loading state
+            await new Promise(resolve => setTimeout(resolve, 100));
+
+            const rates = selectedDriver.pricing || { sameDay: 0, express: 0, nextDay: 0 };
+        
+            const summaryData = [
+                ["Informe de Rendimiento y Pago"],
+                ["Conductor:", selectedDriver.name],
+                ["Período:", `${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`],
+                [],
+                ["Métricas de Rendimiento (KPIs)"],
+                ["Métrica", "Valor"],
+                ["Total Entregados", reportStats.totalDelivered],
+                ["Tasa de Entregas a Tiempo", reportStats.onTimeRate],
+                ["Tiempo Promedio de Entrega", reportStats.avgDeliveryHours],
+                ["Total Paquetes con Problema", reportStats.totalProblems],
+                [],
+                ["Liquidación de Pagos"],
+                ["Concepto", "Cantidad", "Tarifa", "Subtotal"],
+                ...paymentStats.deliveryBreakdown.map(item => [`Entregas ${item.label}`, item.count, item.rate, item.total]),
+                ["Retiros Realizados", paymentStats.pickupCount, paymentStats.pickupRate, paymentStats.totalPickupCost],
+                [],
+                ["TOTAL A PAGAR", "", "", paymentStats.grandTotal]
+            ];
+            const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
+        
+            const dailyDataForExport = [
+                ["Detalle Diario"],
+                ["Fecha", "N° Entregas", "Pago Entregas", "N° Retiros", "Pago Retiros", "Total Día"],
+                ...dailyBreakdown.map(day => [new Date(day.date + 'T00:00:00').toLocaleDateString('es-CL'), day.deliveries, day.deliveryPay, day.pickups, day.pickupPay, day.totalPay])
+            ];
+            const ws_daily = XLSX.utils.aoa_to_sheet(dailyDataForExport);
+        
+            const deliveredPackages = filteredPackages.filter(p => p.status === PackageStatus.Delivered);
+            const getPayRate = (pkg: Package) => {
+                if (!rates) return 0;
+                switch(pkg.shippingType) {
+                    case ShippingType.SameDay: return rates.sameDay;
+                    case ShippingType.Express: return rates.express;
+                    case ShippingType.NextDay: return rates.nextDay;
+                    default: return 0;
+                }
+            };
+            const packageListData = [
+                ["Listado de Paquetes Entregados"],
+                ["ID Paquete", "Destinatario", "Comuna", "Fecha Entrega", "Tipo Envío", "Pago Conductor"],
+                ...deliveredPackages.map(pkg => [
+                    pkg.id,
+                    pkg.recipientName,
+                    pkg.recipientCommune,
+                    new Date(pkg.history[0].timestamp).toLocaleDateString('es-CL'),
+                    pkg.shippingType,
+                    getPayRate(pkg)
+                ])
+            ];
+            const ws_packages = XLSX.utils.aoa_to_sheet(packageListData);
+            
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws_summary, "Resumen");
+            XLSX.utils.book_append_sheet(wb, ws_daily, "Detalle Diario");
+            XLSX.utils.book_append_sheet(wb, ws_packages, "Listado Paquetes");
+        
+            XLSX.writeFile(wb, `Liquidacion_${selectedDriver.name.replace(' ', '_')}_${startDate}_${endDate}.xlsx`);
+        } catch (error) {
+            console.error("Excel export failed", error);
+            alert("Error al exportar a Excel.");
+        } finally {
+            setIsExporting(false);
+        }
     };
 
     return (
@@ -485,8 +498,13 @@ export const DriverPerformanceReportPage: React.FC = () => {
                         </div>
                         
                         <div className="flex flex-wrap justify-end gap-3 print:hidden">
-                            <button onClick={handleExcelExport} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm">
-                                <IconFileSpreadsheet className="w-5 h-5 mr-2"/> Exportar Excel
+                            <button 
+                                onClick={handleExcelExport} 
+                                disabled={isExporting}
+                                className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
+                            >
+                                <IconFileSpreadsheet className={`w-5 h-5 mr-2 ${isExporting ? 'animate-spin' : ''}`}/> 
+                                {isExporting ? 'Exportando...' : 'Exportar Excel'}
                             </button>
                             <a href={`https://wa.me/${selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#25D366] rounded-md hover:bg-[#128C7E] shadow-sm">
                                 <IconWhatsapp className="w-5 h-5 mr-2"/> Enviar Resumen WhatsApp

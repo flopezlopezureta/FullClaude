@@ -23,6 +23,7 @@ interface PackageFiltersProps {
   endDate: string;
   onEndDateChange: (date: string) => void;
   onExportRoute: () => void;
+  isExporting?: boolean;
   scannedFilter: 'all' | 'scanned' | 'not_scanned';
   onScannedFilterChange: (filter: 'all' | 'scanned' | 'not_scanned') => void;
 }
@@ -47,6 +48,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   endDate,
   onEndDateChange,
   onExportRoute,
+  isExporting = false,
   scannedFilter,
   onScannedFilterChange,
 }) => {
@@ -139,10 +141,11 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             {driverFilter && (
                 <button
                     onClick={onExportRoute}
-                    className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md shadow-sm text-green-700 bg-green-50 hover:bg-green-100"
+                    disabled={isExporting}
+                    className={`flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md shadow-sm text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
                 >
-                    <IconFileExport className="w-5 h-5 mr-2 -ml-1"/>
-                    Exportar Ruta
+                    <IconFileExport className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
+                    {isExporting ? 'Exportando...' : 'Exportar Ruta'}
                 </button>
             )}
              <button
