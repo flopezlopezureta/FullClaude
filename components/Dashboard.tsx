@@ -282,65 +282,100 @@ const Dashboard: React.FC = () => {
     }
   };
     
-  const handleExportExcel = async () => {
+  const handleExportData = async () => {
     if (totalPackages === 0 || isExporting) return;
     
     setIsExporting(true);
     try {
-        // Fetch all filtered packages (limit: 0 means no limit in our API)
-        const { packages: allFilteredPackages } = await api.getPackages({
-             limit: 0,
-             searchQuery, 
-             statusFilter, 
-             driverFilter, 
-             clientFilter, 
-             communeFilter, 
-             cityFilter, 
-             startDate, 
-             endDate
-        });
+        let packagesToExport: Package[] = [];
 
-        if (!allFilteredPackages || allFilteredPackages.length === 0) {
-            alert("No hay datos para exportar con los filtros actuales.");
+        if (selectedPackages.size > 0) {
+            // If we have selected packages, we fetch all filtered and then filter by selection
+            // to ensure we have all selected packages even if they are on different pages.
+            const { packages: allFiltered } = await api.getPackages({
+                limit: 0,
+                searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
+            });
+            packagesToExport = allFiltered.filter(p => selectedPackages.has(p.id));
+        } else {
+            // Export all filtered
+            const { packages: allFiltered } = await api.getPackages({
+                limit: 0,
+                searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate
+            });
+            packagesToExport = allFiltered;
+        }
+
+        if (packagesToExport.length === 0) {
+            alert("No hay datos para exportar.");
             setIsExporting(false);
             return;
         }
 
-        // Optimization: Create a map for users to avoid O(N*M) lookup
+        // Optimization: Create a map for users
         const userMap = new Map(users.map(u => [u.id, u]));
 
-        const dataToExport = allFilteredPackages.map(pkg => {
+        // CSV Generation is much faster and doesn't block the UI as much as XLSX
+        const headers = [
+            'ID Paquete',
+            'Fecha Creación',
+            'Fecha Entrega',
+            'Estado',
+            'Tipo Envío',
+            'Destinatario',
+            'Dirección',
+            'Comuna',
+            'Ciudad',
+            'Conductor',
+            'Cliente',
+            'Recibido por',
+            'RUT Recibe'
+        ];
+
+        const escapeCSV = (val: any) => {
+            const str = String(val || '').replace(/"/g, '""');
+            return `"${str}"`;
+        };
+
+        const rows = packagesToExport.map(pkg => {
             const creator = pkg.creatorId ? userMap.get(pkg.creatorId) : null;
             const driver = pkg.driverId ? userMap.get(pkg.driverId) : null;
             const deliveredEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
-
-            return {
-                'ID Paquete': pkg.id,
-                'Fecha Creación': new Date(pkg.createdAt).toLocaleString('es-CL'),
-                'Fecha Entrega': deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
-                'Estado': pkg.status.replace('_', ' '),
-                'Tipo Envío': pkg.shippingType,
-                'Destinatario': pkg.recipientName,
-                'Dirección': `${pkg.recipientAddress}, ${pkg.recipientCommune}, ${pkg.recipientCity}`,
-                'Conductor': driver ? driver.name : 'No asignado',
-                'Cliente': creator ? creator.name : 'Desconocido',
-                'Recibido por': pkg.deliveryReceiverName || '',
-                'RUT Recibe': pkg.deliveryReceiverId || '',
-            };
+            
+            return [
+                pkg.id,
+                new Date(pkg.createdAt).toLocaleString('es-CL'),
+                deliveredEvent ? new Date(deliveredEvent.timestamp).toLocaleString('es-CL') : 'No entregado',
+                pkg.status.replace('_', ' '),
+                pkg.shippingType,
+                pkg.recipientName,
+                pkg.recipientAddress,
+                pkg.recipientCommune,
+                pkg.recipientCity,
+                driver ? driver.name : 'No asignado',
+                creator ? creator.name : 'Desconocido',
+                pkg.deliveryReceiverName || '',
+                pkg.deliveryReceiverId || ''
+            ].map(escapeCSV).join(',');
         });
 
-        // Use a small timeout to allow UI to update before heavy processing
-        await new Promise(resolve => setTimeout(resolve, 100));
-
-        const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Paquetes");
-
+        const csvContent = [headers.join(','), ...rows].join('\n');
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement("a");
+        const url = URL.createObjectURL(blob);
         const dateStr = new Date().toISOString().split('T')[0];
-        XLSX.writeFile(workbook, `Reporte_Paquetes_${dateStr}.xlsx`);
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Reporte_Paquetes_${dateStr}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+
     } catch(error) {
-        console.error("Failed to export Excel data", error);
-        alert("Error al exportar a Excel. Es posible que el volumen de datos sea demasiado grande o haya un problema de conexión.");
+        console.error("Failed to export data", error);
+        alert("Error al exportar los datos.");
     } finally {
         setIsExporting(false);
     }
@@ -480,8 +515,8 @@ const Dashboard: React.FC = () => {
                         <IconTrash className="w-5 h-5 text-[var(--text-secondary)]" />
                     </button>
                     <button 
-                        onClick={handleExportExcel} 
-                        title="Exportar Vista a Excel" 
+                        onClick={handleExportData} 
+                        title={selectedPackages.size > 0 ? "Exportar Seleccionados a CSV" : "Exportar Vista a CSV"} 
                         className={`p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
                         disabled={totalPackages === 0 || isExporting}>
                         {isExporting ? (

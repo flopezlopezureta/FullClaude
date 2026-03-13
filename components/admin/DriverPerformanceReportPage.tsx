@@ -319,7 +319,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const emailSubject = `Resumen de Pago - ${selectedDriver?.name} - ${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`;
     const emailBody = `Hola ${selectedDriver?.name},\n\nAdjunto encontrarás el resumen de tu pago para el período del ${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} al ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}.\n\n*Resumen General:*\n*Total a Pagar:* ${formatForCurrency(paymentStats.grandTotal)}\n\n*Desglose:*\n- Total por Entregas: ${formatForCurrency(paymentStats.totalDeliveryCost)}\n- Total por Retiros: ${formatForCurrency(paymentStats.totalPickupCost)}\n\nSi tienes alguna pregunta, no dudes en contactarnos.\n\nSaludos cordiales,\nEl equipo de administración.`;
     
-    const handleExcelExport = async () => {
+    const handleExportCSV = async () => {
         if (!selectedDriver || isExporting) return;
         
         setIsExporting(true);
@@ -328,35 +328,48 @@ export const DriverPerformanceReportPage: React.FC = () => {
             await new Promise(resolve => setTimeout(resolve, 100));
 
             const rates = selectedDriver.pricing || { sameDay: 0, express: 0, nextDay: 0 };
-        
-            const summaryData = [
-                ["Informe de Rendimiento y Pago"],
-                ["Conductor:", selectedDriver.name],
-                ["Período:", `${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`],
-                [],
-                ["Métricas de Rendimiento (KPIs)"],
-                ["Métrica", "Valor"],
-                ["Total Entregados", reportStats.totalDelivered],
-                ["Tasa de Entregas a Tiempo", reportStats.onTimeRate],
-                ["Tiempo Promedio de Entrega", reportStats.avgDeliveryHours],
-                ["Total Paquetes con Problema", reportStats.totalProblems],
-                [],
-                ["Liquidación de Pagos"],
-                ["Concepto", "Cantidad", "Tarifa", "Subtotal"],
-                ...paymentStats.deliveryBreakdown.map(item => [`Entregas ${item.label}`, item.count, item.rate, item.total]),
-                ["Retiros Realizados", paymentStats.pickupCount, paymentStats.pickupRate, paymentStats.totalPickupCost],
-                [],
-                ["TOTAL A PAGAR", "", "", paymentStats.grandTotal]
-            ];
-            const ws_summary = XLSX.utils.aoa_to_sheet(summaryData);
-        
-            const dailyDataForExport = [
-                ["Detalle Diario"],
-                ["Fecha", "N° Entregas", "Pago Entregas", "N° Retiros", "Pago Retiros", "Total Día"],
-                ...dailyBreakdown.map(day => [new Date(day.date + 'T00:00:00').toLocaleDateString('es-CL'), day.deliveries, day.deliveryPay, day.pickups, day.pickupPay, day.totalPay])
-            ];
-            const ws_daily = XLSX.utils.aoa_to_sheet(dailyDataForExport);
-        
+            
+            const escapeCSV = (val: any) => {
+                const str = String(val || '').replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            let csvContent = '\uFEFF'; // BOM for Excel
+
+            // Section 1: Summary
+            csvContent += escapeCSV("Informe de Rendimiento y Pago") + '\n';
+            csvContent += escapeCSV("Conductor:") + ',' + escapeCSV(selectedDriver.name) + '\n';
+            csvContent += escapeCSV("Período:") + ',' + escapeCSV(`${new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')} a ${new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}`) + '\n\n';
+
+            csvContent += escapeCSV("Métricas de Rendimiento (KPIs)") + '\n';
+            csvContent += escapeCSV("Métrica") + ',' + escapeCSV("Valor") + '\n';
+            csvContent += escapeCSV("Total Entregados") + ',' + escapeCSV(reportStats.totalDelivered) + '\n';
+            csvContent += escapeCSV("Tasa de Entregas a Tiempo") + ',' + escapeCSV(reportStats.onTimeRate) + '\n';
+            csvContent += escapeCSV("Tiempo Promedio de Entrega") + ',' + escapeCSV(reportStats.avgDeliveryHours) + '\n';
+            csvContent += escapeCSV("Total Paquetes con Problema") + ',' + escapeCSV(reportStats.totalProblems) + '\n\n';
+
+            csvContent += escapeCSV("Liquidación de Pagos") + '\n';
+            csvContent += escapeCSV("Concepto") + ',' + escapeCSV("Cantidad") + ',' + escapeCSV("Tarifa") + ',' + escapeCSV("Subtotal") + '\n';
+            paymentStats.deliveryBreakdown.forEach(item => {
+                csvContent += escapeCSV(`Entregas ${item.label}`) + ',' + escapeCSV(item.count) + ',' + escapeCSV(item.rate) + ',' + escapeCSV(item.total) + '\n';
+            });
+            csvContent += escapeCSV("Retiros Realizados") + ',' + escapeCSV(paymentStats.pickupCount) + ',' + escapeCSV(paymentStats.pickupRate) + ',' + escapeCSV(paymentStats.totalPickupCost) + '\n';
+            csvContent += escapeCSV("TOTAL A PAGAR") + ',,,' + escapeCSV(paymentStats.grandTotal) + '\n\n';
+
+            // Section 2: Daily Breakdown
+            csvContent += escapeCSV("Detalle Diario") + '\n';
+            csvContent += escapeCSV("Fecha") + ',' + escapeCSV("N° Entregas") + ',' + escapeCSV("Pago Entregas") + ',' + escapeCSV("N° Retiros") + ',' + escapeCSV("Pago Retiros") + ',' + escapeCSV("Total Día") + '\n';
+            dailyBreakdown.forEach(day => {
+                csvContent += escapeCSV(new Date(day.date + 'T00:00:00').toLocaleDateString('es-CL')) + ',' + 
+                              escapeCSV(day.deliveries) + ',' + 
+                              escapeCSV(day.deliveryPay) + ',' + 
+                              escapeCSV(day.pickups) + ',' + 
+                              escapeCSV(day.pickupPay) + ',' + 
+                              escapeCSV(day.totalPay) + '\n';
+            });
+            csvContent += '\n';
+
+            // Section 3: Package List
             const deliveredPackages = filteredPackages.filter(p => p.status === PackageStatus.Delivered);
             const getPayRate = (pkg: Package) => {
                 if (!rates) return 0;
@@ -367,29 +380,32 @@ export const DriverPerformanceReportPage: React.FC = () => {
                     default: return 0;
                 }
             };
-            const packageListData = [
-                ["Listado de Paquetes Entregados"],
-                ["ID Paquete", "Destinatario", "Comuna", "Fecha Entrega", "Tipo Envío", "Pago Conductor"],
-                ...deliveredPackages.map(pkg => [
-                    pkg.id,
-                    pkg.recipientName,
-                    pkg.recipientCommune,
-                    new Date(pkg.history[0].timestamp).toLocaleDateString('es-CL'),
-                    pkg.shippingType,
-                    getPayRate(pkg)
-                ])
-            ];
-            const ws_packages = XLSX.utils.aoa_to_sheet(packageListData);
+
+            csvContent += escapeCSV("Listado de Paquetes Entregados") + '\n';
+            csvContent += escapeCSV("ID Paquete") + ',' + escapeCSV("Destinatario") + ',' + escapeCSV("Comuna") + ',' + escapeCSV("Fecha Entrega") + ',' + escapeCSV("Tipo Envío") + ',' + escapeCSV("Pago Conductor") + '\n';
+            deliveredPackages.forEach(pkg => {
+                csvContent += escapeCSV(pkg.id) + ',' + 
+                              escapeCSV(pkg.recipientName) + ',' + 
+                              escapeCSV(pkg.recipientCommune) + ',' + 
+                              escapeCSV(new Date(pkg.history[0].timestamp).toLocaleDateString('es-CL')) + ',' + 
+                              escapeCSV(pkg.shippingType) + ',' + 
+                              escapeCSV(getPayRate(pkg)) + '\n';
+            });
+
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
             
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws_summary, "Resumen");
-            XLSX.utils.book_append_sheet(wb, ws_daily, "Detalle Diario");
-            XLSX.utils.book_append_sheet(wb, ws_packages, "Listado Paquetes");
-        
-            XLSX.writeFile(wb, `Liquidacion_${selectedDriver.name.replace(' ', '_')}_${startDate}_${endDate}.xlsx`);
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Liquidacion_${selectedDriver.name.replace(/\s+/g, '_')}_${startDate}_${endDate}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Excel export failed", error);
-            alert("Error al exportar a Excel.");
+            console.error("CSV export failed", error);
+            alert("Error al exportar los datos.");
         } finally {
             setIsExporting(false);
         }
@@ -499,12 +515,12 @@ export const DriverPerformanceReportPage: React.FC = () => {
                         
                         <div className="flex flex-wrap justify-end gap-3 print:hidden">
                             <button 
-                                onClick={handleExcelExport} 
+                                onClick={handleExportCSV} 
                                 disabled={isExporting}
                                 className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
                             >
                                 <IconFileSpreadsheet className={`w-5 h-5 mr-2 ${isExporting ? 'animate-spin' : ''}`}/> 
-                                {isExporting ? 'Exportando...' : 'Exportar Excel'}
+                                {isExporting ? 'Exportando...' : 'Exportar CSV'}
                             </button>
                             <a href={`https://wa.me/${selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#25D366] rounded-md hover:bg-[#128C7E] shadow-sm">
                                 <IconWhatsapp className="w-5 h-5 mr-2"/> Enviar Resumen WhatsApp

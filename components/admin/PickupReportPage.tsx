@@ -95,7 +95,7 @@ const PickupReportPage: React.FC = () => {
     const formatCurrency = (value: number) => value.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' });
     const handleExportPdf = () => window.print();
 
-    const handleExportExcel = async () => {
+    const handleExportCSV = async () => {
         if (isExporting) return;
         
         setIsExporting(true);
@@ -103,22 +103,38 @@ const PickupReportPage: React.FC = () => {
             // Small delay to allow UI to show loading state
             await new Promise(resolve => setTimeout(resolve, 100));
 
-            const dataToExport = filteredAssignments.map(a => ({
-                'Fecha': parseDateString(a.date).toLocaleDateString('es-CL'),
-                'Turno': a.shift,
-                'Conductor': a.driverName,
-                'Cliente': a.clientName,
-                'Estado': a.status.replace('_', ' '),
-                'Costo': a.cost,
-                'Paquetes Retirados': a.packagesPickedUp || 0,
-            }));
-            const worksheet = XLSX.utils.json_to_sheet(dataToExport);
-            const workbook = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(workbook, worksheet, "Reporte Retiros");
-            XLSX.writeFile(workbook, `Reporte_Retiros_${startDate}_${endDate}.xlsx`);
+            const headers = ['Fecha', 'Turno', 'Conductor', 'Cliente', 'Estado', 'Costo', 'Paquetes Retirados'];
+            
+            const escapeCSV = (val: any) => {
+                const str = String(val || '').replace(/"/g, '""');
+                return `"${str}"`;
+            };
+
+            const rows = filteredAssignments.map(a => [
+                parseDateString(a.date).toLocaleDateString('es-CL'),
+                a.shift,
+                a.driverName,
+                a.clientName,
+                a.status.replace('_', ' '),
+                a.cost,
+                a.packagesPickedUp || 0
+            ].map(escapeCSV).join(','));
+
+            const csvContent = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement("a");
+            const url = URL.createObjectURL(blob);
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", `Reporte_Retiros_${startDate}_${endDate}.csv`);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(url);
         } catch (error) {
-            console.error("Excel export failed", error);
-            alert("Error al exportar a Excel.");
+            console.error("CSV export failed", error);
+            alert("Error al exportar los datos.");
         } finally {
             setIsExporting(false);
         }
@@ -181,12 +197,12 @@ const PickupReportPage: React.FC = () => {
                 <div className="flex flex-wrap items-center justify-end gap-2 border-t border-[var(--border-primary)] pt-4">
                     <button onClick={handleExportPdf} className="flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-red-700 bg-red-100 rounded-md hover:bg-red-200"><IconPrinter className="w-4 h-4"/> PDF</button>
                     <button 
-                        onClick={handleExportExcel} 
+                        onClick={handleExportCSV} 
                         disabled={isExporting}
                         className={`flex items-center gap-2 px-3 py-1.5 text-sm font-semibold text-green-700 bg-green-100 rounded-md hover:bg-green-200 disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
                     >
                         <IconFileSpreadsheet className={`w-4 h-4 ${isExporting ? 'animate-spin' : ''}`}/> 
-                        {isExporting ? 'Exportando...' : 'Excel'}
+                        {isExporting ? 'Exportando...' : 'CSV'}
                     </button>
                     <button onClick={handleShareWhatsApp} className={`flex items-center gap-2 px-3 py-1.5 text-sm font-semibold rounded-md transition-colors ${copySuccess ? 'bg-green-600 text-white' : 'bg-teal-100 text-teal-700 hover:bg-teal-200'}`}>
                         <IconWhatsapp className="w-4 h-4"/> {copySuccess ? '¡Copiado!' : 'Copiar para WA'}
