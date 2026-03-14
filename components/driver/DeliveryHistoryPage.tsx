@@ -171,9 +171,35 @@ const DeliveryHistoryPage: React.FC = () => {
   const [startDate, setStartDate] = useState(getISODate(oneWeekAgo));
   const [endDate, setEndDate] = useState(getISODate(today));
 
-  const fetchData = async () => {
+  // Load from cache on mount
+  useEffect(() => {
     if (!auth?.user) return;
-    setIsLoading(true);
+    const cachedHistory = localStorage.getItem(`driver_history_${auth.user.id}`);
+    const cachedUsers = localStorage.getItem(`driver_users`);
+    
+    if (cachedHistory) {
+      try {
+        const parsed = JSON.parse(cachedHistory);
+        setAllDriverPackages(parsed);
+        setIsLoading(false);
+      } catch (e) {
+        console.error("Error parsing cached history", e);
+      }
+    }
+    
+    if (cachedUsers) {
+      try {
+        const parsed = JSON.parse(cachedUsers);
+        setUsers(parsed);
+      } catch (e) {
+        console.error("Error parsing cached users", e);
+      }
+    }
+  }, [auth?.user?.id]);
+
+  const fetchData = async (silent = false) => {
+    if (!auth?.user) return;
+    if (!silent) setIsLoading(true);
     try {
       const [{ packages: pkgs }, allUsers] = await Promise.all([
           api.getPackages({ driverFilter: auth.user.id, limit: 0 }),
@@ -184,6 +210,9 @@ const DeliveryHistoryPage: React.FC = () => {
       
       setAllDriverPackages(driverPackages);
       setUsers(allUsers);
+      
+      localStorage.setItem(`driver_history_${auth.user.id}`, JSON.stringify(driverPackages));
+      localStorage.setItem(`driver_users`, JSON.stringify(allUsers));
     } catch (error) {
       console.error("Failed to fetch history data", error);
     } finally {
@@ -192,7 +221,7 @@ const DeliveryHistoryPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(true); // Initial background fetch
   }, [auth?.user]);
 
   const { deliveredInRange, pickedUpInRange, returnedInRange, uniquePickupClientsCount } = useMemo(() => {
@@ -309,7 +338,7 @@ const DeliveryHistoryPage: React.FC = () => {
           <div className="flex justify-between items-center mb-3">
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">Historial de Actividad</h3>
               <button 
-                onClick={fetchData} 
+                onClick={() => fetchData()} 
                 disabled={isLoading}
                 className="p-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-full shadow-sm active:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
                 title="Actualizar datos"

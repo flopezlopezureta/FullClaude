@@ -12,11 +12,26 @@ const MyPickupsPage: React.FC = () => {
     const [updatingId, setUpdatingId] = useState<string | null>(null);
     const [confirmingPickup, setConfirmingPickup] = useState<PickupAssignment | null>(null);
 
-    const fetchData = useCallback(async () => {
-        setIsLoading(true);
+    // Load from cache on mount
+    useEffect(() => {
+        const cachedRuns = localStorage.getItem('driver_pickup_runs');
+        if (cachedRuns) {
+            try {
+                const parsed = JSON.parse(cachedRuns);
+                setRuns(parsed);
+                setIsLoading(false);
+            } catch (e) {
+                console.error("Error parsing cached pickup runs", e);
+            }
+        }
+    }, []);
+
+    const fetchData = useCallback(async (silent = false) => {
+        if (!silent) setIsLoading(true);
         try {
             const driverRuns = await api.getDriverPickupRun();
             setRuns(driverRuns);
+            localStorage.setItem('driver_pickup_runs', JSON.stringify(driverRuns));
         } catch (error) {
             console.error("Failed to fetch driver's pickup run", error);
         } finally {
@@ -25,7 +40,7 @@ const MyPickupsPage: React.FC = () => {
     }, []);
 
     useEffect(() => {
-        fetchData();
+        fetchData(true); // Initial background fetch
     }, [fetchData]);
 
     const handleStartPickupConfirmation = (assignment: PickupAssignment) => {
@@ -85,7 +100,7 @@ const MyPickupsPage: React.FC = () => {
                     <p className="text-xs text-[var(--text-muted)] capitalize flex items-center gap-1"><IconCalendar className="w-3 h-3"/> {todayDate}</p>
                 </div>
                 <button 
-                    onClick={fetchData} 
+                    onClick={() => fetchData()} 
                     className="p-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-full shadow-sm active:bg-[var(--background-hover)] transition-colors"
                     aria-label="Actualizar lista"
                 >

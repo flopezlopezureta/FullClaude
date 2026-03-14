@@ -36,6 +36,14 @@ const statusPriority: { [key in PackageStatus]: number } = {
 };
 
 const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange }) => {
+  const userMap = React.useMemo(() => {
+    const map: Record<string, User> = {};
+    users.forEach(u => {
+      map[u.id] = u;
+    });
+    return map;
+  }, [users]);
+
   if (isLoading) {
     return <p className="p-6 text-center text-[var(--text-muted)]">Cargando paquetes...</p>;
   }
@@ -78,8 +86,8 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
   return (
     <div className="divide-y divide-[var(--border-primary)]">
       {sortedPackages.map((pkg, index) => {
-        const driver = users.find(u => u.id === pkg.driverId);
-        const creator = users.find(u => u.id === pkg.creatorId);
+        const driver = userMap[pkg.driverId || ''];
+        const creator = userMap[pkg.creatorId || ''];
         return (
             <PackageListItem 
                 key={pkg.id} 

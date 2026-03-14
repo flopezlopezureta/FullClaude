@@ -31,17 +31,52 @@ const DriverDashboard: React.FC = () => {
   const prevPackagesRef = useRef<Package[] | undefined>(undefined);
   const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | undefined>(undefined);
 
-  const fetchData = async () => {
+  // Load from cache on mount
+  useEffect(() => {
+    if (!auth?.user) return;
+    
+    const cachedPackages = localStorage.getItem(`driver_packages_${auth.user.id}`);
+    const cachedUsers = localStorage.getItem(`driver_users`);
+    
+    if (cachedPackages) {
+      try {
+        const parsed = JSON.parse(cachedPackages);
+        setMyPackages(parsed);
+        setIsLoading(false);
+        isInitialLoad.current = false;
+      } catch (e) {
+        console.error("Error parsing cached packages", e);
+      }
+    }
+    
+    if (cachedUsers) {
+      try {
+        const parsed = JSON.parse(cachedUsers);
+        setUsers(parsed);
+      } catch (e) {
+        console.error("Error parsing cached users", e);
+      }
+    }
+  }, [auth?.user?.id]);
+
+  const fetchData = async (silent = false) => {
       if (!auth?.user) return;
-      if (isInitialLoad.current) {
+      if (isInitialLoad.current && !silent) {
         setIsLoading(true);
       }
       try {
           // Fetch all packages for the current driver, without pagination
           const { packages: pkgs } = await api.getPackages({ driverFilter: auth.user.id, limit: 0 });
-          setMyPackages(pkgs); // The data from API is already filtered by driver
-          const allUsers = await api.getUsers();
-          setUsers(allUsers);
+          setMyPackages(pkgs); 
+          localStorage.setItem(`driver_packages_${auth.user.id}`, JSON.stringify(pkgs));
+          
+          // Only fetch users if we don't have them or if it's the initial load
+          // Users don't change that often for a driver's view
+          if (users.length === 0 || isInitialLoad.current) {
+            const allUsers = await api.getUsers();
+            setUsers(allUsers);
+            localStorage.setItem(`driver_users`, JSON.stringify(allUsers));
+          }
       } catch (error) {
           console.error("Failed to fetch driver data", error);
       } finally {
@@ -53,8 +88,8 @@ const DriverDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-    const intervalId = setInterval(fetchData, 10000);
+    fetchData(true); // Initial background fetch
+    const intervalId = setInterval(() => fetchData(true), 15000); // Poll every 15 seconds instead of 10
     
     // Get current location for optimizer
     if (navigator.geolocation) {

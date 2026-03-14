@@ -15,9 +15,35 @@ const ReturnsDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const auth = useContext(AuthContext);
 
-  const fetchData = async () => {
+  // Load from cache on mount
+  useEffect(() => {
     if (!auth?.user) return;
-    setIsLoading(true);
+    const cachedReturns = localStorage.getItem(`driver_returns_${auth.user.id}`);
+    const cachedUsers = localStorage.getItem(`driver_users`);
+    
+    if (cachedReturns) {
+      try {
+        const parsed = JSON.parse(cachedReturns);
+        setReturnPackages(parsed);
+        setIsLoading(false);
+      } catch (e) {
+        console.error("Error parsing cached returns", e);
+      }
+    }
+    
+    if (cachedUsers) {
+      try {
+        const parsed = JSON.parse(cachedUsers);
+        setUsers(parsed);
+      } catch (e) {
+        console.error("Error parsing cached users", e);
+      }
+    }
+  }, [auth?.user?.id]);
+
+  const fetchData = async (silent = false) => {
+    if (!auth?.user) return;
+    if (!silent) setIsLoading(true);
     try {
         const [{ packages: pkgs }, allUsers] = await Promise.all([
             api.getPackages({ driverFilter: auth.user.id, statusFilter: PackageStatus.ReturnPending, limit: 0 }),
@@ -25,6 +51,9 @@ const ReturnsDashboard: React.FC = () => {
         ]);
         setReturnPackages(pkgs);
         setUsers(allUsers);
+        
+        localStorage.setItem(`driver_returns_${auth.user.id}`, JSON.stringify(pkgs));
+        localStorage.setItem(`driver_users`, JSON.stringify(allUsers));
     } catch (error) {
         console.error("Failed to fetch driver return data", error);
     } finally {
@@ -33,8 +62,8 @@ const ReturnsDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-    const intervalId = setInterval(fetchData, 15000);
+    fetchData(true); // Initial background fetch
+    const intervalId = setInterval(() => fetchData(true), 20000); // Poll every 20 seconds
     return () => clearInterval(intervalId);
   }, [auth?.user]);
 
