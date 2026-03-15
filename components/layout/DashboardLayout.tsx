@@ -110,25 +110,25 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'assign-pickups') {
     title = 'Gestión de Retiros';
     content = <PickupDashboard />;
-  } else if (activeView === 'users-clients' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-clients' && user?.role === Role.Admin) {
     title = 'Gestión de Clientes';
     content = <UserManagement roleFilter={Role.Client} />;
-  } else if (activeView === 'users-drivers' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-drivers' && user?.role === Role.Admin) {
     title = 'Gestión de Conductores';
     content = <UserManagement roleFilter={Role.Driver} />;
-  } else if (activeView === 'users-admins' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-admins' && user?.role === Role.Admin) {
     title = 'Gestión de Administradores';
     content = <UserManagement roleFilter={Role.Admin} />;
-  } else if (activeView === 'users-operadores' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-operadores' && user?.role === Role.Admin) {
     title = 'Gestión de Operadores de Sistemas';
     content = <UserManagement roleFilter={Role.OperadorSistemas} />;
-  } else if (activeView === 'users-auxiliares' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-auxiliares' && user?.role === Role.Admin) {
     title = 'Gestión de Auxiliares';
     content = <UserManagement roleFilter={Role.Auxiliar} />;
-  } else if (activeView === 'users-retiros' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-retiros' && user?.role === Role.Admin) {
     title = 'Gestión de Personal de Retiros';
     content = <UserManagement roleFilter={Role.Retiros} />;
-  } else if (activeView === 'users-facturacion' && user?.role === Role.Admin && isSuperUser) {
+  } else if (activeView === 'users-facturacion' && user?.role === Role.Admin) {
     title = 'Gestión de Personal de Facturación';
     content = <UserManagement roleFilter={Role.Facturacion} />;
   } else if (activeView === 'my-creations' && user?.role === Role.Client) {

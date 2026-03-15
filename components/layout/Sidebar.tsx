@@ -139,6 +139,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'geolocate', 
       'import-orders', 
       'pickups', 
+      'users',
       'zone-settings', 
       'live-map', 
       'configuration'
