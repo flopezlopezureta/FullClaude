@@ -16,6 +16,7 @@ const getRoleInSpanish = (role?: Role): string => {
     switch (role) {
         case Role.Admin: return 'Administrador';
         case Role.AdminSistemas: return 'Administrador de Sistemas';
+        case Role.AdminIntegraciones: return 'Administrador de Integraciones';
         case Role.Driver: return 'Conductor';
         case Role.Client: return 'Cliente';
         case Role.Facturacion: return 'Facturación';
@@ -72,7 +73,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         { id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> },
         { id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> },
         { id: 'users-admins', label: 'Administradores', icon: <IconUserCheck className="h-5 w-5" /> },
-        { id: 'users-sistemas', label: 'Admin. Sistemas', icon: <IconUserCheck className="h-5 w-5" /> }
+        { id: 'users-sistemas', label: 'Admin. Sistemas', icon: <IconUserCheck className="h-5 w-5" /> },
+        { id: 'users-integraciones', label: 'Admin. Integraciones', icon: <IconUserCheck className="h-5 w-5" /> }
       ]
     },
     { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
@@ -122,6 +124,17 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   ];
 
 
+  const adminIntegracionesNavItems = [
+    {
+      id: 'configuration',
+      label: 'Configuración',
+      icon: <IconSettings className="h-6 w-6" />,
+      subItems: [
+        { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }
+      ]
+    }
+  ];
+
   let navItems;
   switch (user?.role) {
       case Role.Admin:
@@ -129,6 +142,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
           break;
       case Role.AdminSistemas:
           navItems = adminSistemasNavItems;
+          break;
+      case Role.AdminIntegraciones:
+          navItems = adminIntegracionesNavItems;
           break;
       case Role.Client:
           navItems = clientNavItems;

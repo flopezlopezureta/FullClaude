@@ -57,6 +57,7 @@ const DashboardLayout: React.FC = () => {
     switch (user?.role) {
       case Role.Admin: return 'packages';
       case Role.AdminSistemas: return 'settings';
+      case Role.AdminIntegraciones: return 'integrations';
       case Role.Client: return 'my-creations';
       case Role.Facturacion: return 'global-billing';
       case Role.Retiros: return 'assign-pickups';
@@ -120,6 +121,9 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'users-sistemas' && user?.role === Role.Admin) {
     title = 'Gestión de Administradores de Sistemas';
     content = <UserManagement roleFilter={Role.AdminSistemas} />;
+  } else if (activeView === 'users-integraciones' && user?.role === Role.Admin) {
+    title = 'Gestión de Administradores de Integraciones';
+    content = <UserManagement roleFilter={Role.AdminIntegraciones} />;
   } else if (activeView === 'users-auxiliares' && user?.role === Role.Admin) {
     title = 'Gestión de Auxiliares';
     content = <UserManagement roleFilter={Role.Auxiliar} />;
@@ -159,7 +163,7 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'settings' && (user?.email === 'admin' || user?.role === Role.AdminSistemas)) {
     title = 'Ajustes del Sistema';
     content = <SettingsPage />;
-  } else if (activeView === 'integrations' && user?.role === Role.Admin) {
+  } else if (activeView === 'integrations' && (user?.role === Role.Admin || user?.role === Role.AdminIntegraciones)) {
     title = 'Configuración de Integraciones';
     content = <IntegrationSettingsPage />;
   } else {

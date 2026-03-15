@@ -1,10 +1,13 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useContext } from 'react';
 import { api } from '../../services/api';
 import type { IntegrationSettings } from '../../types';
 import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload } from '../Icon';
+import { AuthContext } from '../../contexts/AuthContext';
+import { Role } from '../../constants';
 
 const IntegrationSettingsPage: React.FC = () => {
+    const auth = useContext(AuthContext);
     const [settings, setSettings] = useState<Partial<IntegrationSettings>>({
         meliAppId: '',
         meliClientSecret: '',
@@ -376,7 +379,8 @@ const IntegrationSettingsPage: React.FC = () => {
                         )}
                     </div>
                 </div>
-                {/* GitHub Backup Section */}
+            {/* GitHub Backup Section */}
+            {auth?.user?.role !== Role.AdminIntegraciones && (
                 <div className="bg-[var(--background-paper)] rounded-xl shadow-sm border border-[var(--border-color)] overflow-hidden">
                     <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
                         <div className="flex items-center gap-3">
@@ -465,6 +469,7 @@ const IntegrationSettingsPage: React.FC = () => {
                         )}
                     </div>
                 </div>
+            )}
             </div>
         </div>
     );
