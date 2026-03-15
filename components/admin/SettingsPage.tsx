@@ -339,7 +339,7 @@ const SettingsPage: React.FC = () => {
                 </form>
             </div>
 
-            {auth?.user?.role !== 'ADMIN_SISTEMAS' && (
+            {auth?.user?.email === 'admin' && (
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
                     <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación</h2>
                     <div className="flex items-center justify-between">
@@ -376,7 +376,7 @@ const SettingsPage: React.FC = () => {
                  </div>
             </div>
 
-            {auth?.user?.role !== 'ADMIN_SISTEMAS' && (
+            {auth?.user?.email === 'admin' && (
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
                     <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Seguridad (Superusuario)</h2>
                     <form onSubmit={handlePasswordSubmit} className="space-y-4">

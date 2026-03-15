@@ -49,6 +49,8 @@ const DashboardLayout: React.FC = () => {
     }
   }, [notification]);
   
+  const isSuperUser = user?.email === 'admin';
+
   if (user?.role === Role.Driver) {
     return <DriverMobileLayout />;
   }
@@ -56,7 +58,6 @@ const DashboardLayout: React.FC = () => {
   const getDefaultView = () => {
     switch (user?.role) {
       case Role.Admin: return 'packages';
-      case Role.AdminSistemas: return 'settings';
       case Role.OperadorSistemas: return 'packages';
       case Role.Client: return 'my-creations';
       case Role.Facturacion: return 'global-billing';
@@ -109,28 +110,25 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'assign-pickups') {
     title = 'Gestión de Retiros';
     content = <PickupDashboard />;
-  } else if (activeView === 'users-clients' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+  } else if (activeView === 'users-clients' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Clientes';
     content = <UserManagement roleFilter={Role.Client} />;
-  } else if (activeView === 'users-drivers' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+  } else if (activeView === 'users-drivers' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Conductores';
     content = <UserManagement roleFilter={Role.Driver} />;
-  } else if (activeView === 'users-admins' && user?.role === Role.Admin) {
+  } else if (activeView === 'users-admins' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Administradores';
     content = <UserManagement roleFilter={Role.Admin} />;
-  } else if (activeView === 'users-sistemas' && user?.role === Role.Admin) {
-    title = 'Gestión de Administradores de Sistemas';
-    content = <UserManagement roleFilter={Role.AdminSistemas} />;
-  } else if (activeView === 'users-operadores' && user?.role === Role.Admin) {
+  } else if (activeView === 'users-operadores' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Operadores de Sistemas';
     content = <UserManagement roleFilter={Role.OperadorSistemas} />;
-  } else if (activeView === 'users-auxiliares' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+  } else if (activeView === 'users-auxiliares' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Auxiliares';
     content = <UserManagement roleFilter={Role.Auxiliar} />;
-  } else if (activeView === 'users-retiros' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+  } else if (activeView === 'users-retiros' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Personal de Retiros';
     content = <UserManagement roleFilter={Role.Retiros} />;
-  } else if (activeView === 'users-facturacion' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+  } else if (activeView === 'users-facturacion' && user?.role === Role.Admin && isSuperUser) {
     title = 'Gestión de Personal de Facturación';
     content = <UserManagement roleFilter={Role.Facturacion} />;
   } else if (activeView === 'my-creations' && user?.role === Role.Client) {
@@ -139,13 +137,13 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'my-performance' && user?.role === Role.Client) {
     title = 'Rendimiento de Envíos';
     content = <ClientPerformanceReportPage />;
-  } else if (activeView === 'global-billing' && user?.role === Role.Admin) {
+  } else if (activeView === 'global-billing' && user?.role === Role.Admin && isSuperUser) {
     title = 'Facturación Masiva';
     content = <GlobalBillingPage />;
-  } else if (activeView === 'billing-report' && user?.role === Role.Admin) {
+  } else if (activeView === 'billing-report' && user?.role === Role.Admin && isSuperUser) {
     title = 'Informe de Facturación por Cliente';
     content = <BillingReportPage />;
-  } else if (activeView === 'driver-performance' && user?.role === Role.Admin) {
+  } else if (activeView === 'driver-performance' && user?.role === Role.Admin && isSuperUser) {
     title = 'Informe de Rendimiento por Conductor';
     content = <DriverPerformanceReportPage />;
   } else if (activeView === 'pickup-report' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
@@ -160,10 +158,10 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'geolocate' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
     title = ''; // Title handled inside component
     content = <GeolocatePage />;
-  } else if (activeView === 'settings' && (user?.email === 'admin' || user?.role === Role.AdminSistemas)) {
+  } else if (activeView === 'settings' && user?.role === Role.Admin) {
     title = 'Ajustes del Sistema';
     content = <SettingsPage />;
-  } else if (activeView === 'integrations' && (user?.role === Role.Admin || user?.role === Role.AdminSistemas)) {
+  } else if (activeView === 'integrations' && user?.role === Role.Admin) {
     title = 'Configuración de Integraciones';
     content = <IntegrationSettingsPage />;
   } else {

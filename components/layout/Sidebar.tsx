@@ -15,7 +15,6 @@ const getRoleInSpanish = (role?: Role): string => {
     if (!role) return '';
     switch (role) {
         case Role.Admin: return 'Administrador';
-        case Role.AdminSistemas: return 'Administrador de Sistemas';
         case Role.OperadorSistemas: return 'Operador de Sistemas';
         case Role.Driver: return 'Conductor';
         case Role.Client: return 'Cliente';
@@ -73,7 +72,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         { id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> },
         { id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> },
         { id: 'users-admins', label: 'Administradores', icon: <IconUserCheck className="h-5 w-5" /> },
-        { id: 'users-sistemas', label: 'Admin. Sistemas', icon: <IconUserCheck className="h-5 w-5" /> },
         { id: 'users-operadores', label: 'Operadores Sist.', icon: <IconUserCheck className="h-5 w-5" /> }
       ]
     },
@@ -87,23 +85,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       label: 'Configuración',
       icon: <IconSettings className="h-6 w-6" />,
       subItems: [
-        ...(user?.email === 'admin' || user?.role === Role.AdminSistemas ? [{ id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> }] : []),
-        { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }
-      ]
-    }
-  ].filter(item => !('subItems' in item) || (item as any).subItems.length > 0);
-
-  const adminSistemasNavItems = [
-    {
-      id: 'configuration',
-      label: 'Configuración',
-      icon: <IconSettings className="h-6 w-6" />,
-      subItems: [
         { id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> },
         { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }
       ]
     }
-  ];
+  ].filter(item => !('subItems' in item) || (item as any).subItems.length > 0);
 
   const operadorSistemasNavItems = [
     { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
@@ -116,18 +102,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       subItems: [
         { id: 'assign-pickups', label: 'Gestión de Retiros', icon: <IconPackage className="h-5 w-5" /> },
         { id: 'pickup-report', label: 'Reporte de Retiros', icon: <IconChartBar className="h-5 w-5" /> }
-      ]
-    },
-    { 
-      id: 'users', 
-      label: 'Gestión de Usuarios', 
-      icon: <IconUsers className="h-6 w-6" />,
-      subItems: [
-        { id: 'users-clients', label: 'Clientes', icon: <IconUser className="h-5 w-5" /> },
-        { id: 'users-drivers', label: 'Conductores', icon: <IconTruck className="h-5 w-5" /> },
-        { id: 'users-auxiliares', label: 'Auxiliares', icon: <IconUser className="h-5 w-5" /> },
-        { id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> },
-        { id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> }
       ]
     },
     { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
@@ -154,13 +128,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   ];
 
 
+  const isSuperUser = user?.email === 'admin';
+
+  const filteredAdminNavItems = adminNavItems.filter(item => {
+    if (isSuperUser) return true;
+    
+    // Non-superuser Admin: Only allowed sections
+    const allowedIds = [
+      'packages', 
+      'geolocate', 
+      'import-orders', 
+      'pickups', 
+      'zone-settings', 
+      'live-map', 
+      'configuration'
+    ];
+    return allowedIds.includes(item.id);
+  });
+
   let navItems;
   switch (user?.role) {
       case Role.Admin:
-          navItems = adminNavItems;
-          break;
-      case Role.AdminSistemas:
-          navItems = adminSistemasNavItems;
+          navItems = filteredAdminNavItems;
           break;
       case Role.OperadorSistemas:
           navItems = operadorSistemasNavItems;
