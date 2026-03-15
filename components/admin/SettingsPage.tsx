@@ -339,27 +339,29 @@ const SettingsPage: React.FC = () => {
                 </form>
             </div>
 
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
-                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación</h2>
-                <div className="flex items-center justify-between">
-                    <div>
-                        <p className="font-medium text-[var(--text-primary)]">Mantenimiento de la Aplicación</p>
-                        <p className="text-sm text-[var(--text-muted)]">
-                            {settings.isAppEnabled
-                                ? 'La aplicación está actualmente en línea y operativa.'
-                                : 'La aplicación está en modo mantenimiento. Solo el superusuario puede iniciar sesión.'}
-                        </p>
+            {auth?.user?.role !== 'ADMIN_SISTEMAS' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
+                    <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación</h2>
+                    <div className="flex items-center justify-between">
+                        <div>
+                            <p className="font-medium text-[var(--text-primary)]">Mantenimiento de la Aplicación</p>
+                            <p className="text-sm text-[var(--text-muted)]">
+                                {settings.isAppEnabled
+                                    ? 'La aplicación está actualmente en línea y operativa.'
+                                    : 'La aplicación está en modo mantenimiento. Solo el superusuario puede iniciar sesión.'}
+                            </p>
+                        </div>
+                        <button
+                            onClick={handleAppStatusToggle}
+                            className={`px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white ${
+                                settings.isAppEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
+                            }`}
+                        >
+                            {settings.isAppEnabled ? 'Deshabilitar Aplicación' : 'Habilitar Aplicación'}
+                        </button>
                     </div>
-                    <button
-                        onClick={handleAppStatusToggle}
-                        className={`px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white ${
-                            settings.isAppEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
-                        }`}
-                    >
-                        {settings.isAppEnabled ? 'Deshabilitar Aplicación' : 'Habilitar Aplicación'}
-                    </button>
                 </div>
-            </div>
+            )}
 
              <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
                  <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Apariencia</h2>
@@ -374,49 +376,51 @@ const SettingsPage: React.FC = () => {
                  </div>
             </div>
 
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
-                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Seguridad (Superusuario)</h2>
-                <form onSubmit={handlePasswordSubmit} className="space-y-4">
-                     <div>
-                        <label htmlFor="newPassword" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nueva Contraseña</label>
-                         <div className="relative">
+            {auth?.user?.role !== 'ADMIN_SISTEMAS' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
+                    <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Seguridad (Superusuario)</h2>
+                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                        <div>
+                            <label htmlFor="newPassword" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nueva Contraseña</label>
+                            <div className="relative">
+                                <input
+                                    type={showPassword ? 'text' : 'password'}
+                                    id="newPassword"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    required
+                                    className={`${inputClasses} pr-10 text-[var(--text-primary)]`}
+                                    placeholder="Mínimo 6 caracteres"
+                                />
+                                <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                                    {showPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}
+                                </button>
+                            </div>
+                        </div>
+                        <div>
+                            <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Confirmar Nueva Contraseña</label>
+                            <div className="relative">
                             <input
-                                type={showPassword ? 'text' : 'password'}
-                                id="newPassword"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
+                                type={showConfirmPassword ? 'text' : 'password'}
+                                id="confirmPassword"
+                                value={confirmPassword}
+                                onChange={(e) => setConfirmPassword(e.target.value)}
                                 required
                                 className={`${inputClasses} pr-10 text-[var(--text-primary)]`}
-                                placeholder="Mínimo 6 caracteres"
                             />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center" aria-label={showPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
-                                {showPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}
+                            <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center" aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
+                                {showConfirmPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}
                             </button>
-                         </div>
-                    </div>
-                     <div>
-                        <label htmlFor="confirmPassword" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Confirmar Nueva Contraseña</label>
-                        <div className="relative">
-                         <input
-                            type={showConfirmPassword ? 'text' : 'password'}
-                            id="confirmPassword"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            required
-                            className={`${inputClasses} pr-10 text-[var(--text-primary)]`}
-                        />
-                        <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center" aria-label={showConfirmPassword ? "Ocultar contraseña" : "Mostrar contraseña"}>
-                            {showConfirmPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}
-                        </button>
+                            </div>
                         </div>
-                    </div>
-                     <div className="flex justify-end">
-                        <button type="submit" className="px-4 py-2 text-sm font-medium text-[var(--text-on-brand)] bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">
-                            Cambiar Contraseña
-                        </button>
-                    </div>
-                </form>
-            </div>
+                        <div className="flex justify-end">
+                            <button type="submit" className="px-4 py-2 text-sm font-medium text-[var(--text-on-brand)] bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">
+                                Cambiar Contraseña
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            )}
 
             {auth?.user?.email === 'admin' && (
                 <>

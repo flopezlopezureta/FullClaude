@@ -56,6 +56,7 @@ const DashboardLayout: React.FC = () => {
   const getDefaultView = () => {
     switch (user?.role) {
       case Role.Admin: return 'packages';
+      case Role.AdminSistemas: return 'settings';
       case Role.Client: return 'my-creations';
       case Role.Facturacion: return 'global-billing';
       case Role.Retiros: return 'assign-pickups';
@@ -116,6 +117,9 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'users-admins' && user?.role === Role.Admin) {
     title = 'Gestión de Administradores';
     content = <UserManagement roleFilter={Role.Admin} />;
+  } else if (activeView === 'users-sistemas' && user?.role === Role.Admin) {
+    title = 'Gestión de Administradores de Sistemas';
+    content = <UserManagement roleFilter={Role.AdminSistemas} />;
   } else if (activeView === 'users-auxiliares' && user?.role === Role.Admin) {
     title = 'Gestión de Auxiliares';
     content = <UserManagement roleFilter={Role.Auxiliar} />;
@@ -152,7 +156,7 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'geolocate' && user?.role === Role.Admin) {
     title = ''; // Title handled inside component
     content = <GeolocatePage />;
-  } else if (activeView === 'settings' && user?.email === 'admin') {
+  } else if (activeView === 'settings' && (user?.email === 'admin' || user?.role === Role.AdminSistemas)) {
     title = 'Ajustes del Sistema';
     content = <SettingsPage />;
   } else if (activeView === 'integrations' && user?.role === Role.Admin) {

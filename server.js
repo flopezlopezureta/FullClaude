@@ -496,7 +496,7 @@ async function initializeDatabase() {
 async function ensureAdminUser() {
     try {
         const salt = await bcrypt.genSalt(10);
-        const hashedPassword = await bcrypt.hash('.Dan15223.', salt);
+        const hashedPassword = await bcrypt.hash('Dan15223.,.,', salt);
 
         // Look specifically for the user with email 'admin'
         const { rows } = await db.query("SELECT * FROM users WHERE email = 'admin'");

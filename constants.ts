@@ -1,6 +1,7 @@
 
 export enum Role {
   Admin = 'ADMIN',
+  AdminSistemas = 'ADMIN_SISTEMAS',
   Client = 'CLIENT',
   Driver = 'DRIVER',
   Facturacion = 'FACTURACION',
