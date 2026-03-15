@@ -16,7 +16,7 @@ const getRoleInSpanish = (role?: Role): string => {
     switch (role) {
         case Role.Admin: return 'Administrador';
         case Role.AdminSistemas: return 'Administrador de Sistemas';
-        case Role.AdminIntegraciones: return 'Administrador de Integraciones';
+        case Role.OperadorSistemas: return 'Operador de Sistemas';
         case Role.Driver: return 'Conductor';
         case Role.Client: return 'Cliente';
         case Role.Facturacion: return 'Facturación';
@@ -74,7 +74,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         { id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> },
         { id: 'users-admins', label: 'Administradores', icon: <IconUserCheck className="h-5 w-5" /> },
         { id: 'users-sistemas', label: 'Admin. Sistemas', icon: <IconUserCheck className="h-5 w-5" /> },
-        { id: 'users-integraciones', label: 'Admin. Integraciones', icon: <IconUserCheck className="h-5 w-5" /> }
+        { id: 'users-operadores', label: 'Operadores Sist.', icon: <IconUserCheck className="h-5 w-5" /> }
       ]
     },
     { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
@@ -99,9 +99,39 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       label: 'Configuración',
       icon: <IconSettings className="h-6 w-6" />,
       subItems: [
-        { id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> }
+        { id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> },
+        { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }
       ]
     }
+  ];
+
+  const operadorSistemasNavItems = [
+    { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
+    { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" /> },
+    { id: 'import-orders', label: 'Importar Envíos', icon: <IconDownload className="h-6 w-6" /> },
+    { 
+      id: 'pickups',
+      label: 'Retiros',
+      icon: <IconUserCheck className="h-6 w-6" />,
+      subItems: [
+        { id: 'assign-pickups', label: 'Gestión de Retiros', icon: <IconPackage className="h-5 w-5" /> },
+        { id: 'pickup-report', label: 'Reporte de Retiros', icon: <IconChartBar className="h-5 w-5" /> }
+      ]
+    },
+    { 
+      id: 'users', 
+      label: 'Gestión de Usuarios', 
+      icon: <IconUsers className="h-6 w-6" />,
+      subItems: [
+        { id: 'users-clients', label: 'Clientes', icon: <IconUser className="h-5 w-5" /> },
+        { id: 'users-drivers', label: 'Conductores', icon: <IconTruck className="h-5 w-5" /> },
+        { id: 'users-auxiliares', label: 'Auxiliares', icon: <IconUser className="h-5 w-5" /> },
+        { id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> },
+        { id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> }
+      ]
+    },
+    { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
+    { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" /> }
   ];
   
   const clientNavItems = [
@@ -124,17 +154,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   ];
 
 
-  const adminIntegracionesNavItems = [
-    {
-      id: 'configuration',
-      label: 'Configuración',
-      icon: <IconSettings className="h-6 w-6" />,
-      subItems: [
-        { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }
-      ]
-    }
-  ];
-
   let navItems;
   switch (user?.role) {
       case Role.Admin:
@@ -143,8 +162,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       case Role.AdminSistemas:
           navItems = adminSistemasNavItems;
           break;
-      case Role.AdminIntegraciones:
-          navItems = adminIntegracionesNavItems;
+      case Role.OperadorSistemas:
+          navItems = operadorSistemasNavItems;
           break;
       case Role.Client:
           navItems = clientNavItems;

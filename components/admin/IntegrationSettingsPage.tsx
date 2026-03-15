@@ -380,7 +380,7 @@ const IntegrationSettingsPage: React.FC = () => {
                     </div>
                 </div>
             {/* GitHub Backup Section */}
-            {auth?.user?.role !== Role.AdminIntegraciones && (
+            {auth?.user?.role === Role.Admin && (
                 <div className="bg-[var(--background-paper)] rounded-xl shadow-sm border border-[var(--border-color)] overflow-hidden">
                     <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
                         <div className="flex items-center gap-3">
