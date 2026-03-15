@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.2.1",
-  "versionComment": "Versión 2.2.1: Styled Excel Export & Flex Label Capture",
+  "version": "2.2.2",
+  "versionComment": "Versión 2.2.2: Gestión de Roles Administrativos",
   "private": true,
   "description": "Sistema de seguimiento de paquetes full-stack.",
   "scripts": {

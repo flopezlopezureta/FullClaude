@@ -263,7 +263,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
             </button>
         </div>
         <div className="text-center">
-            <p className="text-[10px] text-[var(--text-muted)] font-mono">v2.2.1</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-mono">v2.2.2</p>
         </div>
       </div>
     </aside>
