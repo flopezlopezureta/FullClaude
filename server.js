@@ -82,7 +82,7 @@ async function startServer() {
       console.log(`Server is running on port ${PORT}`);
       try {
         await initializeDatabase();
-        await importUsersFromFile();
+        // await importUsersFromFile(); // Disabled to prevent deleted users from reappearing
         await ensureAdminUser();
         await seedDatabase();
         
