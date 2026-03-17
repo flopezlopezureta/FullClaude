@@ -50,6 +50,7 @@ async function startServer() {
     // Montar rutas de pickups directamente
     const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
     const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
+    const mobileRoute = tryRequireRoute('./routes/mobile.js'); if (mobileRoute) app.use('/api', mobileRoute);
     const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
     const notificationsRoute = tryRequireRoute('./routes/notifications.js'); if (notificationsRoute) app.use('/api/notifications', notificationsRoute);
 
@@ -216,7 +217,9 @@ async function initializeDatabase() {
                 'trackingId TEXT',
                 'meliFlexCode TEXT',
                 'isFlexed BOOLEAN DEFAULT false',
-                'flexedAt TIMESTAMPTZ'
+                'flexedAt TIMESTAMPTZ',
+                'destLatitude REAL',
+                'destLongitude REAL'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
