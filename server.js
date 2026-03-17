@@ -11,6 +11,9 @@ const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 
+// Trust proxy is required for correct protocol detection (http vs https) behind a load balancer
+app.set('trust proxy', 1);
+
 // --- Middlewares ---
 // Aggressively disable caching for all responses to solve stale asset issues.
 app.use((req, res, next) => {
