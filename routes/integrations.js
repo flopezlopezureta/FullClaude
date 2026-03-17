@@ -152,4 +152,75 @@ router.get('/status/:shipmentId', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/integrations/meli/callback
+// This is the public callback URL for Mercado Libre OAuth
+router.get('/meli/callback', async (req, res) => {
+    const { code, state: userId } = req.query;
+
+    if (!code || !userId) {
+        return res.status(400).send('Faltan parámetros de autorización (code o state).');
+    }
+
+    try {
+        // 1. Get App Credentials
+        const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
+        if (settingsRows.length === 0) {
+            return res.status(500).send('Configuración de Mercado Libre no encontrada en el servidor.');
+        }
+        const { meli_app_id, meli_client_secret } = settingsRows[0];
+
+        // 2. Exchange Code for Tokens
+        const redirectUri = `${req.protocol}://${req.get('host')}/api/integrations/meli/callback`;
+        const postData = new URLSearchParams({
+            grant_type: 'authorization_code',
+            client_id: meli_app_id,
+            client_secret: meli_client_secret,
+            code: code,
+            redirect_uri: redirectUri
+        }).toString();
+
+        const tokenData = await makeMeliPostRequest('/oauth/token', postData);
+
+        // 3. Store Tokens in User record
+        const meliIntegration = {
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: Date.now() + (tokenData.expires_in * 1000),
+            userId: tokenData.user_id,
+            connectedAt: new Date().toISOString()
+        };
+
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
+        const currentIntegrations = userRows[0]?.integrations || {};
+        
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [
+            JSON.stringify({ ...currentIntegrations, meli: meliIntegration }),
+            userId
+        ]);
+
+        // 4. Redirect back to the frontend with success
+        res.send(`
+            <html>
+                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6;">
+                    <div style="background: white; padding: 2rem; border-radius: 1rem; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
+                        <h2 style="color: #059669;">¡Conexión Exitosa!</h2>
+                        <p>Mercado Libre se ha conectado correctamente a tu cuenta de Full Envios.</p>
+                        <p>Puedes cerrar esta ventana y refrescar el panel de administración.</p>
+                        <button onclick="window.close()" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">Cerrar Ventana</button>
+                    </div>
+                    <script>
+                        setTimeout(() => {
+                            window.close();
+                        }, 5000);
+                    </script>
+                </body>
+            </html>
+        `);
+
+    } catch (err) {
+        console.error("Meli Callback Error:", err.body || err);
+        res.status(500).send(`Error al procesar la conexión con Mercado Libre: ${JSON.stringify(err.body || err)}`);
+    }
+});
+
 module.exports = router;
