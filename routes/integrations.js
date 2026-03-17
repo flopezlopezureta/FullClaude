@@ -170,8 +170,10 @@ router.get('/meli/callback', async (req, res) => {
         const { meli_app_id, meli_client_secret } = settingsRows[0];
 
         // 2. Exchange Code for Tokens
-        // Use req.get('host') and req.protocol (now reliable with trust proxy)
-        const redirectUri = `${req.protocol}://${req.get('host')}/api/integrations/meli/callback`;
+        // Force https as the app is running behind a proxy that handles SSL
+        const host = req.get('host');
+        const redirectUri = `https://${host}/api/integrations/meli/callback`;
+        
         const postData = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: meli_app_id,
