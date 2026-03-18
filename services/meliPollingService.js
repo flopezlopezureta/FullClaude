@@ -81,7 +81,14 @@ async function getValidMeliToken(clientId) {
     return meliIntegration.accessToken;
 }
 
+let isPolling = false;
+
 async function pollMeliPackages() {
+    if (isPolling) {
+        console.log('[MeliPolling] Already polling, skipping...');
+        return;
+    }
+    isPolling = true;
     console.log('[MeliPolling] Starting poll cycle...');
     try {
         // 0. Check if auto-import is enabled
@@ -156,6 +163,8 @@ async function pollMeliPackages() {
         }
     } catch (err) {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
+    } finally {
+        isPolling = false;
     }
 }
 
@@ -182,15 +191,15 @@ async function autoImportMeliPackages() {
             for (const order of ordersData.results) {
                 try {
                     const orderId = order.id.toString();
-
-                    // 3. Check if already imported
-                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1', [orderId]);
-                    if (existing.length > 0) continue;
-
-                    // 4. Get Shipment Details to check address
                     const shipmentId = order.shipping?.id;
                     if (!shipmentId) continue;
 
+                    // 3. Check if already imported
+                    // We check by both orderId and shipmentId (meliFlexCode) to be extra safe
+                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId, shipmentId.toString()]);
+                    if (existing.length > 0) continue;
+
+                    // 4. Get Shipment Details to check address
                     const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
                     
                     // 5. Filter by Region (Santiago / RM)
@@ -243,10 +252,45 @@ async function autoImportMeliPackages() {
     }
 }
 
+async function cleanupDuplicates() {
+    console.log('[MeliPolling] Starting cleanup of duplicate packages...');
+    try {
+        // Find duplicate meliFlexCode
+        const { rows: duplicates } = await db.query(`
+            SELECT "meliFlexCode", array_agg(id ORDER BY "createdAt" ASC) as ids
+            FROM packages 
+            WHERE "meliFlexCode" IS NOT NULL 
+            GROUP BY "meliFlexCode" 
+            HAVING count(*) > 1
+        `);
+
+        if (duplicates.length === 0) {
+            console.log('[MeliPolling] No duplicates found.');
+            return;
+        }
+
+        for (const row of duplicates) {
+            const [keepId, ...deleteIds] = row.ids;
+            console.log(`[MeliPolling] Cleaning up ${deleteIds.length} duplicates for Flex Code ${row.meliFlexCode}. Keeping ID ${keepId}`);
+            
+            // Delete tracking events first
+            await db.query('DELETE FROM tracking_events WHERE "packageId" = ANY($1)', [deleteIds]);
+            // Delete packages
+            await db.query('DELETE FROM packages WHERE id = ANY($1)', [deleteIds]);
+        }
+        console.log(`[MeliPolling] Cleanup complete. Removed duplicates for ${duplicates.length} Flex codes.`);
+    } catch (err) {
+        console.error('[MeliPolling] Error during cleanup:', err);
+    }
+}
+
 let intervalId = null;
 
 function start(intervalMs = 5 * 60 * 1000) { // Default 5 minutes
     if (intervalId) return;
+    
+    // Run cleanup once on start
+    cleanupDuplicates();
     
     // Run immediately on start
     pollMeliPackages();
