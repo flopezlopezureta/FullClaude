@@ -6,6 +6,7 @@ const db = require('../db');
 const { v4: uuidv4 } = require('uuid');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
+const NotificationService = require('../services/notificationService');
 
 // Helper to get tracking history for a package
 async function getHistory(packageId) {
@@ -307,6 +308,10 @@ router.post('/', authMiddleware, async (req, res) => {
         await addTrackingEvent(newPackage.id, 'Creado', origin, 'Paquete creado.');
         
         newPackage.history = await getHistory(newPackage.id);
+        
+        // Notify recipient
+        NotificationService.notifyRecipient(newPackage.id, 'PENDIENTE');
+
         res.status(201).json(newPackage);
     } catch (err) {
         console.error('Error in POST /api/packages:', err);
@@ -655,6 +660,9 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const updatedPkg = rows[0];
         updatedPkg.history = await getHistory(realId);
         
+        // Notify recipient
+        NotificationService.notifyRecipient(realId, 'EN_TRANSITO');
+
         res.json({ 
             message: `Paquete ${realId} asignado a ${driverName} y en tránsito.`,
             package: updatedPkg
@@ -773,6 +781,10 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
+
+        // Notify recipient
+        NotificationService.notifyRecipient(id, 'ENTREGADO');
+
         res.json(updatedPackage);
 
     } catch(err) {
@@ -795,6 +807,10 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
+
+        // Notify recipient
+        NotificationService.notifyRecipient(id, 'PROBLEMA');
+
         res.json(updatedPackage);
     } catch (err) {
         console.error(err);
@@ -819,6 +835,10 @@ router.post('/:id/pickup', authMiddleware, async (req, res) => {
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
+
+        // Notify recipient
+        NotificationService.notifyRecipient(id, 'RETIRO');
+
         res.json(updatedPackage);
     } catch (err) {
         console.error(err);
@@ -868,6 +888,9 @@ router.post('/bulk-pickup-client', authMiddleware, async (req, res) => {
         const details = `Retiro masivo confirmado por conductor ${driverName}.`;
         
         const eventPromises = packageIds.map(pkgId => {
+             // Notify recipient
+             NotificationService.notifyRecipient(pkgId, 'RETIRO');
+
              return client.query(
                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
                 [pkgId, 'RETIRADO', location, details, new Date()]
@@ -934,6 +957,10 @@ router.post('/:id/return', authMiddleware, async (req, res) => {
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
+
+        // Notify recipient
+        NotificationService.notifyRecipient(id, 'DEVOLUCION');
+
         res.json(updatedPackage);
 
     } catch(err) {
@@ -984,6 +1011,25 @@ router.post('/mark-billed', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al marcar los paquetes como facturados.' });
+    }
+});
+
+// GET /api/packages/public/track/:id
+router.get('/public/track/:id', async (req, res) => {
+    const { id } = req.params;
+    try {
+        const { rows } = await db.query(
+            'SELECT id, status, "recipientName", "recipientAddress", "recipientCommune", "recipientCity", "estimatedDelivery", "updatedAt", "meliOrderId", "trackingId" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1',
+            [id]
+        );
+        if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        const pkg = rows[0];
+        pkg.history = await getHistory(pkg.id);
+        res.json(pkg);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al consultar el seguimiento.' });
     }
 });
 

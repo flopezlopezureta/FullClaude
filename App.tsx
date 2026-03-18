@@ -2,6 +2,7 @@
 import React, { useContext, useEffect } from 'react';
 import { AuthContext, AuthProvider } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
+import TrackingPage from './pages/TrackingPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
 
@@ -36,6 +37,11 @@ const AppContent: React.FC = () => {
         <div className="text-xl font-semibold text-[var(--text-secondary)]">Cargando...</div>
       </div>
     );
+  }
+
+  const isTrackingRoute = window.location.pathname.startsWith('/track');
+  if (isTrackingRoute) {
+    return <TrackingPage />;
   }
 
   if (!auth.user) {

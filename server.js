@@ -256,7 +256,8 @@ async function initializeDatabase() {
                 "requiredPhotos" INTEGER DEFAULT 1,
                 "messagingPlan" TEXT DEFAULT 'NONE',
                 "pickupMode" TEXT DEFAULT 'SCAN',
-                "meliFlexValidation" BOOLEAN DEFAULT true
+                "meliFlexValidation" BOOLEAN DEFAULT true,
+                "recipientNotificationsEnabled" BOOLEAN DEFAULT false
             );
         `);
         
@@ -315,6 +316,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (meliFlexValidation):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "recipientNotificationsEnabled" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "recipientNotificationsEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (recipientNotificationsEnabled):', err); }
+        }
         // Drop old columns if they exist. Using IF EXISTS is safer.
         const dropOldPlanColumns = async () => {
             try { await db.query('ALTER TABLE system_settings DROP COLUMN IF EXISTS "planType"'); } catch(e){}
@@ -324,6 +331,12 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Old plan-related columns were dropped.');
         };
         await dropOldPlanColumns();
+        try {
+            await db.query('ALTER TABLE notifications ALTER COLUMN "userId" DROP NOT NULL');
+            console.log('MIGRATION APPLIED: Column "userId" in "notifications" is now nullable.');
+        } catch (err) {
+            console.error('Error during notifications migration (userId nullable):', err);
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -341,7 +354,7 @@ async function initializeDatabase() {
         await db.query(`
             CREATE TABLE IF NOT EXISTS notifications (
                 id TEXT PRIMARY KEY,
-                "userId" TEXT NOT NULL,
+                "userId" TEXT,
                 title TEXT NOT NULL,
                 message TEXT NOT NULL,
                 type TEXT NOT NULL,
@@ -407,7 +420,9 @@ async function initializeDatabase() {
                 shopify_access_token TEXT,
                 github_token TEXT,
                 github_repo TEXT,
-                github_owner TEXT
+                github_owner TEXT,
+                whatsapp_api_key TEXT,
+                whatsapp_phone_number TEXT
             );
         `);
         console.log('Table "integration_settings" is ready.');
@@ -444,6 +459,18 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "github_owner" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (github_owner):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN whatsapp_api_key TEXT');
+            console.log('MIGRATION APPLIED: Column "whatsapp_api_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (whatsapp_api_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN whatsapp_phone_number TEXT');
+            console.log('MIGRATION APPLIED: Column "whatsapp_phone_number" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (whatsapp_phone_number):', err); }
         }
         
         // --- MIGRATIONS: Add missing package fields ---
