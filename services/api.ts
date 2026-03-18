@@ -251,6 +251,7 @@ export const api = {
   // Settings
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
   updateSystemSettings: (data: Partial<SystemSettings>) => put<SystemSettings>('/settings/system', data),
+  getMeliPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number }>('/settings/meli-polling-status'),
   resetDatabase: (password: string) => post<{message: string}>('/settings/reset-database', { password }),
   resetPackages: (password: string) => post<{message: string}>('/settings/reset-packages', { password }),
   resetClients: (password: string) => post<{message: string}>('/settings/reset-clients', { password }),

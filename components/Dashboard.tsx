@@ -12,7 +12,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import PackageFilters from './admin/PackageFilters';
 import ShippingLabelModal from './client/ShippingLabelModal';
 import BatchShippingLabelModal from './client/BatchShippingLabelModal';
-import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader } from './Icon';
+import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre } from './Icon';
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
@@ -60,6 +60,8 @@ const Dashboard: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
+  const [timeLeft, setTimeLeft] = useState<number>(0);
 
   // Selection and Pagination states
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
@@ -79,6 +81,33 @@ const Dashboard: React.FC = () => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const auth = useContext(AuthContext);
+
+  useEffect(() => {
+    const fetchPollingStatus = async () => {
+      if (auth?.user?.role !== Role.Admin) return;
+      try {
+        const status = await api.getMeliPollingStatus();
+        setPollingStatus(status);
+      } catch (err) {
+        console.error('Error fetching polling status:', err);
+      }
+    };
+
+    fetchPollingStatus();
+    const interval = setInterval(fetchPollingStatus, 10000); // Check every 10s
+    return () => clearInterval(interval);
+  }, [auth?.user?.role]);
+
+  useEffect(() => {
+    if (!pollingStatus) return;
+
+    const timer = setInterval(() => {
+      const remaining = Math.max(0, Math.ceil((pollingStatus.nextPollTime - Date.now()) / 1000));
+      setTimeLeft(remaining);
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [pollingStatus]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -485,6 +514,15 @@ const Dashboard: React.FC = () => {
                         )}
                     </button>
                 </div>
+
+                {/* ML Polling Status */}
+                {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-blue-700 text-xs font-medium shadow-sm">
+                        <IconMercadoLibre className="w-3.5 h-3.5" />
+                        <span className="whitespace-nowrap">Próxima revisión ML: {timeLeft}s</span>
+                        {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                    </div>
+                )}
             </div>
             
             <div className="flex items-center justify-start flex-wrap gap-x-6 gap-y-3">

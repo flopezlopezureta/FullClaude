@@ -94,6 +94,19 @@ const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
 
 const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, creatorName, onSelect, onAssign, onEdit, onDelete, onPrint, onMarkForReturn, hideDriverName, isSelected, onSelectionChange, index }) => {
   const [showQRCode, setShowQRCode] = useState(false);
+  const [showNewLabel, setShowNewLabel] = useState(false);
+
+  useEffect(() => {
+    const created = new Date(pkg.createdAt).getTime();
+    const now = Date.now();
+    const diff = now - created;
+    if (diff > 0 && diff < 3000) {
+      setShowNewLabel(true);
+      const timer = setTimeout(() => setShowNewLabel(false), 3000 - diff);
+      return () => clearTimeout(timer);
+    }
+  }, [pkg.createdAt]);
+
   const canModify = pkg.status === PackageStatus.Pending;
   const canReassign = onAssign && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned;
   const canMarkForReturn = onMarkForReturn && pkg.status === PackageStatus.Problem;
@@ -180,6 +193,11 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                             <p className="font-bold text-[var(--text-primary)] text-sm leading-tight truncate">
                                 {primaryText}
                             </p>
+                            {showNewLabel && (
+                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter bg-green-500 text-white animate-pulse">
+                                    NUEVO
+                                </span>
+                            )}
                             {isScanned && (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-tighter bg-green-100 text-green-700 border border-green-200">
                                     <IconCheckCircle className="w-2.5 h-2.5 mr-0.5" />

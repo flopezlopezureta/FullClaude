@@ -82,6 +82,8 @@ async function getValidMeliToken(clientId) {
 }
 
 let isPolling = false;
+let lastPollTime = Date.now();
+let currentIntervalMs = 5 * 60 * 1000;
 
 async function pollMeliPackages() {
     if (isPolling) {
@@ -89,6 +91,7 @@ async function pollMeliPackages() {
         return;
     }
     isPolling = true;
+    lastPollTime = Date.now();
     console.log('[MeliPolling] Starting poll cycle...');
     try {
         // 0. Check if auto-import is enabled
@@ -288,6 +291,7 @@ let intervalId = null;
 
 function start(intervalMs = 5 * 60 * 1000) { // Default 5 minutes
     if (intervalId) return;
+    currentIntervalMs = intervalMs;
     
     // Run cleanup once on start
     cleanupDuplicates();
@@ -305,4 +309,12 @@ function stop() {
     }
 }
 
-module.exports = { start, stop };
+function getStatus() {
+    return {
+        nextPollTime: lastPollTime + currentIntervalMs,
+        isPolling,
+        intervalMs: currentIntervalMs
+    };
+}
+
+module.exports = { start, stop, getStatus };
