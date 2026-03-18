@@ -222,7 +222,8 @@ async function initializeDatabase() {
                 'isFlexed BOOLEAN DEFAULT false',
                 'flexedAt TIMESTAMPTZ',
                 'destLatitude REAL',
-                'destLongitude REAL'
+                'destLongitude REAL',
+                'flexLabelPhotoBase64 TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
@@ -257,7 +258,8 @@ async function initializeDatabase() {
                 "messagingPlan" TEXT DEFAULT 'NONE',
                 "pickupMode" TEXT DEFAULT 'SCAN',
                 "meliFlexValidation" BOOLEAN DEFAULT true,
-                "recipientNotificationsEnabled" BOOLEAN DEFAULT false
+                "recipientNotificationsEnabled" BOOLEAN DEFAULT false,
+                "saveFlexLabelPhoto" BOOLEAN DEFAULT false
             );
         `);
         
@@ -331,6 +333,12 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Old plan-related columns were dropped.');
         };
         await dropOldPlanColumns();
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "saveFlexLabelPhoto" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "saveFlexLabelPhoto" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (saveFlexLabelPhoto):', err); }
+        }
         try {
             await db.query('ALTER TABLE notifications ALTER COLUMN "userId" DROP NOT NULL');
             console.log('MIGRATION APPLIED: Column "userId" in "notifications" is now nullable.');

@@ -32,6 +32,7 @@ export interface SystemSettings {
     messagingPlan: MessagingPlan;
     pickupMode?: PickupMode;
     meliFlexValidation?: boolean;
+    saveFlexLabelPhoto?: boolean;
 }
 
 export interface ZonePricing {
@@ -199,6 +200,7 @@ export interface Package {
   meliFlexCode?: string;
   isFlexed?: boolean;
   flexedAt?: Date;
+  flexLabelPhotoBase64?: string;
 }
 
 export interface Notification {

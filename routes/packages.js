@@ -676,16 +676,17 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
 // POST /api/packages/:id/flex
 router.post('/:id/flex', authMiddleware, async (req, res) => {
     const { id } = req.params;
-    const { isFlexed } = req.body;
+    const { isFlexed, flexLabelPhotoBase64 } = req.body;
     try {
         const { rows } = await db.query(
-            'UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3 WHERE id = $4 RETURNING *',
-            [isFlexed, isFlexed ? new Date() : null, new Date(), id]
+            'UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4 WHERE id = $5 RETURNING *',
+            [isFlexed, isFlexed ? new Date() : null, new Date(), flexLabelPhotoBase64 || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
         const statusText = isFlexed ? 'Flexeado' : 'No Flexeado';
-        await addTrackingEvent(id, statusText, 'Centro de Distribución', `Paquete marcado como ${statusText}.`);
+        const details = flexLabelPhotoBase64 ? `Paquete marcado como ${statusText} con respaldo de etiqueta.` : `Paquete marcado como ${statusText}.`;
+        await addTrackingEvent(id, statusText, 'Centro de Distribución', details);
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft, IconRefresh } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft, IconRefresh, IconCamera } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 import type { Package } from '../../types';
 
@@ -38,6 +38,11 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [isFlexing, setIsFlexing] = useState(false);
+  const [flexPhotoBase64, setFlexPhotoBase64] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { systemSettings } = useContext(AuthContext)!;
+  const saveFlexLabelPhoto = systemSettings?.saveFlexLabelPhoto || false;
 
   const handleScan = useCallback(async (packageId: string) => {
     if (!isScanning || !user || scannedInSession.has(packageId)) return;
@@ -84,10 +89,17 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
 
   const handleMarkAsFlexed = async () => {
     if (!scanResult?.package || isFlexing) return;
+    
+    if (saveFlexLabelPhoto && !flexPhotoBase64) {
+      alert("Por favor, toma una foto de la etiqueta antes de marcar como Flex.");
+      return;
+    }
+
     setIsFlexing(true);
     try {
-      await api.markPackageAsFlexed(scanResult.package.id, true);
+      await api.markPackageAsFlexed(scanResult.package.id, true, flexPhotoBase64 || undefined);
       setScanResult(null);
+      setFlexPhotoBase64(null);
       setIsScanning(true);
     } catch (error) {
       console.error("Error marking as flexed:", error);
@@ -96,8 +108,20 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
     }
   };
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setFlexPhotoBase64(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleContinue = () => {
     setScanResult(null);
+    setFlexPhotoBase64(null);
     setIsScanning(true);
   };
 
@@ -208,21 +232,54 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
                     <span className="font-medium">{scanResult.message}</span>
                 </div>
                 {scanResult.type === 'success' && scanResult.package?.source === 'MERCADO_LIBRE' && !scanResult.package?.isFlexed && (
-                    <div className="mt-3 flex gap-2 w-full">
-                        <button 
-                            onClick={handleMarkAsFlexed}
-                            disabled={isFlexing}
-                            className="flex-grow px-3 py-1.5 bg-white text-green-600 rounded font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-50 transition-colors"
-                        >
-                            {isFlexing ? <IconRefresh className="w-4 h-4 animate-spin" /> : <IconCheckCircle className="w-4 h-4" />}
-                            MARCAR FLEX
-                        </button>
-                        <button 
-                            onClick={handleContinue}
-                            className="px-3 py-1.5 bg-green-600 text-white border border-white/30 rounded font-medium text-sm hover:bg-green-700 transition-colors"
-                        >
-                            Continuar
-                        </button>
+                    <div className="mt-3 flex flex-col gap-2 w-full">
+                        {saveFlexLabelPhoto && (
+                            <div className="flex flex-col gap-2">
+                                {flexPhotoBase64 ? (
+                                    <div className="relative w-full aspect-video bg-black rounded overflow-hidden border border-white/30">
+                                        <img src={flexPhotoBase64} alt="Respaldo Etiqueta" className="w-full h-full object-contain" />
+                                        <button 
+                                            onClick={() => setFlexPhotoBase64(null)}
+                                            className="absolute top-2 right-2 p-1 bg-black/60 rounded-full text-white"
+                                        >
+                                            <IconX className="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="w-full px-3 py-2 bg-blue-600 text-white rounded font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
+                                    >
+                                        <IconCamera className="w-5 h-5" />
+                                        TOMAR FOTO ETIQUETA
+                                    </button>
+                                )}
+                                <input 
+                                    type="file" 
+                                    ref={fileInputRef} 
+                                    onChange={handleFileChange} 
+                                    accept="image/*" 
+                                    capture="environment" 
+                                    className="hidden" 
+                                />
+                            </div>
+                        )}
+                        <div className="flex gap-2 w-full">
+                            <button 
+                                onClick={handleMarkAsFlexed}
+                                disabled={isFlexing || (saveFlexLabelPhoto && !flexPhotoBase64)}
+                                className={`flex-grow px-3 py-1.5 bg-white text-green-600 rounded font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-50 transition-colors ${(saveFlexLabelPhoto && !flexPhotoBase64) ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                                {isFlexing ? <IconRefresh className="w-4 h-4 animate-spin" /> : <IconCheckCircle className="w-4 h-4" />}
+                                MARCAR FLEX
+                            </button>
+                            <button 
+                                onClick={handleContinue}
+                                className="px-3 py-1.5 bg-green-600 text-white border border-white/30 rounded font-medium text-sm hover:bg-green-700 transition-colors"
+                            >
+                                Continuar
+                            </button>
+                        </div>
                     </div>
                 )}
             </div>
