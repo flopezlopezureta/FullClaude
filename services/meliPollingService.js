@@ -84,6 +84,14 @@ async function getValidMeliToken(clientId) {
 async function pollMeliPackages() {
     console.log('[MeliPolling] Starting poll cycle...');
     try {
+        // 0. Check if auto-import is enabled
+        const { rows: settingsRows } = await db.query('SELECT "meliAutoImport" FROM system_settings WHERE id = 1');
+        const autoImportEnabled = settingsRows.length > 0 && settingsRows[0].meliAutoImport;
+
+        if (autoImportEnabled) {
+            await autoImportMeliPackages();
+        }
+
         // 1. Get all active Mercado Libre packages that are not finished
         const { rows: packages } = await db.query(`
             SELECT id, "meliOrderId", "driverId", status, "creatorId" 
@@ -94,72 +102,144 @@ async function pollMeliPackages() {
         `);
 
         if (packages.length === 0) {
-            console.log('[MeliPolling] No active ML packages to poll.');
-            return;
-        }
+            console.log('[MeliPolling] No active ML packages to poll status.');
+        } else {
+            // Group by creatorId to optimize token fetching
+            const packagesByClient = packages.reduce((acc, pkg) => {
+                if (!acc[pkg.creatorId]) acc[pkg.creatorId] = [];
+                acc[pkg.creatorId].push(pkg);
+                return acc;
+            }, {});
 
-        // Group by creatorId to optimize token fetching
-        const packagesByClient = packages.reduce((acc, pkg) => {
-            if (!acc[pkg.creatorId]) acc[pkg.creatorId] = [];
-            acc[pkg.creatorId].push(pkg);
-            return acc;
-        }, {});
+            for (const clientId in packagesByClient) {
+                const accessToken = await getValidMeliToken(clientId);
+                if (!accessToken) continue;
 
-        for (const clientId in packagesByClient) {
-            const accessToken = await getValidMeliToken(clientId);
-            if (!accessToken) continue;
-
-            for (const pkg of packagesByClient[clientId]) {
-                try {
-                    // Check status in Mercado Libre
-                    const shipment = await makeMeliGetRequest(`/shipments/${pkg.meliOrderId}`, accessToken);
-                    
-                    // Logic to detect "Rescheduled"
-                    // In ML, this might be status: 'handling' with specific substatus, or just 'rescheduled'
-                    // For this implementation, we assume if ML says it's rescheduled, we update.
-                    // We also check if our local status is already 'REPROGRAMADO' to avoid duplicate notifications.
-                    
-                    const mlStatus = shipment.status;
-                    const mlSubstatus = shipment.substatus;
-                    
-                    // Placeholder: adjust based on real ML status mapping
-                    const isRescheduledInML = mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed';
-
-                    if (isRescheduledInML && pkg.status !== 'REPROGRAMADO') {
-                        console.log(`[MeliPolling] Package ${pkg.id} detected as RESCHEDULED in ML.`);
+                for (const pkg of packagesByClient[clientId]) {
+                    try {
+                        // Check status in Mercado Libre
+                        const shipment = await makeMeliGetRequest(`/shipments/${pkg.meliOrderId}`, accessToken);
                         
-                        const now = new Date();
-                        // 1. Update package status
-                        await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', ['REPROGRAMADO', now, pkg.id]);
+                        const mlStatus = shipment.status;
+                        const mlSubstatus = shipment.substatus;
                         
-                        // 2. Add tracking event
-                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                            [pkg.id, 'Reprogramado', 'Mercado Libre', 'El envío ha sido reprogramado por Mercado Libre.', now]);
-                        
-                        // 3. Notify driver if assigned
-                        if (pkg.driverId) {
-                            const notificationId = `notif-${uuidv4()}`;
-                            await db.query(`
-                                INSERT INTO notifications (id, "userId", title, message, type, "relatedId")
-                                VALUES ($1, $2, $3, $4, $5, $6)
-                            `, [
-                                notificationId, 
-                                pkg.driverId, 
-                                'Envío Reprogramado', 
-                                `El paquete ${pkg.id} ha sido reprogramado por Mercado Libre.`, 
-                                'PACKAGE_RESCHEDULED',
-                                pkg.id
-                            ]);
-                            console.log(`[MeliPolling] Notification sent to driver ${pkg.driverId} for package ${pkg.id}`);
+                        const isRescheduledInML = mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed';
+
+                        if (isRescheduledInML && pkg.status !== 'REPROGRAMADO') {
+                            console.log(`[MeliPolling] Package ${pkg.id} detected as RESCHEDULED in ML.`);
+                            
+                            const now = new Date();
+                            await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', ['REPROGRAMADO', now, pkg.id]);
+                            await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                                [pkg.id, 'Reprogramado', 'Mercado Libre', 'El envío ha sido reprogramado por Mercado Libre.', now]);
+                            
+                            if (pkg.driverId) {
+                                const notificationId = `notif-${uuidv4()}`;
+                                await db.query(`
+                                    INSERT INTO notifications (id, "userId", title, message, type, "relatedId")
+                                    VALUES ($1, $2, $3, $4, $5, $6)
+                                `, [
+                                    notificationId, 
+                                    pkg.driverId, 
+                                    'Envío Reprogramado', 
+                                    `El paquete ${pkg.id} ha sido reprogramado por Mercado Libre.`, 
+                                    'PACKAGE_RESCHEDULED',
+                                    pkg.id
+                                ]);
+                            }
                         }
+                    } catch (err) {
+                        console.error(`[MeliPolling] Error polling shipment ${pkg.meliOrderId}:`, err.body || err);
                     }
-                } catch (err) {
-                    console.error(`[MeliPolling] Error polling shipment ${pkg.meliOrderId}:`, err.body || err);
                 }
             }
         }
     } catch (err) {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
+    }
+}
+
+async function autoImportMeliPackages() {
+    console.log('[MeliPolling] Starting auto-import cycle...');
+    try {
+        // 1. Get all users with Meli integration
+        const { rows: users } = await db.query("SELECT id, integrations, \"clientIdentifier\" FROM users WHERE integrations->'meli' IS NOT NULL");
+        
+        for (const user of users) {
+            const clientId = user.id;
+            const clientIdentifier = user.clientIdentifier || 'CLI';
+            const accessToken = await getValidMeliToken(clientId);
+            if (!accessToken) continue;
+
+            const meliIntegration = user.integrations.meli;
+
+            // 2. Fetch paid orders with shipping mode 'self_service' (Flex)
+            // We search for orders with status 'paid'
+            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&shipping.mode=self_service`, accessToken);
+            
+            if (!ordersData.results || ordersData.results.length === 0) continue;
+
+            for (const order of ordersData.results) {
+                try {
+                    const orderId = order.id.toString();
+
+                    // 3. Check if already imported
+                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1', [orderId]);
+                    if (existing.length > 0) continue;
+
+                    // 4. Get Shipment Details to check address
+                    const shipmentId = order.shipping?.id;
+                    if (!shipmentId) continue;
+
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    
+                    // 5. Filter by Region (Santiago / RM)
+                    const stateName = shipment.receiver_address?.state?.name || '';
+                    const isRM = stateName.toLowerCase().includes('metropolitana') || stateName.toLowerCase().includes('santiago');
+                    
+                    if (!isRM) {
+                        console.log(`[MeliPolling] Skipping order ${orderId} - Not in RM (${stateName})`);
+                        continue;
+                    }
+
+                    // 6. Import Package
+                    const now = new Date();
+                    const newPackage = {
+                        id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
+                        recipientName: shipment.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
+                        recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
+                        status: 'PENDIENTE',
+                        shippingType: 'SAME_DAY',
+                        origin: 'Centro de Distribución',
+                        recipientAddress: shipment.receiver_address?.address_line || 'N/A',
+                        recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
+                        recipientCity: stateName || 'Santiago',
+                        notes: `Auto-Import ML Order: ${orderId}`,
+                        estimatedDelivery: now,
+                        createdAt: now,
+                        updatedAt: now,
+                        creatorId: clientId,
+                        source: 'MERCADO_LIBRE',
+                        meliOrderId: orderId,
+                        meliFlexCode: shipmentId.toString()
+                    };
+
+                    const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+                    const values = Object.values(newPackage);
+                    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                    await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                        [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía integración ML.', now]);
+
+                    console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId}`);
+                } catch (err) {
+                    console.error(`[MeliPolling] Error auto-importing order ${order.id}:`, err.body || err);
+                }
+            }
+        }
+    } catch (err) {
+        console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
     }
 }
 

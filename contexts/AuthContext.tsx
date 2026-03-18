@@ -54,6 +54,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     pickupMode: PickupMode.Scan,
     meliFlexValidation: true,
     saveFlexLabelPhoto: false,
+    meliAutoImport: false,
   });
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);

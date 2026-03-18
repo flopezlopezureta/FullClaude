@@ -33,6 +33,7 @@ export interface SystemSettings {
     pickupMode?: PickupMode;
     meliFlexValidation?: boolean;
     saveFlexLabelPhoto?: boolean;
+    meliAutoImport?: boolean;
 }
 
 export interface ZonePricing {
