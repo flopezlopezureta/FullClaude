@@ -263,6 +263,9 @@ export const api = {
   getIntegrationSettings: () => get<IntegrationSettings>('/settings/integrations'),
   updateIntegrationSettings: (data: Partial<IntegrationSettings>) => put<IntegrationSettings>('/settings/integrations', data),
   testMeliConnection: (creds: { meliAppId: string, meliClientSecret: string }) => post<{message: string}>('/settings/test-meli', creds),
+  testShopifyConnection: (creds: { shopifyShopUrl: string, shopifyAccessToken: string }) => post<{message: string, shopName?: string}>('/integrations/test/shopify', creds),
+  testWooCommerceConnection: (creds: { wooUrl: string, wooConsumerKey: string, wooConsumerSecret: string }) => post<{message: string}>('/integrations/test/woocommerce', creds),
+  testFalabellaConnection: (creds: { falabellaApiKey: string, falabellaSellerId: string }) => post<{message: string}>('/integrations/test/falabella', creds),
   
   fetchMeliOrders: (clientId: string) => get<MeliOrder[]>(`/integrations/${clientId}/meli/orders`),
   importMeliOrders: (clientId: string, orderIds: string[]) => post<void>(`/integrations/${clientId}/meli/import`, { orderIds }),

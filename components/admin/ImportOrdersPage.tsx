@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api, PackageCreationData } from '../../services/api';
 import type { User, MeliOrder } from '../../types';
-import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle } from '../Icon';
+import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle, IconWoocommerce, IconFalabella } from '../Icon';
 import { PackageSource, ShippingType } from '../../constants';
 
 const ImportOrdersPage: React.FC = () => {
@@ -58,6 +58,10 @@ const ImportOrdersPage: React.FC = () => {
                 fetchedOrders = await api.fetchMeliOrders(selectedClientId);
             } else if (source === PackageSource.Shopify) {
                 fetchedOrders = await api.fetchShopifyOrders(selectedClientId);
+            } else if (source === PackageSource.WooCommerce) {
+                fetchedOrders = await api.fetchWooCommerceOrders(selectedClientId);
+            } else if (source === PackageSource.Falabella) {
+                fetchedOrders = await api.fetchFalabellaOrders(selectedClientId);
             }
             setOrders(fetchedOrders);
         } catch (err: any) {
@@ -183,20 +187,34 @@ const ImportOrdersPage: React.FC = () => {
                         <h2 className="text-xl font-bold text-[var(--text-primary)] mb-1">Importar Envíos</h2>
                         <p className="text-sm text-[var(--text-muted)]">Selecciona la fuente y el cliente.</p>
                     </div>
-                    <div className="flex bg-[var(--background-muted)] p-1 rounded-lg">
+                    <div className="flex bg-[var(--background-muted)] p-1 rounded-lg overflow-x-auto max-w-full">
                         <button
                             onClick={() => { setSource(PackageSource.MercadoLibre); setOrders([]); setSelectedClientId(''); }}
-                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${source === PackageSource.MercadoLibre ? 'bg-white shadow text-yellow-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${source === PackageSource.MercadoLibre ? 'bg-white shadow text-yellow-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
                         >
                             <IconMercadoLibre className="w-5 h-5 mr-2" />
                             Mercado Libre
                         </button>
                         <button
                             onClick={() => { setSource(PackageSource.Shopify); setOrders([]); setSelectedClientId(''); }}
-                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors ${source === PackageSource.Shopify ? 'bg-white shadow text-green-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${source === PackageSource.Shopify ? 'bg-white shadow text-green-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
                         >
                             <IconShopify className="w-5 h-5 mr-2" />
                             Shopify
+                        </button>
+                        <button
+                            onClick={() => { setSource(PackageSource.WooCommerce); setOrders([]); setSelectedClientId(''); }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${source === PackageSource.WooCommerce ? 'bg-white shadow text-purple-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
+                        >
+                            <IconWoocommerce className="w-5 h-5 mr-2" />
+                            WooCommerce
+                        </button>
+                        <button
+                            onClick={() => { setSource(PackageSource.Falabella); setOrders([]); setSelectedClientId(''); }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${source === PackageSource.Falabella ? 'bg-white shadow text-lime-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
+                        >
+                            <IconFalabella className="w-5 h-5 mr-2" />
+                            Falabella
                         </button>
                     </div>
                 </div>
@@ -221,9 +239,17 @@ const ImportOrdersPage: React.FC = () => {
                     <button
                         onClick={handleFetchOrders}
                         disabled={!selectedClientId || isLoading}
-                        className={`flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white disabled:bg-slate-400 ${source === PackageSource.MercadoLibre ? 'bg-yellow-500 hover:bg-yellow-600' : 'bg-green-600 hover:bg-green-700'}`}
+                        className={`flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white disabled:bg-slate-400 ${
+                            source === PackageSource.MercadoLibre ? 'bg-yellow-500 hover:bg-yellow-600' : 
+                            source === PackageSource.Shopify ? 'bg-green-600 hover:bg-green-700' :
+                            source === PackageSource.WooCommerce ? 'bg-purple-600 hover:bg-purple-700' :
+                            'bg-lime-600 hover:bg-lime-700'
+                        }`}
                     >
-                        {source === PackageSource.MercadoLibre ? <IconMercadoLibre className="w-5 h-5 mr-2"/> : <IconShopify className="w-5 h-5 mr-2"/>}
+                        {source === PackageSource.MercadoLibre ? <IconMercadoLibre className="w-5 h-5 mr-2"/> : 
+                         source === PackageSource.Shopify ? <IconShopify className="w-5 h-5 mr-2"/> :
+                         source === PackageSource.WooCommerce ? <IconWoocommerce className="w-5 h-5 mr-2"/> :
+                         <IconFalabella className="w-5 h-5 mr-2"/>}
                         {isLoading ? 'Cargando...' : 'Buscar Envíos'}
                     </button>
                 </div>

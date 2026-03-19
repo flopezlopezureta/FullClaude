@@ -437,7 +437,12 @@ async function initializeDatabase() {
                 github_repo TEXT,
                 github_owner TEXT,
                 whatsapp_api_key TEXT,
-                whatsapp_phone_number TEXT
+                whatsapp_phone_number TEXT,
+                woo_url TEXT,
+                woo_consumer_key TEXT,
+                woo_consumer_secret TEXT,
+                falabella_api_key TEXT,
+                falabella_seller_id TEXT
             );
         `);
         console.log('Table "integration_settings" is ready.');
@@ -486,6 +491,40 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "whatsapp_phone_number" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (whatsapp_phone_number):', err); }
+        }
+
+        // --- MIGRATIONS: Add WooCommerce fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN woo_url TEXT');
+            console.log('MIGRATION APPLIED: Column "woo_url" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (woo_url):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN woo_consumer_key TEXT');
+            console.log('MIGRATION APPLIED: Column "woo_consumer_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (woo_consumer_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN woo_consumer_secret TEXT');
+            console.log('MIGRATION APPLIED: Column "woo_consumer_secret" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (woo_consumer_secret):', err); }
+        }
+
+        // --- MIGRATIONS: Add Falabella fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN falabella_api_key TEXT');
+            console.log('MIGRATION APPLIED: Column "falabella_api_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (falabella_api_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN falabella_seller_id TEXT');
+            console.log('MIGRATION APPLIED: Column "falabella_seller_id" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (falabella_seller_id):', err); }
         }
         
         // --- MIGRATIONS: Add missing package fields ---

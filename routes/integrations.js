@@ -30,6 +30,98 @@ const makeMeliRequest = (options, postData = null) => {
     });
 };
 
+// --- WOOCOMMERCE API HELPERS ---
+const makeWooCommerceRequest = (wooUrl, consumerKey, consumerSecret, path, method = 'GET', postData = null) => {
+    return new Promise((resolve, reject) => {
+        if (!wooUrl) return reject(new Error('La URL de WooCommerce es requerida.'));
+        if (!consumerKey) return reject(new Error('El Consumer Key de WooCommerce es requerido.'));
+        if (!consumerSecret) return reject(new Error('El Consumer Secret de WooCommerce es requerido.'));
+
+        // Clean URL
+        let cleanUrl = wooUrl.trim().replace(/\/$/, '');
+        if (!cleanUrl.startsWith('http')) {
+            cleanUrl = 'https://' + cleanUrl;
+        }
+
+        const url = new URL(`${cleanUrl}/wp-json/wc/v3${path}`);
+        const auth = Buffer.from(`${consumerKey}:${consumerSecret}`).toString('base64');
+
+        const options = {
+            hostname: url.hostname,
+            port: url.port || (url.protocol === 'https:' ? 443 : 80),
+            path: url.pathname + url.search,
+            method: method,
+            headers: {
+                'Authorization': `Basic ${auth}`,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        const req = (url.protocol === 'https:' ? https : require('http')).request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(parsedData);
+                    } else {
+                        reject({ statusCode: res.statusCode, body: parsedData });
+                    }
+                } catch (e) {
+                    reject({ statusCode: res.statusCode, body: data, isRaw: true });
+                }
+            });
+        });
+        req.on('error', (e) => reject(e));
+        if (postData) req.write(postData);
+        req.end();
+    });
+};
+
+// --- FALABELLA API HELPERS ---
+const makeFalabellaRequest = (apiKey, sellerId, path, method = 'GET', postData = null) => {
+    return new Promise((resolve, reject) => {
+        if (!apiKey) return reject(new Error('La API Key de Falabella es requerida.'));
+        if (!sellerId) return reject(new Error('El Seller ID de Falabella es requerido.'));
+
+        // This is a placeholder for Falabella (Seller Center) API
+        // In a real scenario, this would involve specific headers and signature
+        const options = {
+            hostname: 'sellercenter-api.falabella.com',
+            path: `/${path}`,
+            method: method,
+            headers: {
+                'Api-Key': apiKey,
+                'Seller-Id': sellerId,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(parsedData);
+                    } else {
+                        reject({ statusCode: res.statusCode, body: parsedData });
+                    }
+                } catch (e) {
+                    reject({ statusCode: res.statusCode, body: data, isRaw: true });
+                }
+            });
+        });
+        req.on('error', (e) => reject(e));
+        if (postData) req.write(postData);
+        req.end();
+    });
+};
+
 const makeMeliGetRequest = (path, accessToken) => makeMeliRequest({
     hostname: 'api.mercadolibre.com',
     path,
@@ -270,6 +362,373 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error("Meli Import Orders Error:", err.body || err);
         res.status(500).json({ message: err.message || 'Error al importar pedidos de Mercado Libre.' });
+    }
+});
+
+// --- SHOPIFY API HELPERS ---
+const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData = null) => {
+    return new Promise((resolve, reject) => {
+        if (!shopUrl) return reject(new Error('La URL de la tienda es requerida.'));
+        if (!accessToken) return reject(new Error('El Access Token de Shopify es requerido.'));
+
+        // Extract only the hostname (e.g., shopname.myshopify.com)
+        let hostname = shopUrl.trim();
+        
+        // Remove protocol
+        hostname = hostname.replace(/^https?:\/\//, '');
+        
+        // Remove path if present (e.g. tienda.myshopify.com/admin)
+        hostname = hostname.split('/')[0];
+        
+        // Remove port if present
+        hostname = hostname.split(':')[0];
+
+        // Basic validation: if no dots, assume it's just the shop name
+        if (hostname && !hostname.includes('.')) {
+            hostname += '.myshopify.com';
+        }
+
+        if (!hostname) {
+            return reject(new Error('URL de tienda inválida. Por favor usa el formato "tienda.myshopify.com".'));
+        }
+
+        const options = {
+            hostname: hostname,
+            path: `/admin/api/2024-04${path}`,
+            method: method,
+            headers: {
+                'X-Shopify-Access-Token': accessToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(parsedData);
+                    } else {
+                        // Shopify often returns errors as { errors: "..." } or { errors: { field: ["error"] } }
+                        reject({ statusCode: res.statusCode, body: parsedData });
+                    }
+                } catch (e) {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(data);
+                    } else {
+                        reject({ statusCode: res.statusCode, body: data, isRaw: true });
+                    }
+                }
+            });
+        });
+
+        req.on('error', (e) => {
+            console.error(`Shopify Request Error (${hostname}):`, e.message);
+            reject(new Error(`Error de red al contactar a Shopify (${hostname}): ${e.message}`));
+        });
+
+        if (postData) {
+            req.write(JSON.stringify(postData));
+        }
+        req.end();
+    });
+};
+
+const getValidShopifyIntegration = async (clientId) => {
+    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+    if (userRows.length === 0) throw new Error('Cliente no encontrado.');
+    
+    let shopifyIntegration = userRows[0].integrations?.shopify;
+    
+    // If not in user, check global settings
+    if (!shopifyIntegration || !shopifyIntegration.shopUrl || !shopifyIntegration.accessToken) {
+        const { rows: settingsRows } = await db.query('SELECT shopify_shop_url, shopify_access_token FROM integration_settings WHERE id = 1');
+        if (settingsRows.length > 0 && settingsRows[0].shopify_shop_url && settingsRows[0].shopify_access_token) {
+            shopifyIntegration = {
+                shopUrl: settingsRows[0].shopify_shop_url,
+                accessToken: settingsRows[0].shopify_access_token
+            };
+        }
+    }
+
+    if (!shopifyIntegration || !shopifyIntegration.shopUrl || !shopifyIntegration.accessToken) {
+        throw new Error('El cliente no tiene Shopify configurado.');
+    }
+
+    return shopifyIntegration;
+};
+
+const getValidWooCommerceIntegration = async (clientId) => {
+    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+    if (userRows.length === 0) throw new Error('Cliente no encontrado.');
+    
+    let wooIntegration = userRows[0].integrations?.woocommerce;
+    
+    // If not in user, check global settings
+    if (!wooIntegration || !wooIntegration.wooUrl || !wooIntegration.wooConsumerKey || !wooIntegration.wooConsumerSecret) {
+        const { rows: settingsRows } = await db.query('SELECT woo_url, woo_consumer_key, woo_consumer_secret FROM integration_settings WHERE id = 1');
+        if (settingsRows.length > 0 && settingsRows[0].woo_url && settingsRows[0].woo_consumer_key && settingsRows[0].woo_consumer_secret) {
+            wooIntegration = {
+                wooUrl: settingsRows[0].woo_url,
+                wooConsumerKey: settingsRows[0].woo_consumer_key,
+                wooConsumerSecret: settingsRows[0].woo_consumer_secret
+            };
+        }
+    }
+
+    if (!wooIntegration || !wooIntegration.wooUrl || !wooIntegration.wooConsumerKey || !wooIntegration.wooConsumerSecret) {
+        throw new Error('El cliente no tiene WooCommerce configurado.');
+    }
+
+    return wooIntegration;
+};
+
+const getValidFalabellaIntegration = async (clientId) => {
+    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+    if (userRows.length === 0) throw new Error('Cliente no encontrado.');
+    
+    let falabellaIntegration = userRows[0].integrations?.falabella;
+    
+    // If not in user, check global settings
+    if (!falabellaIntegration || !falabellaIntegration.falabellaApiKey || !falabellaIntegration.falabellaSellerId) {
+        const { rows: settingsRows } = await db.query('SELECT falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
+        if (settingsRows.length > 0 && settingsRows[0].falabella_api_key && settingsRows[0].falabella_seller_id) {
+            falabellaIntegration = {
+                falabellaApiKey: settingsRows[0].falabella_api_key,
+                falabellaSellerId: settingsRows[0].falabella_seller_id
+            };
+        }
+    }
+
+    if (!falabellaIntegration || !falabellaIntegration.falabellaApiKey || !falabellaIntegration.falabellaSellerId) {
+        throw new Error('El cliente no tiene Falabella configurado.');
+    }
+
+    return falabellaIntegration;
+};
+
+// POST /api/integrations/test/shopify
+router.post('/test/shopify', authMiddleware, async (req, res) => {
+    const { shopifyShopUrl, shopifyAccessToken } = req.body;
+
+    if (!shopifyShopUrl || !shopifyAccessToken) {
+        return res.status(400).json({ message: 'URL de la tienda y Access Token son requeridos.' });
+    }
+
+    try {
+        // Test by fetching shop info
+        const shopData = await makeShopifyRequest(shopifyShopUrl, shopifyAccessToken, '/shop.json');
+        res.json({ 
+            message: 'Conexión exitosa con Shopify.',
+            shopName: shopData?.shop?.name
+        });
+    } catch (err) {
+        console.error("Shopify Test Connection Error:", err.body || err);
+        let errorMsg = 'Error al conectar con Shopify.';
+        let statusCode = 500;
+        
+        if (err.statusCode) {
+            statusCode = err.statusCode;
+            if (err.statusCode === 401) {
+                errorMsg = 'No autorizado. Verifica que el Access Token sea correcto y tenga los permisos necesarios.';
+            } else if (err.statusCode === 404) {
+                errorMsg = 'No encontrado. Verifica que la URL de la tienda sea correcta.';
+            } else if (err.statusCode === 403) {
+                errorMsg = 'Acceso prohibido. El token no tiene permisos para acceder a la información de la tienda.';
+            }
+        }
+
+        if (err.body && err.body.errors) {
+            if (typeof err.body.errors === 'string') {
+                errorMsg = err.body.errors;
+            } else if (typeof err.body.errors === 'object') {
+                errorMsg = JSON.stringify(err.body.errors);
+            }
+        } else if (err.message) {
+            errorMsg = err.message;
+        }
+
+        res.status(statusCode).json({ message: `Error de Shopify: ${errorMsg}` });
+    }
+});
+
+// POST /api/integrations/test/woocommerce
+router.post('/test/woocommerce', authMiddleware, async (req, res) => {
+    const { wooUrl, wooConsumerKey, wooConsumerSecret } = req.body;
+    
+    if (!wooUrl || !wooConsumerKey || !wooConsumerSecret) {
+        return res.status(400).json({ message: 'URL, Consumer Key y Consumer Secret son requeridos.' });
+    }
+
+    try {
+        // Test by fetching system status or just a simple endpoint
+        await makeWooCommerceRequest(wooUrl, wooConsumerKey, wooConsumerSecret, '/system_status');
+        res.json({ message: 'Conexión exitosa con WooCommerce.' });
+    } catch (err) {
+        console.error("WooCommerce Test Connection Error:", err.body || err);
+        let errorMsg = 'Error al conectar con WooCommerce.';
+        let statusCode = 500;
+        
+        if (err.statusCode) {
+            statusCode = err.statusCode;
+            if (err.statusCode === 401) {
+                errorMsg = 'No autorizado. Verifica que el Consumer Key y Consumer Secret sean correctos.';
+            } else if (err.statusCode === 404) {
+                errorMsg = 'No encontrado. Verifica que la URL sea correcta y la API REST esté habilitada.';
+            }
+        }
+
+        if (err.body && err.body.message) {
+            errorMsg = err.body.message;
+        } else if (err.message) {
+            errorMsg = err.message;
+        }
+
+        res.status(statusCode).json({ message: `Error de WooCommerce: ${errorMsg}` });
+    }
+});
+
+// POST /api/integrations/test/falabella
+router.post('/test/falabella', authMiddleware, async (req, res) => {
+    const { falabellaApiKey, falabellaSellerId } = req.body;
+    
+    if (!falabellaApiKey || !falabellaSellerId) {
+        return res.status(400).json({ message: 'API Key y Seller ID son requeridos.' });
+    }
+
+    try {
+        // Placeholder for Falabella test
+        // In a real scenario, we would call a "ping" or "status" endpoint.
+        // For now, we'll simulate a successful connection if the fields are provided.
+        res.json({ message: 'Configuración de Falabella guardada (Prueba de conexión pendiente de implementación exacta).' });
+    } catch (err) {
+        console.error("Falabella Test Connection Error:", err);
+        res.status(500).json({ message: 'Error al conectar con Falabella: ' + (err.message || 'Error desconocido') });
+    }
+});
+
+// GET /api/integrations/:clientId/shopify/orders
+router.get('/:clientId/shopify/orders', authMiddleware, async (req, res) => {
+    const { clientId } = req.params;
+
+    if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
+    }
+
+    try {
+        const shopifyIntegration = await getValidShopifyIntegration(clientId);
+        
+        // Fetch open orders
+        const data = await makeShopifyRequest(
+            shopifyIntegration.shopUrl, 
+            shopifyIntegration.accessToken, 
+            '/orders.json?status=open&fulfillment_status=unfulfilled'
+        );
+        
+        if (!data || !data.orders) {
+            return res.json([]);
+        }
+
+        const orders = data.orders.map(order => ({
+            id: order.id.toString(),
+            recipientName: `${order.shipping_address?.first_name || ''} ${order.shipping_address?.last_name || ''}`.trim() || order.customer?.first_name || 'N/A',
+            recipientPhone: order.shipping_address?.phone || order.customer?.phone || 'N/A',
+            address: `${order.shipping_address?.address1 || ''} ${order.shipping_address?.address2 || ''}`.trim() || 'N/A',
+            commune: order.shipping_address?.city || 'N/A',
+            city: order.shipping_address?.province || 'N/A',
+            notes: `Shopify Order: ${order.name || order.id}`,
+        }));
+
+        res.json(orders);
+    } catch (err) {
+        console.error("Shopify Fetch Orders Error:", err.body || err);
+        let errorMsg = 'Error al obtener pedidos de Shopify.';
+        let statusCode = 500;
+
+        if (err.statusCode) {
+            statusCode = err.statusCode;
+            if (err.statusCode === 401) {
+                errorMsg = 'No autorizado. Verifica las credenciales de Shopify.';
+            } else if (err.statusCode === 404) {
+                errorMsg = 'No encontrado. Verifica la URL de la tienda.';
+            }
+        }
+
+        if (err.body && err.body.errors) {
+            if (typeof err.body.errors === 'string') {
+                errorMsg = err.body.errors;
+            } else if (typeof err.body.errors === 'object') {
+                errorMsg = JSON.stringify(err.body.errors);
+            }
+        } else if (err.message) {
+            errorMsg = err.message;
+        }
+
+        res.status(statusCode).json({ message: errorMsg });
+    }
+});
+
+// GET /api/integrations/:clientId/woocommerce/orders
+router.get('/:clientId/woocommerce/orders', authMiddleware, async (req, res) => {
+    const { clientId } = req.params;
+
+    if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
+    }
+
+    try {
+        const wooIntegration = await getValidWooCommerceIntegration(clientId);
+        
+        // Fetch processing orders
+        const ordersData = await makeWooCommerceRequest(
+            wooIntegration.wooUrl, 
+            wooIntegration.wooConsumerKey, 
+            wooIntegration.wooConsumerSecret, 
+            '/orders?status=processing'
+        );
+        
+        if (!ordersData || !Array.isArray(ordersData)) {
+            return res.json([]);
+        }
+
+        const orders = ordersData.map(order => ({
+            id: order.id.toString(),
+            recipientName: `${order.shipping?.first_name || ''} ${order.shipping?.last_name || ''}`.trim() || `${order.billing?.first_name || ''} ${order.billing?.last_name || ''}`.trim() || 'N/A',
+            recipientPhone: order.billing?.phone || 'N/A',
+            address: `${order.shipping?.address_1 || ''} ${order.shipping?.address_2 || ''}`.trim() || order.billing?.address_1 || 'N/A',
+            commune: order.shipping?.city || order.billing?.city || 'N/A',
+            city: order.shipping?.state || order.billing?.state || 'N/A',
+            notes: `WooCommerce Order: ${order.number || order.id}`,
+        }));
+
+        res.json(orders);
+    } catch (err) {
+        console.error("WooCommerce Fetch Orders Error:", err.body || err);
+        res.status(500).json({ message: 'Error al obtener pedidos de WooCommerce: ' + (err.message || 'Error desconocido') });
+    }
+});
+
+// GET /api/integrations/:clientId/falabella/orders
+router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
+    const { clientId } = req.params;
+
+    if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
+    }
+
+    try {
+        const falabellaIntegration = await getValidFalabellaIntegration(clientId);
+        
+        // Placeholder for Falabella fetch orders
+        // In a real scenario, we would call the Falabella Seller Center API
+        // For now, we'll return an empty list or a simulated list if needed
+        res.json([]);
+    } catch (err) {
+        console.error("Falabella Fetch Orders Error:", err);
+        res.status(500).json({ message: 'Error al obtener pedidos de Falabella: ' + (err.message || 'Error desconocido') });
     }
 });
 

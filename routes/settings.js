@@ -230,7 +230,7 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
@@ -240,6 +240,11 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             githubToken: rows[0].github_token,
             githubRepo: rows[0].github_repo,
             githubOwner: rows[0].github_owner,
+            wooUrl: rows[0].woo_url,
+            wooConsumerKey: rows[0].woo_consumer_key,
+            wooConsumerSecret: rows[0].woo_consumer_secret,
+            falabellaApiKey: rows[0].falabella_api_key,
+            falabellaSellerId: rows[0].falabella_seller_id
         });
     } catch (err) {
         console.error(err);
@@ -249,7 +254,13 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
 
 // PUT /api/settings/integrations
 router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
-    const { meliAppId, meliClientSecret, shopifyShopUrl, shopifyAccessToken, githubToken, githubRepo, githubOwner } = req.body;
+    const { 
+        meliAppId, meliClientSecret, 
+        shopifyShopUrl, shopifyAccessToken, 
+        githubToken, githubRepo, githubOwner,
+        wooUrl, wooConsumerKey, wooConsumerSecret,
+        falabellaApiKey, falabellaSellerId
+    } = req.body;
 
     try {
         // Ensure the row exists
@@ -287,6 +298,26 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`github_owner = $${idx++}`);
             values.push(githubOwner);
         }
+        if (wooUrl !== undefined) {
+            updates.push(`woo_url = $${idx++}`);
+            values.push(wooUrl);
+        }
+        if (wooConsumerKey !== undefined) {
+            updates.push(`woo_consumer_key = $${idx++}`);
+            values.push(wooConsumerKey);
+        }
+        if (wooConsumerSecret !== undefined) {
+            updates.push(`woo_consumer_secret = $${idx++}`);
+            values.push(wooConsumerSecret);
+        }
+        if (falabellaApiKey !== undefined) {
+            updates.push(`falabella_api_key = $${idx++}`);
+            values.push(falabellaApiKey);
+        }
+        if (falabellaSellerId !== undefined) {
+            updates.push(`falabella_seller_id = $${idx++}`);
+            values.push(falabellaSellerId);
+        }
 
         if (updates.length > 0) {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
@@ -302,6 +333,11 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 githubToken: saved.github_token,
                 githubRepo: saved.github_repo,
                 githubOwner: saved.github_owner,
+                wooUrl: saved.woo_url,
+                wooConsumerKey: saved.woo_consumer_key,
+                wooConsumerSecret: saved.woo_consumer_secret,
+                falabellaApiKey: saved.falabella_api_key,
+                falabellaSellerId: saved.falabella_seller_id
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });

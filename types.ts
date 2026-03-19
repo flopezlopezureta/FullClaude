@@ -107,6 +107,11 @@ export interface IntegrationSettings {
     githubToken?: string;
     githubRepo?: string;
     githubOwner?: string;
+    wooUrl?: string;
+    wooConsumerKey?: string;
+    wooConsumerSecret?: string;
+    falabellaApiKey?: string;
+    falabellaSellerId?: string;
 }
 
 export interface MeliOrder {
