@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify } from '../Icon';
+import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify, IconWoocommerce, IconFalabella } from '../Icon';
 import type { User, Vehicle, UserPricing, IntegrationSettings } from '../../types';
 import { Role } from '../../constants';
 import { UserUpdateData, api } from '../../services/api';
@@ -87,6 +87,17 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
     const [clientShopifyUrl, setClientShopifyUrl] = useState('');
     const [clientShopifyToken, setClientShopifyToken] = useState('');
     const [showShopifyToken, setShowShopifyToken] = useState(false);
+
+    // Client specific WooCommerce fields
+    const [clientWooUrl, setClientWooUrl] = useState('');
+    const [clientWooKey, setClientWooKey] = useState('');
+    const [clientWooSecret, setClientWooSecret] = useState('');
+    const [showWooSecret, setShowWooSecret] = useState(false);
+
+    // Client specific Falabella fields
+    const [clientFalabellaSellerId, setClientFalabellaSellerId] = useState('');
+    const [clientFalabellaApiKey, setClientFalabellaApiKey] = useState('');
+    const [showFalabellaApiKey, setShowFalabellaApiKey] = useState(false);
     
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -140,6 +151,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
             if (user.integrations?.shopify) {
                 setClientShopifyUrl(user.integrations.shopify.shopUrl || '');
                 setClientShopifyToken(user.integrations.shopify.accessToken || '');
+            }
+            if (user.integrations?.woocommerce) {
+                setClientWooUrl(user.integrations.woocommerce.storeUrl || '');
+                setClientWooKey(user.integrations.woocommerce.consumerKey || '');
+                setClientWooSecret(user.integrations.woocommerce.consumerSecret || '');
+            }
+            if (user.integrations?.falabella) {
+                setClientFalabellaSellerId(user.integrations.falabella.sellerId || '');
+                setClientFalabellaApiKey(user.integrations.falabella.apiKey || '');
             }
         }
         
@@ -264,6 +284,15 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                 shopify: (clientShopifyUrl && clientShopifyToken) ? {
                     shopUrl: clientShopifyUrl,
                     accessToken: clientShopifyToken
+                } : undefined,
+                woocommerce: (clientWooUrl && clientWooKey && clientWooSecret) ? {
+                    storeUrl: clientWooUrl,
+                    consumerKey: clientWooKey,
+                    consumerSecret: clientWooSecret
+                } : undefined,
+                falabella: (clientFalabellaSellerId && clientFalabellaApiKey) ? {
+                    sellerId: clientFalabellaSellerId,
+                    apiKey: clientFalabellaApiKey
                 } : undefined
             };
         }
@@ -464,6 +493,90 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                             </div>
                                             <div className="text-xs text-[var(--text-muted)] italic">
                                                 Estos datos se guardarán al hacer clic en "Guardar Cambios" abajo.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* --- WooCommerce --- */}
+                                    <div className="pt-4 border-t border-[var(--border-secondary)]">
+                                        <div className="flex items-center mb-3">
+                                            <IconWoocommerce className="w-5 h-5 text-purple-600 mr-2" />
+                                            <h5 className="font-medium text-[var(--text-primary)]">WooCommerce</h5>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div>
+                                                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda (ej: https://mitienda.com)</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={clientWooUrl} 
+                                                    onChange={(e) => setClientWooUrl(e.target.value)} 
+                                                    className={inputClasses}
+                                                    placeholder="https://tutienda.com"
+                                                />
+                                            </div>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Consumer Key (ck_...)</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={clientWooKey} 
+                                                        onChange={(e) => setClientWooKey(e.target.value)} 
+                                                        className={inputClasses}
+                                                        placeholder="ck_xxxxxxxxxxxx"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Consumer Secret (cs_...)</label>
+                                                    <div className="relative">
+                                                        <input 
+                                                            type={showWooSecret ? "text" : "password"} 
+                                                            value={clientWooSecret} 
+                                                            onChange={(e) => setClientWooSecret(e.target.value)} 
+                                                            className={`${inputClasses} pr-10`}
+                                                            placeholder="cs_xxxxxxxxxxxx"
+                                                        />
+                                                        <button type="button" onClick={() => setShowWooSecret(!showWooSecret)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)]">
+                                                            {showWooSecret ? <IconEyeOff className="w-4 h-4"/> : <IconEye className="w-4 h-4"/>}
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* --- Falabella --- */}
+                                    <div className="pt-4 border-t border-[var(--border-secondary)]">
+                                        <div className="flex items-center mb-3">
+                                            <IconFalabella className="w-5 h-5 text-lime-600 mr-2" />
+                                            <h5 className="font-medium text-[var(--text-primary)]">Falabella Seller Center</h5>
+                                        </div>
+                                        <div className="space-y-3">
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Seller ID</label>
+                                                    <input 
+                                                        type="text" 
+                                                        value={clientFalabellaSellerId} 
+                                                        onChange={(e) => setClientFalabellaSellerId(e.target.value)} 
+                                                        className={inputClasses}
+                                                        placeholder="ID de Vendedor"
+                                                    />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">API Key</label>
+                                                    <div className="relative">
+                                                        <input 
+                                                            type={showFalabellaApiKey ? "text" : "password"} 
+                                                            value={clientFalabellaApiKey} 
+                                                            onChange={(e) => setClientFalabellaApiKey(e.target.value)} 
+                                                            className={`${inputClasses} pr-10`}
+                                                            placeholder="Clave de API"
+                                                        />
+                                                        <button type="button" onClick={() => setShowFalabellaApiKey(!showFalabellaApiKey)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)]">
+                                                            {showFalabellaApiKey ? <IconEyeOff className="w-4 h-4"/> : <IconEye className="w-4 h-4"/>}
+                                                        </button>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>

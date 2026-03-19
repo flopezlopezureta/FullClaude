@@ -89,6 +89,11 @@ export interface ShopifyIntegration {
   accessToken: string;
 }
 
+export interface FalabellaIntegration {
+  sellerId: string;
+  apiKey: string;
+}
+
 export interface DriverPermissions {
   canDeliver: boolean;
   canPickup: boolean;
@@ -171,6 +176,7 @@ export interface User {
     meli?: MeliIntegration;
     woocommerce?: WooCommerceIntegration;
     shopify?: ShopifyIntegration;
+    falabella?: FalabellaIntegration;
   };
 }
 
