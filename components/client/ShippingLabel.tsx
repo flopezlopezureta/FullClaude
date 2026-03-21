@@ -2,7 +2,6 @@ import React, { useEffect, useState, useContext } from 'react';
 import QRCode from 'qrcode';
 import { Package } from '../../types';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconMercadoLibre, IconAlertTriangle } from '../Icon';
 
 interface ShippingLabelProps {
   pkg: Package;
@@ -57,30 +56,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
         generateQR();
     }, [qrContent, isMeli, hasCapturedFlex, pkg.meliOrderId]);
 
-    if (isMeli && !hasCapturedFlex) {
-        return (
-             <div className="bg-white p-4 border-2 border-dashed border-red-400 font-sans text-black w-full max-w-[380px] mx-auto overflow-hidden flex flex-col items-center text-center">
-                <IconMercadoLibre className="w-10 h-10 text-yellow-500 mb-2"/>
-                <h3 className="font-bold text-lg text-red-600">PAQUETE MERCADO LIBRE</h3>
-                <div className="my-4 p-3 bg-red-50 border border-red-200 rounded-md">
-                    <div className="flex items-center gap-2">
-                         <IconAlertTriangle className="w-8 h-8 text-red-500 flex-shrink-0"/>
-                         <p className="text-sm font-semibold text-red-800">
-                             Para que la app de FLEX pueda escanear este envío, DEBES usar la etiqueta original generada por Mercado Libre.
-                         </p>
-                    </div>
-                </div>
-                <div className="w-full border-t border-dashed border-slate-300 pt-3 mt-3 text-left">
-                     <p className="text-xs font-bold uppercase text-slate-500">Destinatario (Referencia):</p>
-                    <p className="font-bold text-sm leading-tight">{pkg.recipientName}</p>
-                    <p className="text-xs leading-tight mt-1">{pkg.recipientAddress}</p>
-                    <p className="text-xs font-mono text-slate-500 mt-2">ID: {pkg.meliOrderId}</p>
-                </div>
-            </div>
-        );
-    }
-
-    // --- DISEÑO ESTÁNDAR (Para envíos manuales / internos) ---
+    // --- DISEÑO ESTÁNDAR (Para todos los envíos) ---
     return (
         <div className="bg-white p-4 border border-slate-300 rounded-md font-sans text-black relative overflow-hidden w-full max-w-[380px] mx-auto">
             <div 
@@ -134,8 +110,11 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
                     <p className="font-mono font-bold text-lg leading-none">
                         {isMeli ? (pkg.meliFlexCode?.match(/\d+/)?.[0] || pkg.meliOrderId || pkg.id) : pkg.id}
                     </p>
-                    <div className="mt-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold self-end">
-                        {hasCapturedFlex ? 'ETIQUETA CAPTURADA POR ESCÁNER' : 'PARA USO INTERNO DEL CONDUCTOR'}
+                    <div className="mt-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold self-end text-center max-w-[160px]">
+                        {isMeli && !hasCapturedFlex 
+                            ? 'SOLO PARA USO DEL CONDUCTOR - NO VÁLIDA PARA FLEXEO EN APP FLEX' 
+                            : (hasCapturedFlex ? 'ETIQUETA CAPTURADA POR ESCÁNER' : 'PARA USO INTERNO DEL CONDUCTOR')
+                        }
                     </div>
                 </div>
             </div>

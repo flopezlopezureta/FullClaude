@@ -34,6 +34,7 @@ export interface SystemSettings {
     meliFlexValidation?: boolean;
     saveFlexLabelPhoto?: boolean;
     meliAutoImport?: boolean;
+    publicTrackingEnabled?: boolean;
 }
 
 export interface ZonePricing {

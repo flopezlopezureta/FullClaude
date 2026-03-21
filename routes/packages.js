@@ -1019,6 +1019,14 @@ router.post('/mark-billed', authMiddleware, async (req, res) => {
 router.get('/public/track/:id', async (req, res) => {
     const { id } = req.params;
     try {
+        // Check if public tracking is enabled
+        const { rows: settings } = await db.query('SELECT "publicTrackingEnabled" FROM system_settings WHERE id = 1');
+        const isEnabled = settings.length > 0 ? settings[0].publicTrackingEnabled : true;
+
+        if (!isEnabled) {
+            return res.status(403).json({ message: 'El seguimiento público está desactivado por el administrador.' });
+        }
+
         const { rows } = await db.query(
             'SELECT id, status, "recipientName", "recipientAddress", "recipientCommune", "recipientCity", "estimatedDelivery", "updatedAt", "meliOrderId", "trackingId" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1',
             [id]

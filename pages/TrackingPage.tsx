@@ -44,6 +44,10 @@ const TrackingPage: React.FC = () => {
 
     try {
       const response = await fetch(`/api/packages/public/track/${id}`);
+      if (response.status === 403) {
+        const data = await response.json();
+        throw new Error(data.message || 'El seguimiento público está desactivado.');
+      }
       if (!response.ok) {
         throw new Error('No se encontró información para este código de seguimiento.');
       }

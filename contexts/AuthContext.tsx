@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     meliFlexValidation: true,
     saveFlexLabelPhoto: false,
     meliAutoImport: false,
+    publicTrackingEnabled: true,
   });
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);

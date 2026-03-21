@@ -31,7 +31,7 @@ router.get('/meli-polling-status', authMiddleware, (req, res) => {
 // GET /api/settings/system
 router.get('/system', async (req, res) => {
     try {
-        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport" FROM system_settings WHERE id = 1');
+        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled" FROM system_settings WHERE id = 1');
         const fallbackSettings = {
             companyName: 'FULL ENVIOS',
             isAppEnabled: true,
@@ -41,6 +41,7 @@ router.get('/system', async (req, res) => {
             meliFlexValidation: true,
             saveFlexLabelPhoto: false,
             meliAutoImport: false,
+            publicTrackingEnabled: true,
         };
         if (settings.length === 0) {
             return res.json(fallbackSettings);
@@ -55,7 +56,7 @@ router.get('/system', async (req, res) => {
 
 // PUT /api/settings/system
 router.put('/system', authMiddleware, adminOnly, async (req, res) => {
-    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport } = req.body;
+    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, publicTrackingEnabled } = req.body;
 
     try {
         const { rows: currentSettingsRows } = await db.query('SELECT * FROM system_settings WHERE id = 1');
@@ -71,11 +72,12 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 meliFlexValidation: meliFlexValidation !== undefined ? meliFlexValidation : currentSettings.meliFlexValidation,
                 saveFlexLabelPhoto: saveFlexLabelPhoto !== undefined ? saveFlexLabelPhoto : currentSettings.saveFlexLabelPhoto,
                 meliAutoImport: meliAutoImport !== undefined ? meliAutoImport : currentSettings.meliAutoImport,
+                publicTrackingEnabled: publicTrackingEnabled !== undefined ? publicTrackingEnabled : currentSettings.publicTrackingEnabled,
             };
             
             await db.query(
-                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8 WHERE id = 1',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport]
+                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "publicTrackingEnabled" = $9 WHERE id = 1',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled]
             );
             res.json(updatedSettings);
 
@@ -89,11 +91,12 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 meliFlexValidation: meliFlexValidation !== undefined ? meliFlexValidation : true,
                 saveFlexLabelPhoto: saveFlexLabelPhoto !== undefined ? saveFlexLabelPhoto : false,
                 meliAutoImport: meliAutoImport !== undefined ? meliAutoImport : false,
+                publicTrackingEnabled: publicTrackingEnabled !== undefined ? publicTrackingEnabled : true,
             };
 
             await db.query(
-                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8)',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport]
+                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9)',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled]
             );
             res.status(201).json(updatedSettings);
         }

@@ -8,12 +8,28 @@ const db = require('../db');
 // Example debug route to check DB connection
 router.get('/db-check', async (req, res) => {
     try {
-        const client = await db.getClient();
-        await client.query('SELECT NOW()');
-        client.release();
-        res.status(200).json({ status: 'ok', message: 'Database connection successful.' });
+        const { rows: dbInfo } = await db.query("SELECT current_database(), current_user, inet_server_addr()");
+        const { rows: packageCount } = await db.query("SELECT count(*) FROM packages");
+        
+        res.status(200).json({ 
+            status: 'ok', 
+            message: 'Database connection successful.',
+            database: dbInfo[0].current_database,
+            user: dbInfo[0].current_user,
+            server_addr: dbInfo[0].inet_server_addr,
+            packageCount: parseInt(packageCount[0].count),
+            envHost: process.env.DB_HOST,
+            envName: process.env.DB_NAME,
+            nodeEnv: process.env.NODE_ENV
+        });
     } catch (err) {
-        res.status(500).json({ status: 'error', message: 'Database connection failed.', error: err.message });
+        res.status(500).json({ 
+            status: 'error', 
+            message: 'Database connection failed.', 
+            error: err.message,
+            envHost: process.env.DB_HOST,
+            envName: process.env.DB_NAME
+        });
     }
 });
 

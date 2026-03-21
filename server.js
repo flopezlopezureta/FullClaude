@@ -302,6 +302,12 @@ async function initializeDatabase() {
             if (err.code !== '42701') { console.error('Error during settings migration (pickupMode):', err); }
         }
         try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "publicTrackingEnabled" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "publicTrackingEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (publicTrackingEnabled):', err); }
+        }
+        try {
             await db.query('ALTER TABLE users ADD COLUMN "latitude" REAL');
             console.log('MIGRATION APPLIED: Column "latitude" was added to "users".');
         } catch (err) {
