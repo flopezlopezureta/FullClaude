@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy } from './Icon';
 import QRCodeModal from './QRCodeModal';
 
 interface PackageListItemProps {
@@ -289,6 +289,16 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                             <IconPrinter className="w-4 h-4 mr-3" /> Imprimir Etiqueta
                         </button>
                     )}
+                    <button 
+                        onClick={() => {
+                            const link = `${window.location.origin}/track/${pkg.id}`;
+                            navigator.clipboard.writeText(link);
+                            alert('Link de seguimiento copiado al portapapeles');
+                        }} 
+                        className="w-full text-left flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--background-hover)]"
+                    >
+                        <IconCopy className="w-4 h-4 mr-3" /> Copiar Link de Seguimiento
+                    </button>
                     {onEdit && canModify && (
                         <button onClick={() => onEdit(pkg)} className="w-full text-left flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--background-hover)]">
                             <IconPencil className="w-4 h-4 mr-3" /> Editar

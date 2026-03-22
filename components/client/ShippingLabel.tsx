@@ -10,15 +10,13 @@ interface ShippingLabelProps {
 
 const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
     const [qrCodeUrl, setQrCodeUrl] = useState('');
+    const [trackingQrUrl, setTrackingQrUrl] = useState('');
     const { systemSettings } = useContext(AuthContext)!;
 
     const isMeli = !!pkg.meliOrderId;
     const hasCapturedFlex = !!pkg.meliFlexCode;
     
-    // Determine QR content: 
-    // 1. If we have a captured flex code (from a scan), use it directly (it's likely the full original string)
-    // 2. If it's a Meli package but we only have the ID/shipmentId, wrap it in the official URL format
-    // 3. Fallback to internal package ID
+    // Determine QR content for Driver (Flexeo)
     let qrContent = pkg.id;
     if (isMeli) {
         const code = pkg.meliFlexCode || pkg.meliOrderId;
@@ -27,34 +25,48 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
             if (codeStr.startsWith('http')) {
                 qrContent = codeStr;
             } else {
-                // Official Mercado Libre Flex URL format for Chile
-                // This is what the Flex driver app expects to see
                 qrContent = `https://www.mercadolibre.cl/envios/flex/shipments/${codeStr}/label`;
             }
         }
     }
 
+    // Determine QR content for Customer (Tracking)
+    const trackingUrl = `${window.location.origin}/track/${pkg.id}`;
+
     useEffect(() => {
-        // Only skip QR generation for ML packages if we DON'T have a captured flex code OR an order ID to construct the URL
-        if (isMeli && !hasCapturedFlex && !pkg.meliOrderId) return; 
-        
-        const generateQR = async () => {
-            if (!qrContent) return;
+        const generateQRs = async () => {
+            // Generate Driver QR
+            if (!isMeli || hasCapturedFlex || pkg.meliOrderId) {
+                try {
+                    const qrUrl = await QRCode.toDataURL(qrContent, {
+                        errorCorrectionLevel: 'M',
+                        type: 'image/png',
+                        width: 600,
+                        margin: 2,
+                        color: { dark: '#000000', light: '#ffffff' }
+                    });
+                    setQrCodeUrl(qrUrl);
+                } catch (err) {
+                    console.error('Failed to generate driver QR code', err);
+                }
+            }
+
+            // Generate Tracking QR
             try {
-                const qrUrl = await QRCode.toDataURL(qrContent, {
-                    errorCorrectionLevel: 'M', // Increased to Medium for better reliability
+                const tQrUrl = await QRCode.toDataURL(trackingUrl, {
+                    errorCorrectionLevel: 'M',
                     type: 'image/png',
-                    width: 600, // Increased resolution
+                    width: 400,
                     margin: 2,
                     color: { dark: '#000000', light: '#ffffff' }
                 });
-                setQrCodeUrl(qrUrl);
+                setTrackingQrUrl(tQrUrl);
             } catch (err) {
-                console.error('Failed to generate QR code', err);
+                console.error('Failed to generate tracking QR code', err);
             }
         };
-        generateQR();
-    }, [qrContent, isMeli, hasCapturedFlex, pkg.meliOrderId]);
+        generateQRs();
+    }, [qrContent, trackingUrl, isMeli, hasCapturedFlex, pkg.meliOrderId]);
 
     // --- DISEÑO ESTÁNDAR (Para todos los envíos) ---
     return (
@@ -102,8 +114,13 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
             <div className="border-t-2 border-black mt-2 pt-2 flex items-center justify-between relative z-10">
                 <div className="flex flex-col items-center">
                     {qrCodeUrl ? <img src={qrCodeUrl} alt="QR Code" className="w-24 h-24" /> : <div className="w-24 h-24 bg-slate-200 animate-pulse" />}
+                    <p className="text-[8px] font-bold mt-1 uppercase text-slate-500">Uso Conductor</p>
                 </div>
-                <div className="text-right flex flex-col justify-end">
+                <div className="flex flex-col items-center border-l border-slate-300 pl-4">
+                    {trackingQrUrl ? <img src={trackingQrUrl} alt="Tracking QR" className="w-16 h-16" /> : <div className="w-16 h-16 bg-slate-200 animate-pulse" />}
+                    <p className="text-[8px] font-bold mt-1 uppercase text-blue-600">Sigue tu pedido</p>
+                </div>
+                <div className="text-right flex flex-col justify-end flex-grow ml-4">
                     <p className="font-mono text-[10px] text-slate-500">
                         {isMeli ? 'Envío Mercado Libre' : 'ID Interno'}
                     </p>
@@ -112,8 +129,8 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
                     </p>
                     <div className="mt-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold self-end text-center max-w-[160px]">
                         {isMeli && !hasCapturedFlex 
-                            ? 'SOLO PARA USO DEL CONDUCTOR - NO VÁLIDA PARA FLEXEO EN APP FLEX' 
-                            : (hasCapturedFlex ? 'ETIQUETA CAPTURADA POR ESCÁNER' : 'PARA USO INTERNO DEL CONDUCTOR')
+                            ? 'SOLO CONDUCTOR - NO FLEXEO' 
+                            : (hasCapturedFlex ? 'ETIQUETA REIMPRESA' : 'USO INTERNO')
                         }
                     </div>
                 </div>
