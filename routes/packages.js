@@ -1028,12 +1028,25 @@ router.get('/public/track/:id', async (req, res) => {
         }
 
         const { rows } = await db.query(
-            'SELECT id, status, "recipientName", "recipientAddress", "recipientCommune", "recipientCity", "estimatedDelivery", "updatedAt", "meliOrderId", "trackingId" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1',
+            `SELECT p.id, p.status, p."recipientName", p."recipientAddress", p."recipientCommune", p."recipientCity", 
+                    p."estimatedDelivery", p."updatedAt", p."meliOrderId", p."trackingId", p."destLatitude", p."destLongitude",
+                    u.latitude AS "driverLatitude", u.longitude AS "driverLongitude", u."lastLocationUpdate" AS "driverLastUpdate"
+             FROM packages p
+             LEFT JOIN users u ON p."driverId" = u.id
+             WHERE p.id = $1 OR p."meliOrderId" = $1 OR p."shopifyOrderId" = $1 OR p."wooOrderId" = $1 OR p."trackingId" = $1 OR p."meliFlexCode" = $1`,
             [id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
         const pkg = rows[0];
+
+        // Only share driver location if package is in transit
+        if (pkg.status !== 'EN_TRANSITO') {
+            delete pkg.driverLatitude;
+            delete pkg.driverLongitude;
+            delete pkg.driverLastUpdate;
+        }
+
         pkg.history = await getHistory(pkg.id);
         res.json(pkg);
     } catch (err) {

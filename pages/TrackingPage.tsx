@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import TrackingMap from '../components/TrackingMap';
 
 interface TrackingHistory {
   status: string;
@@ -17,6 +18,11 @@ interface Package {
   estimatedDelivery: string;
   updatedAt: string;
   history: TrackingHistory[];
+  destLatitude?: number | null;
+  destLongitude?: number | null;
+  driverLatitude?: number | null;
+  driverLongitude?: number | null;
+  driverLastUpdate?: string | null;
 }
 
 const TrackingPage: React.FC = () => {
@@ -35,6 +41,17 @@ const TrackingPage: React.FC = () => {
       handleTrack(id);
     }
   }, []);
+
+  // Polling for driver location if in transit
+  useEffect(() => {
+    let interval: any;
+    if (pkg && pkg.status === 'EN_TRANSITO') {
+      interval = setInterval(() => {
+        handleTrack(pkg.id);
+      }, 30000); // Poll every 30 seconds
+    }
+    return () => clearInterval(interval);
+  }, [pkg?.status, pkg?.id]);
 
   const handleTrack = async (id: string = trackingId) => {
     if (!id) return;
@@ -121,7 +138,38 @@ const TrackingPage: React.FC = () => {
         )}
 
         {pkg && (
-          <div className="bg-white shadow overflow-hidden sm:rounded-lg mt-8">
+          <div className="space-y-6 mt-8">
+            {/* Map Section */}
+            {(pkg.destLatitude || (pkg.status === 'EN_TRANSITO' && pkg.driverLatitude)) ? (
+              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
+                <div className="px-4 py-5 sm:px-6">
+                  <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2">
+                    <span className="flex h-2 w-2 rounded-full bg-indigo-500"></span>
+                    Ubicación en Tiempo Real
+                  </h3>
+                  {pkg.status === 'EN_TRANSITO' && pkg.driverLastUpdate && (
+                    <p className="mt-1 text-xs text-gray-500">
+                      Última actualización: {new Date(pkg.driverLastUpdate).toLocaleTimeString('es-CL')}
+                    </p>
+                  )}
+                </div>
+                <div className="p-4">
+                  <TrackingMap 
+                    destLat={pkg.destLatitude || null} 
+                    destLng={pkg.destLongitude || null} 
+                    driverLat={pkg.driverLatitude} 
+                    driverLng={pkg.driverLongitude} 
+                    status={pkg.status} 
+                  />
+                </div>
+              </div>
+            ) : pkg.status === 'EN_TRANSITO' && (
+              <div className="bg-white shadow sm:rounded-lg p-6 text-center">
+                <p className="text-gray-500 italic">La ubicación en tiempo real no está disponible en este momento.</p>
+              </div>
+            )}
+
+            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
             <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
               <div>
                 <h3 className="text-lg leading-6 font-medium text-gray-900">
@@ -198,10 +246,11 @@ const TrackingPage: React.FC = () => {
               </div>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
-  );
+  </div>
+);
 };
 
 export default TrackingPage;
