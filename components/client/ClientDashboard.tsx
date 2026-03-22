@@ -30,6 +30,7 @@ const ClientDashboard: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [importSource, setImportSource] = useState<PackageSource | null>(null);
   const [deletingPackage, setDeletingPackage] = useState<Package | null>(null);
+  const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
 
@@ -95,6 +96,17 @@ const ClientDashboard: React.FC = () => {
     } catch (error: any) {
         console.error("Failed to create package", error);
         alert(error.message || "Error al crear paquete");
+    }
+  };
+
+  const handleUpdatePackage = async (id: string, data: Partial<PackageCreationData>) => {
+    try {
+        await api.updatePackage(id, data);
+        fetchData();
+        setEditingPackage(null);
+    } catch (error: any) {
+        console.error("Failed to update package", error);
+        alert(error.message || "Error al actualizar paquete");
     }
   };
 
@@ -279,6 +291,7 @@ const ClientDashboard: React.FC = () => {
                 users={[]} 
                 isLoading={isLoading}
                 onSelectPackage={setSelectedPackage}
+                onEditPackage={setEditingPackage}
                 onDeletePackage={setDeletingPackage}
                 onPrintLabel={(pkg) => setPrintingPackages([pkg])}
                 hideDriverName={true}
@@ -320,6 +333,14 @@ const ClientDashboard: React.FC = () => {
                 creatorId={auth?.user?.id}
             />
         )}
+        {editingPackage && (
+            <CreatePackageModal 
+                onClose={() => setEditingPackage(null)} 
+                onUpdate={handleUpdatePackage}
+                initialData={editingPackage}
+                creatorId={auth?.user?.id}
+            />
+        )}
         {isImportModalOpen && (
             <ImportPackagesModal 
                 onClose={() => setIsImportModalOpen(false)}
@@ -340,6 +361,7 @@ const ClientDashboard: React.FC = () => {
                 onClose={() => setSelectedPackage(null)} 
                 isFullScreen={true}
                 companyName={auth?.systemSettings.companyName}
+                onEdit={setEditingPackage}
             />
         )}
         {deletingPackage && (

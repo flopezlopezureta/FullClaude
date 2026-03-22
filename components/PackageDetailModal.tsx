@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { PackageStatus, ShippingType } from '../constants';
 import type { Package, User } from '../types';
 import { api } from '../services/api';
-import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy } from './Icon';
+import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageDetailModalProps {
@@ -18,9 +18,10 @@ interface PackageDetailModalProps {
   onStartReturn?: (pkg: Package) => void;
   creator?: User | null;
   onUpdatePackage?: (updatedPkg: Package) => void;
+  onEdit?: (pkg: Package) => void;
 }
 
-const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator, onUpdatePackage }) => {
+const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator, onUpdatePackage, onEdit }) => {
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isFlexing, setIsFlexing] = useState(false);
@@ -118,6 +119,19 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                     <IconCopy className="w-4 h-4"/>
                     <span className="hidden sm:inline">Copiar Link</span>
                 </button>
+                {onEdit && pkg.status === PackageStatus.Pending && (
+                    <button
+                        onClick={() => {
+                            onEdit(pkg);
+                            onClose();
+                        }}
+                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-amber-700 bg-amber-100 rounded-full hover:bg-amber-200 transition-colors"
+                        title="Editar detalles del paquete"
+                    >
+                        <IconPencil className="w-4 h-4"/>
+                        <span className="hidden sm:inline">Editar</span>
+                    </button>
+                )}
                 {pkg.meliOrderId ? (
                     <button
                         onClick={() => setIsQrModalOpen(true)}

@@ -2,11 +2,13 @@ import React, { useState, useEffect } from 'react';
 import { IconX } from '../Icon';
 import { PackageCreationData } from '../../services/api';
 import { ShippingType } from '../../constants';
-import type { User } from '../../types';
+import type { User, Package } from '../../types';
 
 interface CreatePackageModalProps {
   onClose: () => void;
-  onCreate: (data: Omit<PackageCreationData, 'origin'>) => void;
+  onCreate?: (data: Omit<PackageCreationData, 'origin'>) => void;
+  onUpdate?: (id: string, data: Partial<PackageCreationData>) => void;
+  initialData?: Package;
   clients?: User[];
   creatorId?: string;
 }
@@ -18,35 +20,39 @@ const chileanCities = [
     'Puerto Montt', 'Coyhaique', 'Punta Arenas'
 ];
 
-const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCreate, clients, creatorId }) => {
-  const [selectedClientId, setSelectedClientId] = useState('');
-  const [recipientName, setRecipientName] = useState('');
-  const [recipientPhone, setRecipientPhone] = useState('');
-  const [recipientAddress, setRecipientAddress] = useState('');
-  const [recipientCommune, setRecipientCommune] = useState('');
-  const [recipientCity, setRecipientCity] = useState('Santiago');
-  const [notes, setNotes] = useState('');
-  const [trackingId, setTrackingId] = useState('');
-  const [estimatedDelivery, setEstimatedDelivery] = useState(new Date().toISOString().split('T')[0]);
-  const [shippingType, setShippingType] = useState<ShippingType>(ShippingType.SameDay);
+const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCreate, onUpdate, initialData, clients, creatorId }) => {
+  const [selectedClientId, setSelectedClientId] = useState(initialData?.creatorId || '');
+  const [recipientName, setRecipientName] = useState(initialData?.recipientName || '');
+  const [recipientPhone, setRecipientPhone] = useState(initialData?.recipientPhone || '');
+  const [recipientAddress, setRecipientAddress] = useState(initialData?.recipientAddress || '');
+  const [recipientCommune, setRecipientCommune] = useState(initialData?.recipientCommune || '');
+  const [recipientCity, setRecipientCity] = useState(initialData?.recipientCity || 'Santiago');
+  const [notes, setNotes] = useState(initialData?.notes || '');
+  const [trackingId, setTrackingId] = useState(initialData?.trackingId || '');
+  const [estimatedDelivery, setEstimatedDelivery] = useState(
+    initialData?.estimatedDelivery 
+      ? new Date(initialData.estimatedDelivery).toISOString().split('T')[0] 
+      : new Date().toISOString().split('T')[0]
+  );
+  const [shippingType, setShippingType] = useState<ShippingType>(initialData?.shippingType || ShippingType.SameDay);
 
   useEffect(() => {
-    if (clients && clients.length > 0 && !selectedClientId) {
+    if (clients && clients.length > 0 && !selectedClientId && !initialData) {
       setSelectedClientId(clients[0].id);
     }
-  }, [clients, selectedClientId]);
+  }, [clients, selectedClientId, initialData]);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     const finalCreatorId = clients ? selectedClientId : creatorId;
-    if (!finalCreatorId) {
+    if (!finalCreatorId && !initialData) {
         console.error("Creator ID is missing.");
         return;
     }
 
-    onCreate({
-      creatorId: finalCreatorId,
+    const packageData = {
+      creatorId: (finalCreatorId || initialData?.creatorId) as string,
       recipientName,
       recipientPhone,
       recipientAddress,
@@ -56,8 +62,14 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
       trackingId,
       estimatedDelivery: new Date(estimatedDelivery),
       shippingType,
-      source: 'MANUAL',
-    });
+      source: initialData?.source || 'MANUAL',
+    };
+
+    if (initialData && onUpdate) {
+      onUpdate(initialData.id, packageData);
+    } else if (onCreate) {
+      onCreate(packageData as Omit<PackageCreationData, 'origin'>);
+    }
   };
 
   const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
@@ -82,7 +94,9 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
         onClick={(e) => e.stopPropagation()}
       >
         <header className="flex items-center justify-between p-4 border-b border-[var(--border-primary)]">
-          <h3 className="text-lg font-bold text-[var(--text-primary)]">Crear Nuevo Paquete</h3>
+          <h3 className="text-lg font-bold text-[var(--text-primary)]">
+            {initialData ? 'Editar Paquete' : 'Crear Nuevo Paquete'}
+          </h3>
           <button
             onClick={onClose}
             className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)] transition-colors"
@@ -177,7 +191,9 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
 
           <footer className="px-6 py-4 bg-[var(--background-muted)] rounded-b-xl flex justify-end space-x-3">
             <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
-            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">Crear y Generar Etiqueta</button>
+            <button type="submit" className="px-4 py-2 text-sm font-medium text-white bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)]">
+              {initialData ? 'Guardar Cambios' : 'Crear y Generar Etiqueta'}
+            </button>
           </footer>
         </form>
       </div>

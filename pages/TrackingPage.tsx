@@ -139,6 +139,22 @@ const TrackingPage: React.FC = () => {
 
         {pkg && (
           <div className="space-y-6 mt-8">
+            {/* Informative Note */}
+            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md shadow-sm">
+              <div className="flex">
+                <div className="flex-shrink-0">
+                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="ml-3">
+                  <p className="text-sm text-blue-800 leading-relaxed">
+                    Recuerde que el conductor tiene varios envíos por entregar en su ruta y el tiempo de entrega de su paquete puede variar por factores como el tránsito y orden de entrega. Si usted recibe este link, su paquete ya está en camino y pronto llegará, esté atento.
+                  </p>
+                </div>
+              </div>
+            </div>
+
             {/* Map Section */}
             {(pkg.destLatitude || (pkg.status === 'EN_TRANSITO' && pkg.driverLatitude)) ? (
               <div className="bg-white shadow overflow-hidden sm:rounded-lg">
