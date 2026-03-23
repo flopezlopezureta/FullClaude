@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.2.3",
-  "versionComment": "Versión 2.2.3: Integración WooCommerce y Falabella",
+  "version": "2.2.6",
+  "versionComment": "Versión 2.2.6: Sistema de Logs y Buscador de Usuarios",
   "private": true,
   "description": "Sistema de seguimiento de paquetes full-stack.",
   "scripts": {
