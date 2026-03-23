@@ -539,22 +539,32 @@ router.put('/:id', authMiddleware, async (req, res) => {
         const updateData = req.body;
         updateData.updatedAt = new Date();
 
-        // If address fields are present (even if identical, to force re-geocoding), we try to geocode.
-        if (updateData.recipientAddress || updateData.recipientCommune) {
-             // Fetch current data if some fields are missing in updateData
-             const { rows: currentPkg } = await db.query('SELECT "recipientAddress", "recipientCommune", "recipientCity" FROM packages WHERE id = $1', [id]);
-             
-             if (currentPkg.length > 0) {
-                 const addr = updateData.recipientAddress !== undefined ? updateData.recipientAddress : currentPkg[0].recipientAddress;
-                 const comm = updateData.recipientCommune !== undefined ? updateData.recipientCommune : currentPkg[0].recipientCommune;
-                 const city = updateData.recipientCity !== undefined ? updateData.recipientCity : currentPkg[0].recipientCity;
-                 
-                 const coords = await geocodeAddress(addr, comm, city);
-                 if (coords.lat && coords.lng) {
-                     updateData.destLatitude = coords.lat;
-                     updateData.destLongitude = coords.lng;
-                 }
-             }
+        // Fetch current data to compare and for geocoding
+        const { rows: currentPkgRows } = await db.query('SELECT "recipientAddress", "recipientCommune", "recipientCity" FROM packages WHERE id = $1', [id]);
+        if (currentPkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        const currentPkg = currentPkgRows[0];
+
+        // Check if address changed to add a tracking event
+        const newAddr = updateData.recipientAddress !== undefined ? updateData.recipientAddress : currentPkg.recipientAddress;
+        const newComm = updateData.recipientCommune !== undefined ? updateData.recipientCommune : currentPkg.recipientCommune;
+        const newCity = updateData.recipientCity !== undefined ? updateData.recipientCity : currentPkg.recipientCity;
+
+        const addressChanged = 
+            (updateData.recipientAddress !== undefined && updateData.recipientAddress !== currentPkg.recipientAddress) ||
+            (updateData.recipientCommune !== undefined && updateData.recipientCommune !== currentPkg.recipientCommune) ||
+            (updateData.recipientCity !== undefined && updateData.recipientCity !== currentPkg.recipientCity);
+
+        if (addressChanged) {
+            const oldFullAddr = `${currentPkg.recipientAddress}, ${currentPkg.recipientCommune}, ${currentPkg.recipientCity}`;
+            const newFullAddr = `${newAddr}, ${newComm}, ${newCity}`;
+            await addTrackingEvent(id, 'Dirección Actualizada', newComm, `Dirección cambiada de "${oldFullAddr}" a "${newFullAddr}".`);
+            
+            // Geocode the new address
+            const coords = await geocodeAddress(newAddr, newComm, newCity);
+            if (coords.lat && coords.lng) {
+                updateData.destLatitude = coords.lat;
+                updateData.destLongitude = coords.lng;
+            }
         }
 
         const fields = Object.keys(updateData);

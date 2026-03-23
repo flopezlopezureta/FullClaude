@@ -35,6 +35,7 @@ export interface SystemSettings {
     saveFlexLabelPhoto?: boolean;
     meliAutoImport?: boolean;
     publicTrackingEnabled?: boolean;
+    isRutRequired?: boolean;
 }
 
 export interface ZonePricing {

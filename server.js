@@ -353,6 +353,12 @@ async function initializeDatabase() {
             if (err.code !== '42701') { console.error('Error during settings migration (meliAutoImport):', err); }
         }
         try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "isRutRequired" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "isRutRequired" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (isRutRequired):', err); }
+        }
+        try {
             await db.query('ALTER TABLE notifications ALTER COLUMN "userId" DROP NOT NULL');
             console.log('MIGRATION APPLIED: Column "userId" in "notifications" is now nullable.');
         } catch (err) {

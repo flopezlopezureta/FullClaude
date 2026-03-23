@@ -30,6 +30,7 @@ const TrackingPage: React.FC = () => {
   const [pkg, setPkg] = useState<Package | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isDirectLink, setIsDirectLink] = useState(false);
 
   // Auto-track if ID is in URL
   useEffect(() => {
@@ -38,6 +39,7 @@ const TrackingPage: React.FC = () => {
     if (match && match[1]) {
       const id = match[1];
       setTrackingId(id);
+      setIsDirectLink(true);
       handleTrack(id);
     }
   }, []);
@@ -96,36 +98,40 @@ const TrackingPage: React.FC = () => {
           <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
             Seguimiento de Pedido
           </h2>
-          <p className="mt-2 text-center text-sm text-gray-600">
-            Ingresa tu código de seguimiento para ver el estado de tu paquete.
-          </p>
+          {!isDirectLink && (
+            <p className="mt-2 text-center text-sm text-gray-600">
+              Ingresa tu código de seguimiento para ver el estado de tu paquete.
+            </p>
+          )}
         </div>
         
-        <div className="mt-8 space-y-6">
-          <div className="rounded-md shadow-sm -space-y-px">
+        {!isDirectLink && (
+          <div className="mt-8 space-y-6">
+            <div className="rounded-md shadow-sm -space-y-px">
+              <div>
+                <input
+                  type="text"
+                  required
+                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
+                  placeholder="Código de seguimiento (ej: ML-12345)"
+                  value={trackingId}
+                  onChange={(e) => setTrackingId(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleTrack()}
+                />
+              </div>
+            </div>
+
             <div>
-              <input
-                type="text"
-                required
-                className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                placeholder="Código de seguimiento (ej: ML-12345)"
-                value={trackingId}
-                onChange={(e) => setTrackingId(e.target.value)}
-                onKeyPress={(e) => e.key === 'Enter' && handleTrack()}
-              />
+              <button
+                onClick={() => handleTrack()}
+                disabled={loading}
+                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
+              >
+                {loading ? 'Buscando...' : 'Consultar'}
+              </button>
             </div>
           </div>
-
-          <div>
-            <button
-              onClick={() => handleTrack()}
-              disabled={loading}
-              className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-            >
-              {loading ? 'Buscando...' : 'Consultar'}
-            </button>
-          </div>
-        </div>
+        )}
 
         {error && (
           <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-4">

@@ -56,6 +56,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveFlexLabelPhoto: false,
     meliAutoImport: false,
     publicTrackingEnabled: true,
+    isRutRequired: true,
   });
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);

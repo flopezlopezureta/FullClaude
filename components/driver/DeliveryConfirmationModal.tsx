@@ -134,6 +134,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
 
   const auth = useContext(AuthContext);
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
+  const isRutRequired = auth?.systemSettings.isRutRequired ?? true;
   const photosRemaining = requiredPhotos - photosBase64.length;
 
   const formatRut = (rut: string) => {
@@ -211,7 +212,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       setPhotosBase64(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const isFormValid = receiverName.trim() !== '' && receiverId.trim() !== '' && photosBase64.length >= requiredPhotos && !rutError;
+  const isFormValid = receiverName.trim() !== '' && (!isRutRequired || (receiverId.trim() !== '' && !rutError)) && photosBase64.length >= requiredPhotos;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -253,24 +254,26 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                 </div>
                 <input type="text" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Nombre de quien recibe" required className="w-full pl-10 pr-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)]"/>
             </div>
-            <div>
-                <div className="relative">
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <IconId className="h-5 w-5 text-[var(--text-muted)]" />
+            {isRutRequired && (
+                <div>
+                    <div className="relative">
+                        <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                            <IconId className="h-5 w-5 text-[var(--text-muted)]" />
+                        </div>
+                        <input 
+                            type="tel"
+                            value={receiverId} 
+                            onChange={handleRutChange}
+                            onBlur={handleRutBlur}
+                            placeholder="RUT de quien recibe" 
+                            required 
+                            className={`w-full pl-10 pr-3 py-2 border rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] ${rutError ? 'border-red-500' : 'border-[var(--border-secondary)]'}`}
+                            aria-invalid={!!rutError}
+                        />
                     </div>
-                    <input 
-                        type="tel"
-                        value={receiverId} 
-                        onChange={handleRutChange}
-                        onBlur={handleRutBlur}
-                        placeholder="RUT de quien recibe" 
-                        required 
-                        className={`w-full pl-10 pr-3 py-2 border rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] ${rutError ? 'border-red-500' : 'border-[var(--border-secondary)]'}`}
-                        aria-invalid={!!rutError}
-                    />
+                    {rutError && <p className="text-xs text-red-600 mt-1 ml-1">{rutError}</p>}
                 </div>
-                {rutError && <p className="text-xs text-red-600 mt-1 ml-1">{rutError}</p>}
-            </div>
+            )}
 
             <div className="p-4 bg-[var(--background-muted)] rounded-lg text-center">
                 {photosBase64.length > 0 && (
