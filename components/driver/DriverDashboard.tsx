@@ -197,9 +197,6 @@ const DriverDashboard: React.FC = () => {
 
     setIsExporting(true);
     try {
-        // Small delay to allow UI to show loading state
-        await new Promise(resolve => setTimeout(resolve, 100));
-
         const dateStr = new Date().toISOString().split('T')[0];
         const driverName = auth.user.name.replace(/\s+/g, '_');
 
@@ -210,34 +207,25 @@ const DriverDashboard: React.FC = () => {
         };
         const circuitHeaders = ['Address', 'Name'];
         
-        // Chunked processing to avoid freezing the UI
-        const CHUNK_SIZE = 500;
-        let circuitRows: string[] = [];
-        
-        for (let i = 0; i < pendingPackages.length; i += CHUNK_SIZE) {
-            const chunk = pendingPackages.slice(i, i + CHUNK_SIZE);
-            const chunkRows = chunk.map(p => [
-                `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
-                p.recipientName
-            ].map(escapeCsvField).join(','));
-            circuitRows = circuitRows.concat(chunkRows);
-            
-            // Yield to main thread every chunk
-            await new Promise(resolve => setTimeout(resolve, 0));
-        }
+        const circuitRows = pendingPackages.map(p => [
+            `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
+            p.recipientName
+        ].map(escapeCsvField).join(','));
 
         const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' }); // Add BOM for Excel compatibility
+        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
-        if (link.download !== undefined) {
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Circuit_${driverName}_${dateStr}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
+        
+        link.setAttribute("href", url);
+        link.setAttribute("download", `Circuit_${driverName}_${dateStr}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Cleanup the URL object
+        setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (error) {
         console.error("Export failed", error);
         alert("Error al exportar.");
