@@ -295,7 +295,7 @@ const AuthPage: React.FC = () => {
             </button>
           </p>
           <p className="text-center text-xs text-[var(--text-muted)] opacity-50 mt-6">
-            by SELCOM
+            by SELCOM | v{(import.meta as any).env.VITE_APP_VERSION}
           </p>
         </div>
       </div>
