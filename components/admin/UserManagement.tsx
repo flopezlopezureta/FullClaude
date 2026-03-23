@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Role, UserStatus, PackageSource } from '../../constants';
 import type { User, DriverPermissions } from '../../types';
 import { api, UserCreationData, UserUpdateData, PackageCreationData } from '../../services/api';
-import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage } from '../Icon';
+import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch } from '../Icon';
 import CreateUserModal from '../modals/CreateUserModal';
 import EditUserModal from '../modals/EditUserModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
@@ -35,6 +35,7 @@ const statusStyles: { [key in UserStatus]: { badge: string; text: string; } } = 
 
 const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [users, setUsers] = useState<User[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
@@ -66,6 +67,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   };
 
   useEffect(() => {
+    setSearchTerm('');
     fetchUsers();
   }, [roleFilter]);
   
@@ -170,12 +172,31 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   };
 
 
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (user.phone && user.phone.includes(searchTerm)) ||
+    (user.rut && user.rut.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
+
   return (
     <div className="container mx-auto">
-      <div className="flex justify-end mb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+        <div className="relative flex-1 w-full max-w-md">
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <IconSearch className="h-5 w-5 text-[var(--text-muted)]" />
+          </div>
+          <input
+            type="text"
+            placeholder="Buscar por nombre, email, RUT o teléfono..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="block w-full pl-10 pr-3 py-2 border border-[var(--border-primary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm transition-colors"
+          />
+        </div>
         <button
           onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)]"
+          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] whitespace-nowrap"
         >
           <IconUserPlus className="w-5 h-5 mr-2 -ml-1"/>
           Crear Usuario
@@ -185,9 +206,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
         <div className="divide-y divide-[var(--border-primary)]">
           {isLoading ? (
             <p className="p-6 text-center text-[var(--text-muted)]">Cargando usuarios...</p>
-          ) : users.length === 0 ? (
-             <p className="p-6 text-center text-[var(--text-muted)]">No se encontraron usuarios con el rol de {roleFilter}.</p>
-          ) : users.map(user => {
+          ) : filteredUsers.length === 0 ? (
+             <p className="p-6 text-center text-[var(--text-muted)]">
+               {searchTerm ? 'No se encontraron usuarios que coincidan con la búsqueda.' : `No se encontraron usuarios con el rol de ${roleFilter}.`}
+             </p>
+          ) : filteredUsers.map(user => {
             const hasNoCustomPricing = user.role === Role.Client &&
               (!user.pricing || (user.pricing.sameDay === 0 && user.pricing.express === 0 && user.pricing.nextDay === 0)) &&
               (!user.pickupCost || user.pickupCost === 0);

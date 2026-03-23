@@ -7,6 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const NotificationService = require('../services/notificationService');
+const { logAction } = require('../services/logger');
 
 // Helper to get tracking history for a package
 async function getHistory(packageId) {
@@ -307,6 +308,8 @@ router.post('/', authMiddleware, async (req, res) => {
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
         await addTrackingEvent(newPackage.id, 'Creado', origin, 'Paquete creado.');
         
+        await logAction(req.user.id, req.user.name, 'CREATE_PACKAGE', { packageId: newPackage.id, recipientName });
+
         newPackage.history = await getHistory(newPackage.id);
         
         // Notify recipient
@@ -574,6 +577,8 @@ router.put('/:id', authMiddleware, async (req, res) => {
         const result = await db.query(`UPDATE packages SET ${setClause} WHERE id = $${fields.length + 1}`, [...values, id]);
         if (result.rowCount === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
+        await logAction(req.user.id, req.user.name, 'UPDATE_PACKAGE', { packageId: id, updatedFields: fields });
+
         const { rows } = await db.query('SELECT * FROM packages WHERE id = $1', [id]);
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
@@ -592,6 +597,9 @@ router.delete('/:id', authMiddleware, async (req, res) => {
         await db.query('DELETE FROM tracking_events WHERE "packageId" = $1', [id]);
         const result = await db.query('DELETE FROM packages WHERE id = $1', [id]);
         if (result.rowCount === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+
+        await logAction(req.user.id, req.user.name, 'DELETE_PACKAGE', { packageId: id });
+
         res.status(204).send();
     } catch (err) {
         console.error('Error in DELETE /api/packages/:id:', err);
@@ -667,6 +675,8 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
 
         await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details);
         
+        await logAction(req.user.id, req.user.name, 'DISPATCH_PACKAGE', { packageId: realId, driverId });
+
         const updatedPkg = rows[0];
         updatedPkg.history = await getHistory(realId);
         
@@ -698,6 +708,8 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
         const details = flexLabelPhotoBase64 ? `Paquete marcado como ${statusText} con respaldo de etiqueta.` : `Paquete marcado como ${statusText}.`;
         await addTrackingEvent(id, statusText, 'Centro de Distribución', details);
         
+        await logAction(req.user.id, req.user.name, 'FLEX_PACKAGE', { packageId: id, isFlexed });
+
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
         res.json(updatedPackage);
@@ -790,6 +802,8 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
 
         await addTrackingEvent(id, 'ENTREGADO', rows[0].recipientAddress, `Entregado a ${receiverName}.`);
         
+        await logAction(req.user.id, req.user.name, 'DELIVER_PACKAGE', { packageId: id, receiverName });
+
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
 

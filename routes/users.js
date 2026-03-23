@@ -4,6 +4,7 @@ const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
+const { logAction } = require('../services/logger');
 
 // Middleware to check for Admin or Retiros role
 const adminOrRetirosOnly = (req, res, next) => {
@@ -68,6 +69,8 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
 
         await db.query(`INSERT INTO users (${columns}) VALUES (${placeholders})`, values);
         
+        await logAction(req.user.id, req.user.name, 'CREATE_USER', { targetUserId: newUser.id, targetUserEmail: email, role });
+
         delete newUser.password;
         res.status(201).json(newUser);
 
@@ -104,6 +107,8 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
         
+        await logAction(req.user.id, req.user.name, 'UPDATE_USER', { targetUserId: id, updatedFields: fields });
+
         const { rows } = await db.query('SELECT * FROM users WHERE id = $1', [id]);
         const updatedUser = rows[0];
         delete updatedUser.password;
@@ -125,6 +130,9 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
+
+        await logAction(req.user.id, req.user.name, 'DELETE_USER', { targetUserId: id });
+
         res.status(204).send();
     } catch (err) {
         console.error(err);

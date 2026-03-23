@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import Dashboard from '../Dashboard';
 import UserManagement from './UserManagement';
-import { IconPackage, IconUsers } from '../Icon';
+import SystemLogsPage from './SystemLogsPage';
+import { IconPackage, IconUsers, IconHistory } from '../Icon';
 import { Role } from '../../constants';
 
-type Tab = 'packages' | 'users';
+type Tab = 'packages' | 'users' | 'logs';
 type UserRoleView = 'clients' | 'drivers' | 'admins' | 'facturacion' | 'retiros' | 'auxiliares';
 
 const AdminDashboard: React.FC = () => {
@@ -66,6 +67,13 @@ const AdminDashboard: React.FC = () => {
               <IconUsers className="w-5 h-5 mr-2" />
               <span>Gestión de Usuarios</span>
             </button>
+            <button
+              onClick={() => setActiveTab('logs')}
+              className={`${tabStyles} ${activeTab === 'logs' ? activeTabStyles : inactiveTabStyles}`}
+            >
+              <IconHistory className="w-5 h-5 mr-2" />
+              <span>Logs del Sistema</span>
+            </button>
           </nav>
         </div>
         {activeTab === 'users' && (
@@ -102,6 +110,7 @@ const AdminDashboard: React.FC = () => {
       <div>
         {activeTab === 'packages' && <Dashboard />}
         {activeTab === 'users' && renderUserManagement()}
+        {activeTab === 'logs' && <SystemLogsPage />}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const bcrypt = require('bcryptjs');
+const { logAction } = require('../services/logger');
 
 // Middleware to check for Admin role
 const adminOnly = (req, res, next) => {
@@ -81,6 +82,9 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "publicTrackingEnabled" = $9, "isRutRequired" = $10 WHERE id = 1',
                 [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired]
             );
+            
+            await logAction(req.user.id, req.user.name, 'UPDATE_SYSTEM_SETTINGS', { updatedSettings });
+
             res.json(updatedSettings);
 
         } else {
@@ -101,6 +105,9 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10)',
                 [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired]
             );
+
+            await logAction(req.user.id, req.user.name, 'CREATE_SYSTEM_SETTINGS', { updatedSettings });
+
             res.status(201).json(updatedSettings);
         }
     } catch (err) {
@@ -124,6 +131,9 @@ router.post('/reset-database', authMiddleware, adminOnly, async (req, res) => {
         await client.query(`UPDATE users SET "assignedDriverId" = NULL, "lastAssignmentTimestamp" = NULL, "invoices" = '[]'::jsonb`);
         await client.query("DELETE FROM users WHERE email != 'admin'");
         await client.query('COMMIT');
+
+        await logAction(req.user.id, req.user.name, 'RESET_DATABASE', { details: 'Full database reset' });
+
         res.status(200).json({ message: 'Sistema limpio para producción.' });
     } catch (err) {
         await client.query('ROLLBACK');
@@ -145,6 +155,9 @@ router.post('/reset-packages', authMiddleware, adminOnly, async (req, res) => {
         await db.query('BEGIN');
         await db.query('TRUNCATE TABLE tracking_events, packages RESTART IDENTITY CASCADE');
         await db.query('COMMIT');
+
+        await logAction(req.user.id, req.user.name, 'RESET_PACKAGES', { details: 'All packages and tracking events deleted' });
+
         res.status(200).json({ message: 'Paquetes e historial eliminados con éxito.' });
     } catch (err) {
         await db.query('ROLLBACK');
@@ -168,6 +181,9 @@ router.post('/reset-clients', authMiddleware, adminOnly, async (req, res) => {
         // Then delete clients
         await db.query("DELETE FROM users WHERE role = 'CLIENT'");
         await db.query('COMMIT');
+
+        await logAction(req.user.id, req.user.name, 'RESET_CLIENTS', { details: 'All clients deleted' });
+
         res.status(200).json({ message: 'Clientes eliminados con éxito.' });
     } catch (err) {
         await db.query('ROLLBACK');
@@ -192,6 +208,9 @@ router.post('/reset-drivers', authMiddleware, adminOnly, async (req, res) => {
         // Delete drivers
         await db.query("DELETE FROM users WHERE role = 'DRIVER'");
         await db.query('COMMIT');
+
+        await logAction(req.user.id, req.user.name, 'RESET_DRIVERS', { details: 'All drivers deleted' });
+
         res.status(200).json({ message: 'Conductores y auxiliares eliminados con éxito.' });
     } catch (err) {
         await db.query('ROLLBACK');
@@ -209,6 +228,9 @@ router.post('/reset-zones', authMiddleware, adminOnly, async (req, res) => {
 
     try {
         await db.query('TRUNCATE TABLE delivery_zones RESTART IDENTITY CASCADE');
+        
+        await logAction(req.user.id, req.user.name, 'RESET_ZONES', { details: 'All delivery zones deleted' });
+
         res.status(200).json({ message: 'Zonas de entrega eliminadas con éxito.' });
     } catch (err) {
         console.error(err);
@@ -226,6 +248,9 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
     try {
         await db.query("UPDATE users SET invoices = '[]'::jsonb, \"pickupCost\" = 0");
         await db.query("UPDATE packages SET billed = false");
+
+        await logAction(req.user.id, req.user.name, 'RESET_INVOICES', { details: 'Billing history reset' });
+
         res.status(200).json({ message: 'Historial de facturación reiniciado con éxito.' });
     } catch (err) {
         console.error(err);
@@ -329,6 +354,8 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
             const { rows } = await db.query(query, values);
             
+            await logAction(req.user.id, req.user.name, 'UPDATE_INTEGRATIONS', { updatedFields: updates });
+
             // Return updated settings
             const saved = rows[0];
             res.status(200).json({
@@ -476,6 +503,8 @@ router.post('/github-backup', authMiddleware, adminOnly, async (req, res) => {
             pushToBranch('main'),
             pushToBranch('developer')
         ]);
+        
+        await logAction(req.user.id, req.user.name, 'GITHUB_BACKUP', { details: 'Backup pushed to GitHub' });
 
         res.json({ message: 'Respaldo enviado con éxito a GitHub (main y developer).' });
 

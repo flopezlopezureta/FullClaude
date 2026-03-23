@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
+const { logAction } = require('../services/logger');
 
 // Admin only middleware
 const adminOnly = (req, res, next) => {
@@ -43,6 +44,9 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
             'INSERT INTO delivery_zones (id, name, communes, pricing) VALUES ($1, $2, $3, $4)',
             [newZone.id, newZone.name, JSON.stringify(newZone.communes), JSON.stringify(newZone.pricing)]
         );
+        
+        await logAction(req.user.id, req.user.name, 'CREATE_ZONE', { zoneId: newZone.id, name });
+
         res.status(201).json(newZone);
     } catch (err) {
         console.error(err);
@@ -60,6 +64,9 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
             'UPDATE delivery_zones SET name = $1, communes = $2, pricing = $3 WHERE id = $4',
             [name, JSON.stringify(communes), JSON.stringify(pricing), id]
         );
+        
+        await logAction(req.user.id, req.user.name, 'UPDATE_ZONE', { zoneId: id, name });
+
         res.json({ id, name, communes, pricing });
     } catch (err) {
         console.error(err);
@@ -72,6 +79,9 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
     const { id } = req.params;
     try {
         await db.query('DELETE FROM delivery_zones WHERE id = $1', [id]);
+        
+        await logAction(req.user.id, req.user.name, 'DELETE_ZONE', { zoneId: id });
+
         res.status(204).send();
     } catch (err) {
         console.error(err);

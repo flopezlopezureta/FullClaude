@@ -259,6 +259,9 @@ export const api = {
   resetZones: (password: string) => post<{message: string}>('/settings/reset-zones', { password }),
   resetInvoices: (password: string) => post<{message: string}>('/settings/reset-invoices', { password }),
   
+  // Logs
+  getSystemLogs: () => get<any[]>('/logs'),
+  
   // Integrations
   getIntegrationSettings: () => get<IntegrationSettings>('/settings/integrations'),
   updateIntegrationSettings: (data: Partial<IntegrationSettings>) => put<IntegrationSettings>('/settings/integrations', data),

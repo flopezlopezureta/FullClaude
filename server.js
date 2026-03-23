@@ -50,6 +50,7 @@ async function startServer() {
     const billingRoute = tryRequireRoute('./routes/billing.js'); if (billingRoute) app.use('/api/billing', billingRoute);
     const integrationsRoute = tryRequireRoute('./routes/integrations.js'); if (integrationsRoute) app.use('/api/integrations', integrationsRoute);
     const geoRoute = tryRequireRoute('./routes/geo.js'); if (geoRoute) app.use('/api/geo', geoRoute);
+    const logsRoute = tryRequireRoute('./routes/logs.js'); if (logsRoute) app.use('/api/logs', logsRoute);
     // Montar rutas de pickups directamente
     const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
     const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
@@ -585,6 +586,18 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during pickup_assignments migration (packagesPickedUp):', err); }
         }
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS system_logs (
+                id SERIAL PRIMARY KEY,
+                "userId" TEXT,
+                "userName" TEXT,
+                action TEXT NOT NULL,
+                details TEXT,
+                timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Table "system_logs" is ready.');
 
         console.log('Database schema initialization complete.');
     } catch (err) {

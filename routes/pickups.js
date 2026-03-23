@@ -4,6 +4,7 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
+const { logAction } = require('../services/logger');
 
 const adminOrRetirosOnly = (req, res, next) => {
     if (req.user.role !== 'ADMIN' && req.user.role !== 'RETIROS') {
@@ -97,6 +98,8 @@ router.post('/colectas/claim', authMiddleware, async (req, res) => {
 
         // 5. Sync legacy
         await client.query('UPDATE users SET "assignedDriverId" = $1 WHERE id = $2', [driverId, clientId]);
+
+        await logAction(req.user.id, req.user.name, 'CLAIM_COLECTA', { clientId, runId, assignmentId });
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Retiro tomado con éxito.', assignmentId });
@@ -241,6 +244,9 @@ router.post('/', authMiddleware, adminOrRetirosOnly, async (req, res) => {
         }
 
         await client.query('COMMIT');
+        
+        await logAction(req.user.id, req.user.name, 'CREATE_PICKUP_RUN', { runId, driverId, date: runDate, shift, assignmentsCount: assignments.length });
+
         res.status(201).json({ id: runId, driverId, date: runDate, shift, assignments });
 
     } catch (err) {
@@ -343,6 +349,9 @@ router.post('/runs/:id/copy', authMiddleware, adminOrRetirosOnly, async (req, re
         }
 
         await client.query('COMMIT');
+        
+        await logAction(req.user.id, req.user.name, 'COPY_PICKUP_RUN', { sourceRunId, targetDates: dates, assignmentsCount: assignmentIds.length });
+
         res.status(201).json({ message: 'Rutas copiadas exitosamente.' });
 
     } catch (err) {
@@ -414,6 +423,8 @@ router.post('/runs/:id/assignments', authMiddleware, adminOrRetirosOnly, async (
         }
 
         await client.query('UPDATE pickup_runs SET informed = false, "informedAt" = NULL WHERE id = $1', [runId]);
+
+        await logAction(req.user.id, req.user.name, 'ADD_ASSIGNMENTS_TO_RUN', { runId, assignmentsCount: assignments.length });
 
         await client.query('COMMIT');
         res.status(201).json({ message: 'Asignaciones agregadas con éxito.' });
@@ -488,6 +499,8 @@ router.put('/assignments/:id/status', authMiddleware, async (req, res) => {
             `UPDATE pickup_assignments SET ${setClauses} WHERE id = $${values.length + 1}`,
             [...values, id]
         );
+
+        await logAction(req.user.id, req.user.name, 'UPDATE_ASSIGNMENT_STATUS', { assignmentId: id, status, packagesPickedUp });
 
         res.status(204).send();
     } catch (err) {
@@ -578,6 +591,9 @@ router.put('/assignments/:id', authMiddleware, adminOrRetirosOnly, async (req, r
                 );
             }
         }
+        
+        await logAction(req.user.id, req.user.name, 'REASSIGN_ASSIGNMENT', { assignmentId: id, newDriverId: driverId, cost });
+
         await client.query('COMMIT');
         res.status(204).send();
     } catch (err) {
@@ -684,6 +700,8 @@ router.put('/runs/:id/reassign', authMiddleware, adminOrRetirosOnly, async (req,
         
         finalRun.assignments = finalAssignments;
 
+        await logAction(req.user.id, req.user.name, 'REASSIGN_FULL_RUN', { sourceRunId, newDriverId, finalRunId });
+
         await client.query('COMMIT');
         res.status(200).json(finalRun);
 
@@ -704,6 +722,9 @@ router.put('/runs/:id/inform', authMiddleware, adminOrRetirosOnly, async (req, r
             'UPDATE pickup_runs SET informed = true, "informedAt" = $1 WHERE id = $2',
             [new Date(), id]
         );
+        
+        await logAction(req.user.id, req.user.name, 'INFORM_RUN', { runId: id });
+
         res.status(204).send();
     } catch (err) {
         console.error('Error marking run as informed:', err);
@@ -719,6 +740,9 @@ router.delete('/runs/:id', authMiddleware, adminOrRetirosOnly, async (req, res) 
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Ruta de retiro no encontrada.' });
         }
+        
+        await logAction(req.user.id, req.user.name, 'DELETE_RUN', { runId: id });
+
         res.status(204).send();
     } catch (err) {
         console.error('Error deleting pickup run:', err);
@@ -752,6 +776,8 @@ router.delete('/assignments/:id', authMiddleware, adminOrRetirosOnly, async (req
 
         await client.query('UPDATE pickup_runs SET informed = false WHERE id = $1', [runId]);
         
+        await logAction(req.user.id, req.user.name, 'DELETE_ASSIGNMENT', { assignmentId: id, runId });
+
         await client.query('COMMIT');
         res.status(204).send();
 
