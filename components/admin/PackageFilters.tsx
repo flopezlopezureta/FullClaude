@@ -7,8 +7,7 @@ interface PackageFiltersProps {
   onOpenCreateModal: () => void;
   onOpenImportModal: () => void;
   onRefresh: () => void;
-  onSyncMeli?: () => void;
-  isSyncingMeli?: boolean;
+  isSyncing?: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   drivers: User[];
@@ -34,8 +33,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onOpenCreateModal,
   onOpenImportModal,
   onRefresh,
-  onSyncMeli,
-  isSyncingMeli = false,
+  isSyncing = false,
   searchQuery,
   onSearchChange,
   drivers,
@@ -140,21 +138,12 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
         <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
             <button
                 onClick={onRefresh}
-                className="flex-shrink-0 inline-flex items-center justify-center p-2 border border-blue-200 text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors shadow-sm"
-                title="Refrescar Datos"
+                disabled={isSyncing}
+                className={`flex-shrink-0 inline-flex items-center justify-center p-2 border border-blue-200 text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors shadow-sm ${isSyncing ? 'animate-pulse' : ''}`}
+                title="Refrescar Datos y Sincronizar Flex"
             >
-                <IconRefresh className="w-5 h-5" />
+                <IconRefresh className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
-            {onSyncMeli && (
-                <button
-                    onClick={onSyncMeli}
-                    disabled={isSyncingMeli}
-                    className={`flex-shrink-0 inline-flex items-center justify-center p-2 border border-orange-200 text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors shadow-sm ${isSyncingMeli ? 'animate-pulse' : ''}`}
-                    title="Sincronizar Estados con Mercado Libre"
-                >
-                    <IconRefresh className={`w-5 h-5 ${isSyncingMeli ? 'animate-spin' : ''}`} />
-                </button>
-            )}
             {driverFilter && (
                 <button
                     onClick={onExportRoute}

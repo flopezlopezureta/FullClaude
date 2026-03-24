@@ -250,19 +250,23 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleBulkSyncMeli = async () => {
-    if (isSyncingMeli) return;
-    setIsSyncingMeli(true);
-    try {
-        const response = await api.syncAllMeliPackages();
-        alert(response.message);
-        fetchData(); // Refresh list to see updated statuses
-    } catch (error: any) {
-        console.error("Failed to bulk sync with ML", error);
-        alert(error.message || "Error al sincronizar con Mercado Libre.");
-    } finally {
+  const handleRefreshAll = async () => {
+    if (isLoading || isSyncingMeli) return;
+    
+    // If Admin, trigger Meli sync first
+    if (auth?.user?.role === Role.Admin) {
+      setIsSyncingMeli(true);
+      try {
+        await api.syncAllMeliPackages();
+      } catch (error) {
+        console.error("Failed to sync with ML during refresh", error);
+      } finally {
         setIsSyncingMeli(false);
+      }
     }
+    
+    // Always fetch data
+    await fetchData();
   };
 
   const drivers = users.filter(u => u.role === Role.Driver && u.status === UserStatus.Approved);
@@ -445,10 +449,10 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
-        <PackageFilters 
+        <PackageFilters
             onOpenCreateModal={() => setIsCreateModalOpen(true)}
             onOpenImportModal={() => setIsImportModalOpen(true)}
-            onRefresh={fetchData}
+            onRefresh={handleRefreshAll}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
             drivers={drivers}
@@ -468,9 +472,9 @@ const Dashboard: React.FC = () => {
             isExporting={isExporting}
             flexFilter={flexFilter}
             onFlexFilterChange={setFlexFilter}
-            onSyncMeli={auth?.user?.role === Role.Admin ? handleBulkSyncMeli : undefined}
-            isSyncingMeli={isSyncingMeli}
+            isSyncing={isLoading || isSyncingMeli}
         />
+      </div>
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 border-b border-[var(--border-primary)]">
             <div className="flex flex-wrap items-center gap-4">
@@ -669,7 +673,6 @@ const Dashboard: React.FC = () => {
           selectedPackages={selectedPackages}
           onSelectionChange={handleSelectPackage}
         />
-      </div>
 
       {/* --- Modals --- */}
       {selectedPackage && (
