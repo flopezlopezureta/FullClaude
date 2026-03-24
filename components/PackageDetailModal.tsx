@@ -27,6 +27,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isFlexing, setIsFlexing] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const isReturn = pkg.status === PackageStatus.ReturnPending && !!onStartReturn;
 
@@ -45,10 +46,32 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
       if (onUpdatePackage) {
         onUpdatePackage(updatedPkg);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error toggling flex status:", error);
+      alert(error.message || "Error al cambiar el estado Flex.");
     } finally {
       setIsFlexing(false);
+    }
+  };
+
+  const handleSyncMeli = async () => {
+    if (isSyncing) return;
+    setIsSyncing(true);
+    try {
+      const result = await api.syncPackageWithMeli(pkg.id);
+      if (onUpdatePackage) {
+        onUpdatePackage(result);
+      }
+      if (result.noChange) {
+        alert(`Sincronización completa. No hay cambios de estado. Estado en ML: ${result.mlStatus}${result.mlSubstatus ? ` (${result.mlSubstatus})` : ''}`);
+      } else {
+        alert(`Paquete sincronizado. Nuevo estado: ${result.status}`);
+      }
+    } catch (error: any) {
+      console.error("Error syncing with ML:", error);
+      alert(error.message || "Error al sincronizar con Mercado Libre.");
+    } finally {
+      setIsSyncing(false);
     }
   };
 
@@ -251,6 +274,16 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                       <h4 className="text-sm font-semibold text-[var(--text-muted)]">Estado Actual: <span className="text-[var(--brand-primary)] font-bold">{pkg.status.replace('_', ' ')}</span></h4>
                       <div className="flex items-center gap-2">
                         {isMeli && (
+                            <>
+                            <button 
+                                onClick={handleSyncMeli}
+                                disabled={isSyncing}
+                                className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 transition-colors"
+                                title="Consultar estado actual en Mercado Libre"
+                            >
+                                {isSyncing ? <IconRefresh className="w-3 h-3 mr-1 animate-spin" /> : <IconRefresh className="w-3 h-3 mr-1" />}
+                                Consultar Flex
+                            </button>
                             <button 
                                 onClick={handleToggleFlex}
                                 disabled={isFlexing}
@@ -259,6 +292,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                                 {isFlexing ? <IconRefresh className="w-3 h-3 mr-1 animate-spin" /> : <IconCheckCircle className="w-3 h-3 mr-1" />}
                                 {pkg.isFlexed ? 'Flexeado' : 'Marcar Flex'}
                             </button>
+                            </>
                         )}
                         {(pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.PickedUp) && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide bg-blue-100 text-blue-700 border border-blue-200">

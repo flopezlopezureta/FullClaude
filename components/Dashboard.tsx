@@ -60,6 +60,7 @@ const Dashboard: React.FC = () => {
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSyncingMeli, setIsSyncingMeli] = useState(false);
   const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
 
@@ -259,6 +260,21 @@ const Dashboard: React.FC = () => {
     } catch (error) {
         console.error("Failed to mark package for return", error);
         alert("Error al marcar el paquete para devolución.");
+    }
+  };
+
+  const handleBulkSyncMeli = async () => {
+    if (isSyncingMeli) return;
+    setIsSyncingMeli(true);
+    try {
+        const response = await api.syncAllMeliPackages();
+        alert(response.message);
+        fetchData(); // Refresh list to see updated statuses
+    } catch (error: any) {
+        console.error("Failed to bulk sync with ML", error);
+        alert(error.message || "Error al sincronizar con Mercado Libre.");
+    } finally {
+        setIsSyncingMeli(false);
     }
   };
 
@@ -463,6 +479,8 @@ const Dashboard: React.FC = () => {
             isExporting={isExporting}
             flexFilter={flexFilter}
             onFlexFilterChange={setFlexFilter}
+            onSyncMeli={auth?.user?.role === Role.Admin ? handleBulkSyncMeli : undefined}
+            isSyncingMeli={isSyncingMeli}
         />
 
         <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 border-b border-[var(--border-primary)]">

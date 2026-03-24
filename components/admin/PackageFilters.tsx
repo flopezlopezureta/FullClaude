@@ -7,6 +7,8 @@ interface PackageFiltersProps {
   onOpenCreateModal: () => void;
   onOpenImportModal: () => void;
   onRefresh: () => void;
+  onSyncMeli?: () => void;
+  isSyncingMeli?: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
   drivers: User[];
@@ -32,6 +34,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onOpenCreateModal,
   onOpenImportModal,
   onRefresh,
+  onSyncMeli,
+  isSyncingMeli = false,
   searchQuery,
   onSearchChange,
   drivers,
@@ -141,6 +145,16 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             >
                 <IconRefresh className="w-5 h-5" />
             </button>
+            {onSyncMeli && (
+                <button
+                    onClick={onSyncMeli}
+                    disabled={isSyncingMeli}
+                    className={`flex-shrink-0 inline-flex items-center justify-center p-2 border border-orange-200 text-orange-600 bg-orange-50 rounded-md hover:bg-orange-100 transition-colors shadow-sm ${isSyncingMeli ? 'animate-pulse' : ''}`}
+                    title="Sincronizar Estados con Mercado Libre"
+                >
+                    <IconRefresh className={`w-5 h-5 ${isSyncingMeli ? 'animate-spin' : ''}`} />
+                </button>
+            )}
             {driverFilter && (
                 <button
                     onClick={onExportRoute}

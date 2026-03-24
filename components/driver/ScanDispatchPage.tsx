@@ -116,8 +116,17 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
       setScanResult(null);
       setFlexPhotoBase64(null);
       setIsScanning(true);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error marking as flexed:", error);
+      setScanResult({
+        type: 'error',
+        message: error.message || 'Error al marcar como Flex.'
+      });
+      // Clear error after 4s and resume scanning
+      setTimeout(() => {
+        setScanResult(null);
+        setIsScanning(true);
+      }, 4000);
     } finally {
       setIsFlexing(false);
     }

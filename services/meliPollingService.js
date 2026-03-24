@@ -133,15 +133,35 @@ async function pollMeliPackages() {
                         const mlStatus = shipment.status;
                         const mlSubstatus = shipment.substatus;
                         
-                        const isRescheduledInML = mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed';
+                        let newStatus = null;
+                        let eventDetails = '';
+                        let eventStatus = '';
 
-                        if (isRescheduledInML && pkg.status !== 'REPROGRAMADO') {
-                            console.log(`[MeliPolling] Package ${pkg.id} detected as RESCHEDULED in ML.`);
+                        if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
+                            newStatus = 'ENTREGADO';
+                            eventStatus = 'Entregado';
+                            eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
+                        } else if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
+                            newStatus = 'CANCELADO';
+                            eventStatus = 'Cancelado';
+                            eventDetails = 'El envío ha sido CANCELADO en Mercado Libre.';
+                        } else if ((mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed') && pkg.status !== 'REPROGRAMADO') {
+                            newStatus = 'REPROGRAMADO';
+                            eventStatus = 'Reprogramado';
+                            eventDetails = 'El envío ha sido REPROGRAMADO por Mercado Libre.';
+                        } else if (mlStatus === 'not_delivered' && pkg.status !== 'PROBLEMA') {
+                            newStatus = 'PROBLEMA';
+                            eventStatus = 'Problema';
+                            eventDetails = 'El envío ha sido marcado como NO ENTREGADO en Mercado Libre.';
+                        }
+
+                        if (newStatus) {
+                            console.log(`[MeliPolling] Package ${pkg.id} status update detected: ${newStatus} (ML Status: ${mlStatus})`);
                             
                             const now = new Date();
-                            await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', ['REPROGRAMADO', now, pkg.id]);
+                            await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', [newStatus, now, pkg.id]);
                             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                                [pkg.id, 'Reprogramado', 'Mercado Libre', 'El envío ha sido reprogramado por Mercado Libre.', now]);
+                                [pkg.id, eventStatus, 'Mercado Libre', eventDetails, now]);
                             
                             if (pkg.driverId) {
                                 const notificationId = `notif-${uuidv4()}`;
@@ -151,9 +171,9 @@ async function pollMeliPackages() {
                                 `, [
                                     notificationId, 
                                     pkg.driverId, 
-                                    'Envío Reprogramado', 
-                                    `El paquete ${pkg.id} ha sido reprogramado por Mercado Libre.`, 
-                                    'PACKAGE_RESCHEDULED',
+                                    `Envío ${eventStatus}`, 
+                                    `El paquete ${pkg.id} ha sido actualizado a ${eventStatus} por Mercado Libre.`, 
+                                    `PACKAGE_${newStatus}`,
                                     pkg.id
                                 ]);
                             }
@@ -168,6 +188,72 @@ async function pollMeliPackages() {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+    }
+}
+
+async function syncPackage(packageId) {
+    console.log(`[MeliPolling] Manually syncing package ${packageId}...`);
+    try {
+        const { rows } = await db.query(`
+            SELECT id, "meliOrderId", "driverId", status, "creatorId", source 
+            FROM packages 
+            WHERE id = $1
+        `, [packageId]);
+
+        if (rows.length === 0) throw new Error('Paquete no encontrado.');
+        const pkg = rows[0];
+
+        if (pkg.source !== 'MERCADO_LIBRE' || !pkg.meliOrderId) {
+            throw new Error('El paquete no es de Mercado Libre o no tiene ID de orden.');
+        }
+
+        const accessToken = await getValidMeliToken(pkg.creatorId);
+        if (!accessToken) throw new Error('No se pudo obtener el token de Mercado Libre para este cliente.');
+
+        const shipment = await makeMeliGetRequest(`/shipments/${pkg.meliOrderId}`, accessToken);
+        
+        const mlStatus = shipment.status;
+        const mlSubstatus = shipment.substatus;
+        
+        let newStatus = null;
+        let eventDetails = '';
+        let eventStatus = '';
+
+        if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
+            newStatus = 'ENTREGADO';
+            eventStatus = 'Entregado';
+            eventDetails = 'Sincronización manual: El envío figura como ENTREGADO en Mercado Libre.';
+        } else if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
+            newStatus = 'CANCELADO';
+            eventStatus = 'Cancelado';
+            eventDetails = 'Sincronización manual: El envío figura como CANCELADO en Mercado Libre.';
+        } else if ((mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed') && pkg.status !== 'REPROGRAMADO') {
+            newStatus = 'REPROGRAMADO';
+            eventStatus = 'Reprogramado';
+            eventDetails = 'Sincronización manual: El envío figura como REPROGRAMADO en Mercado Libre.';
+        } else if (mlStatus === 'not_delivered' && pkg.status !== 'PROBLEMA') {
+            newStatus = 'PROBLEMA';
+            eventStatus = 'Problema';
+            eventDetails = 'Sincronización manual: El envío figura como NO ENTREGADO en Mercado Libre.';
+        }
+
+        if (newStatus) {
+            const now = new Date();
+            await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', [newStatus, now, pkg.id]);
+            await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                [pkg.id, eventStatus, 'Mercado Libre (Sync)', eventDetails, now]);
+            
+            const { rows: updatedRows } = await db.query('SELECT * FROM packages WHERE id = $1', [pkg.id]);
+            const { rows: history } = await db.query('SELECT * FROM tracking_events WHERE "packageId" = $1 ORDER BY timestamp DESC', [pkg.id]);
+            return { ...updatedRows[0], history };
+        }
+
+        const { rows: history } = await db.query('SELECT * FROM tracking_events WHERE "packageId" = $1 ORDER BY timestamp DESC', [pkg.id]);
+        return { ...pkg, history, noChange: true, mlStatus, mlSubstatus };
+
+    } catch (err) {
+        console.error(`[MeliPolling] Error syncing package ${packageId}:`, err);
+        throw err;
     }
 }
 

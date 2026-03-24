@@ -8,6 +8,7 @@ const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const NotificationService = require('../services/notificationService');
 const { logAction } = require('../services/logger');
+const meliPollingService = require('../services/meliPollingService');
 
 // Helper to get tracking history for a package
 async function getHistory(packageId) {
@@ -698,6 +699,19 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { isFlexed, flexLabelPhotoBase64 } = req.body;
     try {
+        // Check current status before flex
+        const checkResult = await db.query('SELECT status FROM packages WHERE id = $1', [id]);
+        if (checkResult.rows.length === 0) {
+            return res.status(404).json({ message: 'Paquete no encontrado.' });
+        }
+        
+        const currentStatus = checkResult.rows[0].status;
+        if (currentStatus === 'ENTREGADO' || currentStatus === 'DEVUELTO') {
+            return res.status(400).json({ 
+                message: `No se puede marcar como Flex un paquete que ya está ${currentStatus}.` 
+            });
+        }
+
         const { rows } = await db.query(
             'UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4 WHERE id = $5 RETURNING *',
             [isFlexed, isFlexed ? new Date() : null, new Date(), flexLabelPhotoBase64 || null, id]
@@ -716,6 +730,29 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al actualizar estado Flex.' });
+    }
+});
+
+// POST /api/packages/sync-meli-all
+router.post('/sync-meli-all', authMiddleware, async (req, res) => {
+    try {
+        const result = await meliPollingService.pollMeliPackages();
+        res.json({ message: 'Sincronización masiva completada.', result });
+    } catch (err) {
+        console.error('Error in POST /api/packages/sync-meli-all:', err);
+        res.status(500).json({ message: err.message || 'Error al sincronizar paquetes con Mercado Libre.' });
+    }
+});
+
+// POST /api/packages/:id/sync-meli
+router.post('/:id/sync-meli', authMiddleware, async (req, res) => {
+    const { id } = req.params;
+    try {
+        const result = await meliPollingService.syncPackage(id);
+        res.json(result);
+    } catch (err) {
+        console.error('Error in POST /api/packages/:id/sync-meli:', err);
+        res.status(500).json({ message: err.message || 'Error al sincronizar con Mercado Libre.' });
     }
 });
 
