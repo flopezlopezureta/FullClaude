@@ -8,7 +8,7 @@ interface MeliFlexTestScannerProps {
 
 export const MeliFlexTestScanner: React.FC<MeliFlexTestScannerProps> = ({ onBack }) => {
   const [stream, setStream] = useState<MediaStream | null>(null);
-  const [scanResult, setScanResult] = useState<{ type: 'success' | 'error' | 'info'; message: string; data?: string } | null>(null);
+  const [scanResult, setScanResult] = useState<{ type: 'success' | 'error' | 'info'; message: string; data?: string; extractedId?: string } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -41,7 +41,10 @@ export const MeliFlexTestScanner: React.FC<MeliFlexTestScannerProps> = ({ onBack
     const isMeliUrl = data.includes('mercadoenvios.com/flex/shipping/');
     const isMeliCode = /^\d{10,20}$/.test(data); // Simple heuristic for ML IDs
 
+    let extractedId = data;
     if (isMeliUrl) {
+        const parts = data.split('/');
+        extractedId = parts[parts.length - 1] || data;
         type = 'success';
         message = '¡Código de ML Flex leído correctamente (URL)!';
     } else if (isMeliCode) {
@@ -52,13 +55,7 @@ export const MeliFlexTestScanner: React.FC<MeliFlexTestScannerProps> = ({ onBack
         message = 'Código leído, pero no parece ser un formato estándar de ML Flex.';
     }
 
-    setScanResult({ type, message, data });
-
-    // Auto-resume after 3 seconds
-    setTimeout(() => {
-        setScanResult(null);
-        setIsScanning(true);
-    }, 3000);
+    setScanResult({ type, message, data, extractedId });
   }, [isScanning]);
 
   const scanLoop = useCallback(() => {
@@ -138,21 +135,42 @@ export const MeliFlexTestScanner: React.FC<MeliFlexTestScannerProps> = ({ onBack
         </div>
       </div>
       
-      <div className="h-32 mt-4 flex items-center justify-center">
+      <div className="min-h-[160px] mt-4 flex items-center justify-center">
         {scanResult ? (
             <div className={`flex flex-col items-center p-4 rounded-md text-white animate-fade-in-up w-full ${
                 scanResult.type === 'success' ? 'bg-green-500' : 
                 scanResult.type === 'error' ? 'bg-red-500' : 'bg-blue-500'
             }`}>
-                <div className="flex items-center mb-2">
+                <div className="flex items-center mb-3">
                     {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : 
                      scanResult.type === 'error' ? <IconAlertTriangle className="w-6 h-6 mr-3" /> :
                      <IconInfo className="w-6 h-6 mr-3" />}
                     <span className="font-bold">{scanResult.message}</span>
                 </div>
-                <div className="bg-black/20 p-2 rounded w-full overflow-hidden">
-                    <p className="text-xs font-mono break-all text-center">{scanResult.data}</p>
+                
+                <div className="w-full space-y-2">
+                    <div className="bg-black/20 p-2 rounded w-full">
+                        <p className="text-[10px] uppercase opacity-70 mb-1">Contenido QR (Raw):</p>
+                        <p className="text-xs font-mono break-all">{scanResult.data}</p>
+                    </div>
+                    
+                    {scanResult.extractedId && scanResult.extractedId !== scanResult.data && (
+                        <div className="bg-black/20 p-2 rounded w-full">
+                            <p className="text-[10px] uppercase opacity-70 mb-1">ID Extraído (Limpio):</p>
+                            <p className="text-sm font-mono font-bold break-all">{scanResult.extractedId}</p>
+                        </div>
+                    )}
                 </div>
+
+                <button 
+                    onClick={() => {
+                        setScanResult(null);
+                        setIsScanning(true);
+                    }}
+                    className="mt-4 px-6 py-2 bg-white text-black font-bold rounded-full text-sm hover:bg-opacity-90 transition-all"
+                >
+                    Escanear Siguiente
+                </button>
             </div>
         ) : (
              <p className="text-center text-[var(--text-muted)]">Apunta la cámara a un código QR de Mercado Libre.</p>
