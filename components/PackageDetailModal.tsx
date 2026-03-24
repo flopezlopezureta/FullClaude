@@ -133,10 +133,15 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
             <h3 className="text-lg font-bold text-[var(--brand-primary)] text-center flex-grow">{pkg.id}</h3>
             <div className="flex items-center gap-2">
                 <button
-                    onClick={() => {
-                        const link = `${window.location.origin}/track/${pkg.id}`;
-                        navigator.clipboard.writeText(link);
-                        alert('Link de seguimiento copiado al portapapeles');
+                    onClick={async () => {
+                        try {
+                            const link = `${window.location.origin}/track/${pkg.id}`;
+                            await navigator.clipboard.writeText(link);
+                            alert('Link de seguimiento copiado al portapapeles');
+                        } catch (err) {
+                            console.error('Failed to copy link:', err);
+                            alert('No se pudo copiar el link al portapapeles. Por favor, inténtalo de nuevo.');
+                        }
                     }}
                     className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors"
                     title="Copiar link de seguimiento para el cliente"

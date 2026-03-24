@@ -48,7 +48,7 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
     return <p className="p-6 text-center text-[var(--text-muted)]">Cargando paquetes...</p>;
   }
   
-  if (packages.length === 0) {
+  if (!Array.isArray(packages) || packages.length === 0) {
     let message = 'No hay paquetes para mostrar.';
     if (isDateFiltering) {
         message = 'No existen envíos en el rango de fechas seleccionado.';

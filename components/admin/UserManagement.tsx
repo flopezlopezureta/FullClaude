@@ -59,8 +59,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
         return a.name.localeCompare(b.name);
       });
       setUsers(filteredUsers);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Failed to fetch users", error);
+      alert("Error al cargar los usuarios: " + (error.message || "Error desconocido"));
     } finally {
       setIsLoading(false);
     }
@@ -72,16 +73,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   }, [roleFilter]);
   
   const handleApproveUser = async (userId: string) => {
-    const updatedUser = await api.approveUser(userId);
-    setUsers(users.map(u => u.id === userId ? updatedUser : u));
+    try {
+        const updatedUser = await api.approveUser(userId);
+        setUsers(users.map(u => u.id === userId ? updatedUser : u));
+    } catch (error: any) {
+        console.error("Failed to approve user:", error);
+        alert("Error al aprobar el usuario: " + (error.message || "Error desconocido"));
+    }
   };
   
   const handleToggleStatus = async (user: User) => {
     try {
         const updatedUser = await api.toggleUserStatus(user.id);
         setUsers(users.map(u => u.id === user.id ? updatedUser : u));
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to toggle user status:", error);
+        alert("Error al cambiar el estado del usuario: " + (error.message || "Error desconocido"));
     }
   };
 

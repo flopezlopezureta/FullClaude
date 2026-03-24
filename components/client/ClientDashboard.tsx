@@ -69,8 +69,9 @@ const ClientDashboard: React.FC = () => {
         const { packages: pkgs, total } = await api.getPackages(params);
         setPackages(pkgs);
         setTotalPackages(total);
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to fetch client packages", error);
+        alert("Error al cargar los paquetes: " + (error.message || "Error desconocido"));
     } finally {
         setIsLoading(false);
     }

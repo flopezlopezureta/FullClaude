@@ -126,16 +126,20 @@ const Dashboard: React.FC = () => {
             endDate,
             flexFilter,
         };
-        const [{ packages: pkgs, total }, allUsers] = await Promise.all([
+        const [packagesResult, allUsers] = await Promise.all([
             api.getPackages(params),
             api.getUsers()
         ]);
         
-        setPackages(pkgs);
+        const pkgs = packagesResult?.packages || [];
+        const total = packagesResult?.total || 0;
+        
+        setPackages(Array.isArray(pkgs) ? pkgs : []);
         setTotalPackages(total);
-        setUsers(allUsers);
-    } catch (error) {
+        setUsers(Array.isArray(allUsers) ? allUsers : []);
+    } catch (error: any) {
         console.error("Failed to fetch data", error);
+        alert("Error al cargar los datos: " + (error.message || "Error desconocido"));
     } finally {
         setIsLoading(false);
     }
@@ -214,15 +218,25 @@ const Dashboard: React.FC = () => {
   };
 
   const handleUpdatePackage = async (pkgId: string, data: PackageUpdateData) => {
-    await api.updatePackage(pkgId, data);
-    fetchData(); // Refetch to see the changes
-    setEditingPackage(null);
+    try {
+      await api.updatePackage(pkgId, data);
+      await fetchData(); // Refetch to see the changes
+      setEditingPackage(null);
+    } catch (error: any) {
+      console.error("Failed to update package", error);
+      alert("Error al actualizar el paquete: " + (error.message || "Error desconocido"));
+    }
   };
   
   const handleAssignDriver = async (pkgId: string, driverId: string | null, newDeliveryDate: Date) => {
-    await api.assignDriverToPackage(pkgId, driverId, newDeliveryDate);
-    fetchData(); // Refetch to see the changes
-    setAssigningPackage(null);
+    try {
+      await api.assignDriverToPackage(pkgId, driverId, newDeliveryDate);
+      await fetchData(); // Refetch to see the changes
+      setAssigningPackage(null);
+    } catch (error: any) {
+      console.error("Failed to assign driver", error);
+      alert("Error al asignar conductor: " + (error.message || "Error desconocido"));
+    }
   };
 
   const handleBulkAssignDriver = async (driverId: string, newDeliveryDate: Date) => {
@@ -253,32 +267,40 @@ const Dashboard: React.FC = () => {
   const handleRefreshAll = async () => {
     if (isLoading || isSyncingMeli) return;
     
-    // If Admin, trigger Meli sync first
-    if (auth?.user?.role === Role.Admin) {
-      setIsSyncingMeli(true);
-      try {
-        await api.syncAllMeliPackages();
-      } catch (error) {
-        console.error("Failed to sync with ML during refresh", error);
-      } finally {
-        setIsSyncingMeli(false);
-      }
+    try {
+        // If Admin, trigger Meli sync first
+        if (auth?.user?.role === Role.Admin) {
+          setIsSyncingMeli(true);
+          try {
+            await api.syncAllMeliPackages();
+          } catch (error) {
+            console.error("Failed to sync with ML during refresh", error);
+            // We don't alert here as it's a background sync, we still want to fetch data
+          } finally {
+            setIsSyncingMeli(false);
+          }
+        }
+        
+        // Always fetch data
+        await fetchData();
+    } catch (error: any) {
+        console.error("Failed to refresh all data", error);
+        alert("Error al refrescar los datos: " + (error.message || "Error desconocido"));
     }
-    
-    // Always fetch data
-    await fetchData();
   };
 
   const drivers = users.filter(u => u.role === Role.Driver && u.status === UserStatus.Approved);
   const clients = users.filter(u => u.role === Role.Client && u.status === UserStatus.Approved);
 
   const uniqueCommunes = useMemo(() => {
-    const communes = new Set(packages.map(p => p.recipientCommune));
+    if (!Array.isArray(packages)) return [];
+    const communes = new Set(packages.map(p => p.recipientCommune).filter(Boolean));
     return Array.from(communes).sort((a: string, b: string) => a.localeCompare(b));
   }, [packages]);
   
   const uniqueCities = useMemo(() => {
-    const cities = new Set(packages.map(p => p.recipientCity));
+    if (!Array.isArray(packages)) return [];
+    const cities = new Set(packages.map(p => p.recipientCity).filter(Boolean));
     return Array.from(cities).sort((a: string, b: string) => a.localeCompare(b));
   }, [packages]);
 
@@ -423,6 +445,7 @@ const Dashboard: React.FC = () => {
   }, [selectedPackages, packages, isAllOnPageSelected]);
 
   const selectedPackageObjects = useMemo(() => {
+    if (!Array.isArray(packages)) return [];
     return packages.filter(p => selectedPackages.has(p.id));
   }, [packages, selectedPackages]);
 

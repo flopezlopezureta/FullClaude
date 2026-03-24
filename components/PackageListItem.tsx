@@ -290,10 +290,15 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                         </button>
                     )}
                     <button 
-                        onClick={() => {
-                            const link = `${window.location.origin}/track/${pkg.id}`;
-                            navigator.clipboard.writeText(link);
-                            alert('Link de seguimiento copiado al portapapeles');
+                        onClick={async () => {
+                            try {
+                                const link = `${window.location.origin}/track/${pkg.id}`;
+                                await navigator.clipboard.writeText(link);
+                                alert('Link de seguimiento copiado al portapapeles');
+                            } catch (err) {
+                                console.error('Failed to copy link:', err);
+                                alert('No se pudo copiar el link al portapapeles. Por favor, inténtalo de nuevo.');
+                            }
                         }} 
                         className="w-full text-left flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--background-hover)]"
                     >
