@@ -121,6 +121,7 @@ router.get('/', authMiddleware, async (req, res) => {
             cityFilter,
             startDate,
             endDate,
+            flexFilter,
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -179,6 +180,20 @@ router.get('/', authMiddleware, async (req, res) => {
             end.setDate(end.getDate() + 1); // Make it inclusive of the end day
             whereClauses.push(`"createdAt" < $${paramIndex++}`);
             queryParams.push(end.toISOString().split('T')[0]);
+        }
+
+        if (flexFilter) {
+            if (flexFilter === 'flexed') {
+                whereClauses.push(`"isFlexed" = true`);
+            } else if (flexFilter === 'not_flexed') {
+                whereClauses.push(`("isFlexed" IS NULL OR "isFlexed" = false)`);
+            } else if (flexFilter === 'closed') {
+                whereClauses.push(`status IN ('ENTREGADO', 'DEVUELTO')`);
+            } else if (flexFilter === 'cancelled') {
+                whereClauses.push(`status = 'CANCELADO'`);
+            } else if (flexFilter === 'rescheduled') {
+                whereClauses.push(`status = 'REPROGRAMADO'`);
+            }
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';

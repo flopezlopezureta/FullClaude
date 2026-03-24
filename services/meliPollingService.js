@@ -104,11 +104,11 @@ async function pollMeliPackages() {
 
         // 1. Get all active Mercado Libre packages that are not finished
         const { rows: packages } = await db.query(`
-            SELECT id, "meliOrderId", "driverId", status, "creatorId" 
+            SELECT id, "meliOrderId", "meliFlexCode", "driverId", status, "creatorId" 
             FROM packages 
             WHERE source = 'MERCADO_LIBRE' 
             AND status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
-            AND "meliOrderId" IS NOT NULL
+            AND ("meliOrderId" IS NOT NULL OR "meliFlexCode" IS NOT NULL)
         `);
 
         if (packages.length === 0) {
@@ -127,8 +127,12 @@ async function pollMeliPackages() {
 
                 for (const pkg of packagesByClient[clientId]) {
                     try {
+                        // Use meliFlexCode (Shipment ID) if available, otherwise meliOrderId
+                        const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+                        if (!shipmentId) continue;
+
                         // Check status in Mercado Libre
-                        const shipment = await makeMeliGetRequest(`/shipments/${pkg.meliOrderId}`, accessToken);
+                        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
                         
                         const mlStatus = shipment.status;
                         const mlSubstatus = shipment.substatus;
@@ -195,7 +199,7 @@ async function syncPackage(packageId) {
     console.log(`[MeliPolling] Manually syncing package ${packageId}...`);
     try {
         const { rows } = await db.query(`
-            SELECT id, "meliOrderId", "driverId", status, "creatorId", source 
+            SELECT id, "meliOrderId", "meliFlexCode", "driverId", status, "creatorId", source 
             FROM packages 
             WHERE id = $1
         `, [packageId]);
@@ -203,18 +207,28 @@ async function syncPackage(packageId) {
         if (rows.length === 0) throw new Error('Paquete no encontrado.');
         const pkg = rows[0];
 
-        if (pkg.source !== 'MERCADO_LIBRE' || !pkg.meliOrderId) {
-            throw new Error('El paquete no es de Mercado Libre o no tiene ID de orden.');
+        if (pkg.source !== 'MERCADO_LIBRE') {
+            throw new Error('El paquete no es de Mercado Libre.');
+        }
+
+        const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+        if (!shipmentId) {
+            throw new Error('El paquete no tiene un ID de Mercado Libre (Order ID o Flex Code) asociado.');
         }
 
         const accessToken = await getValidMeliToken(pkg.creatorId);
-        if (!accessToken) throw new Error('No se pudo obtener el token de Mercado Libre para este cliente.');
+        if (!accessToken) {
+            throw new Error('No se pudo obtener el token de Mercado Libre para el cliente propietario de este paquete. Asegúrate de que la integración esté activa.');
+        }
 
-        const shipment = await makeMeliGetRequest(`/shipments/${pkg.meliOrderId}`, accessToken);
+        console.log(`[MeliPolling] Requesting ML shipment ${shipmentId} for package ${packageId}...`);
+        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
         
         const mlStatus = shipment.status;
         const mlSubstatus = shipment.substatus;
         
+        console.log(`[MeliPolling] ML Status for ${shipmentId}: ${mlStatus} (${mlSubstatus || 'no substatus'})`);
+
         let newStatus = null;
         let eventDetails = '';
         let eventStatus = '';
@@ -252,8 +266,14 @@ async function syncPackage(packageId) {
         return { ...pkg, history, noChange: true, mlStatus, mlSubstatus };
 
     } catch (err) {
-        console.error(`[MeliPolling] Error syncing package ${packageId}:`, err);
-        throw err;
+        console.error(`[MeliPolling] Error syncing package ${packageId}:`, err.body || err);
+        if (err.statusCode === 404) {
+            throw new Error(`El ID de envío ${packageId} no fue encontrado en Mercado Libre. Verifica que el ID sea correcto.`);
+        }
+        if (err.statusCode === 401 || err.statusCode === 403) {
+            throw new Error('Error de autenticación con Mercado Libre. Por favor, reconecta la cuenta del cliente.');
+        }
+        throw new Error(err.message || 'Error desconocido al sincronizar con Mercado Libre.');
     }
 }
 

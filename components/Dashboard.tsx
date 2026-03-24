@@ -124,27 +124,14 @@ const Dashboard: React.FC = () => {
             cityFilter,
             startDate,
             endDate,
+            flexFilter,
         };
         const [{ packages: pkgs, total }, allUsers] = await Promise.all([
             api.getPackages(params),
             api.getUsers()
         ]);
         
-        // Client-side filtering for Flex status
-        let filtered = pkgs;
-        if (flexFilter === 'flexed') {
-            filtered = pkgs.filter(p => p.isFlexed === true);
-        } else if (flexFilter === 'not_flexed') {
-            filtered = pkgs.filter(p => p.isFlexed !== true);
-        } else if (flexFilter === 'closed') {
-            filtered = pkgs.filter(p => p.status === PackageStatus.Delivered || p.status === PackageStatus.Returned);
-        } else if (flexFilter === 'cancelled') {
-            filtered = pkgs.filter(p => p.status === PackageStatus.Cancelled);
-        } else if (flexFilter === 'rescheduled') {
-            filtered = pkgs.filter(p => p.status === PackageStatus.Rescheduled);
-        }
-
-        setPackages(filtered);
+        setPackages(pkgs);
         setTotalPackages(total);
         setUsers(allUsers);
     } catch (error) {
@@ -307,7 +294,8 @@ const Dashboard: React.FC = () => {
                 communeFilter, 
                 cityFilter, 
                 startDate, 
-                endDate
+                endDate,
+                flexFilter
             });
 
         const dateStr = new Date().toISOString().split('T')[0];
@@ -352,7 +340,8 @@ const Dashboard: React.FC = () => {
             communeFilter, 
             cityFilter, 
             startDate, 
-            endDate
+            endDate,
+            flexFilter
         });
 
         let packagesToExport: Package[] = [];
