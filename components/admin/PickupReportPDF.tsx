@@ -94,7 +94,7 @@ const PickupReportPDF: React.FC<PickupReportPDFProps> = ({ reportData, kpis, sta
                                 <td className="p-2 border-b border-gray-200">{formatDateForDisplay(a.date)} <span className="text-gray-500 text-xs">{a.shift}</span></td>
                                 <td className="p-2 border-b border-gray-200">{a.driverName}</td>
                                 <td className="p-2 border-b border-gray-200 font-semibold">{a.clientName}</td>
-                                <td className="p-2 border-b border-gray-200">{a.status.replace('_', ' ')}</td>
+                                <td className="p-2 border-b border-gray-200">{(a.status || '').replace('_', ' ')}</td>
                                 <td className="p-2 border-b border-gray-200 text-right font-mono">{formatCurrency(a.cost)}</td>
                                 <td className="p-2 border-b border-gray-200 text-right font-mono font-semibold">{a.packagesPickedUp || 0}</td>
                             </tr>

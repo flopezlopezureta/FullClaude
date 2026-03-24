@@ -120,7 +120,7 @@ const PickupReportPage: React.FC = () => {
                     a.shift,
                     a.driverName,
                     a.clientName,
-                    a.status.replace('_', ' '),
+                    (a.status || '').replace('_', ' '),
                     a.cost,
                     a.packagesPickedUp || 0
                 ].map(escapeCSV).join(','));
@@ -251,7 +251,7 @@ const PickupReportPage: React.FC = () => {
                                     </td>
                                     <td className="px-4 py-2">{a.driverName}</td>
                                     <td className="px-4 py-2 font-medium">{a.clientName}</td>
-                                    <td className="px-4 py-2"><span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${a.status === PickupStatus.RETIRADO ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{a.status.replace('_', ' ')}</span></td>
+                                    <td className="px-4 py-2"><span className={`px-2 py-0.5 text-xs font-semibold rounded-full ${a.status === PickupStatus.RETIRADO ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{(a.status || '').replace('_', ' ')}</span></td>
                                     <td className="px-4 py-2 text-right font-mono">{formatCurrency(a.cost)}</td>
                                     <td className="px-4 py-2 text-right font-mono">{a.packagesPickedUp || 0}</td>
                                 </tr>

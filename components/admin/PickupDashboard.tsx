@@ -109,7 +109,7 @@ const HistoryView: React.FC<{ runs: PickupRun[] }> = ({ runs }) => {
                                                     <span className="text-xs font-semibold mt-1">{a.packagesPickedUp} paquetes retirados</span>
                                                 )}
                                             </div>
-                                            <span className="font-bold">{a.status.replace('_', ' ')}</span>
+                                            <span className="font-bold">{(a.status || '').replace('_', ' ')}</span>
                                         </div>
                                     ))}
                                 </div>

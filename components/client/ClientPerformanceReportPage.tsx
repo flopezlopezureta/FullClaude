@@ -116,7 +116,7 @@ const ClientPerformanceReportPage: React.FC = () => {
         const avgDeliveryHours = delivered.length > 0 ? Math.round(totalDeliveryMillis / delivered.length / (1000 * 60 * 60)) : 0;
         
         const statusCounts = filteredPackages.reduce((acc, pkg) => {
-            const statusKey = pkg.status.replace('_', ' ');
+            const statusKey = (pkg.status || '').replace('_', ' ');
             acc[statusKey] = (acc[statusKey] || 0) + 1;
             return acc;
         }, {} as { [key: string]: number });

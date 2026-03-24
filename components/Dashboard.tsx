@@ -39,7 +39,7 @@ const statusOptions: { label: string; value: PackageStatus | null }[] = [
 
 const getStatusSelectStyles = (status: PackageStatus | null | undefined): string => {
     if (!status) return 'bg-[var(--background-secondary)] border-[var(--border-secondary)] text-[var(--text-primary)]';
-    const slug = status.toLowerCase().replace('_', '');
+    const slug = (status || '').toLowerCase().replace('_', '');
     return `bg-[var(--status-${slug}-bg)] border-[var(--status-${slug}-border)] text-[var(--status-${slug}-text)] font-medium`;
 }
 

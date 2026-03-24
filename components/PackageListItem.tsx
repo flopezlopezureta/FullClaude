@@ -132,11 +132,11 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
   // VISUAL SEPARATION LOGIC
   const primaryText = isReturnFlow 
       ? `${pkg.status === PackageStatus.Returned ? 'DEVUELTO A' : 'DEVOLUCIÓN A'}: ${creatorName || 'Cliente'}` 
-      : pkg.recipientName;
+      : (pkg.recipientName || 'Sin Nombre');
       
   const addressText = isReturnFlow 
-      ? pkg.origin 
-      : pkg.recipientAddress;
+      ? (pkg.origin || 'Sin Origen') 
+      : (pkg.recipientAddress || 'Sin Dirección');
 
     const isScanned = pkg.status !== PackageStatus.Pending;
 
@@ -182,7 +182,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                 <div onClick={() => onSelect(pkg)} className="flex items-start flex-grow min-w-0 cursor-pointer gap-3">
                     <div className="flex-shrink-0 mt-1">
                         <div className={`p-2 rounded-full ${badgeClass}`}>
-                            {statusIcons[pkg.status]}
+                            {pkg.status && statusIcons[pkg.status]}
                         </div>
                     </div>
                     
@@ -216,11 +216,11 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                 <div className="flex items-center gap-2 flex-wrap mt-1 w-full">
                     {!isReturnFlow && (
                         <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700 border border-slate-300">
-                            {pkg.recipientCommune}
+                            {pkg.recipientCommune || 'Sin Comuna'}
                         </span>
                     )}
                     <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
-                        {sourceIcons[pkg.source]}
+                        {pkg.source && sourceIcons[pkg.source]}
                         {pkg.source === 'MERCADO_LIBRE' && (
                             pkg.isFlexed ? (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-green-100 text-green-800 border border-green-200">
@@ -256,7 +256,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
           
         <div onClick={() => onSelect(pkg)} className="ml-3 flex-shrink-0 text-right hidden sm:block cursor-pointer">
             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
-                {pkg.status.replace('_', ' ')}
+                {(pkg.status || '').replace('_', ' ')}
             </div>
             {!hideDriverName && (
                 <div className="text-xs text-[var(--text-muted)] mt-1">

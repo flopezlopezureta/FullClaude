@@ -31,9 +31,11 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
 
   const isReturn = pkg.status === PackageStatus.ReturnPending && !!onStartReturn;
 
-  const estimatedDelivery = new Date(pkg.estimatedDelivery).toLocaleDateString('es-ES', {
-    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
-  });
+  const estimatedDelivery = pkg.estimatedDelivery 
+    ? new Date(pkg.estimatedDelivery).toLocaleDateString('es-ES', {
+        weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+      })
+    : 'Fecha no disponible';
   
   const canInteract = onStartDelivery && onReportProblem && !isReturn;
   const canReturnInteract = onStartReturn && isReturn;
@@ -77,9 +79,11 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
 
   const recipientPhoneForNotif = isReturn ? creatorForReturn?.phone : pkg.recipientPhone;
   const enRouteMessage = isReturn
-    ? `Hola ${creatorForReturn?.name}, soy el repartidor de ${companyName}. Voy en camino a devolver el paquete con ID ${pkg.id}. ¡Nos vemos pronto!`
-    : `Hola, soy el repartidor de ${companyName}. Voy en camino a entregar tu paquete con ID ${pkg.id}. ¡Nos vemos pronto!`;
-  const whatsappEnRouteUrl = `https://wa.me/${String(recipientPhoneForNotif).replace(/\D/g, '')}?text=${encodeURIComponent(enRouteMessage)}`;
+    ? `Hola ${creatorForReturn?.name || 'Cliente'}, soy el repartidor de ${companyName || 'la empresa'}. Voy en camino a devolver el paquete con ID ${pkg.id}. ¡Nos vemos pronto!`
+    : `Hola, soy el repartidor de ${companyName || 'la empresa'}. Voy en camino a entregar tu paquete con ID ${pkg.id}. ¡Nos vemos pronto!`;
+  const whatsappEnRouteUrl = recipientPhoneForNotif 
+    ? `https://wa.me/${String(recipientPhoneForNotif).replace(/\D/g, '')}?text=${encodeURIComponent(enRouteMessage)}`
+    : '#';
 
 
   const shippingTypeConfig: { [key in ShippingType]: { icon: React.ReactNode; text: string } } = {
@@ -97,13 +101,17 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
     ? 'bg-[var(--background-primary)]'
     : 'bg-black bg-opacity-60 flex justify-center items-center p-4';
     
-  const streetAddress = isReturn ? (creatorForReturn?.pickupAddress || pkg.origin)?.split(',')[0].trim() : pkg.recipientAddress.split(',')[0].trim();
+  const streetAddress = isReturn 
+    ? (creatorForReturn?.pickupAddress || pkg.origin || '').split(',')[0]?.trim() || '' 
+    : (pkg.recipientAddress || '').split(',')[0]?.trim() || '';
   const recipientNameForDisplay = isReturn ? creatorForReturn?.name : pkg.recipientName;
   const recipientPhoneForDisplay = isReturn ? creatorForReturn?.phone : pkg.recipientPhone;
-  const recipientCommuneForDisplay = isReturn ? creatorForReturn?.address?.split(',').pop()?.trim() : pkg.recipientCommune;
+  const recipientCommuneForDisplay = isReturn 
+    ? (creatorForReturn?.address || '').split(',').pop()?.trim() || '' 
+    : pkg.recipientCommune;
   
   const problemEvent = pkg.status === PackageStatus.Problem 
-    ? pkg.history.find(event => event.status === PackageStatus.Problem)
+    ? pkg.history?.find(event => event.status === PackageStatus.Problem)
     : null;
 
   const isMeli = pkg.source === 'MERCADO_LIBRE';
@@ -251,7 +259,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                                     <IconPhone className="w-4 h-4"/>
                                     <span>Llamar</span>
                                 </a>
-                                {auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && (
+                                {auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && recipientPhoneForDisplay && (
                                     <a href={`https://wa.me/${String(recipientPhoneForDisplay).replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors" aria-label="Enviar WhatsApp">
                                         <IconWhatsapp className="w-4 h-4"/>
                                         <span>Chat</span>
@@ -266,7 +274,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                   <div className="mt-2 space-y-0.5 text-sm text-[var(--text-secondary)]">
                       <p><span className="font-medium text-[var(--text-primary)]">Teléfono:</span> {recipientPhoneForDisplay || 'N/A'}</p>
                       <p><span className="font-medium text-[var(--text-primary)]">Comuna:</span> {recipientCommuneForDisplay || 'N/A'}</p>
-                      <p><span className="font-medium text-[var(--text-primary)]">Ciudad:</span> {pkg.recipientCity}</p>
+                      <p><span className="font-medium text-[var(--text-primary)]">Ciudad:</span> {pkg.recipientCity || 'N/A'}</p>
                       {pkg.meliFlexCode && (
                           <p><span className="font-medium text-[var(--text-primary)]">Código FLEX:</span> {pkg.meliFlexCode}</p>
                       )}
@@ -276,7 +284,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
               {/* Status Card */}
               <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
                   <div className="flex justify-between items-center mb-2">
-                      <h4 className="text-sm font-semibold text-[var(--text-muted)]">Estado Actual: <span className="text-[var(--brand-primary)] font-bold">{pkg.status.replace('_', ' ')}</span></h4>
+                      <h4 className="text-sm font-semibold text-[var(--text-muted)]">Estado Actual: <span className="text-[var(--brand-primary)] font-bold">{(pkg.status || '').replace('_', ' ')}</span></h4>
                       <div className="flex items-center gap-2">
                         {isMeli && (
                             <>
@@ -312,7 +320,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                         <IconAlertTriangle className="w-5 h-5 text-[var(--error-text)] flex-shrink-0 mt-0.5" />
                         <div>
                             <p className="text-sm font-semibold text-[var(--error-text)]">Motivo del Problema:</p>
-                            <p className="text-sm text-[var(--error-text)] opacity-90 mt-1">{problemEvent.details.replace('Problema reportado: ', '')}</p>
+                            <p className="text-sm text-[var(--error-text)] opacity-90 mt-1">{(problemEvent.details || '').replace('Problema reportado: ', '')}</p>
                         </div>
                     </div>
                   )}
@@ -403,10 +411,10 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                   <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
                       <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4">Historial</h4>
                       <div className="relative border-l-2 border-[var(--border-primary)] ml-3">
-                      {pkg.history.map((event, index) => (
+                      {pkg.history?.map((event, index) => (
                           <div key={event.timestamp.toString() + index} className="mb-8 ml-8">
                           <span className={`absolute -left-[11px] flex items-center justify-center w-5 h-5 ${index === 0 ? 'bg-[var(--brand-primary)]' : 'bg-[var(--border-secondary)]'} rounded-full ring-4 ring-[var(--background-secondary)]`}></span>
-                          <h5 className="font-semibold text-[var(--text-primary)] text-sm">{event.status.replace('_', ' ')}</h5>
+                          <h5 className="font-semibold text-[var(--text-primary)] text-sm">{(event.status || '').replace('_', ' ')}</h5>
                           <time className="block mb-2 text-xs font-normal leading-none text-[var(--text-muted)]">
                               {new Date(event.timestamp).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
                           </time>

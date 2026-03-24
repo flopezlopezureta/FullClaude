@@ -814,34 +814,43 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
 
         // --- NEW MELI VALIDATION (CONDITIONAL) ---
         if (meliFlexValidation) {
-            const { rows: pkgRows } = await db.query('SELECT "meliOrderId", "creatorId" FROM packages WHERE id = $1', [id]);
-            if (pkgRows.length > 0 && pkgRows[0].meliOrderId) {
-                const { meliOrderId, creatorId } = pkgRows[0];
+            try {
+                const { rows: pkgRows } = await db.query('SELECT "meliOrderId", "creatorId" FROM packages WHERE id = $1', [id]);
+                if (pkgRows.length > 0 && pkgRows[0].meliOrderId) {
+                    const { meliOrderId, creatorId } = pkgRows[0];
 
-                const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
-                let meliIntegration = userRows[0]?.integrations?.meli;
-                
-                if (meliIntegration) {
-                    if (Date.now() >= meliIntegration.expiresAt) {
-                        const { rows: integrationSettingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-                        if (integrationSettingsRows[0]?.meli_app_id) {
-                            const { meli_app_id, meli_client_secret } = integrationSettingsRows[0];
-                            const refreshData = new URLSearchParams({ grant_type: 'refresh_token', client_id: meli_app_id.trim(), client_secret: meli_client_secret.trim(), refresh_token: meliIntegration.refreshToken }).toString();
-                            const refreshedTokenData = await makeMeliPostRequest('/oauth/token', refreshData);
-                            meliIntegration = { ...meliIntegration, accessToken: refreshedTokenData.access_token, refreshToken: refreshedTokenData.refresh_token, expiresAt: Date.now() + (refreshedTokenData.expires_in * 1000) };
-                            await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), creatorId]);
-                        }
-                    }
+                    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
+                    let meliIntegration = userRows[0]?.integrations?.meli;
                     
-                    try {
-                        const shippingDetails = await makeMeliGetRequest(`/shipments/${meliOrderId}`, meliIntegration.accessToken);
-                        if (shippingDetails.status !== 'delivered') {
-                            return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala allí primero y luego confirma aquí.' });
+                    if (meliIntegration) {
+                        if (Date.now() >= meliIntegration.expiresAt) {
+                            try {
+                                const { rows: integrationSettingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
+                                if (integrationSettingsRows[0]?.meli_app_id) {
+                                    const { meli_app_id, meli_client_secret } = integrationSettingsRows[0];
+                                    const refreshData = new URLSearchParams({ grant_type: 'refresh_token', client_id: meli_app_id.trim(), client_secret: meli_client_secret.trim(), refresh_token: meliIntegration.refreshToken }).toString();
+                                    const refreshedTokenData = await makeMeliPostRequest('/oauth/token', refreshData);
+                                    meliIntegration = { ...meliIntegration, accessToken: refreshedTokenData.access_token, refreshToken: refreshedTokenData.refresh_token, expiresAt: Date.now() + (refreshedTokenData.expires_in * 1000) };
+                                    await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), creatorId]);
+                                }
+                            } catch (refreshError) {
+                                console.error(`[Deliver] Error refreshing ML token for shipment ${meliOrderId}:`, refreshError);
+                                // Continue without validation if refresh fails
+                            }
                         }
-                    } catch(meliError) {
-                         console.warn(`Could not verify Meli status for shipment ${meliOrderId}. Allowing delivery.`, meliError.body || meliError.message);
+                        
+                        try {
+                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliOrderId}`, meliIntegration.accessToken);
+                            if (shippingDetails.status !== 'delivered') {
+                                return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala allí primero y luego confirma aquí.' });
+                            }
+                        } catch(meliError) {
+                             console.warn(`[Deliver] Could not verify Meli status for shipment ${meliOrderId}. Allowing delivery.`, meliError.body || meliError.message);
+                        }
                     }
                 }
+            } catch (validationError) {
+                console.error('[Deliver] Error in Meli validation block:', validationError);
             }
         }
         // --- END MELI VALIDATION ---
@@ -865,8 +874,8 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         res.json(updatedPackage);
 
     } catch(err) {
-        console.error(err);
-        res.status(500).json({ message: 'Error al confirmar la entrega.' });
+        console.error(`[Deliver] Fatal error confirming delivery for package ${id}:`, err);
+        res.status(500).json({ message: `Error al confirmar la entrega: ${err.message || 'Error desconocido'}` });
     }
 });
 

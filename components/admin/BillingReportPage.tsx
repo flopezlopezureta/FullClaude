@@ -218,7 +218,7 @@ const BillingReportPage: React.FC = () => {
         if (statusCtx && packagesInPeriod.length > 0) {
             const finalizedStatusesCounts = packagesInPeriod.reduce((acc, pkg) => {
                  if (finalizedPackageStatuses.includes(pkg.status)) {
-                    const statusKey = pkg.status.replace('_', ' ');
+                    const statusKey = (pkg.status || '').replace('_', ' ');
                     acc[statusKey] = (acc[statusKey] || 0) + 1;
                 }
                 return acc;

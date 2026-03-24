@@ -136,7 +136,7 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
     const rows = packages.map(pkg => [
         pkg.id,
         new Date(pkg.createdAt).toLocaleString('es-CL'),
-        pkg.status.replace('_', ' '),
+        (pkg.status || '').replace('_', ' '),
         pkg.recipientName,
         pkg.recipientAddress,
         pkg.recipientCommune,

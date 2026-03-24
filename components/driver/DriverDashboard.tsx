@@ -133,7 +133,7 @@ const DriverDashboard: React.FC = () => {
     const history = myPackages.filter(p => {
         if (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem) return false;
         
-        const closureEvent = p.history[0]; // Most recent event determines the date
+        const closureEvent = p.history?.[0]; // Most recent event determines the date
         if (!closureEvent) return false; 
         
         return new Date(closureEvent.timestamp).toDateString() === todayStr;
@@ -155,6 +155,9 @@ const DriverDashboard: React.FC = () => {
   const handleConfirmDelivery = async (pkgId: string, data: DeliveryConfirmationData) => {
     try {
       const updatedPackage = await api.confirmDelivery(pkgId, data);
+      if (!updatedPackage || !updatedPackage.id) {
+          throw new Error("La respuesta del servidor no es válida.");
+      }
       setMyPackages(prev => prev.map(p => p.id === pkgId ? updatedPackage : p));
       setDeliveringPackage(null);
 
@@ -164,7 +167,7 @@ const DriverDashboard: React.FC = () => {
           if (creator) {
               const message = `Hola ${creator.name}, te informamos que tu paquete con ID ${updatedPackage.id} para ${updatedPackage.recipientName} ha sido entregado exitosamente.`;
               if (auth.systemSettings.messagingPlan === MessagingPlan.WhatsApp && creator.phone) {
-                  const whatsappUrl = `https://wa.me/${creator.phone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
+                  const whatsappUrl = `https://wa.me/${(creator.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
                   window.open(whatsappUrl, '_blank');
               } else if (auth.systemSettings.messagingPlan === MessagingPlan.Email && creator.email) {
                   const subject = `Paquete Entregado: ${updatedPackage.id}`;
@@ -198,7 +201,7 @@ const DriverDashboard: React.FC = () => {
     setIsExporting(true);
     try {
         const dateStr = new Date().toISOString().split('T')[0];
-        const driverName = auth.user.name.replace(/\s+/g, '_');
+        const driverName = (auth?.user?.name || 'conductor').replace(/\s+/g, '_');
 
         // Export simplified CSV for Circuit with only Address and Name
         const escapeCsvField = (field: any) => {

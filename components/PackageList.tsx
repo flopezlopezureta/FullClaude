@@ -85,7 +85,7 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
 
   return (
     <div className="divide-y divide-[var(--border-primary)]">
-      {sortedPackages.map((pkg, index) => {
+      {sortedPackages.filter(p => p && p.id).map((pkg, index) => {
         const driver = userMap[pkg.driverId || ''];
         const creator = userMap[pkg.creatorId || ''];
         return (
