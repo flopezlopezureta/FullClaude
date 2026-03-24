@@ -115,7 +115,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
   const isUrgent = (pkg.shippingType === ShippingType.Express && pkg.status === PackageStatus.Pending && !pkg.driverId) || pkg.status === PackageStatus.ReturnPending;
   const customCheckboxClass = "appearance-none h-4 w-4 border border-[var(--border-secondary)] rounded bg-[var(--background-secondary)] checked:bg-[var(--brand-primary)] checked:border-transparent focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] checked:bg-[url(\"data:image/svg+xml,%3csvg viewBox='0 0 16 16' fill='white' xmlns='http://www.w3.org/2000/svg'%3e%3cpath d='M12.207 4.793a1 1 0 010 1.414l-5 5a1 1 0 01-1.414 0l-2-2a1 1 0 011.414-1.414L6.5 9.086l4.293-4.293a1 1 0 011.414 0z'/%3e%3c/svg%3e\")]";
   
-  const statusSlug = pkg.status.toLowerCase().replace('_','');
+  const statusSlug = (pkg.status || '').toLowerCase().replace('_','');
   const badgeClass = `bg-[var(--status-${statusSlug}-bg)] text-[var(--status-${statusSlug}-text)]`;
   const borderClass = `border-[var(--status-${statusSlug}-border)]`;
 

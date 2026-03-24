@@ -44,10 +44,11 @@ const SystemLogsPage: React.FC = () => {
     const action = log.action || '';
     const detailsStr = log.details ? JSON.stringify(log.details) : '';
 
+    const search = (searchTerm || '').toLowerCase();
     const matchesSearch = 
-      userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      detailsStr.toLowerCase().includes(searchTerm.toLowerCase());
+      userName.toLowerCase().includes(search) ||
+      action.toLowerCase().includes(search) ||
+      detailsStr.toLowerCase().includes(search);
     
     const matchesAction = actionFilter === '' || action === actionFilter;
     
@@ -136,19 +137,19 @@ const SystemLogsPage: React.FC = () => {
                 filteredLogs.map((log) => (
                   <tr key={log.id} className="hover:bg-[var(--background-hover)] transition-colors">
                     <td className="px-6 py-4 whitespace-nowrap text-sm text-[var(--text-secondary)]">
-                      {new Date(log.timestamp).toLocaleString()}
+                      {log.timestamp ? new Date(log.timestamp).toLocaleString() : 'N/A'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-[var(--text-primary)]">
-                      {log.userName}
+                      {log.userName || 'Sistema'}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        log.action.includes('DELETE') ? 'bg-red-100 text-red-800' :
-                        log.action.includes('CREATE') ? 'bg-green-100 text-green-800' :
-                        log.action.includes('UPDATE') ? 'bg-blue-100 text-blue-800' :
+                        (log.action || '').includes('DELETE') ? 'bg-red-100 text-red-800' :
+                        (log.action || '').includes('CREATE') ? 'bg-green-100 text-green-800' :
+                        (log.action || '').includes('UPDATE') ? 'bg-blue-100 text-blue-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {log.action}
+                        {log.action || 'Acción desconocida'}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-[var(--text-secondary)] max-w-md">
