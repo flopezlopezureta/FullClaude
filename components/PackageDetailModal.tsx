@@ -1,9 +1,10 @@
 
 
-import React, { useState } from 'react';
-import { PackageStatus, ShippingType } from '../constants';
+import React, { useState, useContext } from 'react';
+import { PackageStatus, ShippingType, MessagingPlan } from '../constants';
 import type { Package, User } from '../types';
 import { api } from '../services/api';
+import { AuthContext } from '../contexts/AuthContext';
 import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
@@ -22,6 +23,7 @@ interface PackageDetailModalProps {
 }
 
 const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator, onUpdatePackage, onEdit }) => {
+  const auth = useContext(AuthContext);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isFlexing, setIsFlexing] = useState(false);
@@ -133,14 +135,16 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                     </button>
                 )}
                 {pkg.meliOrderId ? (
-                    <button
-                        onClick={() => setIsQrModalOpen(true)}
-                        className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors"
-                        aria-label="Pedir Código QR por WhatsApp"
-                    >
-                        <IconWhatsapp className="w-4 h-4"/>
-                        <span>Pedir QR</span>
-                    </button>
+                    auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && (
+                        <button
+                            onClick={() => setIsQrModalOpen(true)}
+                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors"
+                            aria-label="Pedir Código QR por WhatsApp"
+                        >
+                            <IconWhatsapp className="w-4 h-4"/>
+                            <span>Pedir QR</span>
+                        </button>
+                    )
                 ) : (
                     <button
                         onClick={() => setIsQrModalOpen(true)}
@@ -201,7 +205,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                   <div className="flex justify-between items-start mb-3">
                       <h4 className="text-sm font-semibold text-[var(--text-muted)]">{isReturn ? 'Información de Devolución' : 'Información del Destinatario'}</h4>
                        <div className="flex items-center gap-2">
-                            {canInteract && (
+                            {canInteract && auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && (
                                 <a href={whatsappEnRouteUrl} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-orange-700 bg-orange-100 rounded-full hover:bg-orange-200 transition-colors" aria-label="Notificar que va en camino">
                                     <IconTruck className="w-4 h-4"/>
                                     <span>En Camino</span>
@@ -213,10 +217,12 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                                     <IconPhone className="w-4 h-4"/>
                                     <span>Llamar</span>
                                 </a>
-                                <a href={`https://wa.me/${String(recipientPhoneForDisplay).replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors" aria-label="Enviar WhatsApp">
-                                    <IconWhatsapp className="w-4 h-4"/>
-                                    <span>Chat</span>
-                                </a>
+                                {auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && (
+                                    <a href={`https://wa.me/${String(recipientPhoneForDisplay).replace(/\D/g, '')}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors" aria-label="Enviar WhatsApp">
+                                        <IconWhatsapp className="w-4 h-4"/>
+                                        <span>Chat</span>
+                                    </a>
+                                )}
                                 </>
                             )}
                         </div>

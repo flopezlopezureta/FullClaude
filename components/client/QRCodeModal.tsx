@@ -5,6 +5,7 @@ import QRCode from 'qrcode';
 import { IconX, IconCube, IconAlertTriangle, IconWhatsapp } from '../Icon';
 import { Package, User } from '../../types';
 import { AuthContext } from '../../contexts/AuthContext';
+import { MessagingPlan } from '../../constants';
 
 interface QRCodeModalProps {
   pkg: Package;
@@ -86,7 +87,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
                             </div>
                         </div>
 
-                        {creator?.phone ? (
+                        {creator?.phone && systemSettings.messagingPlan === MessagingPlan.WhatsApp ? (
                             <a 
                                 href={whatsappUrl} 
                                 target="_blank" 
@@ -103,9 +104,11 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
                                         <IconAlertTriangle className="h-6 w-6 text-yellow-500 mr-4"/>
                                     </div>
                                     <div>
-                                        <p className="font-bold">Vendedor sin teléfono</p>
+                                        <p className="font-bold">{!creator?.phone ? 'Vendedor sin teléfono' : 'WhatsApp no habilitado'}</p>
                                         <p className="text-sm mt-1">
-                                            No se puede enviar WhatsApp porque el vendedor no tiene un número de teléfono registrado.
+                                            {!creator?.phone 
+                                                ? 'No se puede enviar WhatsApp porque el vendedor no tiene un número de teléfono registrado.'
+                                                : 'La funcionalidad de WhatsApp no está habilitada en la configuración del sistema.'}
                                         </p>
                                     </div>
                                 </div>
