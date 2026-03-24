@@ -506,6 +506,9 @@ const Dashboard: React.FC = () => {
             flexFilter={flexFilter}
             onFlexFilterChange={setFlexFilter}
             isSyncing={isLoading || isSyncingMeli}
+            clients={clients}
+            clientFilter={clientFilter}
+            onClientChange={setClientFilter}
         />
       </div>
 

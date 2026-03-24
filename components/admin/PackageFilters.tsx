@@ -27,6 +27,9 @@ interface PackageFiltersProps {
   isExporting?: boolean;
   flexFilter: 'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled';
   onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled') => void;
+  clients: User[];
+  clientFilter: string;
+  onClientChange: (clientId: string) => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -53,6 +56,9 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   isExporting = false,
   flexFilter,
   onFlexFilterChange,
+  clients,
+  clientFilter,
+  onClientChange,
 }) => {
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
@@ -114,6 +120,12 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
           </select>
         </div>
         <div className="flex-shrink-0">
+          <select id="client-filter" value={clientFilter} onChange={(e) => onClientChange(e.target.value)} className={selectClasses} aria-label="Filtrar por cliente">
+            <option value="">Todos los Clientes</option>
+            {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
+          </select>
+        </div>
+        <div className="flex-shrink-0">
           <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por Flex">
             <option value="all">Flex: Todos</option>
             <option value="flexed">Flexeados</option>
@@ -125,8 +137,14 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
         </div>
         <div className="flex-shrink-0">
           <select id="city-filter" value={cityFilter} onChange={(e) => onCityChange(e.target.value)} className={selectClasses} aria-label="Filtrar por ciudad">
-            <option value="">Todas las Ciudades</option>
-            {cities.map(city => <option key={city} value={city}>{city}</option>)}
+            <option value="">Todas las Regiones</option>
+            {!cities.includes('Región Metropolitana') && <option value="Región Metropolitana">Región Metropolitana</option>}
+            {!cities.includes('Metropolitana') && <option value="Metropolitana">Metropolitana</option>}
+            {!cities.includes('Santiago') && <option value="Santiago">Santiago</option>}
+            {cities.map(city => {
+              if (['Región Metropolitana', 'Metropolitana', 'Santiago'].includes(city)) return null;
+              return <option key={city} value={city}>{city}</option>;
+            })}
           </select>
         </div>
         <div className="flex-shrink-0">

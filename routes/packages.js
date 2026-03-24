@@ -135,7 +135,7 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`("recipientName" ILIKE $${paramIndex} OR "recipientAddress" ILIKE $${paramIndex} OR id ILIKE $${paramIndex} OR "meliOrderId" ILIKE $${paramIndex} OR "shopifyOrderId" ILIKE $${paramIndex} OR "wooOrderId" ILIKE $${paramIndex} OR "trackingId" ILIKE $${paramIndex} OR "meliFlexCode" ILIKE $${paramIndex})`);
+            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} OR p."recipientAddress" ILIKE $${paramIndex} OR p."recipientCity" ILIKE $${paramIndex} OR p."recipientCommune" ILIKE $${paramIndex} OR p.id ILIKE $${paramIndex} OR p."meliOrderId" ILIKE $${paramIndex} OR p."shopifyOrderId" ILIKE $${paramIndex} OR p."wooOrderId" ILIKE $${paramIndex} OR p."trackingId" ILIKE $${paramIndex} OR p."meliFlexCode" ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }
@@ -144,68 +144,80 @@ router.get('/', authMiddleware, async (req, res) => {
             const statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
             if (statuses.length > 0) {
                 const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
-                whereClauses.push(`status IN (${placeholders})`);
+                whereClauses.push(`p.status IN (${placeholders})`);
                 queryParams.push(...statuses);
                 paramIndex += statuses.length;
             }
         }
 
         if (driverFilter) {
-            whereClauses.push(`"driverId" = $${paramIndex++}`);
+            whereClauses.push(`p."driverId" = $${paramIndex++}`);
             queryParams.push(driverFilter);
         }
         
         if (clientFilter) { // Admin filtering by client from the filter bar
-            whereClauses.push(`"creatorId" = $${paramIndex++}`);
+            whereClauses.push(`p."creatorId" = $${paramIndex++}`);
             queryParams.push(clientFilter);
         }
 
         if (communeFilter) {
-            whereClauses.push(`"recipientCommune" = $${paramIndex++}`);
+            whereClauses.push(`p."recipientCommune" = $${paramIndex++}`);
             queryParams.push(communeFilter);
         }
 
         if (cityFilter) {
-            whereClauses.push(`"recipientCity" = $${paramIndex++}`);
+            whereClauses.push(`p."recipientCity" = $${paramIndex++}`);
             queryParams.push(cityFilter);
         }
         
         if (startDate) {
-            whereClauses.push(`"createdAt" >= $${paramIndex++}`);
+            whereClauses.push(`p."createdAt" >= $${paramIndex++}`);
             queryParams.push(startDate);
         }
 
         if (endDate) {
             const end = new Date(endDate);
             end.setDate(end.getDate() + 1); // Make it inclusive of the end day
-            whereClauses.push(`"createdAt" < $${paramIndex++}`);
+            whereClauses.push(`p."createdAt" < $${paramIndex++}`);
             queryParams.push(end.toISOString().split('T')[0]);
         }
 
         if (flexFilter) {
             if (flexFilter === 'flexed') {
-                whereClauses.push(`"isFlexed" = true`);
+                whereClauses.push(`p."isFlexed" = true`);
             } else if (flexFilter === 'not_flexed') {
-                whereClauses.push(`("isFlexed" IS NULL OR "isFlexed" = false)`);
+                whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
             } else if (flexFilter === 'closed') {
-                whereClauses.push(`status IN ('ENTREGADO', 'DEVUELTO')`);
+                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO')`);
             } else if (flexFilter === 'cancelled') {
-                whereClauses.push(`status = 'CANCELADO'`);
+                whereClauses.push(`p.status = 'CANCELADO'`);
             } else if (flexFilter === 'rescheduled') {
-                whereClauses.push(`status = 'REPROGRAMADO'`);
+                whereClauses.push(`p.status = 'REPROGRAMADO'`);
             }
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         // Query for total count
-        const countQuery = `SELECT COUNT(*) FROM packages ${whereString}`;
+        const countQuery = `
+            SELECT COUNT(*) 
+            FROM packages p
+            LEFT JOIN users u ON p."creatorId" = u.id
+            ${whereString}
+        `;
         const { rows: countRows } = await db.query(countQuery, queryParams);
         const total = parseInt(countRows[0].count, 10);
         
         // Query for paginated data
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
-        const packageQuery = `SELECT * FROM packages ${whereString} ORDER BY "createdAt" DESC ${limitClause}`;
+        const packageQuery = `
+            SELECT p.*, u.name as "clientName" 
+            FROM packages p 
+            LEFT JOIN users u ON p."creatorId" = u.id 
+            ${whereString} 
+            ORDER BY p."createdAt" DESC 
+            ${limitClause}
+        `;
         
         const finalQueryParams = [...queryParams];
         if (limit > 0) {

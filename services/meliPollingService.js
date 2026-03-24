@@ -313,7 +313,12 @@ async function autoImportMeliPackages() {
                     
                     // 5. Filter by Region (Santiago / RM)
                     const stateName = shipment.receiver_address?.state?.name || '';
-                    const isRM = stateName.toLowerCase().includes('metropolitana') || stateName.toLowerCase().includes('santiago');
+                    const lowerState = stateName.toLowerCase();
+                    const isRM = lowerState.includes('metropolitana') || 
+                                 lowerState.includes('santiago') || 
+                                 lowerState.includes('region metropolitana') ||
+                                 lowerState.includes('región metropolitana') ||
+                                 lowerState === 'rm';
                     
                     if (!isRM) {
                         console.log(`[MeliPolling] Skipping order ${orderId} - Not in RM (${stateName})`);
@@ -331,7 +336,7 @@ async function autoImportMeliPackages() {
                         origin: 'Centro de Distribución',
                         recipientAddress: shipment.receiver_address?.address_line || 'N/A',
                         recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                        recipientCity: stateName || 'Santiago',
+                        recipientCity: isRM ? 'Región Metropolitana' : (stateName || 'Santiago'),
                         notes: `Auto-Import ML Order: ${orderId}`,
                         estimatedDelivery: now,
                         createdAt: now,
