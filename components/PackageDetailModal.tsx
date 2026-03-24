@@ -135,16 +135,22 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                     </button>
                 )}
                 {pkg.meliOrderId ? (
-                    auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && (
-                        <button
-                            onClick={() => setIsQrModalOpen(true)}
-                            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-green-700 bg-green-100 rounded-full hover:bg-green-200 transition-colors"
-                            aria-label="Pedir Código QR por WhatsApp"
-                        >
+                    <button
+                        onClick={() => setIsQrModalOpen(true)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold rounded-full transition-colors ${
+                            auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp 
+                                ? "text-green-700 bg-green-100 hover:bg-green-200" 
+                                : "text-blue-700 bg-blue-100 hover:bg-blue-200"
+                        }`}
+                        aria-label={auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp ? "Pedir Código QR por WhatsApp" : "Ver Código QR"}
+                    >
+                        {auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp ? (
                             <IconWhatsapp className="w-4 h-4"/>
-                            <span>Pedir QR</span>
-                        </button>
-                    )
+                        ) : (
+                            <IconQrcode className="w-4 h-4"/>
+                        )}
+                        <span>{auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp ? "Pedir QR" : "Ver QR"}</span>
+                    </button>
                 ) : (
                     <button
                         onClick={() => setIsQrModalOpen(true)}

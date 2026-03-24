@@ -29,8 +29,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
     }, [isMeli, creator, pkg]);
 
     useEffect(() => {
-        if (isMeli) return; // Do not generate QR for Mercado Libre packages
-        
         const generateQR = async () => {
             try {
                 const url = await QRCode.toDataURL(qrContent || '', {
@@ -49,7 +47,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
         if (qrContent) {
             generateQR();
         }
-    }, [qrContent, isMeli]);
+    }, [qrContent]);
 
     return (
         <div
@@ -86,6 +84,13 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
                                 <p><strong>ID Envío (ML):</strong> <span className="font-mono font-bold text-slate-900">{pkg.meliOrderId}</span></p>
                             </div>
                         </div>
+
+                        {qrCodeUrl && !error && (
+                            <div className="bg-white p-4 border-4 border-slate-900 rounded-xl shadow-inner mb-6">
+                                <img src={qrCodeUrl} alt={`QR Code ${qrContent}`} className="w-48 h-48 object-contain" />
+                                <p className="text-[10px] text-center text-slate-400 mt-2">Código FLEX Reconstruido</p>
+                            </div>
+                        )}
 
                         {creator?.phone && systemSettings.messagingPlan === MessagingPlan.WhatsApp ? (
                             <a 

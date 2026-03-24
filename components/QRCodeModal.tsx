@@ -7,9 +7,10 @@ interface QRCodeModalProps {
   value: string;
   title: string;
   onClose: () => void;
+  displayValue?: string;
 }
 
-const QRCodeModal: React.FC<QRCodeModalProps> = ({ value, title, onClose }) => {
+const QRCodeModal: React.FC<QRCodeModalProps> = ({ value, title, onClose, displayValue }) => {
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black bg-opacity-75 p-4 animate-fade-in">
       <div className="bg-[var(--background-secondary)] rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden transform transition-all scale-100">
@@ -36,7 +37,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ value, title, onClose }) => {
             />
           </div>
           <p className="mt-6 text-lg font-mono font-bold text-gray-800 tracking-wider">
-            {value}
+            {displayValue || value}
           </p>
           <p className="mt-1 text-sm text-gray-500">
             {title}
