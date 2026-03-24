@@ -37,18 +37,24 @@ const SystemLogsPage: React.FC = () => {
     }
   };
 
-  const filteredLogs = logs.filter(log => {
-    const matchesSearch = 
-      log.userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      JSON.stringify(log.details).toLowerCase().includes(searchTerm.toLowerCase());
+  const filteredLogs = (logs || []).filter(log => {
+    if (!log) return false;
     
-    const matchesAction = actionFilter === '' || log.action === actionFilter;
+    const userName = log.userName || '';
+    const action = log.action || '';
+    const detailsStr = log.details ? JSON.stringify(log.details) : '';
+
+    const matchesSearch = 
+      userName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      action.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      detailsStr.toLowerCase().includes(searchTerm.toLowerCase());
+    
+    const matchesAction = actionFilter === '' || action === actionFilter;
     
     return matchesSearch && matchesAction;
   });
 
-  const uniqueActions = Array.from(new Set(logs.map(log => log.action)));
+  const uniqueActions = Array.from(new Set((logs || []).map(log => log?.action).filter(Boolean)));
 
   const formatDetails = (details: any) => {
     if (typeof details === 'string') return details;
