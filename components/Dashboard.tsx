@@ -432,16 +432,26 @@ const Dashboard: React.FC = () => {
   }, [selectedPackageObjects]);
 
   const handleDeleteSelected = async () => {
-    const idsToDelete = [...selectedPackages].filter(id => {
-        const pkg = packages.find(p => p.id === id);
-        return pkg && pkg.status === PackageStatus.Pending;
-    });
+    try {
+      const idsToDelete = [...selectedPackages].filter(id => {
+          const pkg = packages.find(p => p.id === id);
+          return pkg && pkg.status === PackageStatus.Pending;
+      });
 
-    await Promise.all(idsToDelete.map(id => api.deletePackage(id)));
-    
-    setSelectedPackages(new Set());
-    setIsDeletePasswordModalOpen(false);
-    fetchData(); // Refetch data
+      if (idsToDelete.length === 0) {
+        setIsDeletePasswordModalOpen(false);
+        return;
+      }
+
+      await Promise.all(idsToDelete.map(id => api.deletePackage(id)));
+      
+      setSelectedPackages(new Set());
+      setIsDeletePasswordModalOpen(false);
+      await fetchData(); // Refetch data
+    } catch (error: any) {
+      console.error("Failed to delete selected packages", error);
+      alert("Error al eliminar los paquetes: " + (error.message || "Error desconocido"));
+    }
   };
 
   const isDateFiltering = startDate !== '' || endDate !== '';
