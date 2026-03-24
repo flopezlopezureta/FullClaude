@@ -27,6 +27,7 @@ const getRoleInSpanish = (role?: Role): string => {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClose }) => {
   const { user, logout, systemSettings } = useContext(AuthContext)!;
+  const isSuperUser = user?.email === 'admin';
 
   const [openMenus, setOpenMenus] = useState<Set<string>>(() => {
     const menus = new Set<string>();
@@ -86,7 +87,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       icon: <IconSettings className="h-6 w-6" />,
       subItems: [
         { id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> },
-        { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }
+        { id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> },
+        ...(isSuperUser ? [{ id: 'system-logs', label: 'Logs del Sistema', icon: <IconFileText className="h-5 w-5" /> }] : [])
       ]
     }
   ].filter(item => !('subItems' in item) || (item as any).subItems.length > 0);
@@ -126,9 +128,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   const auxiliarNavItems = [
     { id: 'scan-dispatch', label: 'Despachar Paquetes', icon: <IconQrcode className="h-6 w-6" /> },
   ];
-
-
-  const isSuperUser = user?.email === 'admin';
 
   const filteredAdminNavItems = adminNavItems.filter(item => {
     if (isSuperUser) return true;

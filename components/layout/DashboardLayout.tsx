@@ -9,6 +9,7 @@ import ClientDashboard from '../client/ClientDashboard';
 import { IconMenu, IconCube, IconCheckCircle, IconX } from '../Icon';
 import SettingsPage from '../admin/SettingsPage';
 import IntegrationSettingsPage from '../admin/IntegrationSettingsPage';
+import SystemLogsPage from '../admin/SystemLogsPage';
 import ImportOrdersPage from '../admin/ImportOrdersPage';
 import BillingReportPage from '../admin/BillingReportPage';
 import ZoneSettingsPage from '../admin/ZoneSettingsPage';
@@ -164,6 +165,9 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'integrations' && user?.role === Role.Admin) {
     title = 'Configuración de Integraciones';
     content = <IntegrationSettingsPage />;
+  } else if (activeView === 'system-logs' && user?.role === Role.Admin && isSuperUser) {
+    title = ''; // Title handled inside component
+    content = <SystemLogsPage />;
   } else {
     // Fallback to default view if a view is invalid (e.g. non-admin accessing admin page)
     const defaultView = getDefaultView();
