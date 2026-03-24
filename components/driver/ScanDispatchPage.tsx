@@ -44,10 +44,19 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const { systemSettings } = useContext(AuthContext)!;
   const saveFlexLabelPhoto = systemSettings?.saveFlexLabelPhoto || false;
 
-  const handleScan = useCallback(async (packageId: string) => {
-    if (!isScanning || !user || scannedInSession.has(packageId)) return;
-    setIsScanning(false);
+  const handleScan = useCallback(async (data: string) => {
+    if (!isScanning || !user) return;
+
+    // Extract ID if it's a Meli Flex URL
+    let packageId = data;
+    if (data.includes('mercadoenvios.com/flex/shipping/')) {
+        const parts = data.split('/');
+        packageId = parts[parts.length - 1] || data;
+    }
+
+    if (scannedInSession.has(packageId)) return;
     
+    setIsScanning(false);
     setScannedInSession(prev => new Set(prev).add(packageId));
 
     try {
@@ -79,7 +88,13 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
           newSet.delete(packageId);
           return newSet;
       });
-      setScanResult({ type: 'error', message: error.message || 'Error al procesar el paquete.' });
+      const errorMessage = error.message || 'Error al procesar el paquete.';
+      setScanResult({ 
+        type: 'error', 
+        message: errorMessage.includes('no encontrado') 
+          ? `Paquete ${packageId} no encontrado en el sistema.` 
+          : errorMessage 
+      });
       setTimeout(() => {
         setScanResult(null);
         setIsScanning(true);

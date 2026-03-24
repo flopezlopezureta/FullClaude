@@ -159,6 +159,12 @@ export const MeliFlexTestScanner: React.FC<MeliFlexTestScannerProps> = ({ onBack
         )}
       </div>
 
+      <div className="mt-4 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-md border border-blue-200 dark:border-blue-800">
+          <p className="text-xs text-blue-800 dark:text-blue-200 leading-relaxed">
+              <strong>Nota:</strong> Si el código se lee bien aquí pero da error en "Despacho", asegúrate de que el paquete ya haya sido <strong>Retirado</strong> en el sistema. Los paquetes deben estar en el sistema antes de poder ser despachados.
+          </p>
+      </div>
+
       <div className="mt-6">
         <button 
           onClick={onBack}

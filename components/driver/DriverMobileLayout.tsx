@@ -114,7 +114,7 @@ const DriverMobileLayout: React.FC = () => {
         return menuItems.filter(item => {
             if (item.id === 'meli-flex-test') {
                 // Only Fabian Lopez (flopez.cl@gmail.com) can see this test option
-                return user?.email === 'flopez.cl@gmail.com';
+                return user?.email === 'flopez.cl@gmail.com' || user?.email === 'flopez@selcom.cl';
             }
             if (item.id === 'colectas' && systemSettings.pickupMode !== 'COLECTA') {
                 return false;
