@@ -1,25 +1,27 @@
 
 import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconHistory, IconLogOut, IconUser, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube, IconX, IconCheck } from '../Icon';
+import { IconHistory, IconLogOut, IconUser, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube, IconX, IconCheck, IconZap } from '../Icon';
 import DriverDashboard from './DriverDashboard';
 import ScanDispatchPage from './ScanDispatchPage';
 import DeliveryHistoryPage from './DeliveryHistoryPage';
 import ReturnsDashboard from './ReturnsDashboard';
 import ScanPickupPage from './ScanPickupPage';
 import ColectaPage from './ColectaPage';
+import MeliFlexTestScanner from './MeliFlexTestScanner';
 import { DriverPermissions, Notification } from '../../types';
 import { api } from '../../services/api';
 
-type DriverView = 'my-packages' | 'scan-dispatch' | 'scan-pickups' | 'colectas' | 'returns' | 'delivery-history';
+type DriverView = 'my-packages' | 'scan-dispatch' | 'scan-pickups' | 'colectas' | 'returns' | 'delivery-history' | 'meli-flex-test';
 
-const menuItems: { id: DriverView; label: string; subtitle?: string; icon: React.ReactNode; color: string, permission: keyof DriverPermissions }[] = [
+const menuItems: { id: DriverView; label: string; subtitle?: string; icon: React.ReactNode; color: string, permission?: keyof DriverPermissions }[] = [
     { id: 'my-packages', label: '1. Entregas', subtitle: 'RUTA DE HOY', icon: <IconTruck />, color: 'bg-blue-600', permission: 'canDeliver' },
     { id: 'scan-pickups', label: '2. Retiros', subtitle: 'CLIENTES ASIG.', icon: <IconArchive />, color: 'bg-purple-600', permission: 'canPickup' },
     { id: 'colectas', label: '3. Colecta', subtitle: 'INGRESAR BULTOS', icon: <IconPlus />, color: 'bg-indigo-600', permission: 'canColecta' },
     { id: 'scan-dispatch', label: '4. Despacho', subtitle: 'CARGA RUTA', icon: <IconChecklist />, color: 'bg-teal-600', permission: 'canDispatch' },
     { id: 'returns', label: '5. Devoluciones', subtitle: 'LOGÍSTICA INVERSA', icon: <IconArrowUturnLeft />, color: 'bg-orange-500', permission: 'canReturn' },
     { id: 'delivery-history', label: '6. Historial', subtitle: 'MIS ENTREGAS', icon: <IconHistory />, color: 'bg-slate-600', permission: 'canViewHistory' },
+    { id: 'meli-flex-test', label: 'Test ML Flex', subtitle: 'PRUEBA LECTURA', icon: <IconZap />, color: 'bg-yellow-500' },
 ];
 
 const DriverMobileLayout: React.FC = () => {
@@ -110,12 +112,16 @@ const DriverMobileLayout: React.FC = () => {
 
     const availableMenuItems = useMemo(() => {
         return menuItems.filter(item => {
+            if (item.id === 'meli-flex-test') {
+                // Only Fabian Lopez (flopez.cl@gmail.com) can see this test option
+                return user?.email === 'flopez.cl@gmail.com';
+            }
             if (item.id === 'colectas' && systemSettings.pickupMode !== 'COLECTA') {
                 return false;
             }
-            return driverPermissions[item.permission];
+            return item.permission ? driverPermissions[item.permission] : true;
         });
-    }, [driverPermissions, systemSettings.pickupMode]);
+    }, [driverPermissions, systemSettings.pickupMode, user?.email]);
 
     const handleSubscriptionToggle = () => {
         if (isPushSubscribed) {
@@ -138,6 +144,7 @@ const DriverMobileLayout: React.FC = () => {
             case 'scan-dispatch': return <ScanDispatchPage />;
             case 'returns': return <ReturnsDashboard />;
             case 'delivery-history': return <DeliveryHistoryPage />;
+            case 'meli-flex-test': return <MeliFlexTestScanner onBack={() => setActiveView('menu')} />;
             default: return null;
         }
     };
