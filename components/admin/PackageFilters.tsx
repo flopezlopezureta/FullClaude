@@ -25,8 +25,10 @@ interface PackageFiltersProps {
   onEndDateChange: (date: string) => void;
   onExportRoute: () => void;
   isExporting?: boolean;
-  flexFilter: 'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled';
-  onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled') => void;
+  flexFilter: 'all' | 'flexed' | 'not_flexed';
+  onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed') => void;
+  quickFilter: 'all' | 'closed' | 'cancelled' | 'rescheduled';
+  onQuickFilterChange: (filter: 'all' | 'closed' | 'cancelled' | 'rescheduled') => void;
   clients: User[];
   clientFilter: string;
   onClientChange: (clientId: string) => void;
@@ -57,6 +59,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   isExporting = false,
   flexFilter,
   onFlexFilterChange,
+  quickFilter,
+  onQuickFilterChange,
   clients,
   clientFilter,
   onClientChange,
@@ -127,11 +131,18 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
           </select>
         </div>
-        <div className="flex-shrink-0">
-          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtro rápido">
+        <div className="flex-shrink-0 w-32">
+          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Flex</label>
+          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por Flex">
             <option value="all">Todos</option>
             <option value="flexed">Flexeados</option>
             <option value="not_flexed">No Flexeados</option>
+          </select>
+        </div>
+        <div className="flex-shrink-0 w-40">
+          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Filtro Rápido</label>
+          <select id="quick-filter" value={quickFilter} onChange={(e) => onQuickFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtro rápido">
+            <option value="all">Todos</option>
             <option value="closed">Cerrados</option>
             <option value="cancelled">Cancelados</option>
             <option value="rescheduled">Reprogramados</option>

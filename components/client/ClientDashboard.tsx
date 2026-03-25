@@ -37,6 +37,7 @@ const ClientDashboard: React.FC = () => {
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
   const [communeFilter, setCommuneFilter] = useState('');
   
   const today = new Date();
@@ -61,6 +62,7 @@ const ClientDashboard: React.FC = () => {
             limit: itemsPerPage,
             searchQuery,
             statusFilter,
+            flexFilter,
             communeFilter,
             startDate,
             endDate,
@@ -79,7 +81,7 @@ const ClientDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, communeFilter, startDate, endDate]);
+  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate]);
 
   const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>) => {
     if (!auth?.user) return;
@@ -272,6 +274,8 @@ const ClientDashboard: React.FC = () => {
             onCommuneChange={setCommuneFilter}
             statusFilter={statusFilter}
             onStatusChange={setStatusFilter}
+            flexFilter={flexFilter}
+            onFlexFilterChange={setFlexFilter}
             communes={uniqueCommunes}
         />
 

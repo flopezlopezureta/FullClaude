@@ -14,6 +14,8 @@ interface ClientPackageFiltersProps {
   onCommuneChange: (commune: string) => void;
   statusFilter: string | null;
   onStatusChange: (status: string | null) => void;
+  flexFilter: 'all' | 'flexed' | 'not_flexed';
+  onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed') => void;
   communes: string[];
 }
 
@@ -41,6 +43,8 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
   onCommuneChange,
   statusFilter,
   onStatusChange,
+  flexFilter,
+  onFlexFilterChange,
   communes,
 }) => {
   const inputClasses = "w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] sm:text-sm";
@@ -74,6 +78,19 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
                     {option.label}
                 </option>
             ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="text-xs text-[var(--text-muted)]">Flex</label>
+          <select
+            value={flexFilter}
+            onChange={(e) => onFlexFilterChange(e.target.value as any)}
+            className={selectClasses}
+          >
+            <option value="all">Todos</option>
+            <option value="flexed">Flexeados</option>
+            <option value="not_flexed">No Flexeados</option>
           </select>
         </div>
 

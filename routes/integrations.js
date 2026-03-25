@@ -253,7 +253,8 @@ router.get('/:clientId/meli/orders', authMiddleware, async (req, res) => {
         
         // Fetch recent orders (last 2 days) that are paid and not shipped yet
         // ML API: /orders/search?seller=${seller_id}&order.status=paid
-        const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid`, meliIntegration.accessToken);
+        // Added sort=date_desc to get the most recent orders first
+        const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, meliIntegration.accessToken);
         
         const orders = await Promise.all(ordersData.results.map(async (order) => {
             // For each order, we need shipment details to get the address

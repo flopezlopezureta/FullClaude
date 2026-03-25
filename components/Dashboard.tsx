@@ -75,7 +75,8 @@ const Dashboard: React.FC = () => {
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
-  const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed' | 'closed' | 'cancelled' | 'rescheduled'>('all');
+  const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
+  const [quickFilter, setQuickFilter] = useState<'all' | 'closed' | 'cancelled' | 'rescheduled'>('all');
   const [driverFilter, setDriverFilter] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('');
   const [communeFilter, setCommuneFilter] = useState<string>('');
@@ -128,6 +129,7 @@ const Dashboard: React.FC = () => {
             startDate,
             endDate,
             flexFilter,
+            quickFilter,
         };
         const [packagesResult, allUsers] = await Promise.all([
             api.getPackages(params),
@@ -166,6 +168,7 @@ const Dashboard: React.FC = () => {
       setSearchQuery('');
       setStatusFilter([]);
       setFlexFilter('all');
+      setQuickFilter('all');
       setDriverFilter('');
       setClientFilter('');
       setCommuneFilter('');
@@ -324,7 +327,8 @@ const Dashboard: React.FC = () => {
                 cityFilter, 
                 startDate, 
                 endDate,
-                flexFilter
+                flexFilter,
+                quickFilter
             });
 
         const dateStr = new Date().toISOString().split('T')[0];
@@ -370,7 +374,8 @@ const Dashboard: React.FC = () => {
             cityFilter, 
             startDate, 
             endDate,
-            flexFilter
+            flexFilter,
+            quickFilter
         });
 
         let packagesToExport: Package[] = [];
@@ -407,7 +412,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedPackages(new Set());
-  }, [searchQuery, statusFilter, driverFilter, communeFilter, cityFilter, clientFilter, itemsPerPage, startDate, endDate, flexFilter]);
+  }, [searchQuery, statusFilter, driverFilter, communeFilter, cityFilter, clientFilter, itemsPerPage, startDate, endDate, flexFilter, quickFilter]);
 
   const handleSelectPackage = (pkg: Package) => {
     setSelectedPackages(prev => {
@@ -508,6 +513,8 @@ const Dashboard: React.FC = () => {
             isExporting={isExporting}
             flexFilter={flexFilter}
             onFlexFilterChange={setFlexFilter}
+            quickFilter={quickFilter}
+            onQuickFilterChange={setQuickFilter}
             isSyncing={isLoading || isSyncingMeli}
             clients={clients}
             clientFilter={clientFilter}
@@ -708,7 +715,7 @@ const Dashboard: React.FC = () => {
           onDeletePackage={(pkg) => { setSelectedPackages(new Set([pkg.id])); setIsDeletePasswordModalOpen(true); }}
           onPrintLabel={(pkg) => setPrintingPackages([pkg])}
           onMarkForReturn={auth?.user?.role === 'ADMIN' ? handleMarkForReturn : undefined}
-          isFiltering={searchQuery !== '' || statusFilter.length > 0 || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all'}
+          isFiltering={searchQuery !== '' || statusFilter.length > 0 || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all' || quickFilter !== 'all'}
           isDateFiltering={isDateFiltering}
           selectedPackages={selectedPackages}
           onSelectionChange={handleSelectPackage}

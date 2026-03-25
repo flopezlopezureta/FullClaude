@@ -293,36 +293,53 @@ async function autoImportMeliPackages() {
 
             // 2. Fetch paid orders with shipping mode 'self_service' (Flex)
             // We search for orders with status 'paid'
-            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&shipping.mode=self_service`, accessToken);
+            // Added sort=date_desc and limit=50 to get the most recent orders first
+            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&shipping.mode=self_service&sort=date_desc&limit=50`, accessToken);
             
-            if (!ordersData.results || ordersData.results.length === 0) continue;
+            if (!ordersData.results || ordersData.results.length === 0) {
+                console.log(`[MeliPolling] No new paid Flex orders for client ${clientId}`);
+                continue;
+            }
+
+            console.log(`[MeliPolling] Found ${ordersData.results.length} paid Flex orders for client ${clientId}`);
 
             for (const order of ordersData.results) {
                 try {
                     const orderId = order.id.toString();
                     const shipmentId = order.shipping?.id;
-                    if (!shipmentId) continue;
+                    
+                    if (!shipmentId) {
+                        console.log(`[MeliPolling] Skipping order ${orderId} - No shipment ID`);
+                        continue;
+                    }
 
                     // 3. Check if already imported
                     // We check by both orderId and shipmentId (meliFlexCode) to be extra safe
                     const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId, shipmentId.toString()]);
-                    if (existing.length > 0) continue;
+                    if (existing.length > 0) {
+                        // console.log(`[MeliPolling] Order ${orderId} already imported, skipping.`);
+                        continue;
+                    }
 
                     // 4. Get Shipment Details to check address
                     const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
                     
-                    // 5. Filter by Region (Santiago / RM)
+                    // 5. Region Check (Optional/Permissive)
                     const stateName = shipment.receiver_address?.state?.name || '';
                     const lowerState = stateName.toLowerCase();
+                    
+                    // We keep a log but we'll be more permissive. 
+                    // If it's Flex, it's almost certainly for the local delivery area.
                     const isRM = lowerState.includes('metropolitana') || 
                                  lowerState.includes('santiago') || 
                                  lowerState.includes('region metropolitana') ||
                                  lowerState.includes('región metropolitana') ||
                                  lowerState === 'rm';
                     
+                    // If not RM, we still import it but log it. 
+                    // The user complained about missing packages, so it's better to import than to skip.
                     if (!isRM) {
-                        console.log(`[MeliPolling] Skipping order ${orderId} - Not in RM (${stateName})`);
-                        continue;
+                        console.log(`[MeliPolling] Order ${orderId} is in state: ${stateName}. Still importing as it is a Flex order.`);
                     }
 
                     // 6. Import Package
@@ -336,7 +353,7 @@ async function autoImportMeliPackages() {
                         origin: 'Centro de Distribución',
                         recipientAddress: shipment.receiver_address?.address_line || 'N/A',
                         recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                        recipientCity: isRM ? 'Región Metropolitana' : (stateName || 'Santiago'),
+                        recipientCity: stateName || 'Santiago',
                         notes: `Auto-Import ML Order: ${orderId}`,
                         estimatedDelivery: now,
                         createdAt: now,

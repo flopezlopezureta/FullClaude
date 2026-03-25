@@ -122,6 +122,7 @@ router.get('/', authMiddleware, async (req, res) => {
             startDate,
             endDate,
             flexFilter,
+            quickFilter,
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -193,11 +194,15 @@ router.get('/', authMiddleware, async (req, res) => {
                 whereClauses.push(`p."isFlexed" = true`);
             } else if (flexFilter === 'not_flexed') {
                 whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
-            } else if (flexFilter === 'closed') {
+            }
+        }
+
+        if (quickFilter) {
+            if (quickFilter === 'closed') {
                 whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO')`);
-            } else if (flexFilter === 'cancelled') {
+            } else if (quickFilter === 'cancelled') {
                 whereClauses.push(`p.status = 'CANCELADO'`);
-            } else if (flexFilter === 'rescheduled') {
+            } else if (quickFilter === 'rescheduled') {
                 whereClauses.push(`p.status = 'REPROGRAMADO'`);
             }
         }
