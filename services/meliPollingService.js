@@ -307,6 +307,13 @@ async function autoImportMeliPackages() {
                 try {
                     const orderId = order.id.toString();
                     const shipmentId = order.shipping?.id;
+                    const sellerId = order.seller?.id?.toString() || meliIntegration.userId;
+
+                    // Safety Check: Ensure the seller ID matches the user's integration
+                    if (sellerId !== meliIntegration.userId) {
+                        console.warn(`[MeliPolling] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${meliIntegration.userId})`);
+                        continue;
+                    }
                     
                     if (!shipmentId) {
                         console.log(`[MeliPolling] Skipping order ${orderId} - No shipment ID`);

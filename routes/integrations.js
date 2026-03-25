@@ -306,6 +306,14 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                 // 1. Get Order Details
                 const order = await makeMeliGetRequest(`/orders/${orderId}`, meliIntegration.accessToken);
                 const shipmentId = order.shipping?.id;
+                const sellerId = order.seller?.id?.toString() || meliIntegration.userId;
+
+                // Safety Check: Ensure the seller ID matches the user's integration
+                if (sellerId !== meliIntegration.userId) {
+                    console.warn(`[MeliImport] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${meliIntegration.userId})`);
+                    results.push({ orderId, status: 'error', message: 'Este pedido no pertenece a tu cuenta de Mercado Libre.' });
+                    continue;
+                }
                 
                 if (!shipmentId) {
                     results.push({ orderId, status: 'error', message: 'No shipment ID found for this order.' });
@@ -779,13 +787,35 @@ router.get('/meli/callback', async (req, res) => {
         }).toString();
 
         const tokenData = await makeMeliPostRequest('/oauth/token', postData);
+        const meliUserId = tokenData.user_id.toString();
 
-        // 3. Store Tokens in User record
+        // 3. Check if this Meli account is already connected to another user
+        const { rows: duplicateRows } = await db.query(
+            "SELECT id, name FROM users WHERE integrations->'meli'->>'userId' = $1 AND id != $2",
+            [meliUserId, userId]
+        );
+
+        if (duplicateRows.length > 0) {
+            return res.status(400).send(`
+                <html>
+                    <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; text-align: center;">
+                        <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 400px;">
+                            <h2 style="color: #dc2626;">Error de Conexión</h2>
+                            <p>Esta cuenta de Mercado Libre ya está vinculada al cliente: <strong>${duplicateRows[0].name}</strong>.</p>
+                            <p>Para evitar duplicidad de paquetes, una cuenta de Mercado Libre solo puede estar vinculada a un cliente en el sistema.</p>
+                            <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem;">Cerrar Ventana</button>
+                        </div>
+                    </body>
+                </html>
+            `);
+        }
+
+        // 4. Store Tokens in User record
         const meliIntegration = {
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
             expiresAt: Date.now() + (tokenData.expires_in * 1000),
-            userId: tokenData.user_id,
+            userId: meliUserId,
             connectedAt: new Date().toISOString()
         };
 
@@ -848,6 +878,12 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
                 const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
                 
                 if (shipment && shipment.id) {
+                    // Verify that the shipment's seller matches the client's Meli User ID
+                    const sellerId = shipment.sender_id?.toString() || meliIntegration.userId;
+                    if (sellerId !== meliIntegration.userId) {
+                        console.warn(`[SyncShipment] Seller mismatch for client ${client.id} (Expected ${meliIntegration.userId}, got ${sellerId})`);
+                        continue;
+                    }
                     foundShipment = shipment;
                     clientUsed = client;
                     break;
