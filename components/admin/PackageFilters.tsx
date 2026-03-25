@@ -128,8 +128,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
           </select>
         </div>
         <div className="flex-shrink-0">
-          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por Flex">
-            <option value="all">Flex: Todos</option>
+          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtro rápido">
+            <option value="all">Todos</option>
             <option value="flexed">Flexeados</option>
             <option value="not_flexed">No Flexeados</option>
             <option value="closed">Cerrados</option>

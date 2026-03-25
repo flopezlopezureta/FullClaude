@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { api, PackageCreationData } from '../../services/api';
 import type { Package } from '../../types';
-import { PackageStatus, PackageSource } from '../../constants';
+import { PackageSource } from '../../constants';
 import PackageList from '../PackageList';
 import PackageDetailModal from '../PackageDetailModal';
 import CreatePackageModal from '../modals/CreatePackageModal';
@@ -36,7 +36,7 @@ const ClientDashboard: React.FC = () => {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<PackageStatus | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
   const [communeFilter, setCommuneFilter] = useState('');
   
   const today = new Date();

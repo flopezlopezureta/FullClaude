@@ -12,13 +12,14 @@ interface ClientPackageFiltersProps {
   onEndDateChange: (date: string) => void;
   communeFilter: string;
   onCommuneChange: (commune: string) => void;
-  statusFilter: PackageStatus | null;
-  onStatusChange: (status: PackageStatus | null) => void;
+  statusFilter: string | null;
+  onStatusChange: (status: string | null) => void;
   communes: string[];
 }
 
-const statusOptions: { label: string; value: PackageStatus | null }[] = [
+const statusOptions: { label: string; value: string | null }[] = [
     { label: 'Todos los Estados', value: null },
+    { label: 'Cerrados', value: 'closed' },
     { label: 'Pendiente', value: PackageStatus.Pending },
     { label: 'Retirado', value: PackageStatus.PickedUp },
     { label: 'En Tránsito', value: PackageStatus.InTransit },
@@ -65,7 +66,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
           <label className="text-xs text-[var(--text-muted)]">Estado</label>
           <select
             value={statusFilter || ''}
-            onChange={(e) => onStatusChange(e.target.value ? e.target.value as PackageStatus : null)}
+            onChange={(e) => onStatusChange(e.target.value || null)}
             className={selectClasses}
           >
             {statusOptions.map((option) => (

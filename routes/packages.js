@@ -141,7 +141,13 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (statusFilter) {
-            const statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
+            let statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
+            // Expand "closed" to include both ENTREGADO and DEVUELTO
+            if (statuses.includes('closed')) {
+                statuses = statuses.filter(s => s !== 'closed');
+                if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
+                if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
+            }
             if (statuses.length > 0) {
                 const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
                 whereClauses.push(`p.status IN (${placeholders})`);
