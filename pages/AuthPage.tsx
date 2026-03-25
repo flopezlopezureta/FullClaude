@@ -61,6 +61,18 @@ const AuthPage: React.FC = () => {
   const auth = useContext(AuthContext);
 
   useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const initialMode = params.get('mode') as FormMode;
+    if (initialMode && ['login', 'register', 'forgot'].includes(initialMode)) {
+      setMode(initialMode);
+    }
+    const initialEmail = params.get('email');
+    if (initialEmail) {
+      setEmail(initialEmail);
+    }
+  }, []);
+
+  useEffect(() => {
     if (useSameAddress) {
       setPickupAddress(address);
     }

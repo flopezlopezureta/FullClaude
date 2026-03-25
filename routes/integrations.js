@@ -5,6 +5,49 @@ const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 
+const bcrypt = require('bcryptjs');
+
+// DELETE /api/integrations/:clientId/:source - Delete an integration (Admin only)
+router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
+    const { clientId, source } = req.params;
+    const { password } = req.body;
+
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Solo los administradores pueden eliminar integraciones.' });
+    }
+
+    if (!password) {
+        return res.status(400).json({ message: 'La contraseña de administrador es requerida.' });
+    }
+
+    try {
+        // 1. Verify admin password
+        const { rows: adminRows } = await db.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+        const admin = adminRows[0];
+        const isMatch = await bcrypt.compare(password, admin.password);
+        
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Contraseña de administrador incorrecta.' });
+        }
+
+        // 2. Remove integration from user
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) {
+            return res.status(404).json({ message: 'Cliente no encontrado.' });
+        }
+
+        const integrations = userRows[0].integrations || {};
+        delete integrations[source];
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
+
+        res.json({ message: `Integración ${source} eliminada con éxito.` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al eliminar la integración.' });
+    }
+});
+
 // --- MELI API HELPERS ---
 const makeMeliRequest = (options, postData = null) => {
     return new Promise((resolve, reject) => {

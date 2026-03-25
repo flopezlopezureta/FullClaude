@@ -15,9 +15,17 @@ router.post('/register', async (req, res) => {
     }
 
     try {
-        const { rows: existingUsers } = await db.query('SELECT email FROM users WHERE email = $1', [email]);
+        const { rows: existingUsers } = await db.query('SELECT id, status FROM users WHERE email = $1', [email]);
         if (existingUsers.length > 0) {
-            return res.status(400).json({ message: 'El nombre de usuario ya está registrado.' });
+            const existingUser = existingUsers[0];
+            if (existingUser.status !== 'ELIMINADO') {
+                return res.status(400).json({ message: 'El nombre de usuario ya está registrado.' });
+            }
+            // If deleted, we will effectively overwrite/re-create them in the next steps
+            // or we could just delete the old record now to avoid unique constraint issues if we use a new ID
+            await db.query('DELETE FROM users WHERE id = $1', [existingUser.id]);
+            // Also clear their old packages to ensure "start from zero"
+            await db.query('DELETE FROM packages WHERE "creatorId" = $1', [existingUser.id]);
         }
 
         const salt = await bcrypt.genSalt(10);

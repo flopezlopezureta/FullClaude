@@ -212,7 +212,9 @@ export const api = {
   getUsers: () => get<User[]>('/users'),
   createUser: (data: UserCreationData) => post<User>('/users', data),
   updateUser: (userId: string, data: UserUpdateData) => put<User>(`/users/${userId}`, data),
-  deleteUser: (userId: string) => del<void>(`/users/${userId}`),
+  deleteUser: (userId: string, password?: string) => request<void>(`/users/${userId}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
+  deleteIntegration: (clientId: string, source: string, password?: string) => request<void>(`/integrations/${clientId}/${source}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
+  reintegrateUser: (userId: string) => post<User>(`/users/${userId}/reintegrate`, {}),
   approveUser: (userId: string) => post<User>(`/users/${userId}/approve`, {}),
   toggleUserStatus: (userId: string) => post<User>(`/users/${userId}/toggle-status`, {}),
   

@@ -13,6 +13,7 @@ export enum UserStatus {
   Pending = 'PENDIENTE',
   Approved = 'APROBADO',
   Disabled = 'DESHABILITADO',
+  Deleted = 'ELIMINADO',
 }
 
 export enum PackageStatus {

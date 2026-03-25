@@ -128,21 +128,66 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
 });
 
 
-// DELETE /api/users/:id - Delete a user
+// DELETE /api/users/:id - Delete a user (Admin only, with password verification)
 router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    const { password } = req.body;
+
+    if (!password) {
+        return res.status(400).json({ message: 'La contraseña de administrador es requerida.' });
+    }
+
     try {
-        const { id } = req.params;
-        const result = await db.query('DELETE FROM users WHERE id = $1', [id]);
+        // 1. Verify admin password
+        const { rows: adminRows } = await db.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+        const admin = adminRows[0];
+        const isMatch = await bcrypt.compare(password, admin.password);
+        
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Contraseña de administrador incorrecta.' });
+        }
+
+        // 2. Soft delete user (mark as ELIMINADO)
+        const result = await db.query("UPDATE users SET status = 'ELIMINADO' WHERE id = $1", [id]);
+        
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
 
-        await logAction(req.user.id, req.user.name, 'DELETE_USER', { targetUserId: id });
+        // 3. Clear integrations to prevent conflicts
+        await db.query("UPDATE users SET integrations = '{}' WHERE id = $1", [id]);
+
+        await logAction(req.user.id, req.user.name, 'SOFT_DELETE_USER', { targetUserId: id });
 
         res.status(204).send();
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar el usuario.' });
+    }
+});
+
+// POST /api/users/:id/reintegrate - Reintegrate a deleted user (Admin only)
+router.post('/:id/reintegrate', authMiddleware, adminOnly, async (req, res) => {
+    const { id } = req.params;
+    try {
+        // 1. Reactivate user
+        const result = await db.query("UPDATE users SET status = 'APROBADO' WHERE id = $1", [id]);
+        if (result.rowCount === 0) {
+            return res.status(404).json({ message: 'Usuario no encontrado.' });
+        }
+
+        // 2. Clear shipments (Start from zero)
+        await db.query('DELETE FROM packages WHERE "creatorId" = $1', [id]);
+
+        await logAction(req.user.id, req.user.name, 'REINTEGRATE_USER', { targetUserId: id });
+
+        const { rows } = await db.query('SELECT * FROM users WHERE id = $1', [id]);
+        const user = rows[0];
+        delete user.password;
+        res.json(user);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al reintegrar el usuario.' });
     }
 });
 

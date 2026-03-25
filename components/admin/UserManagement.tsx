@@ -3,10 +3,11 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Role, UserStatus, PackageSource } from '../../constants';
 import type { User, DriverPermissions } from '../../types';
 import { api, UserCreationData, UserUpdateData, PackageCreationData } from '../../services/api';
-import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch } from '../Icon';
+import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck } from '../Icon';
 import CreateUserModal from '../modals/CreateUserModal';
 import EditUserModal from '../modals/EditUserModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
+import DoubleKeyConfirmationModal from '../modals/DoubleKeyConfirmationModal';
 import DriverHistoryModal from './DriverHistoryModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import DriverRatesModal from '../modals/DriverRatesModal';
@@ -27,6 +28,10 @@ const statusStyles: { [key in UserStatus]: { badge: string; text: string; } } = 
       badge: 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300', 
       text: 'Suspendido', 
     },
+    [UserStatus.Deleted]: { 
+      badge: 'bg-gray-100 text-gray-700 dark:bg-gray-900/50 dark:text-gray-300', 
+      text: 'Eliminado', 
+    },
     [UserStatus.Pending]: { 
       badge: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/50 dark:text-yellow-300', 
       text: 'Pendiente', 
@@ -40,9 +45,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
+  const [deletingIntegration, setDeletingIntegration] = useState<{ user: User, source: PackageSource } | null>(null);
+  const [reintegratingUser, setReintegratingUser] = useState<User | null>(null);
   const [viewingHistoryUser, setViewingHistoryUser] = useState<User | null>(null);
   const [editingDriverRates, setEditingDriverRates] = useState<User | null>(null);
   const [viewingInvoicesClient, setViewingInvoicesClient] = useState<User | null>(null);
+  const [showDeleted, setShowDeleted] = useState(false);
+  const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
   const [importingClient, setImportingClient] = useState<User | null>(null);
   const [importingSource, setImportingSource] = useState<PackageSource | null>(null);
   const auth = useContext(AuthContext);
@@ -117,10 +126,44 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     }
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    await api.deleteUser(userId);
+  const handleDeleteUser = async (userId: string, password?: string) => {
+    await api.deleteUser(userId, password);
     setUsers(prev => prev.filter(u => u.id !== userId));
     setDeletingUser(null);
+    fetchUsers(); // Refresh to show soft deleted state if needed
+  };
+
+  const handleDeleteIntegration = async (userId: string, source: PackageSource, password?: string) => {
+    const sourceMap: Record<string, string> = {
+        [PackageSource.MercadoLibre]: 'meli',
+        [PackageSource.Shopify]: 'shopify',
+        [PackageSource.WooCommerce]: 'woocommerce',
+        [PackageSource.Falabella]: 'falabella'
+    };
+    const integrationKey = sourceMap[source];
+    if (!integrationKey) return;
+
+    await api.deleteIntegration(userId, integrationKey, password);
+    setUsers(prev => prev.map(u => {
+        if (u.id === userId && u.integrations) {
+            const newIntegrations = { ...u.integrations } as any;
+            delete newIntegrations[integrationKey];
+            return { ...u, integrations: newIntegrations };
+        }
+        return u;
+    }));
+    setDeletingIntegration(null);
+  };
+
+  const handleReintegrateUser = async (userId: string) => {
+    try {
+        await api.reintegrateUser(userId);
+        fetchUsers();
+        setReintegratingUser(null);
+        alert("Usuario reintegrado con éxito. Su historial de envíos ha sido borrado.");
+    } catch (error: any) {
+        alert("Error al reintegrar: " + error.message);
+    }
   };
 
   const handleOpenImportModal = (client: User, source: PackageSource) => {
@@ -179,12 +222,23 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   };
 
 
-  const filteredUsers = users.filter(user => 
-    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (user.phone && user.phone.includes(searchTerm)) ||
-    (user.rut && user.rut.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const handleCopyRegistrationLink = (user: User) => {
+    const registrationUrl = `${window.location.origin}/?mode=register&email=${encodeURIComponent(user.email)}`;
+    navigator.clipboard.writeText(registrationUrl);
+    setCopiedUserId(user.id);
+    setTimeout(() => setCopiedUserId(null), 2000);
+  };
+
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.phone && user.phone.includes(searchTerm)) ||
+      (user.rut && user.rut.toLowerCase().includes(searchTerm.toLowerCase()));
+    
+    if (showDeleted) return matchesSearch;
+    return matchesSearch && user.status !== UserStatus.Deleted;
+  });
 
   return (
     <div className="container mx-auto">
@@ -201,13 +255,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
             className="block w-full pl-10 pr-3 py-2 border border-[var(--border-primary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm transition-colors"
           />
         </div>
-        <button
-          onClick={() => setIsCreateModalOpen(true)}
-          className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] whitespace-nowrap"
-        >
-          <IconUserPlus className="w-5 h-5 mr-2 -ml-1"/>
-          Crear Usuario
-        </button>
+        <div className="flex items-center gap-4 w-full sm:w-auto">
+          <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
+            <input 
+              type="checkbox" 
+              checked={showDeleted} 
+              onChange={(e) => setShowDeleted(e.target.checked)}
+              className="rounded border-[var(--border-primary)] text-[var(--brand-primary)] focus:ring-[var(--brand-primary)]"
+            />
+            Mostrar eliminados
+          </label>
+          <button
+            onClick={() => setIsCreateModalOpen(true)}
+            className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] whitespace-nowrap"
+          >
+            <IconUserPlus className="w-5 h-5 mr-2 -ml-1"/>
+            Crear Usuario
+          </button>
+        </div>
       </div>
       <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
         <div className="divide-y divide-[var(--border-primary)]">
@@ -231,10 +296,43 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         {statusStyles[user.status].text}
                     </span>
                     {user.integrations?.meli && (
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300" title="Conectado a Mercado Libre">
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
                             <IconMercadoLibre className="w-3 h-3" />
-                            ML Conectado
-                        </span>
+                            <span>ML Conectado</span>
+                            <button 
+                                onClick={() => setDeletingIntegration({ user, source: PackageSource.MercadoLibre })}
+                                className="ml-1 text-red-600 hover:text-red-800"
+                                title="Eliminar integración"
+                            >
+                                <IconTrash className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                    )}
+                    {user.integrations?.shopify && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-300">
+                            <IconShopify className="w-3 h-3" />
+                            <span>Shopify</span>
+                            <button 
+                                onClick={() => setDeletingIntegration({ user, source: PackageSource.Shopify })}
+                                className="ml-1 text-red-600 hover:text-red-800"
+                                title="Eliminar integración"
+                            >
+                                <IconTrash className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
+                    )}
+                    {user.integrations?.woocommerce && (
+                        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
+                            <IconWoocommerce className="w-3 h-3" />
+                            <span>Woo</span>
+                            <button 
+                                onClick={() => setDeletingIntegration({ user, source: PackageSource.WooCommerce })}
+                                className="ml-1 text-red-600 hover:text-red-800"
+                                title="Eliminar integración"
+                            >
+                                <IconTrash className="w-2.5 h-2.5" />
+                            </button>
+                        </div>
                     )}
                 </div>
                 <p className="text-sm text-[var(--text-muted)] mt-1">{user.email}</p>
@@ -334,7 +432,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                      <button onClick={() => setViewingHistoryUser(user)} className="p-2 text-[var(--text-muted)] hover:text-green-600 hover:bg-green-100 rounded-md transition-colors" title="Ver historial"><IconHistory className="w-5 h-5" /></button>
                     </>
                 )}
-                 {user.email !== 'admin@admin.cl' && user.status !== UserStatus.Pending && (
+                 {user.email !== 'admin@admin.cl' && user.status !== UserStatus.Pending && user.status !== UserStatus.Deleted && (
                     <button 
                         onClick={() => handleToggleStatus(user)}
                         className="p-2 text-[var(--text-muted)] hover:text-yellow-600 hover:bg-yellow-100 rounded-md transition-colors"
@@ -342,6 +440,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                     >
                         {user.status === UserStatus.Approved ? <IconUserOff className="w-5 h-5" /> : <IconUserCheck className="w-5 h-5" />}
                     </button>
+                )}
+                {user.status === UserStatus.Deleted && (
+                    <div className="flex items-center space-x-2">
+                        <button 
+                            onClick={() => setReintegratingUser(user)}
+                            className="p-2 text-[var(--text-muted)] hover:text-green-600 hover:bg-green-100 rounded-md transition-colors"
+                            title="Reintegrar usuario"
+                        >
+                            <IconArrowUturnLeft className="w-5 h-5" />
+                        </button>
+                        <button
+                            onClick={() => handleCopyRegistrationLink(user)}
+                            className={`p-2 rounded-md transition-all ${copiedUserId === user.id ? 'text-green-500 bg-green-50' : 'text-[var(--text-muted)] hover:text-blue-600 hover:bg-blue-100'}`}
+                            title="Copiar Link de Reintegración"
+                        >
+                            {copiedUserId === user.id ? <IconCheck className="w-5 h-5" /> : <IconCopy className="w-5 h-5" />}
+                        </button>
+                    </div>
                 )}
                 <button 
                     onClick={() => setEditingUser(user)}
@@ -383,12 +499,32 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
         />
       )}
       {deletingUser && (
-        <ConfirmationModal 
+        <DoubleKeyConfirmationModal 
           title="Eliminar Usuario"
-          message={`¿Estás seguro de que quieres eliminar a ${deletingUser.name}? Esta acción es permanente y desasignará todos sus paquetes.`}
+          message={`¿Estás seguro de que quieres eliminar a ${deletingUser.name}? Esta acción es IRREVERSIBLE. El usuario será marcado como ELIMINADO, sus integraciones serán borradas y no podrá volver a ingresar hasta ser reintegrado.`}
           confirmText="Eliminar Usuario"
           onClose={() => setDeletingUser(null)}
-          onConfirm={() => handleDeleteUser(deletingUser.id)}
+          onConfirm={(password) => handleDeleteUser(deletingUser.id, password)}
+          requiredPhrase="BORRAR USUARIO"
+        />
+      )}
+      {deletingIntegration && (
+        <DoubleKeyConfirmationModal 
+          title="Eliminar Integración"
+          message={`¿Estás seguro de que quieres eliminar la integración de ${deletingIntegration.source} para ${deletingIntegration.user.name}? Esta acción es IRREVERSIBLE. Se perderá la conexión con la tienda externa y no se podrán sincronizar más pedidos.`}
+          confirmText="Eliminar Integración"
+          onClose={() => setDeletingIntegration(null)}
+          onConfirm={(password) => handleDeleteIntegration(deletingIntegration.user.id, deletingIntegration.source, password)}
+          requiredPhrase="BORRAR INTEGRACION"
+        />
+      )}
+      {reintegratingUser && (
+        <ConfirmationModal 
+          title="Reintegrar Usuario"
+          message={`¿Estás seguro de que quieres reintegrar a ${reintegratingUser.name}? El usuario volverá a estar activo, pero su historial de envíos empezará de cero.`}
+          confirmText="Reintegrar"
+          onClose={() => setReintegratingUser(null)}
+          onConfirm={() => handleReintegrateUser(reintegratingUser.id)}
         />
       )}
       {viewingHistoryUser && (
