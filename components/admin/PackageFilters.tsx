@@ -30,6 +30,7 @@ interface PackageFiltersProps {
   clients: User[];
   clientFilter: string;
   onClientChange: (clientId: string) => void;
+  onOpenQuickStatus: () => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -59,6 +60,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   clients,
   clientFilter,
   onClientChange,
+  onOpenQuickStatus,
 }) => {
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
@@ -173,6 +175,13 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                 </button>
             )}
              <button
+                onClick={onOpenQuickStatus}
+                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-blue-600 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100"
+            >
+                <IconSearch className="w-5 h-5 mr-2 -ml-1"/>
+                Consultar ID
+            </button>
+            <button
                 onClick={onOpenImportModal}
                 className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md shadow-sm text-[var(--text-primary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)]"
             >

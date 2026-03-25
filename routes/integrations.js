@@ -806,4 +806,114 @@ router.get('/meli/callback', async (req, res) => {
     }
 });
 
+// POST /api/integrations/sync-shipment/:id
+// This route attempts to find and import a single shipment from ML by its ID
+router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
+    const shipmentId = req.params.id;
+    
+    try {
+        // 1. Check if it already exists locally
+        const { rows: existingRows } = await db.query(
+            'SELECT * FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $1 OR "notes" LIKE $2',
+            [shipmentId, `%ML ID: ${shipmentId}%`]
+        );
+        
+        if (existingRows.length > 0) {
+            return res.json(existingRows[0]);
+        }
+
+        // 2. If not found locally, try to find it in ML
+        // We need to try with clients that have ML integration
+        const { rows: clients } = await db.query(
+            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE role = 'CLIENT' AND integrations->'meli' IS NOT NULL"
+        );
+
+        if (clients.length === 0) {
+            return res.status(404).json({ message: 'No hay clientes con integración de Mercado Libre configurada.' });
+        }
+
+        let foundShipment = null;
+        let clientUsed = null;
+
+        // Try each client until we find the shipment
+        for (const client of clients) {
+            try {
+                const meliIntegration = await getValidMeliIntegration(client.id);
+                const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
+                
+                if (shipment && shipment.id) {
+                    foundShipment = shipment;
+                    clientUsed = client;
+                    break;
+                }
+            } catch (err) {
+                // Skip if not found for this client
+                continue;
+            }
+        }
+
+        if (!foundShipment) {
+            return res.status(404).json({ message: 'No se encontró el envío en Mercado Libre con ninguna de las cuentas conectadas.' });
+        }
+
+        // 3. Import the shipment if it's Flex
+        if (foundShipment.logistic_type !== 'self_service') {
+            return res.json({
+                id: `ML-${foundShipment.id}`,
+                recipientName: foundShipment.receiver_address?.receiver_name || 'N/A',
+                status: foundShipment.status.toUpperCase(),
+                recipientAddress: foundShipment.receiver_address?.address_line || 'N/A',
+                updatedAt: new Date().toISOString(),
+                notes: `ML ID: ${foundShipment.id} (No es FLEX)`
+            });
+        }
+
+        // It is FLEX, let's import it
+        const now = new Date();
+        const newPackage = {
+            id: `${clientUsed.clientIdentifier}-${uuidv4().split('-')[0]}`,
+            recipientName: foundShipment.receiver_address?.receiver_name || 'N/A',
+            recipientPhone: foundShipment.receiver_address?.receiver_phone || 'N/A',
+            status: 'PENDIENTE',
+            shippingType: 'SAME_DAY',
+            origin: 'Centro de Distribución',
+            recipientAddress: foundShipment.receiver_address?.address_line || 'N/A',
+            recipientCommune: foundShipment.receiver_address?.city?.name || 'N/A',
+            recipientCity: foundShipment.receiver_address?.state?.name || 'Santiago',
+            notes: `ML ID: ${foundShipment.id}`,
+            estimatedDelivery: now,
+            createdAt: now,
+            updatedAt: now,
+            creatorId: clientUsed.id,
+            meliOrderId: foundShipment.order_id?.toString(),
+            meliFlexCode: foundShipment.id?.toString(),
+            isFlex: true
+        };
+
+        const query = `
+            INSERT INTO packages (
+                id, "recipientName", "recipientPhone", status, "shippingType", origin, 
+                "recipientAddress", "recipientCommune", "recipientCity", notes, 
+                "estimatedDelivery", "createdAt", "updatedAt", "creatorId", 
+                "meliOrderId", "meliFlexCode", "isFlex"
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+            RETURNING *
+        `;
+        const values = [
+            newPackage.id, newPackage.recipientName, newPackage.recipientPhone, newPackage.status,
+            newPackage.shippingType, newPackage.origin, newPackage.recipientAddress,
+            newPackage.recipientCommune, newPackage.recipientCity, newPackage.notes,
+            newPackage.estimatedDelivery, newPackage.createdAt, newPackage.updatedAt,
+            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, newPackage.isFlex
+        ];
+
+        const { rows: insertedRows } = await db.query(query, values);
+        res.json(insertedRows[0]);
+
+    } catch (err) {
+        console.error("Sync Shipment Error:", err);
+        res.status(500).json({ message: 'Error interno al sincronizar el envío.' });
+    }
+});
+
 module.exports = router;

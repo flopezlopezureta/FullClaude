@@ -17,6 +17,7 @@ import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
 import ExportFormatModal from './modals/ExportFormatModal';
+import QuickStatusModal from './modals/QuickStatusModal';
 import { exportToExcel, exportToCSV } from '../services/exportService';
 
 // Fix: declare Chart.js if needed
@@ -58,6 +59,7 @@ const Dashboard: React.FC = () => {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
+  const [isQuickStatusModalOpen, setIsQuickStatusModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
@@ -509,6 +511,7 @@ const Dashboard: React.FC = () => {
             clients={clients}
             clientFilter={clientFilter}
             onClientChange={setClientFilter}
+            onOpenQuickStatus={() => setIsQuickStatusModalOpen(true)}
         />
       </div>
 
@@ -771,6 +774,15 @@ const Dashboard: React.FC = () => {
             onClose={() => setIsExportModalOpen(false)}
             onSelect={handleExportData}
             isExporting={isExporting}
+        />
+      )}
+      {isQuickStatusModalOpen && (
+        <QuickStatusModal
+            onClose={() => setIsQuickStatusModalOpen(false)}
+            onViewDetails={(pkg) => {
+                setSelectedPackage(pkg);
+                setIsQuickStatusModalOpen(false);
+            }}
         />
       )}
       {printingPackages.length > 0 && auth?.user && (

@@ -658,3 +658,20 @@ export const IconInfo: React.FC<IconProps> = ({ className, title }) => (
         <line x1="12" y1="8" x2="12.01" y2="8"></line>
     </svg>
 );
+
+export const IconCornerUpLeft: React.FC<IconProps> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <polyline points="9 14 4 9 9 4"></polyline>
+        <path d="M20 20v-7a4 4 0 0 0-4-4H4"></path>
+    </svg>
+);
+
+export const IconXCircle: React.FC<IconProps> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="15" y1="9" x2="9" y2="15"></line>
+        <line x1="9" y1="9" x2="15" y2="15"></line>
+    </svg>
+);
