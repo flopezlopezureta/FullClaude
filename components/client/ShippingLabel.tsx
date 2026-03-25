@@ -6,9 +6,10 @@ import { AuthContext } from '../../contexts/AuthContext';
 interface ShippingLabelProps {
   pkg: Package;
   creatorName: string;
+  format?: 'standard' | 'thermal_4x6';
 }
 
-const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
+const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format = 'standard' }) => {
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [trackingQrUrl, setTrackingQrUrl] = useState('');
     const { systemSettings } = useContext(AuthContext)!;
@@ -41,7 +42,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
                     const qrUrl = await QRCode.toDataURL(qrContent, {
                         errorCorrectionLevel: 'M',
                         type: 'image/png',
-                        width: 600,
+                        width: format === 'thermal_4x6' ? 800 : 600,
                         margin: 2,
                         color: { dark: '#000000', light: '#ffffff' }
                     });
@@ -56,7 +57,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
                 const tQrUrl = await QRCode.toDataURL(trackingUrl, {
                     errorCorrectionLevel: 'M',
                     type: 'image/png',
-                    width: 400,
+                    width: format === 'thermal_4x6' ? 600 : 400,
                     margin: 2,
                     color: { dark: '#000000', light: '#ffffff' }
                 });
@@ -66,7 +67,74 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName }) => {
             }
         };
         generateQRs();
-    }, [qrContent, trackingUrl, isMeli, hasCapturedFlex, pkg.meliOrderId]);
+    }, [qrContent, trackingUrl, isMeli, hasCapturedFlex, pkg.meliOrderId, format]);
+
+    if (format === 'thermal_4x6') {
+        return (
+            <div className="bg-white p-8 font-sans text-black relative overflow-hidden w-[100mm] h-[150mm] mx-auto border-2 border-black flex flex-col">
+                {/* Header */}
+                <div className="border-b-4 border-black pb-4 mb-4 flex justify-between items-start">
+                    <div>
+                        <h2 className="font-black text-2xl leading-tight">{systemSettings.companyName.toUpperCase()}</h2>
+                        <p className="text-sm mt-1">Remitente: <span className="font-bold">{creatorName}</span></p>
+                    </div>
+                    <div className="text-right">
+                        <p className="text-sm font-bold">{new Date().toLocaleDateString('es-CL')}</p>
+                        <p className="text-xs font-mono mt-1">{isMeli ? 'MERCADO LIBRE' : 'INTERNO'}</p>
+                    </div>
+                </div>
+
+                {/* Destination */}
+                <div className="flex-1 flex flex-col">
+                    <div className="bg-black text-white p-4 mb-4 text-center rounded-sm">
+                        <p className="text-xs font-bold uppercase tracking-widest mb-1">Comuna de Destino</p>
+                        <p className="text-4xl font-black tracking-tighter uppercase">{pkg.recipientCommune}</p>
+                    </div>
+
+                    <div className="border-2 border-black p-4 rounded-sm flex-1">
+                        <p className="text-xs font-black uppercase text-gray-500 mb-2">Destinatario:</p>
+                        <p className="font-black text-2xl leading-none mb-2">{pkg.recipientName}</p>
+                        <p className="text-lg font-bold mb-3">Tel: {pkg.recipientPhone}</p>
+                        <div className="space-y-1">
+                            <p className="text-xl font-bold leading-tight">{pkg.recipientAddress}</p>
+                            <p className="text-lg font-medium">{pkg.recipientCommune}, {pkg.recipientCity}</p>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Notes */}
+                {pkg.notes && (
+                    <div className="mt-4 border-t-2 border-black pt-2">
+                        <p className="text-xs font-black uppercase text-gray-500">Notas / Instrucciones:</p>
+                        <p className="text-sm font-bold italic leading-tight">{pkg.notes}</p>
+                    </div>
+                )}
+
+                {/* Footer / QRs */}
+                <div className="mt-auto pt-6 border-t-4 border-black flex items-end justify-between">
+                    <div className="flex flex-col items-center">
+                        {qrCodeUrl ? <img src={qrCodeUrl} alt="QR Code" className="w-32 h-32" /> : <div className="w-32 h-32 bg-slate-200" />}
+                        <p className="text-[10px] font-black mt-1 uppercase">Uso Conductor</p>
+                    </div>
+                    
+                    <div className="flex flex-col items-center flex-1 px-4">
+                        <p className="font-mono font-black text-2xl mb-2">
+                            {isMeli ? (pkg.meliFlexCode?.match(/\d+/)?.[0] || pkg.meliOrderId || pkg.id) : pkg.id}
+                        </p>
+                        <div className="w-full h-4 bg-black mb-2"></div>
+                        <p className="text-[10px] font-bold text-center">
+                            {hasCapturedFlex ? 'ETIQUETA REIMPRESA' : (isMeli ? 'SOLO CONDUCTOR' : 'USO INTERNO')}
+                        </p>
+                    </div>
+
+                    <div className="flex flex-col items-center">
+                        {trackingQrUrl ? <img src={trackingQrUrl} alt="Tracking QR" className="w-24 h-24" /> : <div className="w-24 h-24 bg-slate-200" />}
+                        <p className="text-[10px] font-black mt-1 uppercase text-blue-700">Tracking</p>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     // --- DISEÑO ESTÁNDAR (Para todos los envíos) ---
     return (

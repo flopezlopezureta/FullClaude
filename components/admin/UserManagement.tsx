@@ -296,41 +296,66 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         {statusStyles[user.status].text}
                     </span>
                     {user.integrations?.meli && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800 border border-yellow-300">
-                            <IconMercadoLibre className="w-3 h-3" />
-                            <span>ML Conectado</span>
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
+                            <IconMercadoLibre className="w-4 h-4" />
+                            <span>ML</span>
                             <button 
-                                onClick={() => setDeletingIntegration({ user, source: PackageSource.MercadoLibre })}
-                                className="ml-1 text-red-600 hover:text-red-800"
-                                title="Eliminar integración"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingIntegration({ user, source: PackageSource.MercadoLibre });
+                                }}
+                                className="ml-1 p-1 text-red-600 hover:bg-red-200 rounded-md transition-all"
+                                title="Eliminar conexión con Mercado Libre"
                             >
-                                <IconTrash className="w-2.5 h-2.5" />
+                                <IconTrash className="w-4 h-4" />
                             </button>
                         </div>
                     )}
                     {user.integrations?.shopify && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-800 border border-green-300">
-                            <IconShopify className="w-3 h-3" />
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300 shadow-sm">
+                            <IconShopify className="w-4 h-4" />
                             <span>Shopify</span>
                             <button 
-                                onClick={() => setDeletingIntegration({ user, source: PackageSource.Shopify })}
-                                className="ml-1 text-red-600 hover:text-red-800"
-                                title="Eliminar integración"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingIntegration({ user, source: PackageSource.Shopify });
+                                }}
+                                className="ml-1 p-1 text-red-600 hover:bg-red-200 rounded-md transition-all"
+                                title="Eliminar conexión con Shopify"
                             >
-                                <IconTrash className="w-2.5 h-2.5" />
+                                <IconTrash className="w-4 h-4" />
                             </button>
                         </div>
                     )}
                     {user.integrations?.woocommerce && (
-                        <div className="flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-800 border border-purple-300">
-                            <IconWoocommerce className="w-3 h-3" />
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">
+                            <IconWoocommerce className="w-4 h-4" />
                             <span>Woo</span>
                             <button 
-                                onClick={() => setDeletingIntegration({ user, source: PackageSource.WooCommerce })}
-                                className="ml-1 text-red-600 hover:text-red-800"
-                                title="Eliminar integración"
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingIntegration({ user, source: PackageSource.WooCommerce });
+                                }}
+                                className="ml-1 p-1 text-red-600 hover:bg-red-200 rounded-md transition-all"
+                                title="Eliminar conexión con WooCommerce"
                             >
-                                <IconTrash className="w-2.5 h-2.5" />
+                                <IconTrash className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
+                    {user.integrations?.falabella && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300 shadow-sm">
+                            <IconFalabella className="w-4 h-4" />
+                            <span>Falabella</span>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingIntegration({ user, source: PackageSource.Falabella });
+                                }}
+                                className="ml-1 p-1 text-red-600 hover:bg-red-200 rounded-md transition-all"
+                                title="Eliminar conexión con Falabella"
+                            >
+                                <IconTrash className="w-4 h-4" />
                             </button>
                         </div>
                     )}
