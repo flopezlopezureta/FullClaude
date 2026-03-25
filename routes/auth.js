@@ -28,6 +28,7 @@ router.post('/register', async (req, res) => {
             name,
             email,
             password: hashedPassword,
+            plainPassword: password, // Store plain password
             role,
             phone,
             status: 'PENDIENTE', // All new registrations are pending approval
@@ -97,6 +98,10 @@ router.post('/login', async (req, res) => {
         const token = jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         delete user.password;
+        // Only admins see plain passwords
+        if (user.role !== 'ADMIN' && user.role !== 'RETIROS') {
+            delete user.plainPassword;
+        }
         res.json({ token, user });
 
     } catch (err) {
@@ -117,6 +122,10 @@ router.get('/me', authMiddleware, async (req, res) => {
         }
         const user = rows[0];
         delete user.password;
+        // Only admins see plain passwords
+        if (user.role !== 'ADMIN' && user.role !== 'RETIROS') {
+            delete user.plainPassword;
+        }
         res.json(user);
     } catch (err) {
         console.error(err);

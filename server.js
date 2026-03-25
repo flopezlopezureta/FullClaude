@@ -141,7 +141,8 @@ async function initializeDatabase() {
                 latitude REAL,
                 longitude REAL,
                 "lastLocationUpdate" TIMESTAMPTZ,
-                integrations JSONB
+                integrations JSONB,
+                "plainPassword" TEXT
             );
         `);
         console.log('Table "users" is ready.');

@@ -137,6 +137,7 @@ export interface User {
   email: string;
   phone?: string;
   password: string; // En una app real, esto sería un hash
+  plainPassword?: string;
   role: Role;
   status: UserStatus;
   assignedDriverId?: string | null;

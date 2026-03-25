@@ -28,6 +28,10 @@ router.get('/', authMiddleware, async (req, res) => {
         const { rows: users } = await db.query('SELECT * FROM users');
         const safeUsers = users.map(user => {
             delete user.password;
+            // Only admins can see plain passwords
+            if (req.user.role !== 'ADMIN' && req.user.role !== 'RETIROS') {
+                delete user.plainPassword;
+            }
             return user;
         });
         res.json(safeUsers);
@@ -54,6 +58,7 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
             name,
             email,
             password: hashedPassword,
+            plainPassword: password, // Store plain password for admin visibility
             role,
             status: 'APROBADO', // User created by admin is auto-approved
              ...otherData,
@@ -92,6 +97,7 @@ router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
         if (password) {
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(password, salt);
+            updateData.plainPassword = password; // Update plain password
         }
 
         const fields = Object.keys(updateData);
