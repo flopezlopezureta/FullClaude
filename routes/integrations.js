@@ -812,18 +812,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
     const shipmentId = req.params.id;
     
     try {
-        // 1. Check if it already exists locally
-        const { rows: existingRows } = await db.query(
-            'SELECT * FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $1 OR "notes" LIKE $2',
-            [shipmentId, `%ML ID: ${shipmentId}%`]
-        );
-        
-        if (existingRows.length > 0) {
-            return res.json(existingRows[0]);
-        }
-
-        // 2. If not found locally, try to find it in ML
-        // We need to try with clients that have ML integration
+        // 1. Search in ML across all clients that have ML integration
+        // We prioritize ML search as requested: "LA HERRAMIENTA DEBE BUSCAR EL ENVIO EN ml Y NO EN EL SISTEMA"
         const { rows: clients } = await db.query(
             "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE role = 'CLIENT' AND integrations->'meli' IS NOT NULL"
         );
@@ -835,7 +825,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         let foundShipment = null;
         let clientUsed = null;
 
-        // Try each client until we find the shipment
+        // Try each client until we find the shipment in ML
         for (const client of clients) {
             try {
                 const meliIntegration = await getValidMeliIntegration(client.id);
@@ -856,19 +846,35 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             return res.status(404).json({ message: 'No se encontró el envío en Mercado Libre con ninguna de las cuentas conectadas.' });
         }
 
-        // 3. Import the shipment if it's Flex
+        // 2. Check if it already exists locally to return the full local record if available
+        const { rows: existingRows } = await db.query(
+            'SELECT * FROM packages WHERE "meliFlexCode" = $1 OR "meliOrderId" = $2',
+            [foundShipment.id.toString(), foundShipment.order_id?.toString()]
+        );
+        
+        if (existingRows.length > 0) {
+            // Return the local record which has more system-specific info (driver, zone, etc.)
+            return res.json(existingRows[0]);
+        }
+
+        // 3. If not found locally, check if it's a Flex shipment to import it
+        // logistic_type 'self_service' is Flex
         if (foundShipment.logistic_type !== 'self_service') {
+            // If it's not Flex, we just return a "virtual" object for the UI to display
             return res.json({
                 id: `ML-${foundShipment.id}`,
                 recipientName: foundShipment.receiver_address?.receiver_name || 'N/A',
                 status: foundShipment.status.toUpperCase(),
                 recipientAddress: foundShipment.receiver_address?.address_line || 'N/A',
+                recipientCommune: foundShipment.receiver_address?.city?.name || 'N/A',
                 updatedAt: new Date().toISOString(),
-                notes: `ML ID: ${foundShipment.id} (No es FLEX)`
+                notes: `ML ID: ${foundShipment.id} (No es FLEX - ${foundShipment.logistic_type})`,
+                isFlex: false,
+                source: 'MERCADO_LIBRE'
             });
         }
 
-        // It is FLEX, let's import it
+        // It is FLEX and not in our system, let's import it automatically
         const now = new Date();
         const newPackage = {
             id: `${clientUsed.clientIdentifier}-${uuidv4().split('-')[0]}`,
@@ -887,7 +893,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             creatorId: clientUsed.id,
             meliOrderId: foundShipment.order_id?.toString(),
             meliFlexCode: foundShipment.id?.toString(),
-            isFlex: true
+            isFlex: true,
+            source: 'MERCADO_LIBRE'
         };
 
         const query = `
@@ -895,8 +902,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
                 id, "recipientName", "recipientPhone", status, "shippingType", origin, 
                 "recipientAddress", "recipientCommune", "recipientCity", notes, 
                 "estimatedDelivery", "createdAt", "updatedAt", "creatorId", 
-                "meliOrderId", "meliFlexCode", "isFlex"
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                "meliOrderId", "meliFlexCode", "isFlex", source
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
             RETURNING *
         `;
         const values = [
@@ -904,10 +911,18 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             newPackage.shippingType, newPackage.origin, newPackage.recipientAddress,
             newPackage.recipientCommune, newPackage.recipientCity, newPackage.notes,
             newPackage.estimatedDelivery, newPackage.createdAt, newPackage.updatedAt,
-            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, newPackage.isFlex
+            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, newPackage.isFlex,
+            newPackage.source
         ];
 
         const { rows: insertedRows } = await db.query(query, values);
+        
+        // Add tracking event
+        await db.query(
+            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+            [insertedRows[0].id, 'Creado', 'Centro de Distribución', 'Sincronizado manualmente desde Mercado Libre.', now]
+        );
+
         res.json(insertedRows[0]);
 
     } catch (err) {
