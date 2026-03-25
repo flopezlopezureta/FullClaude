@@ -292,16 +292,16 @@ async function autoImportMeliPackages() {
             const meliIntegration = user.integrations.meli;
 
             // 2. Fetch paid orders with shipping mode 'self_service' (Flex)
-            // We search for orders with status 'paid'
+            // We search for orders with status 'paid' or 'partially_paid'
             // Added sort=date_desc and limit=50 to get the most recent orders first
-            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&shipping.mode=self_service&sort=date_desc&limit=50`, accessToken);
+            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid,partially_paid&shipping.mode=self_service&sort=date_desc&limit=50`, accessToken);
             
             if (!ordersData.results || ordersData.results.length === 0) {
-                console.log(`[MeliPolling] No new paid Flex orders for client ${clientId}`);
+                console.log(`[MeliPolling] No new paid/partially_paid Flex orders for client ${clientId} (ML User ID: ${meliIntegration.userId})`);
                 continue;
             }
 
-            console.log(`[MeliPolling] Found ${ordersData.results.length} paid Flex orders for client ${clientId}`);
+            console.log(`[MeliPolling] Found ${ordersData.results.length} paid/partially_paid Flex orders for client ${clientId}`);
 
             for (const order of ordersData.results) {
                 try {
@@ -325,20 +325,18 @@ async function autoImportMeliPackages() {
                     const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
                     
                     // 5. Region Check (Optional/Permissive)
-                    const stateName = shipment.receiver_address?.state?.name || '';
+                    let stateName = shipment.receiver_address?.state?.name || 'Santiago';
                     const lowerState = stateName.toLowerCase();
                     
-                    // We keep a log but we'll be more permissive. 
-                    // If it's Flex, it's almost certainly for the local delivery area.
+                    // Normalize Region/City name for RM
                     const isRM = lowerState.includes('metropolitana') || 
                                  lowerState.includes('santiago') || 
-                                 lowerState.includes('region metropolitana') ||
-                                 lowerState.includes('región metropolitana') ||
-                                 lowerState === 'rm';
+                                 lowerState === 'rm' ||
+                                 lowerState.includes('r.m.');
                     
-                    // If not RM, we still import it but log it. 
-                    // The user complained about missing packages, so it's better to import than to skip.
-                    if (!isRM) {
+                    if (isRM) {
+                        stateName = 'Región Metropolitana';
+                    } else {
                         console.log(`[MeliPolling] Order ${orderId} is in state: ${stateName}. Still importing as it is a Flex order.`);
                     }
 
@@ -353,7 +351,7 @@ async function autoImportMeliPackages() {
                         origin: 'Centro de Distribución',
                         recipientAddress: shipment.receiver_address?.address_line || 'N/A',
                         recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                        recipientCity: stateName || 'Santiago',
+                        recipientCity: stateName,
                         notes: `Auto-Import ML Order: ${orderId}`,
                         estimatedDelivery: now,
                         createdAt: now,

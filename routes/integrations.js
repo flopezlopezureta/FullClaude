@@ -314,16 +314,31 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
 
                 // 2. Get Shipment Details
                 const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
+                console.log(`[MeliImport] Shipment details for ${shipmentId}:`, JSON.stringify(shipment.receiver_address));
 
                 // 3. Check if already imported
-                const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1', [orderId]);
+                const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId.toString(), shipmentId.toString()]);
                 if (existing.length > 0) {
+                    console.log(`[MeliImport] Order ${orderId} already imported (ID: ${existing[0].id}), skipping.`);
                     results.push({ orderId, status: 'skipped', message: 'Already imported.' });
                     continue;
                 }
 
                 // 4. Create local package
                 const now = new Date();
+                
+                // Normalize Region/City name for RM
+                let stateName = shipment.receiver_address?.state?.name || 'Santiago';
+                const lowerState = stateName.toLowerCase();
+                if (
+                    lowerState.includes('metropolitana') || 
+                    lowerState.includes('santiago') || 
+                    lowerState === 'rm' ||
+                    lowerState.includes('r.m.')
+                ) {
+                    stateName = 'Región Metropolitana';
+                }
+
                 const newPackage = {
                     id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
                     recipientName: shipment.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
@@ -333,7 +348,7 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                     origin: 'Centro de Distribución',
                     recipientAddress: shipment.receiver_address?.address_line || 'N/A',
                     recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                    recipientCity: shipment.receiver_address?.state?.name || 'Santiago',
+                    recipientCity: stateName,
                     notes: `ML Order: ${orderId}`,
                     estimatedDelivery: now,
                     createdAt: now,
