@@ -369,6 +369,12 @@ async function initializeDatabase() {
         } catch (err) {
             console.error('Error during notifications migration (userId nullable):', err);
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "flexDiscrepancyReportEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (flexDiscrepancyReportEnabled):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
