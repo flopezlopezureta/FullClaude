@@ -1,9 +1,9 @@
 {
   "name": "full-envios-app",
-  "version": "2.2.8",
-  "versionComment": "Versión 2.2.8: Fixed Mercado Libre Flex QR Code generated data format",
+  "version": "2.2.9",
+  "versionComment": "Versión 2.2.9: Automated Label Photo Capture & ML Flex SCA00- format",
   "private": true,
-  "description": "Fixed Mercado Libre Flex QR Code generated data format to use exact shipment ID rather than a URL so the physical ML Flex App recognizes it properly.",
+  "description": "Implemented automated label photo capture, raw scan code display and SCA00- tracking ID format for ML Flex compatibility.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
