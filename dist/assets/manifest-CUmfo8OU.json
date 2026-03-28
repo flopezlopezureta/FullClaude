@@ -1,8 +1,0 @@
-{
-  "short_name": "Envíos",
-  "name": "Sistema de Envíos",
-  "start_url": ".",
-  "display": "standalone",
-  "theme_color": "#ffffff",
-  "background_color": "#f8fafc"
-}
