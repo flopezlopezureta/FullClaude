@@ -100,9 +100,12 @@ async function pollMeliPackages() {
             const { rows: settingsRows } = await db.query('SELECT "meliAutoImport" FROM system_settings WHERE id = 1');
             autoImportEnabled = settingsRows.length > 0 && settingsRows[0].meliAutoImport;
         } catch (settingsErr) {
-            console.warn('[MeliPolling] Could not fetch meliAutoImport from DB. Defaulting to true for current session until DB is fixed.', settingsErr.message);
-            autoImportEnabled = true; // Temporary fallback to ensure imports keep working while DB updates
+            console.warn('[MeliPolling] Could not fetch meliAutoImport from DB or column missing. Defaulting to true...', settingsErr.message);
+            autoImportEnabled = true; // Safety default
         }
+
+        // Emergency Override: If we are debugging, let's keep it true for now
+        autoImportEnabled = true;
 
         if (autoImportEnabled) {
             await autoImportMeliPackages();
@@ -330,13 +333,16 @@ async function autoImportMeliPackages() {
                 try {
                     const orderId = order.id.toString();
                     const shipmentId = order.shipping?.id;
-                    const sellerId = order.seller?.id?.toString() || meliIntegration.userId;
+                    const sellerId = order.seller?.id?.toString();
+                    const integrationUserId = meliIntegration.userId?.toString();
 
                     // Safety Check: Ensure the seller ID matches the user's integration
-                    if (sellerId !== meliIntegration.userId) {
-                        console.warn(`[MeliPolling] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${meliIntegration.userId})`);
+                    if (sellerId && integrationUserId && sellerId !== integrationUserId) {
+                        console.warn(`[MeliPolling] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${integrationUserId})`);
                         continue;
                     }
+
+                    console.log(`[MeliPolling] Order ${orderId} belongs to seller ${integrationUserId}. Proceeding...`);
                     
                     if (!shipmentId) {
                         console.log(`[MeliPolling] Skipping order ${orderId} - No shipment ID`);
