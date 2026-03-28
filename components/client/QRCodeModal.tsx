@@ -18,8 +18,10 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
     const [error, setError] = useState(false);
     const { systemSettings } = useContext(AuthContext)!;
 
-    const isMeli = !!pkg.meliOrderId;
-    const qrContent = isMeli ? (pkg.meliFlexCode || pkg.meliOrderId) : pkg.id;
+    const isMeli = pkg.source === 'MERCADO_LIBRE';
+    const qrContent = isMeli 
+        ? `SCA00-${pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id}` 
+        : (pkg.trackingId || pkg.id);
 
     const whatsappUrl = useMemo(() => {
         if (!isMeli || !creator?.phone) return '';

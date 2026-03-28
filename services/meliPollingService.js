@@ -173,7 +173,14 @@ async function pollMeliPackages() {
                             console.log(`[MeliPolling] Package ${pkg.id} status update detected: ${newStatus} (ML Status: ${mlStatus})`);
                             
                             const now = new Date();
-                            await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', [newStatus, now, pkg.id]);
+                            // If shipped, it means it was scanned in Flex app, so set isFlexed = true
+                            const isFlexed = mlStatus === 'shipped' || mlStatus === 'delivered';
+                            
+                            await db.query(
+                                'UPDATE packages SET status = $1, "updatedAt" = $2, "isFlexed" = $3, "flexedAt" = CASE WHEN $3 = true AND "flexedAt" IS NULL THEN $2 ELSE "flexedAt" END WHERE id = $4', 
+                                [newStatus, now, isFlexed, pkg.id]
+                            );
+                            
                             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                                 [pkg.id, eventStatus, 'Mercado Libre', eventDetails, now]);
                             
@@ -382,7 +389,8 @@ async function autoImportMeliPackages() {
                         creatorId: clientId,
                         source: 'MERCADO_LIBRE',
                         meliOrderId: orderId,
-                        meliFlexCode: shipmentId.toString()
+                        meliFlexCode: shipmentId.toString(),
+                        trackingId: shipment.tracking_id?.toString()
                     };
 
                     const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

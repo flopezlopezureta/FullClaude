@@ -37,26 +37,44 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
     const [cameraError, setCameraError] = useState<string | null>(null);
     const [scannedCount, setScannedCount] = useState(0);
     const scannedInSession = useRef(new Set<string>());
+    const [lastScannedPhoto, setLastScannedPhoto] = useState<string | null>(null);
+    const [lastScannedRaw, setLastScannedRaw] = useState<string>('');
 
     const currentDriver = allDrivers.find(d => d.id === currentDriverId) || initialDriver;
 
     const handleScan = useCallback(async (rawCode: string) => {
         const cleanRawCode = rawCode.trim();
+        setLastScannedRaw(cleanRawCode);
         
+        // Capture photo from canvas
+        const canvas = canvasRef.current;
+        const photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.8) : undefined;
+        setLastScannedPhoto(photoBase64 || null);
+
         let extractedId: string | null = null;
 
-        // Priority 1: Check for Alphanumeric 'SCA...' format
-        const scaMatch = cleanRawCode.match(/[A-Z]{3}\d{2}-[A-Z0-9]{12}/);
-        if (scaMatch && scaMatch[0]) {
-            extractedId = scaMatch[0];
-        } 
-        // Priority 2: Check for long numeric string (typical tracking ID)
-        else {
-            const numericMatches = cleanRawCode.match(/\d+/g);
-            if (numericMatches) {
-                const longestNumber = numericMatches.sort((a, b) => b.length - a.length)[0];
-                if (longestNumber && longestNumber.length >= 10) {
-                    extractedId = longestNumber;
+        // Try to parse JSON (official ML labels)
+        try {
+            if (cleanRawCode.startsWith('{')) {
+                const parsed = JSON.parse(cleanRawCode);
+                if (parsed.id) extractedId = parsed.id.toString();
+            }
+        } catch (e) {}
+
+        if (!extractedId) {
+            // Priority 1: Check for Alphanumeric 'SCA...' format
+            const scaMatch = cleanRawCode.match(/[A-Z]{3}\d{2}-[A-Z0-9]{12}/);
+            if (scaMatch && scaMatch[0]) {
+                extractedId = scaMatch[0];
+            } 
+            // Priority 2: Check for long numeric string (typical tracking ID)
+            else {
+                const numericMatches = cleanRawCode.match(/\d+/g);
+                if (numericMatches) {
+                    const longestNumber = numericMatches.sort((a, b) => b.length - a.length)[0];
+                    if (longestNumber && longestNumber.length >= 10) {
+                        extractedId = longestNumber;
+                    }
                 }
             }
         }
@@ -70,13 +88,14 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         scannedInSession.current.add(rawCode);
 
         try {
-          await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode);
+          await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode, photoBase64);
           playBeep();
           setScannedCount(prev => prev + 1);
-          setScanResult({ type: 'success', message: `Paquete #${scannedCount + 1} asignado a ${currentDriver.name}` });
+          setScanResult({ type: 'success', message: `Paquete ${codeToUse} asignado a ${currentDriver.name}` });
           setTimeout(() => {
               setScanResult(null);
               setIsScanning(true);
+              setLastScannedPhoto(null);
           }, 1500);
         } catch (error: any) {
           scannedInSession.current.delete(codeToUse);
@@ -160,9 +179,23 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
             </div>
             
             <div className="text-center my-4 p-3 bg-[var(--background-muted)] rounded-lg flex justify-between items-center px-6">
-                <span className="text-lg font-bold text-[var(--text-primary)]">Sesión Actual:</span>
-                <span className="text-3xl font-extrabold text-[var(--brand-primary)]">{scannedCount}</span>
+                <div className="text-left">
+                    <span className="text-sm font-semibold text-[var(--text-secondary)] block">Sesión Actual</span>
+                    <span className="text-3xl font-extrabold text-[var(--brand-primary)] text-center">{scannedCount}</span>
+                </div>
+                {lastScannedPhoto && (
+                    <div className="w-16 h-16 rounded-md overflow-hidden border-2 border-[var(--brand-primary)] animate-pulse">
+                        <img src={lastScannedPhoto} alt="Label scan" className="w-full h-full object-cover" />
+                    </div>
+                )}
             </div>
+
+            {lastScannedRaw && (
+                <div className="mb-4 p-2 bg-[var(--background-muted)] rounded border border-[var(--border-secondary)] overflow-hidden">
+                    <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold mb-1">Código Leído:</p>
+                    <p className="text-xs font-mono text-[var(--text-primary)] break-all truncate">{lastScannedRaw}</p>
+                </div>
+            )}
             
             <div className="h-16 mt-2 flex items-center justify-center">
                 {scanResult ? (

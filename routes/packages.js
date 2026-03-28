@@ -729,7 +729,7 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
 // POST /api/packages/:id/dispatch
 router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) => {
     const { id } = req.params;
-    const { driverId, flexCode } = req.body;
+    const { driverId, flexCode, flexLabelPhotoBase64 } = req.body;
     try {
         // Broad search for package by Internal ID OR External tracking numbers OR trackingId OR meliFlexCode
         const { rows: pkgRows } = await db.query(
@@ -763,12 +763,21 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             details = `Paquete re-asignado de ${oldDriverName} a ${driverName}.`;
         }
 
+        // If flexCode provided, add it to notes as requested
+        let notesUpdate = '';
+        if (flexCode) {
+            notesUpdate = `\n[Cod. Escaneado: ${flexCode}]`;
+        }
+
+        const isFlexed = currentPkg.source === 'MERCADO_LIBRE';
+        const now = new Date();
+
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4 WHERE id = $5 RETURNING *',
-            [driverId, 'EN_TRANSITO', new Date(), flexCodeToSave, realId]
+            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7 WHERE id = $8 RETURNING *',
+            [driverId, 'EN_TRANSITO', now, flexCodeToSave, flexLabelPhotoBase64, isFlexed, notesUpdate, realId]
         );
 
-        await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details);
+        await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details + (flexCode ? ` (QR: ${flexCode})` : ''));
         
         await logAction(req.user.id, req.user.name, 'DISPATCH_PACKAGE', { packageId: realId, driverId });
 

@@ -273,7 +273,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
 
         <div className="ml-3 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center gap-1">
-                {pkg.meliFlexCode && (
+                {pkg.source === 'MERCADO_LIBRE' && (
                     <button 
                         onClick={() => setShowQRCode(true)}
                         className="p-2 rounded-full bg-green-50 text-green-600 hover:bg-green-100 transition-colors border border-green-200 shadow-sm"
@@ -337,10 +337,10 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
             </div>
         </div>
       </div>
-      {showQRCode && pkg.meliFlexCode && (
+      {showQRCode && (
         <QRCodeModal 
-            value={pkg.meliFlexCode} 
-            displayValue={pkg.meliFlexCode}
+            value={pkg.source === 'MERCADO_LIBRE' ? `SCA00-${pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id}` : (pkg.trackingId || pkg.id)} 
+            displayValue={pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id}
             title={`Paquete: ${pkg.id}`} 
             onClose={() => setShowQRCode(false)} 
         />

@@ -14,16 +14,16 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     const [trackingQrUrl, setTrackingQrUrl] = useState('');
     const { systemSettings } = useContext(AuthContext)!;
 
-    const isMeli = !!pkg.meliOrderId;
+    const isMeli = pkg.source === 'MERCADO_LIBRE';
     const hasCapturedFlex = !!pkg.meliFlexCode;
     
     // Determine QR content for Driver (Flexeo)
     let qrContent = pkg.id;
     if (isMeli) {
-        const code = pkg.meliFlexCode || pkg.meliOrderId;
-        if (code) {
-            qrContent = String(code).trim();
-        }
+        const code = pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id;
+        qrContent = `SCA00-${String(code).trim()}`;
+    } else {
+        qrContent = pkg.trackingId || pkg.id;
     }
 
     // Determine QR content for Customer (Tracking)
@@ -114,7 +114,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     
                     <div className="flex flex-col items-center flex-1 px-4">
                         <p className="font-mono font-black text-2xl mb-2">
-                            {isMeli ? (pkg.meliFlexCode?.match(/\d+/)?.[0] || pkg.meliOrderId || pkg.id) : pkg.id}
+                            {isMeli ? (pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id) : (pkg.trackingId || pkg.id)}
                         </p>
                         <div className="w-full h-4 bg-black mb-2"></div>
                         <p className="text-[10px] font-bold text-center">
@@ -188,7 +188,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         {isMeli ? 'Envío Mercado Libre' : 'ID Interno'}
                     </p>
                     <p className="font-mono font-bold text-lg leading-none">
-                        {isMeli ? (pkg.meliFlexCode?.match(/\d+/)?.[0] || pkg.meliOrderId || pkg.id) : pkg.id}
+                        {isMeli ? (pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id) : (pkg.trackingId || pkg.id)}
                     </p>
                     <div className="mt-2 bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-[10px] font-bold self-end text-center max-w-[160px]">
                         {isMeli && !hasCapturedFlex 
