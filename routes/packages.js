@@ -290,6 +290,7 @@ router.get('/reports/flex-discrepancies', authMiddleware, async (req, res) => {
             JOIN users u ON p."driverId" = u.id
             WHERE p."driverId" IS NOT NULL
               AND DATE(p."estimatedDelivery") = current_date
+              AND (p.source = 'MERCADO_LIBRE' OR p."meliFlexCode" IS NOT NULL OR p."meliOrderId" IS NOT NULL)
             GROUP BY u.id, u.name
             ORDER BY "totalUnflexed" DESC
         `;
@@ -319,6 +320,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
             WHERE p."driverId" = $1
               AND DATE(p."estimatedDelivery") = current_date
               AND (p."isFlexed" = false OR p."isFlexed" IS NULL)
+              AND (p.source = 'MERCADO_LIBRE' OR p."meliFlexCode" IS NOT NULL OR p."meliOrderId" IS NOT NULL)
             ORDER BY p.id ASC
         `;
         const { rows } = await db.query(query, [driverId]);
