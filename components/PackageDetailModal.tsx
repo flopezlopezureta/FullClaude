@@ -276,7 +276,10 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                       <p><span className="font-medium text-[var(--text-primary)]">Comuna:</span> {recipientCommuneForDisplay || 'N/A'}</p>
                       <p><span className="font-medium text-[var(--text-primary)]">Ciudad:</span> {pkg.recipientCity || 'N/A'}</p>
                       {pkg.meliFlexCode && (
-                          <p><span className="font-medium text-[var(--text-primary)]">Código FLEX:</span> {pkg.meliFlexCode}</p>
+                          <p><span className="font-medium text-[var(--text-primary)]">ID Envío ML:</span> {pkg.meliFlexCode}</p>
+                      )}
+                      {pkg.trackingId && (
+                          <p><span className="font-medium text-[var(--text-primary)]">Código Barra (SCA):</span> {pkg.trackingId}</p>
                       )}
                   </div>
               </div>

@@ -388,20 +388,28 @@ async function autoImportMeliPackages() {
                         updatedAt: now,
                         creatorId: clientId,
                         source: 'MERCADO_LIBRE',
-                        meliOrderId: orderId,
+                        meliOrderId: orderId.toString(),
                         meliFlexCode: shipmentId.toString(),
-                        trackingId: shipment.tracking_id?.toString()
+                        trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null
                     };
 
                     const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                    const values = Object.values(newPackage);
+                    const values = Object.values(newPackage).map(v => v === undefined ? null : v);
                     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-                    await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                        [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía integración ML.', now]);
+                    try {
+                        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                            [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía integración ML.', now]);
 
-                    console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId}`);
+                        console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId}`);
+                    } catch (dbErr) {
+                        if (dbErr.code === '23505') { // Duplicate unique key
+                             console.warn(`[MeliPolling] Order ${orderId} seems to be already in DB, skipping...`);
+                        } else {
+                             throw dbErr;
+                        }
+                    }
                 } catch (err) {
                     console.error(`[MeliPolling] Error auto-importing order ${order.id}:`, err.body || err);
                 }

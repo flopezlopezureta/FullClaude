@@ -230,6 +230,15 @@ async function initializeDatabase() {
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
                 try {
+                    // EMERGENCY RENAMES: If column exists in lowercase (due to previous bad migration), rename it to camelCase
+                    const lowerCol = col.toLowerCase();
+                    if (lowerCol !== col) {
+                        try {
+                            await db.query(`ALTER TABLE packages RENAME COLUMN "${lowerCol}" TO "${col}"`);
+                            console.log(`MIGRATION FIXED: Renamed "${lowerCol}" to "${col}" in "packages".`);
+                        } catch (e) { /* ignore if column doesn't exist in lowercase */ }
+                    }
+
                     await db.query(`ALTER TABLE packages ADD COLUMN "${col}" ${spec.split(' ').slice(1).join(' ')}`);
                     console.log(`MIGRATION APPLIED: Column "${col}" added to "packages".`);
                 } catch (err) {

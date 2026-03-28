@@ -247,7 +247,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-        const values = Object.values(newPackage);
+        const values = Object.values(newPackage).map(v => v === undefined ? null : v);
         const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
@@ -407,11 +407,12 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                     creatorId: clientId,
                     source: 'MERCADO_LIBRE',
                     meliOrderId: orderId.toString(),
-                    meliFlexCode: shipmentId.toString()
+                    meliFlexCode: shipmentId.toString(),
+                    trackingId: shipment?.tracking_id ? String(shipment.tracking_id) : null
                 };
 
                 const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                const values = Object.values(newPackage);
+                const values = Object.values(newPackage).map(v => v === undefined ? null : v);
                 const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
                 await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
