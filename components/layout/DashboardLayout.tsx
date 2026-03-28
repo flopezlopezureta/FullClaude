@@ -142,7 +142,7 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'pickup-report' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
     title = 'Reporte de Retiros';
     content = <PickupReportPage />;
-  } else if (activeView === 'flex-discrepancies' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas || isSuperUser) && systemSettings?.flexDiscrepancyReportEnabled) {
+  } else if (activeView === 'flex-discrepancies' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas || isSuperUser)) {
     title = 'Discrepancias de Carga (Bodega)';
     content = <DriverFlexDiscrepancyPage />;
   } else if (activeView === 'zone-settings' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {

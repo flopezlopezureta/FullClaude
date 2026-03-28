@@ -273,7 +273,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
             </button>
         </div>
         <div className="text-center">
-            <p className="text-[10px] text-[var(--text-muted)] font-mono">v2.2.2</p>
+            <p className="text-[10px] text-[var(--text-muted)] font-mono">v{(import.meta as any).env.VITE_APP_VERSION}</p>
         </div>
       </div>
     </aside>
