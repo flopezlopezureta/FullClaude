@@ -141,10 +141,20 @@ async function pollMeliPackages() {
                         let eventDetails = '';
                         let eventStatus = '';
 
+                        // IMPORTANTE: Req. de Usuario -> Solo marcar entregado si estaba en ruta y tiene conductor.
                         if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
-                            newStatus = 'ENTREGADO';
-                            eventStatus = 'Entregado';
-                            eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
+                            if ((pkg.status === 'EN_TRANSITO' || pkg.status === 'EN_RUTA' || pkg.isFlexed) && pkg.driverId) {
+                                newStatus = 'ENTREGADO';
+                                eventStatus = 'Entregado';
+                                eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
+                            } else {
+                                console.log(`[MeliPolling] Blocked false 'delivered' update for ${pkg.id} (status: ${pkg.status}, driver: ${pkg.driverId})`);
+                            }
+                        } else if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
+                            newStatus = 'EN_TRANSITO';
+                            eventStatus = 'En Tránsito';
+                            eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
+                            // Note: NotificationService should ideally be triggered, we will handle that separately.
                         } else if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
                             newStatus = 'CANCELADO';
                             eventStatus = 'Cancelado';
@@ -330,6 +340,12 @@ async function autoImportMeliPackages() {
 
                     // 4. Get Shipment Details to check address
                     const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    
+                    // Prevent importing history (old packages already delivered or cancelled natively)
+                    if (shipment.status === 'delivered' || shipment.status === 'cancelled') {
+                        console.log(`[MeliPolling] Order ${orderId} is already ${shipment.status} in ML, skipping import to prevent history flood.`);
+                        continue;
+                    }
                     
                     // 5. Region Check (Optional/Permissive)
                     let stateName = shipment.receiver_address?.state?.name || 'Santiago';

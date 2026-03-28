@@ -262,7 +262,10 @@ async function initializeDatabase() {
                 "meliFlexValidation" BOOLEAN DEFAULT true,
                 "recipientNotificationsEnabled" BOOLEAN DEFAULT false,
                 "saveFlexLabelPhoto" BOOLEAN DEFAULT false,
-                "meliAutoImport" BOOLEAN DEFAULT false
+                "meliAutoImport" BOOLEAN DEFAULT false,
+                "publicTrackingEnabled" BOOLEAN DEFAULT true,
+                "isRutRequired" BOOLEAN DEFAULT true,
+                "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true
             );
         `);
         
@@ -395,6 +398,11 @@ async function initializeDatabase() {
         console.log('Table "notifications" is ready.');
 
         // --- NEW PICKUP TABLES ---
+        await db.query(`
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+            ON CONFLICT (id) DO NOTHING;
+        `);
         await db.query(`
             CREATE TABLE IF NOT EXISTS assignment_events (
                 id TEXT PRIMARY KEY,

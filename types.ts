@@ -36,6 +36,7 @@ export interface SystemSettings {
     meliAutoImport?: boolean;
     publicTrackingEnabled?: boolean;
     isRutRequired?: boolean;
+    flexDiscrepancyReportEnabled?: boolean;
 }
 
 export interface ZonePricing {

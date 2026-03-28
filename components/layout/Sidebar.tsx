@@ -1,7 +1,7 @@
 
 import React, { useContext, useState } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconCube, IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconFileInvoice, IconPlugConnected, IconDownload, IconMap } from '../Icon';
+import { IconCube, IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle } from '../Icon';
 import { Role } from '../../constants';
 
 interface SidebarProps {
@@ -51,6 +51,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
 
   const adminNavItems = [
     { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
+    { id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" /> },
     { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" /> },
     { id: 'import-orders', label: 'Importar Envíos', icon: <IconDownload className="h-6 w-6" /> },
     { 
@@ -135,6 +136,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     // Non-superuser Admin: Only allowed sections
     const allowedIds = [
       'packages', 
+      'flex-discrepancies',
       'geolocate', 
       'import-orders', 
       'pickups', 

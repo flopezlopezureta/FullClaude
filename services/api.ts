@@ -287,6 +287,11 @@ export const api = {
   savePushSubscription: (subscription: PushSubscription) => post<void>('/notifications/subscribe', subscription),
   deletePushSubscription: (subscription: PushSubscriptionJSON) => post<void>('/notifications/unsubscribe', subscription),
 
+  // Notifications
+  getNotifications: () => get<Notification[]>('/notifications'),
+  markNotificationAsRead: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'PATCH' }),
+  deleteNotification: (id: string) => del<void>(`/notifications/${id}`),
+
   // Zones
   getDeliveryZones: () => get<DeliveryZone[]>('/zones'),
   createDeliveryZone: (data: Omit<DeliveryZone, 'id'>) => post<DeliveryZone>('/zones', data),
@@ -329,8 +334,7 @@ export const api = {
   getAvailableColectas: () => get<any[]>('/pickups/colectas/available'),
   claimColecta: (clientId: string, shift: string) => post<any>('/pickups/colectas/claim', { clientId, shift }),
 
-  // Notifications
-  getNotifications: () => get<Notification[]>('/notifications'),
-  markNotificationAsRead: (id: string) => request<void>(`/notifications/${id}/read`, { method: 'PATCH' }),
-  deleteNotification: (id: string) => del<void>(`/notifications/${id}`),
+  // Reports
+  getFlexDiscrepancies: () => get<any[]>('/packages/reports/flex-discrepancies'),
+  getDriverFlexDiscrepancyDetails: (driverId: string) => get<any[]>(`/packages/reports/flex-discrepancies/${driverId}`),
 };

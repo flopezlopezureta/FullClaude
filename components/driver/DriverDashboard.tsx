@@ -9,7 +9,7 @@ import PackageDetailModal from '../PackageDetailModal';
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 import UndeliveredModal from './UndeliveredModal';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconArchive, IconTruck, IconFileExport, IconRoute } from '../Icon';
+import { IconArchive, IconTruck, IconFileExport, IconRoute, IconAlertTriangle } from '../Icon';
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
 import RouteOptimizerModal from '../modals/RouteOptimizerModal';
 
@@ -123,7 +123,7 @@ const DriverDashboard: React.FC = () => {
     prevPackagesRef.current = myPackages;
   }, [myPackages]);
   
-  const { pendingPackages, dailyHistoryPackages } = useMemo(() => {
+  const { pendingPackages, dailyHistoryPackages, unflexedCount } = useMemo(() => {
     const todayStr = new Date().toDateString();
     
     const pending = myPackages.filter(p => 
@@ -139,7 +139,8 @@ const DriverDashboard: React.FC = () => {
         return new Date(closureEvent.timestamp).toDateString() === todayStr;
     });
 
-    return { pendingPackages: pending, dailyHistoryPackages: history };
+    const unflexed = pending.filter(p => !p.isFlexed).length;
+    return { pendingPackages: pending, dailyHistoryPackages: history, unflexedCount: unflexed };
   }, [myPackages]);
 
   const totalAssignedForDay = myPackages.length;
@@ -258,6 +259,24 @@ const DriverDashboard: React.FC = () => {
 
   return (
     <div>
+      {unflexedCount > 0 && auth?.systemSettings?.flexDiscrepancyReportEnabled && (
+        <div className="mb-6 mx-4 p-4 bg-orange-50 border-2 border-orange-200 rounded-xl shadow-sm animate-pulse-subtle">
+          <div className="flex items-start">
+            <div className="p-2 bg-orange-100 rounded-lg text-orange-600 mr-4">
+              <IconAlertTriangle className="w-6 h-6" />
+            </div>
+            <div className="flex-1">
+              <h3 className="text-lg font-bold text-orange-900">Discrepancias en Carga</h3>
+              <p className="text-orange-800 text-sm mt-1">
+                Tienes <strong>{unflexedCount}</strong> {unflexedCount === 1 ? 'paquete' : 'paquetes'} pendientes de escanear en bodega antes de salir a ruta.
+              </p>
+              <div className="mt-2 text-xs font-medium text-orange-700 uppercase tracking-wider">
+                Debe pasar por control de bodega
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="flex justify-end items-center mb-4 px-4 flex-wrap gap-2">
         <div className="flex items-center gap-2 w-full sm:w-auto">
             {activeTab === 'pending' && (

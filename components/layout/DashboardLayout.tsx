@@ -22,6 +22,7 @@ import PickupReportPage from '../admin/PickupReportPage';
 import LiveMap from '../admin/LiveMap';
 import GeolocatePage from '../admin/GeolocatePage';
 import DriverMobileLayout from '../driver/DriverMobileLayout';
+import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
@@ -98,34 +99,25 @@ const DashboardLayout: React.FC = () => {
     if (activeView === 'assign-pickups') {
       title = 'Gestión de Retiros';
       content = <PickupDashboard />;
-    } else if (activeView === 'pickup-report') {
+    } else {
       title = 'Reporte de Retiros';
       content = <PickupReportPage />;
     }
   } else if (activeView === 'packages') {
     title = 'Gestión de Paquetes';
     content = <Dashboard />;
-  } else if (activeView === 'import-orders') {
-    title = 'Importar Envíos';
+  } else if (activeView === 'import' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+    title = 'Importar Paquetes';
     content = <ImportOrdersPage />;
-  } else if (activeView === 'assign-pickups') {
-    title = 'Gestión de Retiros';
-    content = <PickupDashboard />;
-  } else if (activeView === 'users-clients' && user?.role === Role.Admin) {
+  } else if (activeView === 'users-admins' && user?.role === Role.Admin && isSuperUser) {
+    title = 'Gestión de Administradores y Operadores';
+    content = <UserManagement roleFilter={Role.Admin} />;
+  } else if (activeView === 'users-clients' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
     title = 'Gestión de Clientes';
     content = <UserManagement roleFilter={Role.Client} />;
-  } else if (activeView === 'users-drivers' && user?.role === Role.Admin) {
-    title = 'Gestión de Conductores';
+  } else if (activeView === 'users-drivers' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+    title = 'Gestión de Conductores y Auxiliares';
     content = <UserManagement roleFilter={Role.Driver} />;
-  } else if (activeView === 'users-admins' && user?.role === Role.Admin) {
-    title = 'Gestión de Administradores';
-    content = <UserManagement roleFilter={Role.Admin} />;
-  } else if (activeView === 'users-operadores' && user?.role === Role.Admin) {
-    title = 'Gestión de Operadores de Sistemas';
-    content = <UserManagement roleFilter={Role.OperadorSistemas} />;
-  } else if (activeView === 'users-auxiliares' && user?.role === Role.Admin) {
-    title = 'Gestión de Auxiliares';
-    content = <UserManagement roleFilter={Role.Auxiliar} />;
   } else if (activeView === 'users-retiros' && user?.role === Role.Admin) {
     title = 'Gestión de Personal de Retiros';
     content = <UserManagement roleFilter={Role.Retiros} />;
@@ -150,6 +142,9 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'pickup-report' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
     title = 'Reporte de Retiros';
     content = <PickupReportPage />;
+  } else if (activeView === 'flex-discrepancies' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas || isSuperUser) && systemSettings?.flexDiscrepancyReportEnabled) {
+    title = 'Discrepancias de Carga (Bodega)';
+    content = <DriverFlexDiscrepancyPage />;
   } else if (activeView === 'zone-settings' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
     title = 'Configuración de Zonas';
     content = <ZoneSettingsPage />;
@@ -171,58 +166,77 @@ const DashboardLayout: React.FC = () => {
   } else {
     // Fallback to default view if a view is invalid (e.g. non-admin accessing admin page)
     const defaultView = getDefaultView();
-    if(activeView !== defaultView) {
-        setActiveView(defaultView);
-    }
+    setActiveView(defaultView);
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      {/* Overlay for mobile */}
-      {isSidebarOpen && (
-        <div 
-          className="fixed inset-0 bg-black bg-opacity-50 z-30 lg:hidden" 
-          onClick={() => setIsSidebarOpen(false)}
-          aria-hidden="true"
-        ></div>
-      )}
-
+    <div className="flex h-screen bg-[var(--background-primary)] overflow-hidden font-sans">
       <Sidebar 
         activeView={activeView} 
         onNavigate={handleNavigate} 
         isOpen={isSidebarOpen}
         onClose={() => setIsSidebarOpen(false)}
       />
+      
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Header */}
+        <header className="bg-[var(--background-secondary)] shadow-sm z-30 flex items-center justify-between px-4 h-16 shrink-0 border-b border-[var(--border-primary)]">
+          <div className="flex items-center">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 mr-2 text-[var(--text-secondary)] hover:bg-[var(--background-hover)] rounded-md lg:hidden transition-colors"
+            >
+              <IconMenu className="w-6 h-6" />
+            </button>
+            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight truncate max-w-[200px] sm:max-w-md">
+                {title || (activeView === 'my-creations' ? systemSettings?.companyName : 'Dashboard')}
+            </h1>
+          </div>
 
-      <div className="flex-1 flex flex-col overflow-hidden">
-        {/* Mobile Header */}
-        <header className="lg:hidden bg-[var(--background-secondary)] shadow-sm flex items-center justify-between h-16 px-4 sm:px-6 flex-shrink-0 z-10">
-           <button 
-                onClick={() => setIsSidebarOpen(true)} 
-                className="p-2 -ml-2 text-[var(--text-muted)] hover:bg-[var(--background-hover)] rounded-md"
-                aria-label="Abrir menú"
-           >
-                <IconMenu className="h-6 w-6" />
-           </button>
-           <div className="flex items-center space-x-2">
-                <IconCube className="h-7 w-7 text-[var(--brand-primary)]" />
-                <span className="font-bold text-lg text-[var(--text-primary)] truncate">{systemSettings.companyName}</span>
-           </div>
-           <div className="w-8"></div> {/* Spacer to balance the header */}
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:flex flex-col items-end">
+               <span className="text-sm font-semibold text-[var(--text-primary)]">{user?.name}</span>
+               <span className="text-xs text-[var(--text-muted)] uppercase tracking-wider">{user?.role}</span>
+            </div>
+            <div className="w-10 h-10 rounded-full bg-[var(--brand-primary)] text-white flex items-center justify-center font-bold shadow-sm border-2 border-white dark:border-gray-800">
+              {user?.name?.[0]?.toUpperCase()}
+            </div>
+          </div>
         </header>
 
-        <main className="flex-1 overflow-x-hidden overflow-y-auto bg-[var(--background-primary)] p-4 sm:p-6 lg:p-8 custom-scrollbar relative">
-           {notification && (
-                <div className={`fixed top-20 right-8 z-50 flex items-center p-4 rounded-lg shadow-lg text-white ${notification.type === 'success' ? 'bg-green-600' : 'bg-red-600'}`}>
-                    <IconCheckCircle className="w-6 h-6 mr-3" />
-                    <span className="font-medium">{notification.message}</span>
-                     <button onClick={() => setNotification(null)} className="ml-4 p-1 rounded-full hover:bg-black/20"><IconX className="w-5 h-5"/></button>
+        {/* Floating Notifications */}
+        {notification && (
+            <div className="fixed top-20 right-4 z-50 animate-in slide-in-from-right duration-300">
+                <div className={`flex items-center p-4 rounded-lg shadow-lg border ${
+                    notification.type === 'success' 
+                    ? 'bg-emerald-50 border-emerald-200 text-emerald-800 dark:bg-emerald-900/30 dark:border-emerald-800 dark:text-emerald-400' 
+                    : 'bg-rose-50 border-rose-200 text-rose-800 dark:bg-rose-900/30 dark:border-rose-800 dark:text-rose-400'
+                }`}>
+                    {notification.type === 'success' ? (
+                        <IconCheckCircle className="w-5 h-5 mr-3 shrink-0" />
+                    ) : (
+                        <IconX className="w-5 h-5 mr-3 shrink-0" />
+                    )}
+                    <span className="font-medium text-sm">{notification.message}</span>
                 </div>
-           )}
-          {title && <h1 className="text-2xl font-bold text-[var(--text-primary)] mb-4">{title}</h1>}
-          {content}
+            </div>
+        )}
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[var(--background-primary)]">
+          <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
+            {content}
+          </div>
         </main>
       </div>
+      
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 lg:hidden transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
     </div>
   );
 };

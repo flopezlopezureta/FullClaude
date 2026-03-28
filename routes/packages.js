@@ -273,7 +273,61 @@ async function addTrackingEvent(packageId, status, location, details) {
     );
 }
 
-// POST /api/packages
+// GET /api/packages/reports/flex-discrepancies
+router.get('/reports/flex-discrepancies', authMiddleware, async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Solo los administradores pueden ver este reporte.' });
+    }
+    try {
+        const query = `
+            SELECT 
+                u.id as "driverId",
+                u.name as "driverName",
+                COUNT(p.id) as "totalAssigned",
+                COUNT(p.id) FILTER (WHERE p."isFlexed" = true) as "totalFlexed",
+                COUNT(p.id) FILTER (WHERE (p."isFlexed" = false OR p."isFlexed" IS NULL)) as "totalUnflexed"
+            FROM packages p
+            JOIN users u ON p."driverId" = u.id
+            WHERE p."driverId" IS NOT NULL
+              AND DATE(p."estimatedDelivery") = current_date
+            GROUP BY u.id, u.name
+            ORDER BY "totalUnflexed" DESC
+        `;
+        const { rows } = await db.query(query);
+        res.json(rows);
+    } catch (err) {
+        console.error('Error in /api/packages/reports/flex-discrepancies:', err);
+        res.status(500).json({ message: 'Error al generar el reporte de discrepancias.' });
+    }
+});
+
+// GET /api/packages/reports/flex-discrepancies/:driverId
+router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, res) => {
+    try {
+        const { driverId } = req.params;
+        const query = `
+            SELECT 
+                p.id,
+                p."recipientName",
+                p."recipientAddress",
+                p."recipientCommune",
+                p.status,
+                p."isFlexed",
+                p."meliOrderId",
+                p."trackingId"
+            FROM packages p
+            WHERE p."driverId" = $1
+              AND DATE(p."estimatedDelivery") = current_date
+              AND (p."isFlexed" = false OR p."isFlexed" IS NULL)
+            ORDER BY p.id ASC
+        `;
+        const { rows } = await db.query(query, [driverId]);
+        res.json(rows);
+    } catch (err) {
+        console.error('Error in /api/packages/reports/flex-discrepancies/:driverId:', err);
+        res.status(500).json({ message: 'Error al obtener los detalles de las discrepancias.' });
+    }
+});
 router.post('/', authMiddleware, async (req, res) => {
     const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
     
@@ -351,8 +405,8 @@ router.post('/', authMiddleware, async (req, res) => {
 
         newPackage.history = await getHistory(newPackage.id);
         
-        // Notify recipient
-        NotificationService.notifyRecipient(newPackage.id, 'PENDIENTE');
+        // REQ: Do not send message on PENDIENTE, wait for Flex/Dispatch
+        // NotificationService.notifyRecipient(newPackage.id, 'PENDIENTE');
 
         res.status(201).json(newPackage);
     } catch (err) {
@@ -542,10 +596,10 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
         
         const placeholders = packageIds.map((_, i) => `$${i + 4}`).join(', ');
 
-        // Force status to PENDIENTE to allow re-scanning/picking up by new driver
+        // Force status to ASIGNADO so it reflects that a driver holds it
         const updateQuery = `
             UPDATE packages 
-            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = 'PENDIENTE' 
+            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = 'ASIGNADO' 
             WHERE id IN (${placeholders})
         `;
         
@@ -553,7 +607,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 
         // Create tracking events for all updated packages
         const eventPromises = packageIds.map(packageId => {
-            const details = `Asignado a conductor ${driverName}. Estado reiniciado a Pendiente.`;
+            const details = `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
             return client.query(
                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
                 [packageId, 'Asignado', 'Centro de Distribución', details, new Date()]
@@ -651,15 +705,15 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { driverId, newDeliveryDate } = req.body;
     try {
-        // Force status to PENDIENTE
+        // Force status to ASIGNADO
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = \'PENDIENTE\' WHERE id = $4 RETURNING *',
+            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = \'ASIGNADO\' WHERE id = $4 RETURNING *',
             [driverId, newDeliveryDate, new Date(), id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
         const driverName = driverId ? (await db.query('SELECT name FROM users WHERE id = $1', [driverId])).rows[0]?.name : 'Nadie';
-        await addTrackingEvent(id, 'Asignado', 'Centro de Distribución', `Asignado a conductor ${driverName}. Estado reiniciado a Pendiente.`);
+        await addTrackingEvent(id, 'Asignado', 'Centro de Distribución', `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`);
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
@@ -751,7 +805,7 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
         }
 
         const { rows } = await db.query(
-            'UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4 WHERE id = $5 RETURNING *',
+            `UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4${isFlexed ? ", status = 'EN_TRANSITO'" : ""} WHERE id = $5 RETURNING *`,
             [isFlexed, isFlexed ? new Date() : null, new Date(), flexLabelPhotoBase64 || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -761,6 +815,12 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
         await addTrackingEvent(id, statusText, 'Centro de Distribución', details);
         
         await logAction(req.user.id, req.user.name, 'FLEX_PACKAGE', { packageId: id, isFlexed });
+
+        if (isFlexed) {
+            // REQ: Exact moment to send the tracking URL to the client
+            const NotificationService = require('../services/notificationService');
+            NotificationService.notifyRecipient(id, 'EN_TRANSITO');
+        }
 
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);

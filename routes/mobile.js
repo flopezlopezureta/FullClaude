@@ -2,6 +2,36 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
+const https = require('https');
+
+// --- MELI API HELPERS ---
+const makeMeliRequest = (options, postData = null) => {
+    return new Promise((resolve, reject) => {
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                         resolve(parsedData);
+                    } else { reject({ statusCode: res.statusCode, body: parsedData }); }
+                } catch (e) { reject({ statusCode: res.statusCode, body: data, isRaw: true }); }
+            });
+        });
+        req.on('error', (e) => reject(e));
+        if (postData) req.write(postData);
+        req.end();
+    });
+};
+const makeMeliGetRequest = (path, accessToken) => makeMeliRequest({
+    hostname: 'api.mercadolibre.com', path, method: 'GET', headers: { 'Authorization': `Bearer ${accessToken}` }
+});
+const makeMeliPostRequest = (path, postData) => makeMeliRequest({
+    hostname: 'api.mercadolibre.com', path, method: 'POST',
+    headers: { 'Accept': 'application/json', 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(postData) }
+}, postData);
+// --- END MELI HELPERS ---
 
 /**
  * GET /api/entregas
@@ -62,6 +92,50 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
         if (req.user.role !== 'ADMIN' && pkgRows[0].driverId !== req.user.id) {
             return res.status(403).json({ message: 'No tienes permiso para cerrar esta entrega.' });
         }
+
+        // --- NEW MELI VALIDATION (CONDITIONAL) ---
+        const { rows: settingsRows } = await db.query('SELECT "meliFlexValidation" FROM system_settings WHERE id = 1');
+        const meliFlexValidation = settingsRows.length > 0 ? settingsRows[0].meliFlexValidation : true;
+
+        if (meliFlexValidation) {
+            try {
+                const { rows: pkgFullRows } = await db.query('SELECT "meliOrderId", "creatorId" FROM packages WHERE id = $1', [id]);
+                if (pkgFullRows.length > 0 && pkgFullRows[0].meliOrderId) {
+                    const { meliOrderId, creatorId } = pkgFullRows[0];
+                    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
+                    let meliIntegration = userRows[0]?.integrations?.meli;
+                    
+                    if (meliIntegration) {
+                        if (Date.now() >= meliIntegration.expiresAt) {
+                            try {
+                                const { rows: integrationSettingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
+                                if (integrationSettingsRows[0]?.meli_app_id) {
+                                    const { meli_app_id, meli_client_secret } = integrationSettingsRows[0];
+                                    const refreshData = new URLSearchParams({ grant_type: 'refresh_token', client_id: meli_app_id.trim(), client_secret: meli_client_secret.trim(), refresh_token: meliIntegration.refreshToken }).toString();
+                                    const refreshedTokenData = await makeMeliPostRequest('/oauth/token', refreshData);
+                                    meliIntegration = { ...meliIntegration, accessToken: refreshedTokenData.access_token, refreshToken: refreshedTokenData.refresh_token, expiresAt: Date.now() + (refreshedTokenData.expires_in * 1000) };
+                                    await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), creatorId]);
+                                }
+                            } catch (refreshError) {
+                                console.error(`[Mobile Deliver] Error refreshing ML token:`, refreshError);
+                            }
+                        }
+                        
+                        try {
+                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliOrderId}`, meliIntegration.accessToken);
+                            if (shippingDetails.status !== 'delivered') {
+                                return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala en la app Meli primero y luego confirma aquí.' });
+                            }
+                        } catch(meliError) {
+                             console.warn(`[Mobile Deliver] Could not verify Meli status. Allowing delivery.`, meliError.body || meliError.message);
+                        }
+                    }
+                }
+            } catch (validationError) {
+                console.error('[Mobile Deliver] Error in Meli validation:', validationError);
+            }
+        }
+        // --- END MELI VALIDATION ---
 
         // Actualizar el estado del paquete
         const now = new Date();
