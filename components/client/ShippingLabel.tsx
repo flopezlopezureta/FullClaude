@@ -22,12 +22,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     if (isMeli) {
         const code = pkg.meliFlexCode || pkg.meliOrderId;
         if (code) {
-            const codeStr = String(code).trim();
-            if (codeStr.startsWith('http')) {
-                qrContent = codeStr;
-            } else {
-                qrContent = `https://www.mercadolibre.cl/envios/flex/shipments/${codeStr}/label`;
-            }
+            qrContent = String(code).trim();
         }
     }
 

@@ -339,7 +339,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
       </div>
       {showQRCode && pkg.meliFlexCode && (
         <QRCodeModal 
-            value={pkg.source === 'MERCADO_LIBRE' ? `https://mercadoenvios.com/flex/shipping/${pkg.meliFlexCode}` : pkg.meliFlexCode} 
+            value={pkg.meliFlexCode} 
             displayValue={pkg.meliFlexCode}
             title={`Paquete: ${pkg.id}`} 
             onClose={() => setShowQRCode(false)} 

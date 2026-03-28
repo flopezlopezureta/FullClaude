@@ -1,9 +1,9 @@
 {
   "name": "full-envios-app",
-  "version": "2.2.7",
-  "versionComment": "Versión 2.2.7: Refinamiento del Reporte de Discrepancias Flex",
+  "version": "2.2.8",
+  "versionComment": "Versión 2.2.8: Fixed Mercado Libre Flex QR Code generated data format",
   "private": true,
-  "description": "Sistema de seguimiento de paquetes full-stack.",
+  "description": "Fixed Mercado Libre Flex QR Code generated data format to use exact shipment ID rather than a URL so the physical ML Flex App recognizes it properly.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",

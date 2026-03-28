@@ -1,0 +1,116 @@
+diff --git a/db.js b/db.js
+index 08013e9..13d0e10 100644
+--- a/db.js
++++ b/db.js
+@@ -1,15 +1,14 @@
+ const { Pool } = require('pg');
+ require('dotenv').config();
+ 
++// Configuración limpia para PostgreSQL (la que funcionaba ayer)
+ const pool = new Pool({
+     host: process.env.DB_HOST,
+     user: process.env.DB_USER,
+     password: process.env.DB_PASSWORD,
+     database: process.env.DB_NAME,
+     port: process.env.DB_PORT || 5432,
+-    ssl: {
+-        rejectUnauthorized: false
+-    }
++    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+ });
+ 
+ module.exports = {
+diff --git a/routes/integrations.js b/routes/integrations.js
+index 6d67820..14c96f2 100644
+--- a/routes/integrations.js
++++ b/routes/integrations.js
+@@ -931,7 +931,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
+         // 1. Search in ML across all clients that have ML integration
+         // We prioritize ML search as requested: "LA HERRAMIENTA DEBE BUSCAR EL ENVIO EN ml Y NO EN EL SISTEMA"
+         const { rows: clients } = await db.query(
+-            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE (role = 'CLIENT' OR role = 'user') AND (integrations->'meli' IS NOT NULL)"
++            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE (UPPER(role) IN ('CLIENT', 'USER', 'CLIENTE')) AND (integrations->'meli' IS NOT NULL)"
+         );
+ 
+         if (clients.length === 0) {
+diff --git a/server.js b/server.js
+index 5373169..c201228 100644
+--- a/server.js
++++ b/server.js
+@@ -9,12 +9,19 @@ const integrationRoutes = require('./routes/integrations');
+ const meliPollingService = require('./services/meliPollingService');
+ 
+ const app = express();
+-const PORT = 3000;
++const PORT = process.env.PORT || 3000;
++
++console.log('[Server] Initializing...');
+ 
+ // Middleware
+ app.use(cors());
+ app.use(express.json());
+ 
++// Start server immediately to avoid 502
++app.listen(PORT, '0.0.0.0', () => {
++    console.log(`[Server] Success! Running on http://0.0.0.0:${PORT}`);
++});
++
+ // Serve static files from the React app
+ app.use(express.static(path.join(__dirname, 'dist')));
+ 
+@@ -109,21 +116,21 @@ const initializeDatabase = async () => {
+     }
+ };
+ 
+-// Start server
+-const startServer = async () => {
+-    await initializeDatabase();
+-    
+-    // Start Mercado Libre polling service
+-    meliPollingService.startMeliPolling();
+-    
+-    // Run cleanup of duplicates once on start
+-    setTimeout(() => {
+-        meliPollingService.cleanupDuplicateMeliPackages();
+-    }, 60000);
+-
+-    app.listen(PORT, '0.0.0.0', () => {
+-        console.log(`Server running on http://0.0.0.0:${PORT}`);
+-    });
++// Start background services
++const startServices = async () => {
++    try {
++        await initializeDatabase();
++        
++        // Start Mercado Libre polling service
++        meliPollingService.startMeliPolling();
++        
++        // Run cleanup of duplicates once on start
++        setTimeout(() => {
++            meliPollingService.cleanupDuplicateMeliPackages();
++        }, 60000);
++    } catch (err) {
++        console.error('[Server] Failed to initialize database or services:', err);
++    }
+ };
+ 
+ // The "catchall" handler: for any request that doesn't
+@@ -132,4 +139,4 @@ app.get('*', (req, res) => {
+     res.sendFile(path.join(__dirname, 'dist/index.html'));
+ });
+ 
+-startServer();
++startServices();
+diff --git a/services/meliPollingService.js b/services/meliPollingService.js
+index e3a871e..8f9564a 100644
+--- a/services/meliPollingService.js
++++ b/services/meliPollingService.js
+@@ -105,7 +105,7 @@ const autoImportMeliPackages = async () => {
+     try {
+         // 1. Get all clients with ML integration
+         const { rows: clients } = await db.query(
+-            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE (role = 'CLIENT' OR role = 'user') AND (integrations->'meli' IS NOT NULL)"
++            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE (UPPER(role) IN ('CLIENT', 'USER', 'CLIENTE')) AND (integrations->'meli' IS NOT NULL)"
+         );
+ 
+         for (const client of clients) {
