@@ -314,17 +314,17 @@ async function autoImportMeliPackages() {
 
             const meliIntegration = user.integrations.meli;
 
-            // 2. Fetch paid orders with shipping mode 'self_service' (Flex)
-            // We search for orders with status 'paid'
-            // Added sort=date_desc and limit=50 to get the most recent orders first
-            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&shipping.mode=self_service&sort=date_desc&limit=50`, accessToken);
+            // 2. Fetch recent orders that are paid or partially_paid
+            // We broaden the search by removing shipping.mode=self_service to ensure No order is missed, 
+            // and we filter for Flex/Self-Service later in the loop.
+            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, accessToken);
             
             if (!ordersData.results || ordersData.results.length === 0) {
-                console.log(`[MeliPolling] No new paid Flex orders for client ${clientId} (ML User ID: ${meliIntegration.userId})`);
+                console.log(`[MeliPolling] No recent paid orders for client ${clientId} (ML User ID: ${meliIntegration.userId})`);
                 continue;
             }
 
-            console.log(`[MeliPolling] Found ${ordersData.results.length} paid/partially_paid Flex orders for client ${clientId}`);
+            console.log(`[MeliPolling] Found ${ordersData.results.length} recent paid orders for client ${clientId}. Processing...`);
 
             for (const order of ordersData.results) {
                 try {
@@ -488,4 +488,4 @@ function getStatus() {
     };
 }
 
-module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage };
+module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages };
