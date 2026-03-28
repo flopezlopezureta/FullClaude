@@ -106,7 +106,7 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'packages') {
     title = 'Gestión de Paquetes';
     content = <Dashboard />;
-  } else if (activeView === 'import' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+  } else if (activeView === 'import-orders' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
     title = 'Importar Paquetes';
     content = <ImportOrdersPage />;
   } else if (activeView === 'users-admins' && user?.role === Role.Admin && isSuperUser) {
