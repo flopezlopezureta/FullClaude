@@ -9,6 +9,18 @@ const bcrypt = require('bcryptjs');
 
 const meliPollingService = require('../services/meliPollingService');
 
+// TEMP DEBUG: List all clients and IDs
+router.get('/list-clients-debug', async (req, res) => {
+    const { secret } = req.query;
+    if (secret !== 'fullenvios_debug') return res.status(403).send('Forbidden');
+    try {
+        const { rows } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL LIMIT 20");
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 router.get('/debug-poll/:clientId', async (req, res) => {
     const { clientId } = req.params;
     const { secret } = req.query;
