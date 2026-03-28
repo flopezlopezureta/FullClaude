@@ -95,8 +95,14 @@ async function pollMeliPackages() {
     console.log('[MeliPolling] Starting poll cycle...');
     try {
         // 0. Check if auto-import is enabled
-        const { rows: settingsRows } = await db.query('SELECT "meliAutoImport" FROM system_settings WHERE id = 1');
-        const autoImportEnabled = settingsRows.length > 0 && settingsRows[0].meliAutoImport;
+        let autoImportEnabled = false;
+        try {
+            const { rows: settingsRows } = await db.query('SELECT "meliAutoImport" FROM system_settings WHERE id = 1');
+            autoImportEnabled = settingsRows.length > 0 && settingsRows[0].meliAutoImport;
+        } catch (settingsErr) {
+            console.warn('[MeliPolling] Could not fetch meliAutoImport from DB. Defaulting to true for current session until DB is fixed.', settingsErr.message);
+            autoImportEnabled = true; // Temporary fallback to ensure imports keep working while DB updates
+        }
 
         if (autoImportEnabled) {
             await autoImportMeliPackages();

@@ -340,6 +340,12 @@ async function initializeDatabase() {
             if (err.code !== '42701') { console.error('Error during settings migration (meliFlexValidation):', err); }
         }
         try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "meliAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "meliAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (meliAutoImport):', err); }
+        }
+        try {
             await db.query('ALTER TABLE system_settings ADD COLUMN "recipientNotificationsEnabled" BOOLEAN DEFAULT false');
             console.log('MIGRATION APPLIED: Column "recipientNotificationsEnabled" was added to "system_settings".');
         } catch (err) {
