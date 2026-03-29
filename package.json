@@ -1,9 +1,9 @@
 {
   "name": "full-envios-app",
-  "version": "2.2.9",
-  "versionComment": "Versión 2.2.9: Automated Label Photo Capture & ML Flex SCA00- format",
+  "version": "2.3.0",
+  "versionComment": "Versión 2.3.0: ML Auto-Import fix, Import Orders nav fix, Mobile sidebar blur fix",
   "private": true,
-  "description": "Implemented automated label photo capture, raw scan code display and SCA00- tracking ID format for ML Flex compatibility.",
+  "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
