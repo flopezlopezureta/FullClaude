@@ -173,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   }
 
   return (
-    <aside className={`w-64 flex-shrink-0 bg-[var(--background-secondary)] flex flex-col border-r border-[var(--border-primary)] transform transition-transform duration-300 ease-in-out fixed inset-y-0 left-0 z-40 lg:static lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+    <aside className={`w-64 flex-shrink-0 bg-[var(--background-secondary)] flex flex-col border-r border-[var(--border-primary)] transform transition-transform duration-300 ease-in-out fixed inset-y-0 left-0 z-50 lg:static lg:translate-x-0 ${isOpen ? 'translate-x-0' : '-translate-x-full'}`}>
       <div className="h-16 flex items-center justify-between px-6 border-b border-[var(--border-primary)]">
         <div className="flex items-center space-x-3 min-w-0">
             <IconCube className="h-8 w-8 text-[var(--brand-primary)] flex-shrink-0" />
