@@ -192,6 +192,47 @@ router.get('/meli-tracking/:packageId', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/integrations/meli-label/:packageId - Fetch official PDF label from ML
+router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
+    const { packageId } = req.params;
+    try {
+        const { rows: pkgRows } = await db.query(
+            'SELECT p."meliFlexCode", p."creatorId" FROM packages p WHERE p.id = $1',
+            [packageId]
+        );
+        if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado' });
+
+        const pkg = pkgRows[0];
+        if (!pkg.meliFlexCode) return res.status(400).json({ message: 'El paquete no tiene ID de envío ML' });
+
+        const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
+        if (!accessToken) return res.status(401).json({ message: 'Token ML no disponible' });
+
+        const url = `https://api.mercadolibre.com/shipment_labels?shipment_ids=${pkg.meliFlexCode}&response_type=pdf`;
+        
+        const https = require('https');
+        const options = {
+            headers: { 'Authorization': `Bearer ${accessToken}` }
+        };
+
+        https.get(url, options, (mlRes) => {
+            if (mlRes.statusCode !== 200) {
+                return res.status(mlRes.statusCode).json({ message: 'Error al obtener etiqueta de ML' });
+            }
+            res.setHeader('Content-Type', 'application/pdf');
+            res.setHeader('Content-Disposition', `attachment; filename=etiqueta_${pkg.meliFlexCode}.pdf`);
+            mlRes.pipe(res);
+        }).on('error', (err) => {
+            console.error('[MeliLabel] Stream Error:', err);
+            res.status(500).json({ message: 'Error de conexión con ML' });
+        });
+
+    } catch (err) {
+        console.error('[MeliLabel] Error:', err);
+        res.status(500).json({ message: 'Error interno', error: err.message });
+    }
+});
+
 // DELETE /api/integrations/:clientId/:source - Delete an integration (Admin only)
 router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
     const { clientId, source } = req.params;

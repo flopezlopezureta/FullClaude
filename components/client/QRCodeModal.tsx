@@ -1,11 +1,10 @@
-
-
 import React, { useEffect, useState, useContext, useMemo } from 'react';
 import QRCode from 'qrcode';
-import { IconX, IconCube, IconAlertTriangle, IconWhatsapp } from '../Icon';
+import { IconX, IconCube, IconAlertTriangle, IconWhatsapp, IconDownload, IconLoader, IconCheckCircle } from '../Icon';
 import { Package, User } from '../../types';
 import { AuthContext } from '../../contexts/AuthContext';
 import { MessagingPlan } from '../../constants';
+import { api } from '../../services/api';
 
 interface QRCodeModalProps {
   pkg: Package;
@@ -13,15 +12,23 @@ interface QRCodeModalProps {
   creator?: User | null;
 }
 
-const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
+const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg: initialPkg, onClose, creator }) => {
+    const [pkg, setPkg] = useState<Package>(initialPkg);
     const [qrCodeUrl, setQrCodeUrl] = useState('');
     const [error, setError] = useState(false);
+    const [loadingTracking, setLoadingTracking] = useState(false);
     const { systemSettings } = useContext(AuthContext)!;
 
     const isMeli = pkg.source === 'MERCADO_LIBRE';
-    const qrContent = isMeli 
-        ? `SCA00-${pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id}` 
-        : (pkg.trackingId || pkg.id);
+    
+    // If we have an authentic tracking ID, use it directly (no SCA00 prefix needed as it's already the full code)
+    // If not, reconstruct it as a fallback.
+    const qrContent = useMemo(() => {
+        if (isMeli) {
+            return pkg.trackingId || `SCA00-${pkg.meliFlexCode || pkg.meliOrderId || pkg.id}`;
+        }
+        return pkg.trackingId || pkg.id;
+    }, [isMeli, pkg]);
 
     const whatsappUrl = useMemo(() => {
         if (!isMeli || !creator?.phone) return '';
@@ -30,17 +37,38 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
         return `https://wa.me/${phone}?text=${encodeURIComponent(message)}`;
     }, [isMeli, creator, pkg]);
 
+    // Fetch authentic ML tracking tracking if missing
+    useEffect(() => {
+        const fetchMeliTracking = async () => {
+            if (isMeli && !initialPkg.trackingId) {
+                setLoadingTracking(true);
+                try {
+                    const result = await api.getMeliTracking(initialPkg.id);
+                    if (result.trackingId) {
+                        setPkg(prev => ({ ...prev, trackingId: result.trackingId }));
+                    }
+                } catch (err: any) {
+                    console.error('Error fetching ML tracking:', err);
+                } finally {
+                    setLoadingTracking(false);
+                }
+            }
+        };
+        fetchMeliTracking();
+    }, [isMeli, initialPkg.id, initialPkg.trackingId]);
+
     useEffect(() => {
         const generateQR = async () => {
             try {
                 const url = await QRCode.toDataURL(qrContent || '', {
-                    errorCorrectionLevel: 'L',
+                    errorCorrectionLevel: 'M',
                     type: 'image/png',
                     width: 600,
                     margin: 2,
                     color: { dark: '#000000', light: '#ffffff' }
                 });
                 setQrCodeUrl(url);
+                setError(false);
             } catch (err) {
                 console.error('Failed to generate QR code', err);
                 setError(true);
@@ -72,54 +100,82 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
                 {isMeli ? (
                     <>
                         <div className="flex items-center gap-3 mb-6">
-                            <IconWhatsapp className="w-10 h-10 sm:w-12 sm:h-12 text-green-500"/>
-                            <h3 className="text-2xl sm:text-3xl font-bold text-slate-900 text-center">Solicitar QR al Vendedor</h3>
+                            <img src="https://http2.mlstatic.com/frontend-assets/ui-navigation/5.18.9/mercadolibre/logo__small.png" alt="ML" className="h-8" />
+                            <h3 className="text-2xl font-black text-slate-900 text-center">Información de Entrega Flex</h3>
                         </div>
                         
                         <div className="w-full bg-slate-50 border border-slate-200 rounded-xl p-5 mb-6 text-left">
-                            <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider mb-4 border-b border-slate-200 pb-2">
-                                Detalles del Envío
+                            <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-200 pb-2">
+                                Datos del Destinatario
                             </h4>
                             <div className="space-y-2 text-sm text-slate-700">
-                                <p><strong>Destinatario:</strong> <span className="font-medium text-slate-900">{pkg.recipientName}</span></p>
+                                <p><strong>Destinatario:</strong> <span className="font-bold text-slate-900">{pkg.recipientName}</span></p>
                                 <p><strong>Dirección:</strong> <span className="font-medium text-slate-900">{pkg.recipientAddress}, {pkg.recipientCommune}</span></p>
-                                <p><strong>ID Envío (ML):</strong> <span className="font-mono font-bold text-slate-900">{pkg.meliOrderId}</span></p>
+                                <p><strong>ID Envío (ML):</strong> <span className="font-mono font-bold text-slate-900">{pkg.meliFlexCode || pkg.meliOrderId}</span></p>
                             </div>
                         </div>
 
-                        {qrCodeUrl && !error && (
-                            <div className="bg-white p-4 border-4 border-slate-900 rounded-xl shadow-inner mb-6">
-                                <img src={qrCodeUrl} alt={`QR Code ${qrContent}`} className="w-48 h-48 object-contain" />
-                                <p className="text-[10px] text-center text-slate-400 mt-2">Código FLEX Reconstruido</p>
+                        <div className="relative group mb-6">
+                            <div className={`bg-white p-4 border-4 ${pkg.trackingId ? 'border-green-500' : 'border-slate-900'} rounded-2xl shadow-xl transition-all duration-500 overflow-hidden`}>
+                                {qrCodeUrl && !error ? (
+                                    <div className="relative">
+                                        <img src={qrCodeUrl} alt={`QR Code ${qrContent}`} className={`w-56 h-56 object-contain ${loadingTracking ? 'opacity-20 grayscale brightness-50' : 'opacity-100'}`} />
+                                        {loadingTracking && (
+                                            <div className="absolute inset-0 flex flex-col items-center justify-center text-slate-900">
+                                                <IconLoader className="w-10 h-10 animate-spin mb-2" />
+                                                <span className="text-[10px] font-black uppercase tracking-tighter">Autenticando QR...</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="w-56 h-56 flex items-center justify-center bg-slate-100 text-slate-400 font-bold">
+                                        {error ? 'Error QR' : 'Generando...'}
+                                    </div>
+                                )}
                             </div>
-                        )}
+                            
+                            <div className={`mt-3 text-center transition-all duration-500 ${pkg.trackingId ? 'text-green-600' : 'text-slate-400'}`}>
+                                {pkg.trackingId ? (
+                                    <div className="flex items-center justify-center gap-1.5 animate-bounce-slow">
+                                        <IconCheckCircle className="w-4 h-4" />
+                                        <span className="text-[11px] font-black uppercase tracking-widest leading-none">Código Original Validado</span>
+                                    </div>
+                                ) : (
+                                    <span className="text-[11px] font-bold uppercase tracking-widest">Código de Respaldo (Reconstruido)</span>
+                                )}
+                            </div>
+                        </div>
 
-                        {creator?.phone && systemSettings.messagingPlan === MessagingPlan.WhatsApp ? (
+                        <div className="w-full space-y-3">
+                            {/* Botón Etiqueta Oficial */}
                             <a 
-                                href={whatsappUrl} 
-                                target="_blank" 
+                                href={api.getMeliLabelUrl(pkg.id)}
+                                target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center justify-center w-full bg-green-600 hover:bg-green-700 text-white p-4 rounded-lg shadow-md transition-colors group"
+                                className="flex items-center justify-center w-full bg-slate-900 hover:bg-black text-white p-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] group"
                             >
-                                <IconWhatsapp className="w-6 h-6 mr-3" />
-                                <span className="text-lg font-bold">Enviar WhatsApp al Vendedor</span>
+                                <IconDownload className="w-6 h-6 mr-3 group-hover:animate-bounce" />
+                                <span className="text-lg font-black uppercase tracking-tight">Etiqueta Oficial ML (PDF)</span>
                             </a>
-                        ) : (
-                            <div className="w-full bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 p-4 rounded-r-lg">
-                                <div className="flex">
-                                    <div className="py-1">
-                                        <IconAlertTriangle className="h-6 w-6 text-yellow-500 mr-4"/>
-                                    </div>
-                                    <div>
-                                        <p className="font-bold">{!creator?.phone ? 'Vendedor sin teléfono' : 'WhatsApp no habilitado'}</p>
-                                        <p className="text-sm mt-1">
-                                            {!creator?.phone 
-                                                ? 'No se puede enviar WhatsApp porque el vendedor no tiene un número de teléfono registrado.'
-                                                : 'La funcionalidad de WhatsApp no está habilitada en la configuración del sistema.'}
-                                        </p>
-                                    </div>
-                                </div>
-                            </div>
+
+                            {/* Botón WhatsApp (Fallback) */}
+                            {creator?.phone && systemSettings.messagingPlan === MessagingPlan.WhatsApp && (
+                                <a 
+                                    href={whatsappUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="flex items-center justify-center w-full bg-green-500/10 hover:bg-green-500/20 text-green-700 p-3 rounded-xl transition-colors border border-green-200"
+                                >
+                                    <IconWhatsapp className="w-5 h-5 mr-2" />
+                                    <span className="text-sm font-bold">Solicitar al Vendedor</span>
+                                </a>
+                            )}
+                        </div>
+
+                        {!creator?.phone && (
+                            <p className="text-[10px] text-slate-400 mt-4 text-center italic">
+                                * Si el código no funciona, recuerda que puedes descargar la etiqueta oficial arriba.
+                            </p>
                         )}
                         
                     </>
@@ -134,11 +190,11 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
                                 <div className="py-1">
                                     <IconAlertTriangle className="h-6 w-6 text-yellow-500 mr-4"/>
                                 </div>
-                                <div>
-                                    <p className="font-bold">Código para Uso Interno Solamente</p>
+                                <div className="text-left">
+                                    <p className="font-bold">Código para Uso Interno</p>
                                     <p className="text-sm mt-1">
-                                        Este código QR debe ser escaneado <strong>únicamente por los conductores de {systemSettings.companyName}</strong> con nuestra aplicación.
-                                        La aplicación de Mercado Libre Flex no lo reconocerá.
+                                        Escanea <strong>solo</strong> con nuestra aplicación.
+                                        La app de Mercado Libre Flex no reconocerá este código.
                                     </p>
                                 </div>
                             </div>
@@ -157,9 +213,6 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg, onClose, creator }) => {
                             <div className="font-mono text-5xl font-black text-slate-900 tracking-widest select-all">
                                 {pkg.id}
                             </div>
-                            <p className="text-sm text-slate-500 mt-3">
-                                Apunta la cámara <b>solo</b> al código cuadrado de arriba.
-                            </p>
                         </div>
                     </>
                 )}
