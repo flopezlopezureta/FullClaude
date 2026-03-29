@@ -440,7 +440,8 @@ async function autoImportMeliPackages() {
                         source: 'MERCADO_LIBRE',
                         meliOrderId: orderId.toString(),
                         meliFlexCode: shipmentId.toString(),
-                        trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null
+                        trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null,
+                        recipientRut: shipment.receiver_address?.federal_id || null
                     };
 
                     const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

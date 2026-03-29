@@ -220,6 +220,7 @@ export interface Package {
   isFlexed?: boolean;
   flexedAt?: Date;
   flexLabelPhotoBase64?: string;
+  recipientRut?: string;
 }
 
 export interface Notification {

@@ -202,6 +202,7 @@ async function initializeDatabase() {
                 "wooOrderId" TEXT,
                 "shopifyOrderId" TEXT,
                 "trackingId" TEXT,
+                "recipientRut" TEXT,
                 "isFlexed" BOOLEAN DEFAULT false,
                 "flexedAt" TIMESTAMPTZ
             );
@@ -225,7 +226,8 @@ async function initializeDatabase() {
                 'flexedAt TIMESTAMPTZ',
                 'destLatitude REAL',
                 'destLongitude REAL',
-                'flexLabelPhotoBase64 TEXT'
+                'flexLabelPhotoBase64 TEXT',
+                'recipientRut TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];

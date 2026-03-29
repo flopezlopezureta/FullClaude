@@ -66,46 +66,63 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     );
 
     const renderDestination = (large = false) => (
-        <div className="flex-1 flex flex-col justify-center">
-            <div className="bg-black text-white p-2 mb-2 text-center rounded-sm">
-                <p className={`${large ? 'text-xs' : 'text-[10px]'} font-bold uppercase tracking-widest mb-0.5`}>Comuna de Destino</p>
-                <p className={`${large ? 'text-3xl' : 'text-xl'} font-black truncate uppercase`}>{pkg.recipientCommune}</p>
+        <div className="flex-1 flex flex-col">
+            {/* DESTINATION COMMUNE - HIGHLIGHTED */}
+            <div className="bg-black text-white p-3 mb-3 text-center rounded-sm shadow-sm">
+                <p className={`${large ? 'text-sm' : 'text-[12px]'} font-bold uppercase tracking-[0.2em] mb-1 opacity-80`}>Comuna de Destino</p>
+                <p className={`${large ? 'text-5xl' : 'text-3xl'} font-black uppercase leading-none py-1`}>{pkg.recipientCommune}</p>
             </div>
 
-            <div className={`border-2 border-black ${large ? 'p-3' : 'p-2'} rounded-sm flex-1 flex flex-col justify-center`}>
-                <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Destinatario:</p>
-                <p className={`${large ? 'text-xl' : 'text-lg'} font-black leading-tight mb-1 line-clamp-2`}>{pkg.recipientName}</p>
-                <p className={`${large ? 'text-lg' : 'text-md'} font-bold mb-2`}>Tel: {pkg.recipientPhone}</p>
-                <div className="space-y-0.5">
-                    <p className={`${large ? 'text-lg' : 'text-md'} font-bold leading-tight line-clamp-3`}>{pkg.recipientAddress}</p>
-                    <p className={`${large ? 'text-md' : 'text-sm'} font-medium`}>{pkg.recipientCommune}, {pkg.recipientCity}</p>
+            {/* RECIPIENT DATA - NO TRUNCATION */}
+            <div className={`border-[3px] border-black ${large ? 'p-4' : 'p-3'} rounded-sm flex-1 flex flex-col space-y-3`}>
+                <div>
+                    <p className="text-[11px] font-black uppercase text-gray-500 mb-1 tracking-tighter">Destinatario:</p>
+                    <p className={`${large ? 'text-2xl' : 'text-xl'} font-black leading-[1.1]`}>
+                        {pkg.recipientName}
+                    </p>
+                    {pkg.recipientRut && (
+                        <p className={`${large ? 'text-lg' : 'text-md'} font-bold text-gray-700 mt-1`}>RUT: {pkg.recipientRut}</p>
+                    )}
+                </div>
+
+                <div className="pt-2 border-t-2 border-dashed border-gray-300">
+                    <p className="text-[11px] font-black uppercase text-gray-500 mb-1 tracking-tighter">Dirección de Entrega:</p>
+                    <p className={`${large ? 'text-xl' : 'text-lg'} font-bold leading-tight`}>{pkg.recipientAddress}</p>
+                    <p className={`${large ? 'text-lg' : 'text-md'} font-medium mt-1 italic text-gray-600`}>{pkg.recipientCommune}, {pkg.recipientCity}</p>
+                </div>
+
+                <div className="pt-2 border-t-2 border-dashed border-gray-300">
+                     <p className="text-[11px] font-black uppercase text-gray-500 mb-1 tracking-tighter">Contacto:</p>
+                     <p className={`${large ? 'text-2xl' : 'text-xl'} font-black tracking-tight`}>📱 {pkg.recipientPhone}</p>
                 </div>
             </div>
         </div>
     );
 
     const renderFooter = (large = false) => (
-        <div className={`mt-auto pt-2 border-t-2 border-black flex items-center justify-between`}>
+        <div className={`mt-auto pt-3 border-t-[3px] border-black flex items-center justify-between`}>
             <div className="flex flex-col items-center">
                 {qrCodeUrl ? (
-                    <img src={qrCodeUrl} alt="QR Code" className={large ? 'w-32 h-32' : 'w-24 h-24'} />
+                    <img src={qrCodeUrl} alt="QR Code" className={large ? 'w-36 h-36' : 'w-28 h-28'} />
                 ) : (
-                    <div className={`${large ? 'w-32 h-32' : 'w-24 h-24'} bg-gray-100 animate-pulse`} />
+                    <div className={`${large ? 'w-36 h-36' : 'w-28 h-28'} bg-gray-100 animate-pulse`} />
                 )}
-                <p className="text-[8px] font-black mt-1 uppercase text-gray-600">
-                    {isMeli ? 'Escanear Flex' : 'Uso Conductor'}
+                <p className="text-[10px] font-black mt-2 uppercase text-gray-800 tracking-wider">
+                    {isMeli ? 'Escanear ML Flex' : 'Uso Logístico'}
                 </p>
             </div>
             
-            <div className="flex flex-col items-end flex-1 pl-4 text-right">
-                <p className="text-[8px] font-bold text-gray-500 uppercase mb-1">
-                    {isMeli ? 'Envío Mercado Libre' : 'ID Interno'}
+            <div className="flex flex-col items-end flex-1 pl-4 text-right justify-center">
+                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">
+                    {isMeli ? 'Envío Mercado Libre' : 'ID de Seguimiento'}
                 </p>
-                <p className={`${large ? 'text-xl' : 'text-lg'} font-mono font-black break-all leading-none mb-1`}>
-                    {qrContent}
-                </p>
-                <div className="w-full h-2 bg-black mt-1"></div>
-                <p className="text-[8px] font-bold mt-1">
+                <div className="bg-gray-100 p-2 rounded-sm border border-gray-200 w-full">
+                    <p className={`${large ? 'text-xl' : 'text-lg'} font-mono font-black break-all leading-none`}>
+                        {qrContent}
+                    </p>
+                </div>
+                <div className="w-full h-3 bg-black mt-3"></div>
+                <p className="text-[10px] font-black mt-1 tracking-widest">
                     {isMeli ? 'ORIGINAL ML FLEX' : 'SISTEMA PROPIO'}
                 </p>
             </div>
@@ -191,24 +208,46 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     // 5. ZEBRA ZPL (4x6 optimized)
     if (format === LabelFormat.ZebraZpl) {
         return (
-            <div className="bg-white p-2 font-sans text-black w-[101.6mm] h-[152.4mm] border-[6px] border-black flex flex-col overflow-hidden font-mono">
-                <div className="border-b-[4px] border-black pb-1 mb-1 text-center">
-                    <h1 className="text-3xl font-black">{systemSettings.companyName.toUpperCase()}</h1>
+            <div className="bg-white p-4 font-sans text-black w-[101.6mm] h-[152.4mm] border-8 border-black flex flex-col overflow-hidden">
+                <div className="border-b-4 border-black pb-2 mb-2 flex justify-between items-center">
+                    <h1 className="text-2xl font-black tracking-tighter">{systemSettings.companyName.toUpperCase()}</h1>
+                    <div className="bg-black text-white px-2 py-1 font-black text-xs">ZEBRA 4X6</div>
                 </div>
-                <div className="bg-black text-white p-2 text-center text-4xl font-black uppercase mb-2">
-                    {pkg.recipientCommune}
+                
+                <div className="bg-black text-white p-4 text-center rounded-sm mb-4">
+                    <p className="text-xl font-bold uppercase tracking-[0.3em] mb-1 opacity-90">Destino</p>
+                    <p className="text-6xl font-black uppercase leading-none">{pkg.recipientCommune}</p>
                 </div>
-                <div className="border-b-2 border-black pb-2 mb-2">
-                    <p className="text-xs uppercase font-bold">Destinatario:</p>
-                    <p className="text-2xl font-black">{pkg.recipientName}</p>
-                    <p className="text-xl font-bold">TEL: {pkg.recipientPhone}</p>
-                    <p className="text-2xl font-black mt-2 leading-tight">{pkg.recipientAddress}</p>
+
+                <div className="flex-1 flex flex-col space-y-4">
+                    <div className="border-l-8 border-black pl-4">
+                        <p className="text-xs font-black uppercase text-gray-400">Destinatario:</p>
+                        <p className="text-3xl font-black leading-tight">{pkg.recipientName}</p>
+                        <p className="text-xl font-bold mt-1 text-gray-800">RUT: {pkg.recipientRut || 'S/N'}</p>
+                    </div>
+
+                    <div className="pt-2 border-t-2 border-dashed border-gray-400">
+                        <p className="text-xs font-black uppercase text-gray-400">Dirección:</p>
+                        <p className="text-2xl font-bold leading-tight">{pkg.recipientAddress}</p>
+                        <p className="text-xl font-medium mt-1">{pkg.recipientCommune}, {pkg.recipientCity}</p>
+                    </div>
+
+                    <div className="pt-2 border-t-2 border-dashed border-gray-400">
+                        <p className="text-3xl font-black">📱 {pkg.recipientPhone}</p>
+                    </div>
                 </div>
-                <div className="flex-1 flex items-center justify-center py-4">
-                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-56 h-56" />}
-                </div>
-                <div className="text-center font-black text-2xl border-t-2 border-black pt-2">
-                    {qrContent}
+
+                <div className="mt-auto flex items-center justify-between border-t-4 border-black pt-4">
+                    <div className="flex flex-col items-center">
+                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-40 h-40" />}
+                        <p className="text-xs font-black mt-1 uppercase">Escanear ML</p>
+                    </div>
+                    <div className="flex-1 pl-6 text-right">
+                         <p className="text-xs font-bold text-gray-400 uppercase mb-1">Tracking ID:</p>
+                         <p className="text-2xl font-mono font-black break-all leading-none">{qrContent}</p>
+                         <div className="w-full h-4 bg-black mt-4"></div>
+                         <p className="text-xs font-black mt-1 tracking-widest uppercase">Original ML Flex</p>
+                    </div>
                 </div>
             </div>
         );
@@ -219,17 +258,18 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         return (
             <div className="bg-white p-2 font-sans text-black w-[62mm] h-[100mm] border-2 border-black flex flex-col overflow-hidden">
                 <p className="text-[8px] font-black uppercase opacity-50 mb-1">{systemSettings.companyName}</p>
-                <div className="bg-black text-white p-1 text-center font-black text-lg uppercase mb-1">
+                <div className="bg-black text-white p-2 text-center font-black text-xl uppercase mb-2">
                     {pkg.recipientCommune}
                 </div>
-                <div className="flex-1 min-h-0">
-                    <p className="text-[10px] font-bold truncate">{pkg.recipientName}</p>
-                    <p className="text-[10px] font-black leading-tight line-clamp-2">{pkg.recipientAddress}</p>
+                <div className="flex-1 min-h-0 space-y-1">
+                    <p className="text-[11px] font-black leading-tight italic">{pkg.recipientName}</p>
+                    <p className="text-[10px] font-bold leading-tight">{pkg.recipientAddress}</p>
+                    <p className="text-[9px] font-medium leading-tight">Tel: {pkg.recipientPhone}</p>
                 </div>
                 <div className="flex items-center space-x-2 mt-auto border-t border-black pt-1">
-                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-16 h-16" />}
+                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20 shrink-0" />}
                     <div className="min-w-0 flex-1">
-                         <p className="text-[6px] font-black break-all">{qrContent}</p>
+                         <p className="text-[7px] font-black break-all">{qrContent}</p>
                          {isMeli && <p className="text-[8px] font-black bg-yellow-400 inline-block px-1 mt-1">FLEX</p>}
                     </div>
                 </div>
