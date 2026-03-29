@@ -10,6 +10,7 @@ import {
     PackageSource,
     MessagingPlan,
     PickupMode,
+    LabelFormat,
 } from './constants';
 
 export {
@@ -23,6 +24,7 @@ export {
     PackageSource,
     MessagingPlan,
     PickupMode,
+    LabelFormat,
 };
 
 export interface SystemSettings {
@@ -37,6 +39,7 @@ export interface SystemSettings {
     publicTrackingEnabled?: boolean;
     isRutRequired?: boolean;
     flexDiscrepancyReportEnabled?: boolean;
+    labelFormat?: LabelFormat;
 }
 
 export interface ZonePricing {

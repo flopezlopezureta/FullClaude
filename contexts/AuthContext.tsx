@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { MessagingPlan, PickupMode } from '../constants';
+import { MessagingPlan, PickupMode, LabelFormat } from '../constants';
 import type { User, SystemSettings } from '../types';
 import { api, LoginCredentials, RegisterData } from '../services/api';
 
@@ -57,6 +57,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     meliAutoImport: false,
     publicTrackingEnabled: true,
     isRutRequired: true,
+    labelFormat: LabelFormat.CompactThermal,
   });
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);

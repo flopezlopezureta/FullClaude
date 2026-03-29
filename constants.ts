@@ -75,3 +75,12 @@ export enum PickupMode {
   ScanWithCount = 'SCAN_COUNT',
   Colecta = 'COLECTA',
 }
+
+export enum LabelFormat {
+  CompactThermal = 'compact_thermal',
+  FullThermal = 'full_thermal',
+  A4Single = 'a4_single',
+  A4Half = 'a4_half',
+  ZebraZpl = 'zebra_zpl',
+  MinimalSticker = 'minimal_sticker',
+}

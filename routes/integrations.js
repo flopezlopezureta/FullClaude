@@ -134,6 +134,64 @@ router.get('/debug-poll/:clientId', async (req, res) => {
     }
 });
 
+// GET /api/integrations/meli-tracking/:packageId - Get real ML tracking_id for label QR
+router.get('/meli-tracking/:packageId', authMiddleware, async (req, res) => {
+    const { packageId } = req.params;
+    try {
+        // Get package + creator from DB
+        const { rows: pkgRows } = await db.query(
+            'SELECT p."meliFlexCode", p."trackingId", p."creatorId", p."meliOrderId" FROM packages p WHERE p.id = $1',
+            [packageId]
+        );
+        if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado' });
+
+        const pkg = pkgRows[0];
+
+        // If we already have a trackingId stored, return it directly
+        if (pkg.trackingId) {
+            return res.json({ trackingId: pkg.trackingId, source: 'cached' });
+        }
+
+        // Otherwise fetch fresh from ML API
+        if (!pkg.meliFlexCode) {
+            return res.status(400).json({ message: 'El paquete no tiene ID de envío ML' });
+        }
+
+        const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
+        if (!accessToken) return res.status(401).json({ message: 'Token ML no disponible' });
+
+        // Make HTTPS request to ML API
+        const shipmentData = await new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'api.mercadolibre.com',
+                path: `/shipments/${pkg.meliFlexCode}`,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            };
+            require('https').get(options, (mlRes) => {
+                let data = '';
+                mlRes.on('data', chunk => data += chunk);
+                mlRes.on('end', () => {
+                    try { resolve(JSON.parse(data)); }
+                    catch (e) { reject(e); }
+                });
+            }).on('error', reject);
+        });
+
+        const trackingId = shipmentData.tracking_id ? String(shipmentData.tracking_id) : null;
+
+        // Cache it in DB for next time
+        if (trackingId) {
+            await db.query('UPDATE packages SET "trackingId" = $1 WHERE id = $2', [trackingId, packageId]);
+        }
+
+        res.json({ trackingId, shipmentStatus: shipmentData.status, source: 'live' });
+    } catch (err) {
+        console.error('[MeliTracking] Error:', err);
+        res.status(500).json({ message: 'Error al obtener tracking de ML', error: err.message });
+    }
+});
+
 // DELETE /api/integrations/:clientId/:source - Delete an integration (Admin only)
 router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
     const { clientId, source } = req.params;

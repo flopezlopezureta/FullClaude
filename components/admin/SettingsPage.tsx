@@ -5,7 +5,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcode, IconPencil, IconInfo, IconChecklist, IconTrash, IconAlertTriangle, IconTruck } from '../Icon';
 import { useTheme } from '../../contexts/ThemeContext';
 import DeleteDatabaseModal, { ResetType } from '../modals/DeleteDatabaseModal';
-import { MessagingPlan, PickupMode } from '../../constants';
+import { MessagingPlan, PickupMode, LabelFormat } from '../../constants';
 
 const messagingPlanConfig = {
     [MessagingPlan.None]: { name: 'Sin Mensajería', description: 'No se envían notificaciones automáticas a clientes.' },
@@ -32,6 +32,7 @@ interface SettingsState {
     publicTrackingEnabled: boolean;
     isRutRequired: boolean;
     flexDiscrepancyReportEnabled: boolean;
+    labelFormat: LabelFormat;
 }
 
 const SettingsPage: React.FC = () => {
@@ -47,6 +48,7 @@ const SettingsPage: React.FC = () => {
         publicTrackingEnabled: true,
         isRutRequired: true,
         flexDiscrepancyReportEnabled: true,
+        labelFormat: LabelFormat.CompactThermal,
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -74,6 +76,7 @@ const SettingsPage: React.FC = () => {
                 publicTrackingEnabled: auth.systemSettings.publicTrackingEnabled ?? true,
                 isRutRequired: auth.systemSettings.isRutRequired ?? true,
                 flexDiscrepancyReportEnabled: auth.systemSettings.flexDiscrepancyReportEnabled ?? true,
+                labelFormat: auth.systemSettings.labelFormat || LabelFormat.CompactThermal,
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -125,6 +128,7 @@ const SettingsPage: React.FC = () => {
                 publicTrackingEnabled: settings.publicTrackingEnabled,
                 isRutRequired: settings.isRutRequired,
                 flexDiscrepancyReportEnabled: settings.flexDiscrepancyReportEnabled,
+                labelFormat: settings.labelFormat,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -228,7 +232,8 @@ const SettingsPage: React.FC = () => {
             settings.meliAutoImport !== originalSettings.meliAutoImport ||
             settings.publicTrackingEnabled !== originalSettings.publicTrackingEnabled ||
             settings.isRutRequired !== originalSettings.isRutRequired ||
-            settings.flexDiscrepancyReportEnabled !== originalSettings.flexDiscrepancyReportEnabled
+            settings.flexDiscrepancyReportEnabled !== originalSettings.flexDiscrepancyReportEnabled ||
+            settings.labelFormat !== originalSettings.labelFormat
         );
     }, [settings, originalSettings]);
 
@@ -281,6 +286,41 @@ const SettingsPage: React.FC = () => {
                         <label htmlFor="requiredPhotos" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fotos requeridas por Entrega</label>
                         <input type="number" id="requiredPhotos" name="requiredPhotos" value={settings.requiredPhotos} onChange={handleSettingsChange} min="1" max="5" required className={`${inputClasses} text-[var(--text-primary)]`}/>
                     </div>
+
+                    <div className="pt-4 border-t border-[var(--border-primary)] bg-[var(--brand-muted)] p-4 rounded-xl">
+                        <h3 className="text-lg font-black text-[var(--brand-text)] flex items-center gap-2">
+                             📌 NUEVA FUNCIÓN: Formato de Etiqueta Predeterminado
+                             <span className="text-[10px] bg-[var(--brand-primary)] text-white px-2 py-0.5 rounded-full animate-pulse">NUEVO v2.3.1</span>
+                        </h3>
+                        <p className="text-xs text-[var(--text-muted)] mt-1 mb-4 text-balance">Selecciona el formato que se usará por defecto al imprimir etiquetas de envío.</p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                            {[
+                                { id: LabelFormat.CompactThermal, name: 'Térmica Económica', size: '100x150mm', icon: <div className="w-full h-20 bg-gray-100 rounded border-2 border-gray-300 flex flex-col justify-between p-2"><div className="w-full h-2 bg-gray-400"></div><div className="w-full h-8 bg-gray-300"></div><div className="flex justify-between"><div className="w-6 h-6 bg-black"></div><div className="w-12 h-2 bg-gray-400 self-end"></div></div></div> },
+                                { id: LabelFormat.FullThermal, name: 'Térmica Completa', size: '100x150mm', icon: <div className="w-full h-20 bg-gray-100 rounded border-2 border-gray-300 flex flex-col justify-between p-2"><div className="w-full h-2 bg-gray-400"></div><div className="w-full h-12 bg-gray-300"></div><div className="flex justify-between"><div className="w-6 h-6 bg-black"></div><div className="w-12 h-2 bg-gray-400 self-end"></div></div></div> },
+                                { id: LabelFormat.ZebraZpl, name: 'Zebra (ZPL)', size: '4"x6"', icon: <div className="w-full h-20 bg-gray-100 rounded border-2 border-black flex flex-col items-center justify-center space-y-2"><div className="w-8 h-8 bg-black"></div><div className="w-16 h-4 bg-gray-800"></div></div> },
+                                { id: LabelFormat.A4Single, name: 'A4 Hoja Completa', size: 'Carta / A4', icon: <div className="w-full h-20 bg-gray-50 rounded border border-gray-200 flex items-center justify-center p-4"><div className="w-10 h-14 border border-gray-300 bg-white relative"><div className="absolute inset-2 border border-gray-200"></div></div></div> },
+                                { id: LabelFormat.A4Half, name: 'A4 Mitad de Hoja', size: 'Carta / A4x2', icon: <div className="w-full h-20 bg-gray-50 rounded border border-gray-200 flex items-center justify-center p-4"><div className="w-10 h-14 border border-gray-300 bg-white relative flex flex-col border-b-2"><div className="flex-1 border-b border-gray-100 p-1"><div className="w-full h-full border border-gray-300 bg-gray-50"></div></div><div className="flex-1 p-1"><div className="w-full h-full border border-gray-300 bg-gray-50"></div></div></div></div> },
+                                { id: LabelFormat.MinimalSticker, name: 'Brother Sticker', size: '62x100mm', icon: <div className="w-full h-20 bg-gray-100 rounded border-2 border-gray-300 flex items-center justify-center"><div className="w-14 h-8 border border-gray-400 bg-white"></div></div> },
+                            ].map(fmt => (
+                                <button
+                                    key={fmt.id}
+                                    type="button"
+                                    onClick={() => setSettings(prev => ({ ...prev, labelFormat: fmt.id as LabelFormat }))}
+                                    className={`p-4 border rounded-2xl text-left relative transition-all group ${settings.labelFormat === fmt.id ? 'border-[var(--brand-primary)] bg-white shadow-lg scale-[1.02]' : 'border-[var(--border-primary)] hover:border-[var(--brand-secondary)] bg-[var(--background-secondary)]'}`}
+                                >
+                                    <div className="mb-3">{fmt.icon}</div>
+                                    <div className="flex justify-between items-start">
+                                        <span className={`text-sm font-bold ${settings.labelFormat === fmt.id ? 'text-[var(--brand-text)]' : 'text-[var(--text-primary)]'}`}>
+                                            {fmt.name}
+                                        </span>
+                                        {settings.labelFormat === fmt.id && <IconCheckCircle className="w-5 h-5 text-[var(--brand-primary)]" />}
+                                    </div>
+                                    <p className="text-[10px] text-[var(--text-muted)] mt-1 font-medium">{fmt.size}</p>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
 
                     <div className="pt-4 border-t border-[var(--border-primary)]">
                         <label className="flex items-center justify-between cursor-pointer">
@@ -397,6 +437,8 @@ const SettingsPage: React.FC = () => {
                             </label>
                         </div>
                     )}
+
+
 
                      <div className="pt-4 border-t border-[var(--border-primary)]">
                         <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Modo de Retiro</h3>

@@ -337,4 +337,7 @@ export const api = {
   // Reports
   getFlexDiscrepancies: () => get<any[]>('/packages/reports/flex-discrepancies'),
   getDriverFlexDiscrepancyDetails: (driverId: string) => get<any[]>(`/packages/reports/flex-discrepancies/${driverId}`),
+
+  // Mercado Libre Tracking
+  getMeliTracking: (packageId: string) => get<{ trackingId: string, shipmentStatus: string, source: string }>(`/integrations/meli-tracking/${packageId}`),
 };

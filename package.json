@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.3.0",
-  "versionComment": "Versión 2.3.0: ML Auto-Import fix, Import Orders nav fix, Mobile sidebar blur fix",
+  "version": "2.3.1",
+  "versionComment": "Versión 2.3.1: Label Format UI Restoration + Multi-Source Phone Search",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay.",
   "scripts": {

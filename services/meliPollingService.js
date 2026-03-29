@@ -365,6 +365,44 @@ async function autoImportMeliPackages() {
                         console.log(`[MeliPolling] Order ${orderId} is already ${shipment.status} in ML, skipping import to prevent history flood.`);
                         continue;
                     }
+
+                    // [NEW] 4.5 Deep Search for Phone Number
+                    // ML often hides phone in /shipments but provides it in /orders/{id} for authorized sellers
+                    let recipientPhone = 'N/A';
+                    try {
+                        const fullOrder = await makeMeliGetRequest(`/orders/${orderId}`, accessToken);
+                        
+                        // Cascade search for phone
+                        const phoneCandidates = [
+                            shipment.receiver_address?.receiver_phone,
+                            shipment.receiver_address?.phone,
+                            fullOrder.buyer?.phone?.number,
+                            fullOrder.buyer?.mobile?.number,
+                            fullOrder.buyer?.phone?.area_code ? `${fullOrder.buyer.phone.area_code}${fullOrder.buyer.phone.number}` : null,
+                            fullOrder.status_info?.reason // Sometimes hidden here in some specific ML versions
+                        ];
+
+                        for (const candidate of phoneCandidates) {
+                            if (candidate && 
+                                typeof candidate === 'string' && 
+                                candidate.length > 5 && 
+                                !candidate.includes('*') && 
+                                !candidate.includes('obfuscated') &&
+                                !candidate.includes('@')) {
+                                recipientPhone = candidate;
+                                break;
+                            }
+                        }
+                        
+                        if (recipientPhone === 'N/A') {
+                            console.log(`[MeliPolling] Phone still N/A for order ${orderId} after deep search.`);
+                        } else {
+                            console.log(`[MeliPolling] Successfully recovered phone for order ${orderId}: ${recipientPhone}`);
+                        }
+                    } catch (phoneErr) {
+                        console.warn(`[MeliPolling] Failed to fetch full order ${orderId} for phone recovery:`, phoneErr.message);
+                        recipientPhone = shipment.receiver_address?.receiver_phone || 'N/A';
+                    }
                     
                     // 5. Region Check (Optional/Permissive)
                     let stateName = shipment.receiver_address?.state?.name || 'Santiago';
@@ -387,7 +425,7 @@ async function autoImportMeliPackages() {
                     const newPackage = {
                         id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
                         recipientName: shipment.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
-                        recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
+                        recipientPhone: recipientPhone,
                         status: 'PENDIENTE',
                         shippingType: 'SAME_DAY',
                         origin: 'Centro de Distribución',

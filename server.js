@@ -351,6 +351,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (recipientNotificationsEnabled):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "labelFormat" TEXT DEFAULT \'compact_thermal\'');
+            console.log('MIGRATION APPLIED: Column "labelFormat" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (labelFormat):', err); }
+        }
         // Drop old columns if they exist. Using IF EXISTS is safer.
         const dropOldPlanColumns = async () => {
             try { await db.query('ALTER TABLE system_settings DROP COLUMN IF EXISTS "planType"'); } catch(e){}
