@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.3.3",
-  "versionComment": "Versión 2.3.3: Etiquetas sin fondos negros (Eco-Thermal) + Comuna resaltada",
+  "version": "2.3.4",
+  "versionComment": "Versión 2.3.4: 6 Formatos de Datos Dinámicos (Zebra y Carta) + Sin bloques negros",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay.",
   "scripts": {

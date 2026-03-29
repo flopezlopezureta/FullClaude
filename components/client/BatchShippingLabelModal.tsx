@@ -13,12 +13,12 @@ interface BatchShippingLabelModalProps {
 }
 
 const formatOptions = [
-    { id: LabelFormat.CompactThermal, name: 'Térmica Económica', size: '100x150mm' },
-    { id: LabelFormat.FullThermal, name: 'Térmica Completa', size: '100x150mm' },
-    { id: LabelFormat.ZebraZpl, name: 'Zebra (ZPL Layout)', size: '4"x6"' },
-    { id: LabelFormat.A4Single, name: 'Hoja Completa A4', size: '210x297mm' },
-    { id: LabelFormat.A4Half, name: 'Mitad de Hoja A4', size: '210x148mm' },
-    { id: LabelFormat.MinimalSticker, name: 'Sticker Pequeño', size: '62x100mm' },
+    { id: LabelFormat.CompactThermal, name: 'Zebra Económica', size: '100x150mm' },
+    { id: LabelFormat.FullThermal, name: 'Zebra Pro (Notas)', size: '100x150mm' },
+    { id: LabelFormat.ZebraZpl, name: 'Zebra Logística XL', size: '4"x6"' },
+    { id: LabelFormat.A4Single, name: 'Carta Individual', size: 'Carta / A4' },
+    { id: LabelFormat.A4Half, name: 'Carta Dúplex (2x)', size: 'Carta / A4x2' },
+    { id: LabelFormat.MinimalSticker, name: 'Carta Cuádruple (4x)', size: 'Carta / A4x4' },
 ];
 
 const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packages: initialPackages, creatorName, onClose }) => {
@@ -80,13 +80,13 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                             <IconPrinter className="w-6 h-6 text-indigo-600" />
                         </div>
                         <div className="flex flex-col">
-                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Impresión Masiva</h3>
+                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Formato de Datos (Masivo)</h3>
                             <p className="text-xs text-[var(--text-muted)] font-medium">Imprimiendo {packages.length} etiquetas</p>
                         </div>
                     </div>
                     
                     <div className="flex items-center space-x-4 bg-[var(--background-muted)] px-3 py-1.5 rounded-xl border border-[var(--border-primary)]">
-                         <span className="text-xs font-bold text-[var(--text-muted)]">Formato:</span>
+                         <span className="text-xs font-bold text-[var(--text-muted)]">Diseño:</span>
                          <select 
                             value={format} 
                             onChange={(e) => setFormat(e.target.value as LabelFormat)}

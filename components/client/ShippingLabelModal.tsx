@@ -13,12 +13,12 @@ interface ShippingLabelModalProps {
 }
 
 const formatOptions = [
-    { id: LabelFormat.CompactThermal, name: 'Térmica Económica', size: '100x150mm', desc: 'Solo datos esenciales' },
-    { id: LabelFormat.FullThermal, name: 'Térmica Completa', size: '100x150mm', desc: 'Incluye todas las notas' },
-    { id: LabelFormat.ZebraZpl, name: 'Zebra (ZPL Layout)', size: '4"x6"', desc: 'Optimizado para contraste' },
-    { id: LabelFormat.A4Single, name: 'Hoja Completa A4', size: '210x297mm', desc: 'Una etiqueta centrada' },
-    { id: LabelFormat.A4Half, name: 'Mitad de Hoja A4', size: '210x148mm', desc: 'Dos etiquetas por página' },
-    { id: LabelFormat.MinimalSticker, name: 'Sticker Pequeño', size: '62x100mm', desc: 'Para etiquetas Brother' },
+    { id: LabelFormat.CompactThermal, name: 'Zebra Económica', size: '100x150mm', desc: 'Datos esenciales, bajo consumo' },
+    { id: LabelFormat.FullThermal, name: 'Zebra Pro (Notas)', size: '100x150mm', desc: 'Incluye todas las notas y RUT' },
+    { id: LabelFormat.ZebraZpl, name: 'Zebra Logística XL', size: '4"x6"', desc: 'Comuna extra grande para bodega' },
+    { id: LabelFormat.A4Single, name: 'Carta Individual', size: 'Carta / A4', desc: '1 etiqueta centrada' },
+    { id: LabelFormat.A4Half, name: 'Carta Dúplex (2x)', size: 'Carta / A4x2', desc: '2 etiquetas por hoja' },
+    { id: LabelFormat.MinimalSticker, name: 'Carta Cuádruple (4x)', size: 'Carta / A4x4', desc: '4 etiquetas por hoja' },
 ];
 
 const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg, creatorName, onClose }) => {
@@ -69,9 +69,9 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                             <IconSettings className="w-6 h-6 text-[var(--brand-text)]" />
                         </div>
                         <div className="flex flex-col">
-                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Configuración de Impresión</h3>
+                            <h3 className="text-xl font-bold text-[var(--text-primary)]">Formato de Datos de Envío</h3>
                             <p className="text-xs text-[var(--text-muted)] font-medium uppercase tracking-wider">
-                                {loadingTracking ? 'Obteniendo QR autético de ML...' : 'Selecciona el formato para tu impresora'}
+                                {loadingTracking ? 'Obteniendo QR auténtico de ML...' : 'Selecciona el diseño de información'}
                             </p>
                         </div>
                     </div>

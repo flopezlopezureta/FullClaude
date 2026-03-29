@@ -254,24 +254,25 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         );
     }
 
-    // 6. MINIMAL STICKER (62x100mm)
+    // 6. CARTA CUÁDRUPLE (A4 x 4) - Repurposed from MinimalSticker
     if (format === LabelFormat.MinimalSticker) {
         return (
-            <div className="bg-white p-2 font-sans text-black w-[62mm] h-[100mm] border-2 border-black flex flex-col overflow-hidden">
-                <p className="text-[8px] font-black uppercase opacity-50 mb-1">{systemSettings.companyName}</p>
-                <div className="bg-white text-black p-2 text-center border-2 border-black font-black text-2xl uppercase mb-2">
+            <div className="bg-white p-2 font-sans text-black w-[105mm] h-[148mm] border-2 border-black flex flex-col overflow-hidden">
+                <p className="text-[10px] font-black uppercase opacity-50 mb-1">{systemSettings.companyName}</p>
+                <div className="bg-white text-black p-3 text-center border-4 border-black font-black text-3xl uppercase mb-3">
                     {pkg.recipientCommune}
                 </div>
-                <div className="flex-1 min-h-0 space-y-1">
-                    <p className="text-[11px] font-black leading-tight italic">{pkg.recipientName}</p>
-                    <p className="text-[10px] font-bold leading-tight">{pkg.recipientAddress}</p>
-                    <p className="text-[9px] font-medium leading-tight">Tel: {pkg.recipientPhone}</p>
+                <div className="flex-1 min-h-0 space-y-2">
+                    <p className="text-xl font-black leading-tight italic">{pkg.recipientName}</p>
+                    {pkg.recipientRut && <p className="text-sm font-bold">RUT: {pkg.recipientRut}</p>}
+                    <p className="text-lg font-bold leading-tight">{pkg.recipientAddress}</p>
+                    <p className="text-lg font-black leading-tight">📱 {pkg.recipientPhone}</p>
                 </div>
-                <div className="flex items-center space-x-2 mt-auto border-t border-black pt-1">
-                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20 shrink-0" />}
+                <div className="flex items-center space-x-4 mt-auto border-t-2 border-black pt-2">
+                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-24 h-24 shrink-0" />}
                     <div className="min-w-0 flex-1">
-                         <p className="text-[7px] font-black break-all">{qrContent}</p>
-                         {isMeli && <p className="text-[8px] font-black bg-yellow-400 inline-block px-1 mt-1">FLEX</p>}
+                         <p className="text-[10px] font-black break-all">{qrContent}</p>
+                         {isMeli && <p className="text-sm font-black bg-yellow-400 inline-block px-2 mt-2">FLEX</p>}
                     </div>
                 </div>
             </div>
