@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.3.2",
-  "versionComment": "Versión 2.3.2: Rediseño 100x150mm (Comuna Destacada) + Captura de RUT ML",
+  "version": "2.3.3",
+  "versionComment": "Versión 2.3.3: Etiquetas sin fondos negros (Eco-Thermal) + Comuna resaltada",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay.",
   "scripts": {
