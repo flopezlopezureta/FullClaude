@@ -290,9 +290,9 @@ const SettingsPage: React.FC = () => {
                     <div className="pt-4 border-t border-[var(--border-primary)] bg-[var(--brand-muted)] p-4 rounded-xl">
                         <h3 className="text-lg font-black text-[var(--brand-text)] flex items-center gap-2">
                              📌 NUEVA FUNCIÓN: Formato de Etiqueta Predeterminado
-                             <span className="text-[10px] bg-[var(--brand-primary)] text-white px-2 py-0.5 rounded-full animate-pulse">NUEVO v2.3.1</span>
+                             <span className="text-[10px] bg-[var(--brand-primary)] text-white px-2 py-0.5 rounded-full animate-pulse">NUEVO v2.3.3</span>
                         </h3>
-                        <p className="text-xs text-[var(--text-muted)] mt-1 mb-4 text-balance">Selecciona el formato que se usará por defecto al imprimir etiquetas de envío.</p>
+                        <p className="text-xs text-[var(--text-muted)] mt-1 mb-4 text-balance">Formato Eco-Thermal (sin bloques negros). Comuna resaltada en negrita extra. Optimizado 100x150mm.</p>
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
                             {[
                                 { id: LabelFormat.CompactThermal, name: 'Térmica Económica', size: '100x150mm', icon: <div className="w-full h-20 bg-gray-100 rounded border-2 border-gray-300 flex flex-col justify-between p-2"><div className="w-full h-2 bg-gray-400"></div><div className="w-full h-8 bg-gray-300"></div><div className="flex justify-between"><div className="w-6 h-6 bg-black"></div><div className="w-12 h-2 bg-gray-400 self-end"></div></div></div> },

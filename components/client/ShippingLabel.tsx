@@ -16,6 +16,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
 
     const isMeli = pkg.source === PackageSource.MercadoLibre;
     
+    // Version: 2.3.3
     // Determine QR content for Driver (Flexeo)
     // For ML, we use ONLY the trackingId (which is the SCA authentic code)
     // For manual/others, we use the internal ID or trackingId if available.
@@ -67,10 +68,10 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
 
     const renderDestination = (large = false) => (
         <div className="flex-1 flex flex-col">
-            {/* DESTINATION COMMUNE - HIGHLIGHTED */}
-            <div className="bg-black text-white p-3 mb-3 text-center rounded-sm shadow-sm">
-                <p className={`${large ? 'text-sm' : 'text-[12px]'} font-bold uppercase tracking-[0.2em] mb-1 opacity-80`}>Comuna de Destino</p>
-                <p className={`${large ? 'text-5xl' : 'text-3xl'} font-black uppercase leading-none py-1`}>{pkg.recipientCommune}</p>
+            {/* DESTINATION COMMUNE - HIGHLIGHTED WITHOUT BLACK BLOCK */}
+            <div className="bg-white text-black p-3 mb-3 text-center border-4 border-black rounded-lg">
+                <p className={`${large ? 'text-sm' : 'text-[12px]'} font-black uppercase tracking-[0.3em] mb-1 opacity-60 underline`}>Comuna de Destino</p>
+                <p className={`${large ? 'text-6xl' : 'text-4xl'} font-[1000] uppercase leading-none py-1`}>{pkg.recipientCommune}</p>
             </div>
 
             {/* RECIPIENT DATA - NO TRUNCATION */}
@@ -214,9 +215,9 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     <div className="bg-black text-white px-2 py-1 font-black text-xs">ZEBRA 4X6</div>
                 </div>
                 
-                <div className="bg-black text-white p-4 text-center rounded-sm mb-4">
-                    <p className="text-xl font-bold uppercase tracking-[0.3em] mb-1 opacity-90">Destino</p>
-                    <p className="text-6xl font-black uppercase leading-none">{pkg.recipientCommune}</p>
+                <div className="bg-white text-black p-4 text-center border-[10px] border-black rounded-xl mb-6">
+                    <p className="text-xl font-bold uppercase tracking-[0.4em] mb-2 opacity-70 underline">DESTINO</p>
+                    <p className="text-7xl font-[1000] uppercase breakout leading-none">{pkg.recipientCommune}</p>
                 </div>
 
                 <div className="flex-1 flex flex-col space-y-4">
@@ -258,7 +259,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         return (
             <div className="bg-white p-2 font-sans text-black w-[62mm] h-[100mm] border-2 border-black flex flex-col overflow-hidden">
                 <p className="text-[8px] font-black uppercase opacity-50 mb-1">{systemSettings.companyName}</p>
-                <div className="bg-black text-white p-2 text-center font-black text-xl uppercase mb-2">
+                <div className="bg-white text-black p-2 text-center border-2 border-black font-black text-2xl uppercase mb-2">
                     {pkg.recipientCommune}
                 </div>
                 <div className="flex-1 min-h-0 space-y-1">
