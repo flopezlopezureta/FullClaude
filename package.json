@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.3.4",
-  "versionComment": "Versión 2.3.4: 6 Formatos de Datos Dinámicos (Zebra y Carta) + Sin bloques negros",
+  "version": "2.4.0",
+  "versionComment": "Versión 2.4.0: Sistema de 6 Diseños de Información (Zebra y Carta) + UI Visual Selector",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay.",
   "scripts": {

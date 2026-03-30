@@ -287,35 +287,37 @@ const SettingsPage: React.FC = () => {
                         <input type="number" id="requiredPhotos" name="requiredPhotos" value={settings.requiredPhotos} onChange={handleSettingsChange} min="1" max="5" required className={`${inputClasses} text-[var(--text-primary)]`}/>
                     </div>
 
-                    <div className="pt-4 border-t border-[var(--border-primary)] bg-[var(--brand-muted)] p-4 rounded-xl">
-                        <h3 className="text-lg font-black text-[var(--brand-text)] flex items-center gap-2">
-                             📌 NUEVA FUNCIÓN: Diseño de Información Predeterminado
-                             <span className="text-[10px] bg-[var(--brand-primary)] text-white px-2 py-0.5 rounded-full animate-pulse">NUEVO v2.3.4</span>
+                    <div className="pt-4 border-t border-[var(--border-primary)] bg-[var(--brand-muted)] p-6 rounded-2xl shadow-inner border-2 border-dashed border-black">
+                        <h3 className="text-xl font-black text-black flex items-center gap-2 mb-2">
+                             🎨 SISTEMA DE DISEÑO DE INFORMACIÓN
+                             <span className="text-[10px] bg-black text-white px-3 py-1 rounded-full animate-bounce">ACTIVO v2.4.0</span>
                         </h3>
-                        <p className="text-xs text-[var(--text-muted)] mt-1 mb-4 text-balance">Elige cómo se organizan los datos. Optimizado para Zebra (100x150mm) y Carta (A4/Letter).</p>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <p className="text-sm text-gray-500 mb-6 italic">Selecciona cómo quieres que se organicen los datos en tus etiquetas. Este ajuste afectará a todas las impresiones por defecto.</p>
+                        
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                             {[
-                                { id: LabelFormat.CompactThermal, name: 'Zebra Económica', size: '100x150mm', icon: <div className="w-full h-20 bg-gray-50 rounded border-2 border-gray-200 flex flex-col justify-between p-2"><div className="w-full h-2 bg-gray-300"></div><div className="w-full h-8 border border-gray-300"></div><div className="flex justify-between"><div className="w-6 h-6 border-2 border-black"></div><div className="w-12 h-2 bg-gray-200 self-end"></div></div></div> },
-                                { id: LabelFormat.FullThermal, name: 'Zebra Pro (Notas)', size: '100x150mm', icon: <div className="w-full h-20 bg-gray-50 rounded border-2 border-gray-200 flex flex-col justify-between p-2"><div className="w-full h-2 bg-gray-300"></div><div className="w-full h-12 border-2 border-dashed border-gray-400"></div><div className="flex justify-between"><div className="w-6 h-6 border-2 border-black"></div><div className="w-12 h-2 bg-gray-200 self-end"></div></div></div> },
-                                { id: LabelFormat.ZebraZpl, name: 'Zebra Logística XL', size: '4"x6"', icon: <div className="w-full h-20 bg-gray-50 rounded border-4 border-black flex flex-col items-center justify-center space-y-2"><div className="w-8 h-8 border-2 border-black"></div><div className="w-16 h-4 border border-black"></div></div> },
-                                { id: LabelFormat.A4Single, name: 'Carta Individual', size: 'Carta / A4', icon: <div className="w-full h-20 bg-gray-50 rounded border border-gray-100 flex items-center justify-center p-4"><div className="w-10 h-14 border border-gray-300 bg-white relative"><div className="absolute inset-2 border border-gray-200"></div></div></div> },
-                                { id: LabelFormat.A4Half, name: 'Carta Dúplex (2x)', size: 'Carta / A4x2', icon: <div className="w-full h-20 bg-gray-50 rounded border border-gray-100 flex items-center justify-center p-4"><div className="w-10 h-14 border border-gray-300 bg-white relative flex flex-col border-b-2"><div className="flex-1 border-b border-gray-100 p-1"><div className="w-full h-full border border-gray-300 bg-gray-50"></div></div><div className="flex-1 p-1"><div className="w-full h-full border border-gray-300 bg-gray-50"></div></div></div></div> },
-                                { id: LabelFormat.MinimalSticker, name: 'Carta Cuádruple (4x)', size: 'Carta / A4x4', icon: <div className="w-full h-20 bg-gray-50 rounded border-2 border-gray-200 flex items-center justify-center flex-wrap p-1 gap-1"><div className="w-[45%] h-[45%] border border-gray-300"></div><div className="w-[45%] h-[45%] border border-gray-300"></div><div className="w-[45%] h-[45%] border border-gray-300"></div><div className="w-[45%] h-[45%] border border-gray-300"></div></div> },
+                                { id: LabelFormat.CompactThermal, name: 'Diseño 1', desc: 'Foco en Comuna XL', size: '100x150mm', icon: <div className="w-full h-24 bg-white border-4 border-black rounded-lg flex flex-col p-2"><div className="w-full h-1 bg-gray-100 mb-1"></div><div className="flex-1 border-4 border-black flex items-center justify-center font-black text-xl">MAIPÚ</div><div className="flex justify-between mt-1"><div className="w-6 h-6 border-2 border-black"></div><div className="w-10 h-2 bg-black self-end"></div></div></div> },
+                                { id: LabelFormat.FullThermal, name: 'Diseño 2', desc: 'Foco en Identidad Client', size: '100x150mm', icon: <div className="w-full h-24 bg-white border-4 border-black rounded-lg flex flex-col"><div className="bg-black h-4 w-full"></div><div className="flex-1 p-2 flex flex-col justify-center items-center"><div className="w-full h-4 border-b-2 border-black mb-1"></div><div className="w-3/4 h-2 bg-gray-100"></div></div><div className="flex justify-end p-1"><div className="w-4 h-4 border-2 border-black"></div></div></div> },
+                                { id: LabelFormat.ZebraZpl, name: 'Diseño 3', desc: 'Estilo Industrial (QR)', size: '4"x6"', icon: <div className="w-full h-24 bg-white border-4 border-black rounded-lg flex overflow-hidden"><div className="w-1/3 bg-black flex flex-col items-center p-1"><div className="w-full h-1/2 border border-white"></div><div className="w-4 h-4 bg-white mt-auto mb-1"></div></div><div className="flex-1 p-2 space-y-1"><div className="w-full h-2 bg-gray-200"></div><div className="w-full h-6 bg-gray-50"></div></div></div> },
+                                { id: LabelFormat.A4Single, name: 'Diseño 4', desc: 'Foco en Notas XL', size: 'Carta / A4', icon: <div className="w-full h-24 bg-gray-50 rounded flex items-center justify-center"><div className="w-12 h-16 bg-white border-2 border-black shadow-sm relative p-1"><div className="w-full h-6 bg-blue-50 border border-blue-100"></div><div className="absolute bottom-1 right-1 w-4 h-4 border border-black"></div></div></div> },
+                                { id: LabelFormat.A4Half, name: 'Diseño 5', desc: 'Foco en Tracking ID', size: 'Carta (x2)', icon: <div className="w-full h-24 bg-gray-50 rounded flex items-center justify-center"><div className="w-12 h-16 bg-white border-2 border-black shadow-sm flex flex-col overflow-hidden"><div className="flex-1 border-b-2 border-dashed border-black p-1"><div className="w-full h-full bg-slate-50"></div></div><div className="flex-1 p-1"><div className="w-full h-full bg-slate-50"></div></div></div></div> },
+                                { id: LabelFormat.MinimalSticker, name: 'Diseño 6', desc: 'Compacto Full Info', size: 'A6 / 105x148', icon: <div className="w-full h-24 bg-white border-2 border-slate-300 rounded flex flex-col p-1 gap-1"><div className="h-2 bg-slate-100 w-full"></div><div className="flex gap-1"><div className="flex-1 h-3 border border-black"></div><div className="flex-1 h-3 border border-black"></div></div><div className="h-8 border-4 border-black w-full"></div><div className="h-4 border border-black w-full"></div></div> },
                             ].map(fmt => (
                                 <button
                                     key={fmt.id}
                                     type="button"
                                     onClick={() => setSettings(prev => ({ ...prev, labelFormat: fmt.id as LabelFormat }))}
-                                    className={`p-4 border rounded-2xl text-left relative transition-all group ${settings.labelFormat === fmt.id ? 'border-[var(--brand-primary)] bg-white shadow-lg scale-[1.02]' : 'border-[var(--border-primary)] hover:border-[var(--brand-secondary)] bg-[var(--background-secondary)]'}`}
+                                    className={`p-4 border-4 rounded-3xl text-left relative transition-all group ${settings.labelFormat === fmt.id ? 'border-black bg-white shadow-[8px_8px_0px_#000] scale-[1.02]' : 'border-transparent hover:border-black/10 bg-white/50'}`}
                                 >
-                                    <div className="mb-3">{fmt.icon}</div>
+                                    <div className="mb-4 transform group-hover:rotate-1 transition-transform">{fmt.icon}</div>
                                     <div className="flex justify-between items-start">
-                                        <span className={`text-sm font-bold ${settings.labelFormat === fmt.id ? 'text-[var(--brand-text)]' : 'text-[var(--text-primary)]'}`}>
+                                        <span className="text-md font-black text-black">
                                             {fmt.name}
                                         </span>
-                                        {settings.labelFormat === fmt.id && <IconCheckCircle className="w-5 h-5 text-[var(--brand-primary)]" />}
+                                        {settings.labelFormat === fmt.id && <IconCheckCircle className="w-6 h-6 text-black" />}
                                     </div>
-                                    <p className="text-[10px] text-[var(--text-muted)] mt-1 font-medium">{fmt.size}</p>
+                                    <p className="text-[11px] font-bold text-gray-500 mt-1 uppercase tracking-tighter">{fmt.desc}</p>
+                                    <p className="text-[10px] text-gray-400 mt-0.5">{fmt.size}</p>
                                 </button>
                             ))}
                         </div>
