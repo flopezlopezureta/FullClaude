@@ -340,5 +340,8 @@ export const api = {
 
   // Mercado Libre Tracking
   getMeliTracking: (packageId: string) => get<{ trackingId: string, shipmentStatus: string, source: string }>(`/integrations/meli-tracking/${packageId}`),
-  getMeliLabelUrl: (packageId: string) => `/api/integrations/meli-label/${packageId}`,
+  getMeliLabelUrl: (packageId: string) => {
+    const token = localStorage.getItem('token');
+    return `/api/integrations/meli-label/${packageId}${token ? `?token=${token}` : ''}`;
+  },
 };
