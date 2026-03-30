@@ -178,16 +178,18 @@ async function pollMeliPackages() {
                             eventDetails = 'El envío ha sido marcado como NO ENTREGADO en Mercado Libre.';
                         }
 
-                        if (newStatus) {
-                            console.log(`[MeliPolling] Package ${pkg.id} status update detected: ${newStatus} (ML Status: ${mlStatus})`);
+                        // [NUEVO] Capturar el trackingId original (SCA) si está disponible
+                        const trackingId = shipment.tracking_id ? String(shipment.tracking_id) : null;
+                        
+                        if (newStatus || trackingId) {
+                            console.log(`[MeliPolling] Syncing package ${pkg.id}: trackingId=${trackingId}, status=${newStatus || pkg.status}`);
                             
                             const now = new Date();
-                            // If shipped, it means it was scanned in Flex app, so set isFlexed = true
                             const isFlexed = mlStatus === 'shipped' || mlStatus === 'delivered';
                             
                             await db.query(
-                                'UPDATE packages SET status = $1, "updatedAt" = $2, "isFlexed" = $3, "flexedAt" = CASE WHEN $3 = true AND "flexedAt" IS NULL THEN $2 ELSE "flexedAt" END WHERE id = $4', 
-                                [newStatus, now, isFlexed, pkg.id]
+                                'UPDATE packages SET status = COALESCE($1, status), "tracking_id" = COALESCE($2, "tracking_id"), "updatedAt" = $3, "isFlexed" = $4, "flexedAt" = CASE WHEN $4 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END WHERE id = $5', 
+                                [newStatus, trackingId, now, isFlexed, pkg.id]
                             );
                             
                             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
@@ -214,10 +216,59 @@ async function pollMeliPackages() {
                 }
             }
         }
+        
+        // [NUEVO] Paso de Auto-Fix para paquetes sin tracking_id en las últimas 48 horas
+        console.log('[MeliPolling] Checking for packages missing tracking_id (SCA)...');
+        const { rows: missingTracking } = await db.query(`
+            SELECT id, "meliFlexCode", "meliOrderId", "creatorId" 
+            FROM packages 
+            WHERE source = 'MERCADO_LIBRE' 
+            AND "trackingId" IS NULL 
+            AND "createdAt" > NOW() - INTERVAL '48 hours'
+            LIMIT 50
+        `);
+
+        for (const pkg of missingTracking) {
+            try {
+                const accessToken = await getValidMeliToken(pkg.creatorId);
+                if (accessToken) {
+                    const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    if (shipment.tracking_id) {
+                        await db.query('UPDATE packages SET "trackingId" = $1 WHERE id = $2', [String(shipment.tracking_id), pkg.id]);
+                        console.log(`[MeliPolling] Auto-fixed trackingId for ${pkg.id}: ${shipment.tracking_id}`);
+                    }
+                }
+            } catch (err) {
+                // Silently fail for background auto-fix
+            }
+        }
+
     } catch (err) {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+    }
+}
+
+// [NUEVO] Función para asegurar el tracking_id inmediatamente después de importar
+async function syncTrackingId(packageId) {
+    try {
+        const { rows } = await db.query('SELECT id, "meliFlexCode", "meliOrderId", "creatorId", "trackingId" FROM packages WHERE id = $1', [packageId]);
+        if (rows.length === 0 || rows[0].trackingId) return;
+        
+        const pkg = rows[0];
+        const accessToken = await getValidMeliToken(pkg.creatorId);
+        if (!accessToken) return;
+
+        const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+        if (shipment.tracking_id) {
+            await db.query('UPDATE packages SET "trackingId" = $1 WHERE id = $2', [String(shipment.tracking_id), packageId]);
+            console.log(`[MeliPolling] Immediate sync for ${packageId}: trackingId=${shipment.tracking_id}`);
+        }
+    } catch (err) {
+        console.warn(`[MeliPolling] Could not sync trackingId immediately for ${packageId}:`, err.message);
     }
 }
 
@@ -277,9 +328,11 @@ async function syncPackage(packageId) {
             eventDetails = 'Sincronización manual: El envío figura como NO ENTREGADO en Mercado Libre.';
         }
 
-        if (newStatus) {
+        const trackingId = shipment.tracking_id ? String(shipment.tracking_id) : null;
+
+        if (newStatus || trackingId) {
             const now = new Date();
-            await db.query('UPDATE packages SET status = $1, "updatedAt" = $2 WHERE id = $3', [newStatus, now, pkg.id]);
+            await db.query('UPDATE packages SET status = COALESCE($1, status), "tracking_id" = COALESCE($2, "tracking_id"), "updatedAt" = $3 WHERE id = $4', [newStatus, trackingId, now, pkg.id]);
             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                 [pkg.id, eventStatus, 'Mercado Libre (Sync)', eventDetails, now]);
             
@@ -449,11 +502,12 @@ async function autoImportMeliPackages() {
                     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
                     try {
-                        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                            [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía integración ML.', now]);
-
                         console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId}`);
+                        
+                        // [NUEVO] Intentar sincronizar el tracking_id original inmediatamente
+                        if (!newPackage.trackingId) {
+                            syncTrackingId(newPackage.id); 
+                        }
                     } catch (dbErr) {
                         if (dbErr.code === '23505') { // Duplicate unique key
                              console.warn(`[MeliPolling] Order ${orderId} seems to be already in DB, skipping...`);
@@ -533,4 +587,4 @@ function getStatus() {
     };
 }
 
-module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages };
+module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages, syncTrackingId };

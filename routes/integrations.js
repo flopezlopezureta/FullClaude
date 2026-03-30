@@ -197,7 +197,7 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
     const { packageId } = req.params;
     try {
         const { rows: pkgRows } = await db.query(
-            'SELECT p."meliFlexCode", p."creatorId" FROM packages p WHERE p.id = $1',
+            'SELECT p."meliFlexCode", p."creatorId", p."trackingId" FROM packages p WHERE p.id = $1',
             [packageId]
         );
         if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado' });
@@ -207,6 +207,19 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
 
         const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
         if (!accessToken) return res.status(401).json({ message: 'Token ML no disponible' });
+
+        // [NUEVO] Si no tenemos el trackingId (SCA), lo buscamos y guardamos ahora
+        if (!pkg.trackingId) {
+            try {
+                const shipment = await makeMeliGetRequest(`/shipments/${pkg.meliFlexCode}`, accessToken);
+                if (shipment.tracking_id) {
+                    await db.query('UPDATE packages SET "trackingId" = $1 WHERE id = $2', [String(shipment.tracking_id), packageId]);
+                    console.log(`[MeliLabel] Sincronizado trackingId ${shipment.tracking_id} para ${packageId}`);
+                }
+            } catch (err) {
+                console.warn(`[MeliLabel] No se pudo sincronizar trackingId: ${err.message || 'Error desconocido'}`);
+            }
+        }
 
         const url = `https://api.mercadolibre.com/shipment_labels?shipment_ids=${pkg.meliFlexCode}&response_type=pdf`;
         
@@ -480,6 +493,9 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
         await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
             [newPackage.id, 'Creado', newPackage.origin, 'Importado vía escaneo ML.', now]);
 
+        // [NUEVO] Sincronizar trackingId original de forma asíncrona
+        meliPollingService.syncTrackingId(newPackage.id);
+
         res.status(201).json({ message: `Paquete para ${newPackage.recipientName} importado!`, pkg: newPackage });
 
     } catch (err) {
@@ -644,6 +660,9 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                 await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
                 await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                     [newPackage.id, 'Creado', newPackage.origin, 'Importado vía integración ML.', now]);
+
+                // [NUEVO] Sincronizar trackingId original de forma asíncrona
+                meliPollingService.syncTrackingId(newPackage.id);
 
                 results.push({ orderId, status: 'success' });
             } catch (e) {

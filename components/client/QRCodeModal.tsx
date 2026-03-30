@@ -40,10 +40,10 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg: initialPkg, onClose, cre
     // Fetch authentic ML tracking tracking if missing
     useEffect(() => {
         const fetchMeliTracking = async () => {
-            if (isMeli && !initialPkg.trackingId) {
+            if (isMeli && !pkg.trackingId) {
                 setLoadingTracking(true);
                 try {
-                    const result = await api.getMeliTracking(initialPkg.id);
+                    const result = await api.getMeliTracking(pkg.id);
                     if (result.trackingId) {
                         setPkg(prev => ({ ...prev, trackingId: result.trackingId }));
                     }
@@ -55,7 +55,7 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg: initialPkg, onClose, cre
             }
         };
         fetchMeliTracking();
-    }, [isMeli, initialPkg.id, initialPkg.trackingId]);
+    }, [isMeli, pkg.id, pkg.trackingId]);
 
     useEffect(() => {
         const generateQR = async () => {
