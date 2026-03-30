@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect, Children, cloneElement, isValidElem
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
 import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy } from './Icon';
-import QRCodeModal from './QRCodeModal';
+import QRCodeModal from './client/QRCodeModal';
 
 interface PackageListItemProps {
   pkg: Package;
@@ -339,9 +339,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
       </div>
       {showQRCode && (
         <QRCodeModal 
-            value={pkg.source === 'MERCADO_LIBRE' ? (pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id) : (pkg.trackingId || pkg.id)} 
-            displayValue={pkg.trackingId || pkg.meliFlexCode || pkg.meliOrderId || pkg.id}
-            title={`Paquete: ${pkg.id}`} 
+            pkg={pkg}
             onClose={() => setShowQRCode(false)} 
         />
       )}
