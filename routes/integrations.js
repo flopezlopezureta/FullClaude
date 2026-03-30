@@ -451,6 +451,43 @@ const getValidMeliIntegration = async (clientId) => {
     return meliIntegration;
 };
 
+// [TEMPORAL] Ruta administrativa para limpiar pedidos fuera de zona (Auditoría profunda)
+router.get('/admin/cleanup-deep', async (req, res) => {
+    const { secret, target } = req.query;
+    if (secret !== 'cleanup_2026') return res.status(403).send('Forbidden');
+
+    try {
+        const queryFind = `
+            SELECT id, "recipientName", "recipientCity", "recipientCommune", source, status 
+            FROM packages 
+            WHERE 
+               LOWER("recipientCity") LIKE '%puerto montt%' OR 
+               LOWER("recipientCity") LIKE '%loncoche%' OR 
+               LOWER("recipientCommune") LIKE '%puerto montt%' OR 
+               LOWER("recipientCommune") LIKE '%loncoche%' OR
+               (
+                 source = 'MERCADO_LIBRE' AND 
+                 LOWER("recipientCity") NOT LIKE '%metropolitana%' AND 
+                 LOWER("recipientCity") NOT LIKE '%santiago%' AND 
+                 LOWER("recipientCity") != 'rm'
+               )
+        `;
+        const { rows: toDelete } = await db.query(queryFind);
+        const count = toDelete.length;
+
+        if (count > 0) {
+            const ids = toDelete.map(r => r.id);
+            await db.query('DELETE FROM tracking_events WHERE "packageId" = ANY($1)', [ids]);
+            await db.query('DELETE FROM packages WHERE id = ANY($1)', [ids]);
+        }
+
+        res.json({ message: `Limpieza profunda completada. Se eliminaron ${count} paquetes.`, deletedCount: count, samples: toDelete });
+    } catch (err) {
+        console.error('[CleanupDeep] Error:', err);
+        res.status(500).json({ error: err.message });
+    }
+});
+
 // POST /api/integrations/import/meli-scanned
 router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
     const { clientId, scannedId, flexCode } = req.body;

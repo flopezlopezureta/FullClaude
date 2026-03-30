@@ -111,6 +111,9 @@ async function pollMeliPackages() {
             await autoImportMeliPackages();
         }
 
+        // [NUEVO] Limpieza automática de registros fuera de zona (Santiago/RM)
+        await cleanupOutOfZonePackages();
+
         // 1. Get all active Mercado Libre packages that are not finished
         const { rows: packages } = await db.query(`
             SELECT id, "meliOrderId", "meliFlexCode", "driverId", status, "creatorId" 
@@ -523,6 +526,37 @@ async function autoImportMeliPackages() {
         }
     } catch (err) {
         console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
+    }
+}
+
+async function cleanupOutOfZonePackages() {
+    try {
+        // Buscamos paquetes que no sean de RM/Santiago o que tengan nombres explícitos de fuera de zona
+        const queryFind = `
+            SELECT id FROM packages 
+            WHERE 
+               LOWER("recipientCity") LIKE '%puerto montt%' OR 
+               LOWER("recipientCity") LIKE '%loncoche%' OR 
+               LOWER("recipientCommune") LIKE '%puerto montt%' OR 
+               LOWER("recipientCommune") LIKE '%loncoche%' OR
+               (
+                 source = 'MERCADO_LIBRE' AND 
+                 LOWER("recipientCity") NOT LIKE '%metropolitana%' AND 
+                 LOWER("recipientCity") NOT LIKE '%santiago%' AND 
+                 LOWER("recipientCity") != 'rm' AND
+                 "recipientCity" != 'Región Metropolitana'
+               )
+        `;
+        const { rows: toDelete } = await db.query(queryFind);
+        
+        if (toDelete.length > 0) {
+            const ids = toDelete.map(r => r.id);
+            console.log(`[MeliPolling] Cleanup: Deleting ${ids.length} out-of-zone packages...`);
+            await db.query('DELETE FROM tracking_events WHERE "packageId" = ANY($1)', [ids]);
+            await db.query('DELETE FROM packages WHERE id = ANY($1)', [ids]);
+        }
+    } catch (err) {
+        console.error('[MeliPolling] Error during automatic cleanup:', err);
     }
 }
 
