@@ -188,7 +188,7 @@ async function pollMeliPackages() {
                             const isFlexed = mlStatus === 'shipped' || mlStatus === 'delivered';
                             
                             await db.query(
-                                'UPDATE packages SET status = COALESCE($1, status), "tracking_id" = COALESCE($2, "tracking_id"), "updatedAt" = $3, "isFlexed" = $4, "flexedAt" = CASE WHEN $4 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END WHERE id = $5', 
+                                'UPDATE packages SET status = COALESCE($1, status), "trackingId" = COALESCE($2, "trackingId"), "updatedAt" = $3, "isFlexed" = $4, "flexedAt" = CASE WHEN $4 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END WHERE id = $5', 
                                 [newStatus, trackingId, now, isFlexed, pkg.id]
                             );
                             
@@ -332,7 +332,7 @@ async function syncPackage(packageId) {
 
         if (newStatus || trackingId) {
             const now = new Date();
-            await db.query('UPDATE packages SET status = COALESCE($1, status), "tracking_id" = COALESCE($2, "tracking_id"), "updatedAt" = $3 WHERE id = $4', [newStatus, trackingId, now, pkg.id]);
+            await db.query('UPDATE packages SET status = COALESCE($1, status), "trackingId" = COALESCE($2, "trackingId"), "updatedAt" = $3 WHERE id = $4', [newStatus, trackingId, now, pkg.id]);
             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                 [pkg.id, eventStatus, 'Mercado Libre (Sync)', eventDetails, now]);
             
@@ -470,7 +470,8 @@ async function autoImportMeliPackages() {
                     if (isRM) {
                         stateName = 'Región Metropolitana';
                     } else {
-                        console.log(`[MeliPolling] Order ${orderId} is in state: ${stateName}. Still importing as it is a Flex order.`);
+                        console.log(`[MeliPolling] Skipping order ${orderId} as it is in state: ${stateName} (Outside RM).`);
+                        continue; // SKIP import
                     }
 
                     // 6. Import Package

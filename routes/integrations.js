@@ -465,6 +465,19 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
         
         // 3. Create local package
         const now = new Date();
+        // [NUEVO] Validación estricta de Región (Solo Santiago / RM)
+        let stateName = shipment.receiver_address?.state?.name || 'Santiago';
+        const lowerState = stateName.toLowerCase();
+        const isRM = lowerState.includes('metropolitana') || 
+                     lowerState.includes('santiago') || 
+                     lowerState === 'rm' ||
+                     lowerState.includes('r.m.');
+
+        if (!isRM) {
+            return res.status(400).json({ message: `No se puede importar: El destino (${stateName}) está fuera de la Región Metropolitana.` });
+        }
+        stateName = 'Región Metropolitana';
+
         const newPackage = {
             id: `${userRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
             recipientName: shipment.receiver_address?.receiver_name || 'N/A',
@@ -474,7 +487,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             origin: 'Centro de Distribución',
             recipientAddress: shipment.receiver_address?.address_line || 'N/A',
             recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-            recipientCity: shipment.receiver_address?.state?.name || 'Santiago',
+            recipientCity: stateName,
             notes: `ML ID: ${scannedId}`,
             estimatedDelivery: now,
             createdAt: now,
@@ -482,7 +495,8 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             creatorId: clientId,
             source: 'MERCADO_LIBRE',
             meliOrderId: scannedId,
-            meliFlexCode: flexCode || scannedId
+            meliFlexCode: flexCode || scannedId,
+            trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
@@ -620,17 +634,20 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                 // 4. Create local package
                 const now = new Date();
                 
-                // Normalize Region/City name for RM
+                // Normalize Region/City name for RM and SKIP if outside
                 let stateName = shipment.receiver_address?.state?.name || 'Santiago';
                 const lowerState = stateName.toLowerCase();
-                if (
-                    lowerState.includes('metropolitana') || 
-                    lowerState.includes('santiago') || 
-                    lowerState === 'rm' ||
-                    lowerState.includes('r.m.')
-                ) {
-                    stateName = 'Región Metropolitana';
+                const isRM = lowerState.includes('metropolitana') || 
+                             lowerState.includes('santiago') || 
+                             lowerState === 'rm' ||
+                             lowerState.includes('r.m.');
+
+                if (!isRM) {
+                    console.warn(`[MeliImport] Skipping order ${orderId} - Outside RM (${stateName})`);
+                    results.push({ orderId, status: 'error', message: `El destino (${stateName}) está fuera de la Región Metropolitana.` });
+                    continue;
                 }
+                stateName = 'Región Metropolitana';
 
                 const newPackage = {
                     id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
