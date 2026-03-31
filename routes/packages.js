@@ -933,12 +933,12 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         const { rows: settingsRows } = await db.query('SELECT "meliFlexValidation" FROM system_settings WHERE id = 1');
         const meliFlexValidation = settingsRows.length > 0 ? settingsRows[0].meliFlexValidation : true;
 
-        // --- NEW MELI VALIDATION (CONDITIONAL) ---
+        // --- NEW MELI VALIDATION (STRICT) ---
         if (meliFlexValidation) {
             try {
-                const { rows: pkgRows } = await db.query('SELECT "meliOrderId", "creatorId" FROM packages WHERE id = $1', [id]);
-                if (pkgRows.length > 0 && pkgRows[0].meliOrderId) {
-                    const { meliOrderId, creatorId } = pkgRows[0];
+                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId" FROM packages WHERE id = $1', [id]);
+                if (pkgRows.length > 0 && pkgRows[0].meliFlexCode) {
+                    const { meliFlexCode, creatorId } = pkgRows[0];
 
                     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
                     let meliIntegration = userRows[0]?.integrations?.meli;
@@ -955,23 +955,25 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                                     await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), creatorId]);
                                 }
                             } catch (refreshError) {
-                                console.error(`[Deliver] Error refreshing ML token for shipment ${meliOrderId}:`, refreshError);
-                                // Continue without validation if refresh fails
+                                console.error(`[Deliver] Error refreshing ML token for shipment ${meliFlexCode}:`, refreshError);
+                                return res.status(400).json({ message: 'Error de conexión con Mercado Libre. Por favor, reintenta en unos momentos.' });
                             }
                         }
                         
                         try {
-                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliOrderId}`, meliIntegration.accessToken);
+                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, meliIntegration.accessToken);
                             if (shippingDetails.status !== 'delivered') {
                                 return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala allí primero y luego confirma aquí.' });
                             }
                         } catch(meliError) {
-                             console.warn(`[Deliver] Could not verify Meli status for shipment ${meliOrderId}. Allowing delivery.`, meliError.body || meliError.message);
+                             console.error(`[Deliver] Meli status verification failed for shipment ${meliFlexCode}:`, meliError.body || meliError.message);
+                             return res.status(400).json({ message: 'No se pudo verificar el estado en Mercado Libre. Asegúrate de haber completado la entrega en la app de Flex.' });
                         }
                     }
                 }
             } catch (validationError) {
-                console.error('[Deliver] Error in Meli validation block:', validationError);
+                console.error('[Deliver] Fatal error in Meli validation block:', validationError);
+                return res.status(500).json({ message: 'Error interno validando estado con Mercado Libre.' });
             }
         }
         // --- END MELI VALIDATION ---
