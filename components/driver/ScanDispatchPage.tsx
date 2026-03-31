@@ -47,21 +47,40 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const handleScan = useCallback(async (data: string) => {
     if (!isScanning || !user) return;
 
-    // Extraer ID si es una URL de Flex (Meli). 
-    // Buscamos el patrón /flex/shipping/ seguido de números, 
-    // o simplemente un ID numérico largo (SCA barcode).
+    // Extraer ID si es una URL de Flex (Meli), 
+    // o un ID numérico largo (SCA barcode),
+    // o un JSON con campos específicos (h_code, shipment_id).
     let packageId = data.trim();
-    const meliUrlMatch = data.match(/\/flex\/shipping\/(\d+)/i);
-    const meliScaMatch = data.match(/^[0-9]{11,15}$/); // IDs de Meli suelen tener 11-12 dígitos
+    
+    // 1. Check if it is a JSON string
+    if (data.trim().startsWith('{')) {
+        try {
+            const jsonData = JSON.parse(data.trim());
+            const extractedId = jsonData.shipment_id || jsonData.id || jsonData.s || jsonData.order_id;
+            if (extractedId) {
+                packageId = String(extractedId);
+            }
+        } catch (e) {
+            console.warn("[Scanner] Failed to parse QR as JSON, falling back to regex.", e);
+        }
+    }
+
+    // 2. Fallback to Regex for URL
+    const meliUrlMatch = packageId.match(/\/flex\/shipping\/(\d+)/i);
+    // 3. Fallback to Regex for JSON field (if unparsed or still contains JSON string)
+    const meliFieldMatch = packageId.match(/["'](?:shipment_id|id|s|order_id)["']\s*:\s*(\d+)/i);
+    // 4. Barcode SCA (Only Numbers)
+    const meliScaMatch = packageId.match(/^[0-9]{11,15}$/);
 
     if (meliUrlMatch) {
         packageId = meliUrlMatch[1];
+    } else if (meliFieldMatch) {
+        packageId = meliFieldMatch[1];
     } else if (meliScaMatch) {
-        packageId = data.trim();
-    } else if (data.includes('/flex/shipping/')) {
-        // Fallback: si no coincide con la regex pero tiene la cadena
-        const parts = data.split('/');
-        const lastPart = parts.filter(p => p.trim() !== '').pop() || data;
+        packageId = packageId.trim();
+    } else if (packageId.includes('/flex/shipping/')) {
+        const parts = packageId.split('/');
+        const lastPart = parts.filter(p => p.trim() !== '').pop() || packageId;
         packageId = lastPart.split('?')[0];
     }
 
