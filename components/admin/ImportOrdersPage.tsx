@@ -96,7 +96,8 @@ const ImportOrdersPage: React.FC = () => {
             const matchesText = textSearch === '' || 
                 (order.recipientName && order.recipientName.toLowerCase().includes(textSearch.toLowerCase())) ||
                 (order.address && order.address.toLowerCase().includes(textSearch.toLowerCase())) ||
-                (order.id && order.id.toString().includes(textSearch));
+                (order.id && order.id.toString().includes(textSearch)) ||
+                (order.shipmentId && order.shipmentId.toString().includes(textSearch));
             
             return matchesCity && matchesCommune && matchesText;
         });
@@ -334,6 +335,7 @@ const ImportOrdersPage: React.FC = () => {
                                     <th className="p-3 text-left font-medium text-[var(--text-muted)] border-b border-[var(--border-secondary)]">Destinatario</th>
                                     <th className="p-3 text-left font-medium text-[var(--text-muted)] border-b border-[var(--border-secondary)]">Dirección</th>
                                     <th className="p-3 text-left font-medium text-[var(--text-muted)] border-b border-[var(--border-secondary)]">Ubicación</th>
+                                    <th className="p-3 text-left font-medium text-[var(--text-muted)] border-b border-[var(--border-secondary)]">ID Envío (Pack ID)</th>
                                     <th className="p-3 text-left font-medium text-[var(--text-muted)] border-b border-[var(--border-secondary)]">ID Orden</th>
                                 </tr>
                             </thead>
@@ -354,6 +356,7 @@ const ImportOrdersPage: React.FC = () => {
                                             <div className="font-bold">{order.commune}</div>
                                             <div className="text-xs">{order.city}</div>
                                         </td>
+                                        <td className="p-3 text-[var(--brand-primary)] font-bold font-mono">{order.shipmentId || '-'}</td>
                                         <td className="p-3 text-[var(--text-muted)] font-mono">{order.id}</td>
                                     </tr>
                                 )) : (

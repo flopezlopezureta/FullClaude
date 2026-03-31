@@ -132,6 +132,7 @@ export interface MeliOrder {
   commune: string;
   city: string;
   notes?: string;
+  shipmentId?: string;
 }
 
 
