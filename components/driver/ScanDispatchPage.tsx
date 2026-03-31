@@ -47,12 +47,17 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const handleScan = useCallback(async (data: string) => {
     if (!isScanning || !user) return;
 
-    // Extract ID if it's a Meli Flex URL (Robust extraction for .com, .cl, .ar, etc.)
+    // Extraer ID si es una URL de Flex (Meli). 
+    // Buscamos el patrón /flex/shipping/ seguido de números.
     let packageId = data.trim();
-    if (data.includes('/flex/shipping/')) {
+    const meliMatch = data.match(/\/flex\/shipping\/(\d+)/i);
+    if (meliMatch) {
+        packageId = meliMatch[1]; // Solo los números
+    } else if (data.includes('/flex/shipping/')) {
+        // Fallback: si no coincide con la regex pero tiene la cadena
         const parts = data.split('/');
-        // Get the last non-empty part of the URL path
-        packageId = parts.filter(p => p.trim() !== '').pop() || data;
+        const lastPart = parts.filter(p => p.trim() !== '').pop() || data;
+        packageId = lastPart.split('?')[0]; // Quitar parámetros de búsqueda si existen
     }
 
     if (scannedInSession.has(packageId)) return;

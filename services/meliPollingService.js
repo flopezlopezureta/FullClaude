@@ -596,6 +596,84 @@ async function cleanupDuplicates() {
     }
 }
 
+
+// [NUEVO] Función para importar un paquete específico en tiempo real (Just-In-Time)
+async function importSpecificMeliPackage(clientId, shipmentId) {
+    console.log(`[MeliPolling] Attempting just-in-time import for Shipment ID ${shipmentId} (Client: ${clientId})`);
+    try {
+        const accessToken = await getValidMeliToken(clientId);
+        if (!accessToken) throw new Error('Token ML no disponible');
+
+        // 1. Fetch Shipment Details
+        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+        const orderId = shipment.order_id?.toString();
+
+        if (!orderId) {
+            console.error(`[MeliPolling] Shipment ${shipmentId} has no associated Order ID.`);
+            return null;
+        }
+
+        // 2. Double-check if already in DB (to avoid race conditions)
+        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliFlexCode" = $1 OR "meliOrderId" = $2', [shipmentId.toString(), orderId]);
+        if (existing.length > 0) return existing[0].id;
+
+        // 3. Region Filter (Santiago/RM)
+        let stateName = shipment.receiver_address?.state?.name || 'Santiago';
+        const lowerState = stateName.toLowerCase();
+        const isRM = lowerState.includes('metropolitana') || 
+                     lowerState.includes('santiago') || 
+                     lowerState === 'rm' ||
+                     lowerState.includes('r.m.');
+        
+        if (!isRM) {
+            console.warn(`[MeliPolling] Just-in-time skipped: Shipment ${shipmentId} is in ${stateName} (Outside RM)`);
+            return null;
+        }
+
+        // 4. Create Package Data
+        const { rows: userRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [clientId]);
+        const clientIdentifier = userRows[0]?.clientIdentifier || 'CLI';
+        const now = new Date();
+
+        const newPackage = {
+            id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
+            recipientName: shipment.receiver_address?.receiver_name || 'N/A',
+            recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
+            status: 'PENDIENTE',
+            shippingType: 'SAME_DAY',
+            origin: 'Centro de Distribución',
+            recipientAddress: shipment.receiver_address?.address_line || 'N/A',
+            recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
+            recipientCity: 'Región Metropolitana',
+            notes: `Just-In-Time Import ML: ${shipmentId}`,
+            estimatedDelivery: now,
+            createdAt: now,
+            updatedAt: now,
+            creatorId: clientId,
+            source: 'MERCADO_LIBRE',
+            meliOrderId: orderId,
+            meliFlexCode: shipmentId.toString(),
+            trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null,
+            recipientRut: shipment.receiver_address?.federal_id || null
+        };
+
+        const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+        const values = Object.values(newPackage).map(v => v === undefined ? null : v);
+        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+            [newPackage.id, 'Creado', newPackage.origin, 'Importado bajo demanda (escaneado).', now]);
+
+        console.log(`[MeliPolling] Successfully imported package ${newPackage.id} for shipment ${shipmentId}`);
+        return newPackage.id;
+
+    } catch (err) {
+        console.error(`[MeliPolling] Just-in-time import error for ${shipmentId}:`, err.message);
+        return null;
+    }
+}
+
 let intervalId = null;
 
 function start(intervalMs = 5 * 60 * 1000) { // Default 5 minutes
@@ -626,4 +704,4 @@ function getStatus() {
     };
 }
 
-module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages, syncTrackingId };
+module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages, syncTrackingId, importSpecificMeliPackage };

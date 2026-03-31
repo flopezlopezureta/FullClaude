@@ -731,12 +731,28 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
     const { id } = req.params;
     const { driverId, flexCode, flexLabelPhotoBase64 } = req.body;
     try {
-        // Broad search for package by Internal ID OR External tracking numbers OR trackingId OR meliFlexCode
-        const { rows: pkgRows } = await db.query(
-            'SELECT id, status, "driverId", "meliFlexCode" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
+        // [NUEVO] Búsqueda extendida: Intentar encontrar por ID interno, ID de Mercado Libre, Shopify, Woo o Tracking ID
+        let { rows: pkgRows } = await db.query(
+            'SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
             [id]
         );
         
+        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time)
+        // Si el paquete no se encuentra, intentamos buscarlo directamente en Mercado Libre a través de nuestros clientes integrados
+        if (pkgRows.length === 0) {
+            console.log(`[Dispatch] Package ${id} not found. Attempting JIT import from ML...`);
+            const { rows: meliUsers } = await db.query("SELECT id FROM users WHERE integrations->'meli' IS NOT NULL");
+            for (const u of meliUsers) {
+                const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id);
+                if (importedId) {
+                    console.log(`[Dispatch] Package ${id} imported JIT as ${importedId}. Continuing...`);
+                    const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [importedId]);
+                    pkgRows = reCheck;
+                    break;
+                }
+            }
+        }
+
         if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         const currentPkg = pkgRows[0];
         const realId = currentPkg.id; // Use the internal ID for updates
