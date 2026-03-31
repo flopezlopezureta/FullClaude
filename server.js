@@ -161,7 +161,26 @@ async function initializeDatabase() {
                 'billingRut TEXT',
                 'billingAddress TEXT',
                 'billingCommune TEXT',
-                'billingGiro TEXT'
+                'billingGiro TEXT',
+                'personalRut TEXT',
+                'plainPassword TEXT',
+                'rut TEXT',
+                'address TEXT',
+                'storesInfo TEXT',
+                'invoices JSONB',
+                'hasCompany BOOLEAN',
+                'companyName TEXT',
+                'companyRut TEXT',
+                'companyAddress TEXT',
+                'licenseExpiry TEXT',
+                'licenseType TEXT',
+                'backgroundCheckNotes TEXT',
+                'vehicles JSONB',
+                'driverPermissions JSONB',
+                'latitude REAL',
+                'longitude REAL',
+                'lastLocationUpdate TIMESTAMPTZ',
+                'integrations JSONB'
             ];
             for (const spec of userCols) {
                 const col = spec.split(' ')[0];
@@ -305,12 +324,7 @@ async function initializeDatabase() {
         } catch (err) {
              if (err.code !== '42701') { console.error('Error during packages migration (createdAt):', err); }
         }
-        try {
-            await db.query('ALTER TABLE users ADD COLUMN "driverPermissions" JSONB');
-            console.log('MIGRATION APPLIED: Column "driverPermissions" was added to "users".');
-        } catch (err) {
-            if (err.code !== '42701') { console.error('Error during users migration (driverPermissions):', err); }
-        }
+
         try {
             await db.query('ALTER TABLE system_settings ADD COLUMN "pickupMode" TEXT DEFAULT \'SCAN\'');
             console.log('MIGRATION APPLIED: Column "pickupMode" was added to "system_settings".');
@@ -323,18 +337,7 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (publicTrackingEnabled):', err); }
         }
-        try {
-            await db.query('ALTER TABLE users ADD COLUMN "latitude" REAL');
-            console.log('MIGRATION APPLIED: Column "latitude" was added to "users".');
-        } catch (err) {
-            if (err.code !== '42701') { console.error('Error during users migration (latitude):', err); }
-        }
-        try {
-            await db.query('ALTER TABLE users ADD COLUMN "longitude" REAL');
-            console.log('MIGRATION APPLIED: Column "longitude" was added to "users".');
-        } catch (err) {
-            if (err.code !== '42701') { console.error('Error during users migration (longitude):', err); }
-        }
+
         try {
             await db.query('ALTER TABLE system_settings ADD COLUMN "meliFlexValidation" BOOLEAN DEFAULT true');
             console.log('MIGRATION APPLIED: Column "meliFlexValidation" was added to "system_settings".');
