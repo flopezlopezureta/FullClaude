@@ -70,12 +70,17 @@ const DashboardLayout: React.FC = () => {
   };
 
   const [activeView, setActiveView] = useState(getDefaultView());
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  
-  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
+
+  // Helper to ensure role comparisons are case-insensitive and robust
+  const hasRole = (role: string | undefined, ...requiredRoles: Role[]) => {
+    if (!role) return false;
+    const upperRole = role.toUpperCase();
+    return requiredRoles.map(r => r.toString().toUpperCase()).includes(upperRole);
+  };
 
   const handleNavigate = (view: string) => {
-    console.log(`[Navigation] Navigating to: ${view} (Current Role: ${user?.role})`);
+    console.log(`[Navigation] Navigating to: ${view} (User Role: ${user?.role})`);
     setActiveView(view);
     if (isMobileView) { 
         setIsSidebarOpen(false);
@@ -83,202 +88,142 @@ const DashboardLayout: React.FC = () => {
   };
 
   /**
-   * [LOGIC REFACTOR] Resolving the "Back to Dashboard" reset bug.
-   * We define view content in a declarative way.
+   * [LOGIC REFACTOR v2] Determining the view content accurately.
+   * If a view is forbidden or unknown, we return NULL, triggering a safe redirect in useEffect.
    */
-  const getViewContent = () => {
-    // 1. Initial State / Loading
-    if (!user) return { title: 'Cargando...', content: <div className="p-8 text-center">Iniciando sesión...</div> };
+  const getViewData = () => {
+    if (!user) return null;
+    if (user.role === Role.Driver) return null; // Unique Layout
 
-    // 2. Global Role Redirection (Driver has unique layout)
-    if (user.role === Role.Driver) return null; // Handled by early return at line 76
+    const isAdmin = hasRole(user.role, Role.Admin);
+    const isOp = hasRole(user.role, Role.OperadorSistemas);
+    const isRetiros = hasRole(user.role, Role.Retiros);
+    const isFact = hasRole(user.role, Role.Facturacion);
+    const isAux = hasRole(user.role, Role.Auxiliar);
+    const isClient = hasRole(user.role, Role.Client);
 
-    // 3. View Selection Switch
     switch (activeView) {
-      // Common Views
       case 'packages':
         return { title: 'Gestión de Paquetes', content: <Dashboard /> };
       
       case 'import-orders':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
-        }
+        if (isAdmin || isOp) return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
         break;
 
       case 'assign-pickups':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas || user.role === Role.Retiros) {
-            return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
-        }
+        if (isAdmin || isOp || isRetiros) return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
         break;
 
       case 'pickup-report':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas || user.role === Role.Retiros) {
-            return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
-        }
+        if (isAdmin || isOp || isRetiros) return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
         break;
 
       // User Management
       case 'users-admins':
-        if (user.role === Role.Admin && isSuperUser) {
-            return { title: 'Gestión de Administradores', content: <UserManagement roleFilter={Role.Admin} /> };
-        }
+        if (isAdmin && isSuperUser) return { title: 'Gestión de Administradores', content: <UserManagement roleFilter={Role.Admin} /> };
         break;
       
       case 'users-operadores':
-        if (user.role === Role.Admin) {
-            return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
-        }
+        if (isAdmin) return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
         break;
 
       case 'users-clients':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
-        }
+        if (isAdmin || isOp) return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
         break;
 
       case 'users-drivers':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
-        }
+        if (isAdmin || isOp) return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
         break;
 
       case 'users-auxiliares':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
-        }
+        if (isAdmin || isOp) return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
         break;
 
       case 'users-retiros':
-        if (user.role === Role.Admin) {
-            return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
-        }
+        if (isAdmin) return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
         break;
 
       case 'users-facturacion':
-        if (user.role === Role.Admin) {
-            return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
-        }
+        if (isAdmin) return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
         break;
 
-      // Operations & Logistics
+      // Logistics
       case 'flex-discrepancies':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas || isSuperUser) {
-            return { title: 'Discrepancias de Carga (Bodega)', content: <DriverFlexDiscrepancyPage /> };
-        }
+        if (isAdmin || isOp || (isAdmin && isSuperUser)) return { title: 'Discrepancias de Carga', content: <DriverFlexDiscrepancyPage /> };
         break;
 
       case 'zone-settings':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: 'Configuración de Zonas', content: <ZoneSettingsPage /> };
-        }
+        if (isAdmin || isOp) return { title: 'Configuración de Zonas', content: <ZoneSettingsPage /> };
         break;
 
       case 'live-map':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: 'Mapa en Vivo de Conductores', content: <LiveMap /> };
-        }
+        if (isAdmin || isOp) return { title: 'Mapa en Vivo', content: <LiveMap /> };
         break;
 
       case 'geolocate':
-        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
-            return { title: '', content: <GeolocatePage /> };
-        }
+        if (isAdmin || isOp) return { title: '', content: <GeolocatePage /> };
         break;
 
-      // Billing (Role Specific or SuperUser)
+      // Billing
       case 'global-billing':
-        if (user.role === Role.Admin || user.role === Role.Facturacion) {
-            return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
-        }
+        if (isAdmin || isFact) return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
         break;
 
       case 'billing-report':
-        if (user.role === Role.Admin || user.role === Role.Facturacion) {
-            return { title: 'Informe de Facturación por Cliente', content: <BillingReportPage /> };
-        }
+        if (isAdmin || isFact) return { title: 'Informe de Facturación', content: <BillingReportPage /> };
         break;
 
       case 'driver-performance':
-        if (user.role === Role.Admin && isSuperUser) {
-            return { title: 'Informe de Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
-        }
+        if (isAdmin && isSuperUser) return { title: 'Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
         break;
 
-      // Client Views
+      // Client
       case 'my-creations':
-        if (user.role === Role.Client) {
-            return { title: '', content: <ClientDashboard /> };
-        }
+        if (isClient) return { title: '', content: <ClientDashboard /> };
         break;
 
       case 'my-performance':
-        if (user.role === Role.Client) {
-            return { title: 'Rendimiento de Envíos', content: <ClientPerformanceReportPage /> };
-        }
+        if (isClient) return { title: 'Rendimiento de Envíos', content: <ClientPerformanceReportPage /> };
         break;
 
-      // Auxiliar Views
+      // Auxiliar
       case 'scan-dispatch':
-        if (user.role === Role.Auxiliar) {
-            return { title: 'Despacho de Paquetes', content: <DispatchScanner /> };
-        }
+        if (isAux) return { title: 'Despacho de Paquetes', content: <DispatchScanner /> };
         break;
 
-      // System Settings (Admin Only)
+      // Settings
       case 'settings':
-        if (user.role === Role.Admin) {
-            return { title: 'Ajustes del Sistema', content: <SettingsPage /> };
-        }
+        if (isAdmin) return { title: 'Ajustes del Sistema', content: <SettingsPage /> };
         break;
 
       case 'integrations':
-        if (user.role === Role.Admin) {
-            return { title: 'Configuración de Integraciones', content: <IntegrationSettingsPage /> };
-        }
+        if (isAdmin) return { title: 'Configuración de Integraciones', content: <IntegrationSettingsPage /> };
         break;
 
       case 'system-logs':
-        if (user.role === Role.Admin && isSuperUser) {
-            return { title: '', content: <SystemLogsPage /> };
-        }
+        if (isAdmin && isSuperUser) return { title: '', content: <SystemLogsPage /> };
         break;
     }
 
-    // Default Fallback
-    console.warn(`[Navigation] View not found or Unauthorized: ${activeView} for role ${user.role}. Defaulting...`);
-    const defaultView = getDefaultView();
-    if (activeView !== defaultView) {
-        // We use a timeout to avoid illegal state update while rendering
-        // Better yet: Just return the default view content here without forcing state sync just yet
-        const dViewData = getStaticViewData(defaultView);
-        return dViewData;
-    }
-    return { title: 'Gestión de Paquetes', content: <Dashboard /> };
+    return null; // Unauthorized or Unknown
   };
 
-  const getStaticViewData = (view: string) => {
-    switch (view) {
-        case 'packages': return { title: 'Gestión de Paquetes', content: <Dashboard /> };
-        case 'my-creations': return { title: '', content: <ClientDashboard /> };
-        case 'global-billing': return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
-        case 'assign-pickups': return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
-        case 'scan-dispatch': return { title: 'Despacho de Paquetes', content: <DispatchScanner /> };
-        default: return { title: 'Gestión de Paquetes', content: <Dashboard /> };
-    }
-  };
-
-  const viewData = getViewContent();
+  const viewData = getViewData();
   const title = viewData?.title || '';
-  const content = viewData?.content || null;
+  const content = viewData?.content;
 
-  // Handle automatic state correction in an effect, NOT in render body
+  // Handle automatic state correction in an effect
   useEffect(() => {
-    const verifiedContent = getViewContent();
-    if (!verifiedContent && activeView !== getDefaultView()) {
+    const verified = getViewData();
+    if (!verified && activeView !== getDefaultView()) {
+        console.warn(`[Navigation] Access denied to ${activeView}. Redirecting to ${getDefaultView()}...`);
         setActiveView(getDefaultView());
     }
   }, [user, activeView]);
 
+  // If we have no content yet (loading or redirecting), show a blank dashboard or skeleton
+  const finalContent = content || <Dashboard />;
+  const finalTitle = title || (activeView === 'packages' ? 'Gestión de Paquetes' : '');
 
   return (
     <div className="flex h-screen bg-[var(--background-primary)] overflow-hidden font-sans">
@@ -300,7 +245,7 @@ const DashboardLayout: React.FC = () => {
               <IconMenu className="w-6 h-6" />
             </button>
             <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight truncate max-w-[200px] sm:max-w-md">
-                {title || (activeView === 'my-creations' ? systemSettings?.companyName : 'Dashboard')}
+                {finalTitle || (activeView === 'my-creations' ? systemSettings?.companyName : 'Dashboard')}
             </h1>
           </div>
 
@@ -336,7 +281,7 @@ const DashboardLayout: React.FC = () => {
         {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[var(--background-primary)]">
           <div className="max-w-7xl mx-auto animate-in fade-in duration-500">
-            {content}
+            {finalContent}
           </div>
         </main>
       </div>
