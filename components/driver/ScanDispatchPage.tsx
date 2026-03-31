@@ -48,16 +48,21 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
     if (!isScanning || !user) return;
 
     // Extraer ID si es una URL de Flex (Meli). 
-    // Buscamos el patrón /flex/shipping/ seguido de números.
+    // Buscamos el patrón /flex/shipping/ seguido de números, 
+    // o simplemente un ID numérico largo (SCA barcode).
     let packageId = data.trim();
-    const meliMatch = data.match(/\/flex\/shipping\/(\d+)/i);
-    if (meliMatch) {
-        packageId = meliMatch[1]; // Solo los números
+    const meliUrlMatch = data.match(/\/flex\/shipping\/(\d+)/i);
+    const meliScaMatch = data.match(/^[0-9]{11,15}$/); // IDs de Meli suelen tener 11-12 dígitos
+
+    if (meliUrlMatch) {
+        packageId = meliUrlMatch[1];
+    } else if (meliScaMatch) {
+        packageId = data.trim();
     } else if (data.includes('/flex/shipping/')) {
         // Fallback: si no coincide con la regex pero tiene la cadena
         const parts = data.split('/');
         const lastPart = parts.filter(p => p.trim() !== '').pop() || data;
-        packageId = lastPart.split('?')[0]; // Quitar parámetros de búsqueda si existen
+        packageId = lastPart.split('?')[0];
     }
 
     if (scannedInSession.has(packageId)) return;
@@ -98,7 +103,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
       setScanResult({ 
         type: 'error', 
         message: errorMessage.includes('no encontrado') 
-          ? `Paquete ${packageId} no encontrado en el sistema.` 
+          ? `ID: ${packageId} - No encontrado en el sistema o clientes configurados.` 
           : errorMessage 
       });
       setTimeout(() => {

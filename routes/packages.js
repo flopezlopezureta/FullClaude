@@ -740,20 +740,31 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time)
         // Si el paquete no se encuentra, intentamos buscarlo directamente en Mercado Libre a través de nuestros clientes integrados
         if (pkgRows.length === 0) {
-            console.log(`[Dispatch] Package ${id} not found. Attempting JIT import from ML...`);
-            const { rows: meliUsers } = await db.query("SELECT id FROM users WHERE integrations->'meli' IS NOT NULL");
+            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting JIT Discovery loop...`);
+            const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
+            console.log(`[Dispatch] Found ${meliUsers.length} potential MELI clients to check.`);
+            
             for (const u of meliUsers) {
-                const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id);
-                if (importedId) {
-                    console.log(`[Dispatch] Package ${id} imported JIT as ${importedId}. Continuing...`);
-                    const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [importedId]);
-                    pkgRows = reCheck;
-                    break;
+                try {
+                    console.log(`[Dispatch] Checking ML client ${u.name} (ID: ${u.id}) for shipment ${id}...`);
+                    // IMPORTANT: We pass TRUE for skipRegionFilter because a driver is physically holding the package
+                    const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id, true);
+                    if (importedId) {
+                        console.log(`[Dispatch] SUCCESS! Shipment ${id} found for client ${u.name}. Linked as ${importedId}.`);
+                        const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [importedId]);
+                        pkgRows = reCheck;
+                        break;
+                    }
+                } catch (meliErr) {
+                    console.error(`[Dispatch] JIT check failed for client ${u.name}:`, meliErr.message);
                 }
             }
         }
 
-        if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        if (pkgRows.length === 0) {
+            console.warn(`[Dispatch] JIT Discovery failed for ID ${id}. Returning 404.`);
+            return res.status(404).json({ message: `Paquete ${id} no encontrado. Asegúrate de que pertenezca a un cliente con integración activa.` });
+        }
         const currentPkg = pkgRows[0];
         const realId = currentPkg.id; // Use the internal ID for updates
         

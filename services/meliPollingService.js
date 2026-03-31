@@ -598,8 +598,8 @@ async function cleanupDuplicates() {
 
 
 // [NUEVO] Función para importar un paquete específico en tiempo real (Just-In-Time)
-async function importSpecificMeliPackage(clientId, shipmentId) {
-    console.log(`[MeliPolling] Attempting just-in-time import for Shipment ID ${shipmentId} (Client: ${clientId})`);
+async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter = false) {
+    console.log(`[MeliPolling] Attempting just-in-time import for Shipment ID ${shipmentId} (Client: ${clientId}, SkipRegionFilter: ${skipRegionFilter})`);
     try {
         const accessToken = await getValidMeliToken(clientId);
         if (!accessToken) throw new Error('Token ML no disponible');
@@ -614,20 +614,22 @@ async function importSpecificMeliPackage(clientId, shipmentId) {
         }
 
         // 2. Double-check if already in DB (to avoid race conditions)
-        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliFlexCode" = $1 OR "meliOrderId" = $2', [shipmentId.toString(), orderId]);
+        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliFlexCode" = $1 OR "meliOrderId" = $2 OR "id" = $1', [shipmentId.toString(), orderId]);
         if (existing.length > 0) return existing[0].id;
 
-        // 3. Region Filter (Santiago/RM)
-        let stateName = shipment.receiver_address?.state?.name || 'Santiago';
-        const lowerState = stateName.toLowerCase();
-        const isRM = lowerState.includes('metropolitana') || 
-                     lowerState.includes('santiago') || 
-                     lowerState === 'rm' ||
-                     lowerState.includes('r.m.');
-        
-        if (!isRM) {
-            console.warn(`[MeliPolling] Just-in-time skipped: Shipment ${shipmentId} is in ${stateName} (Outside RM)`);
-            return null;
+        // 3. Region Filter (Santiago/RM) - Only check if skipRegionFilter is false
+        if (!skipRegionFilter) {
+            let stateName = shipment.receiver_address?.state?.name || 'Santiago';
+            const lowerState = stateName.toLowerCase();
+            const isRM = lowerState.includes('metropolitana') || 
+                         lowerState.includes('santiago') || 
+                         lowerState === 'rm' ||
+                         lowerState.includes('r.m.');
+            
+            if (!isRM) {
+                console.warn(`[MeliPolling] Just-in-time skipped: Shipment ${shipmentId} is in ${stateName} (Outside RM)`);
+                return null;
+            }
         }
 
         // 4. Create Package Data
