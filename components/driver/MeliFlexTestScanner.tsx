@@ -38,13 +38,14 @@ export const MeliFlexTestScanner: React.FC<MeliFlexTestScannerProps> = ({ onBack
     let message = 'Código detectado';
     
     // Check if it's a Mercado Libre Flex URL or code
-    const isMeliUrl = data.includes('mercadoenvios.com/flex/shipping/');
-    const isMeliCode = /^\d{10,20}$/.test(data); // Simple heuristic for ML IDs
+    const isMeliUrl = data.includes('/flex/shipping/');
+    const isMeliCode = /^\d{10,20}$/.test(data.trim()); // Simple heuristic for ML IDs
 
-    let extractedId = data;
+    let extractedId = data.trim();
     if (isMeliUrl) {
         const parts = data.split('/');
-        extractedId = parts[parts.length - 1] || data;
+        // Get the last non-empty part of the URL path
+        extractedId = parts.filter(p => p.trim() !== '').pop() || data;
         type = 'success';
         message = '¡Código de ML Flex leído correctamente (URL)!';
     } else if (isMeliCode) {
