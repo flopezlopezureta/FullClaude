@@ -6,7 +6,7 @@ import Dashboard from '../Dashboard';
 import UserManagement from '../admin/UserManagement';
 import { Role } from '../../constants';
 import ClientDashboard from '../client/ClientDashboard';
-import { IconMenu, IconCube, IconCheckCircle, IconX } from '../Icon';
+import { IconMenu, IconCheckCircle, IconX } from '../Icon';
 import SettingsPage from '../admin/SettingsPage';
 import IntegrationSettingsPage from '../admin/IntegrationSettingsPage';
 import SystemLogsPage from '../admin/SystemLogsPage';
@@ -96,12 +96,12 @@ const DashboardLayout: React.FC = () => {
     title = 'Despacho de Paquetes';
     content = <DispatchScanner />;
   } else if (user?.role === Role.Retiros) {
-    if (activeView === 'assign-pickups') {
-      title = 'Gestión de Retiros';
-      content = <PickupDashboard />;
-    } else {
+    if (activeView === 'pickup-report') {
       title = 'Reporte de Retiros';
       content = <PickupReportPage />;
+    } else {
+      title = 'Gestión de Retiros';
+      content = <PickupDashboard />;
     }
   } else if (activeView === 'packages') {
     title = 'Gestión de Paquetes';
@@ -124,6 +124,15 @@ const DashboardLayout: React.FC = () => {
   } else if (activeView === 'users-facturacion' && user?.role === Role.Admin) {
     title = 'Gestión de Personal de Facturación';
     content = <UserManagement roleFilter={Role.Facturacion} />;
+  } else if (activeView === 'users-auxiliares' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+    title = 'Gestión de Personal Auxiliar';
+    content = <UserManagement roleFilter={Role.Auxiliar} />;
+  } else if (activeView === 'users-operadores' && user?.role === Role.Admin) {
+    title = 'Gestión de Operadores de Sistemas';
+    content = <UserManagement roleFilter={Role.OperadorSistemas} />;
+  } else if (activeView === 'assign-pickups' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
+    title = 'Gestión de Retiros';
+    content = <PickupDashboard />;
   } else if (activeView === 'my-creations' && user?.role === Role.Client) {
     title = ''; // Title is now handled within ClientDashboard
     content = <ClientDashboard />;
