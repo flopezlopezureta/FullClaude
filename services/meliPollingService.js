@@ -506,6 +506,10 @@ async function autoImportMeliPackages() {
                     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
                     try {
+                        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                            [newPackage.id, 'Creado', newPackage.origin, 'Auto-importado vía integración ML.', now]);
+                        
                         console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId}`);
                         
                         // [NUEVO] Intentar sincronizar el tracking_id original inmediatamente
