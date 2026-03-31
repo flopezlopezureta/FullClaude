@@ -1,9 +1,9 @@
 {
   "name": "full-envios-app",
-  "version": "2.4.0",
-  "versionComment": "Versión 2.4.0: Sistema de 6 Diseños de Información (Zebra y Carta) + UI Visual Selector",
+  "version": "2.4.1",
+  "versionComment": "Versión 2.4.1: Soporte para IDs JSON/h_code en escaneo de etiquetas Meli.",
   "private": true,
-  "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay.",
+  "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
