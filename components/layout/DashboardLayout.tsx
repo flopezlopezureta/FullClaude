@@ -75,108 +75,210 @@ const DashboardLayout: React.FC = () => {
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
 
   const handleNavigate = (view: string) => {
+    console.log(`[Navigation] Navigating to: ${view} (Current Role: ${user?.role})`);
     setActiveView(view);
     if (isMobileView) { 
         setIsSidebarOpen(false);
     }
   };
 
-  let title = '';
-  let content: React.ReactNode = null;
+  /**
+   * [LOGIC REFACTOR] Resolving the "Back to Dashboard" reset bug.
+   * We define view content in a declarative way.
+   */
+  const getViewContent = () => {
+    // 1. Initial State / Loading
+    if (!user) return { title: 'Cargando...', content: <div className="p-8 text-center">Iniciando sesión...</div> };
 
-  if (user?.role === Role.Facturacion) {
-    if (activeView === 'global-billing') {
-      title = 'Facturación Masiva';
-      content = <GlobalBillingPage />;
-    } else {
-      title = 'Informe de Facturación por Cliente';
-      content = <BillingReportPage />;
+    // 2. Global Role Redirection (Driver has unique layout)
+    if (user.role === Role.Driver) return null; // Handled by early return at line 76
+
+    // 3. View Selection Switch
+    switch (activeView) {
+      // Common Views
+      case 'packages':
+        return { title: 'Gestión de Paquetes', content: <Dashboard /> };
+      
+      case 'import-orders':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
+        }
+        break;
+
+      case 'assign-pickups':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas || user.role === Role.Retiros) {
+            return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
+        }
+        break;
+
+      case 'pickup-report':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas || user.role === Role.Retiros) {
+            return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
+        }
+        break;
+
+      // User Management
+      case 'users-admins':
+        if (user.role === Role.Admin && isSuperUser) {
+            return { title: 'Gestión de Administradores', content: <UserManagement roleFilter={Role.Admin} /> };
+        }
+        break;
+      
+      case 'users-operadores':
+        if (user.role === Role.Admin) {
+            return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
+        }
+        break;
+
+      case 'users-clients':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
+        }
+        break;
+
+      case 'users-drivers':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
+        }
+        break;
+
+      case 'users-auxiliares':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
+        }
+        break;
+
+      case 'users-retiros':
+        if (user.role === Role.Admin) {
+            return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
+        }
+        break;
+
+      case 'users-facturacion':
+        if (user.role === Role.Admin) {
+            return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
+        }
+        break;
+
+      // Operations & Logistics
+      case 'flex-discrepancies':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas || isSuperUser) {
+            return { title: 'Discrepancias de Carga (Bodega)', content: <DriverFlexDiscrepancyPage /> };
+        }
+        break;
+
+      case 'zone-settings':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: 'Configuración de Zonas', content: <ZoneSettingsPage /> };
+        }
+        break;
+
+      case 'live-map':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: 'Mapa en Vivo de Conductores', content: <LiveMap /> };
+        }
+        break;
+
+      case 'geolocate':
+        if (user.role === Role.Admin || user.role === Role.OperadorSistemas) {
+            return { title: '', content: <GeolocatePage /> };
+        }
+        break;
+
+      // Billing (Role Specific or SuperUser)
+      case 'global-billing':
+        if (user.role === Role.Admin || user.role === Role.Facturacion) {
+            return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
+        }
+        break;
+
+      case 'billing-report':
+        if (user.role === Role.Admin || user.role === Role.Facturacion) {
+            return { title: 'Informe de Facturación por Cliente', content: <BillingReportPage /> };
+        }
+        break;
+
+      case 'driver-performance':
+        if (user.role === Role.Admin && isSuperUser) {
+            return { title: 'Informe de Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
+        }
+        break;
+
+      // Client Views
+      case 'my-creations':
+        if (user.role === Role.Client) {
+            return { title: '', content: <ClientDashboard /> };
+        }
+        break;
+
+      case 'my-performance':
+        if (user.role === Role.Client) {
+            return { title: 'Rendimiento de Envíos', content: <ClientPerformanceReportPage /> };
+        }
+        break;
+
+      // Auxiliar Views
+      case 'scan-dispatch':
+        if (user.role === Role.Auxiliar) {
+            return { title: 'Despacho de Paquetes', content: <DispatchScanner /> };
+        }
+        break;
+
+      // System Settings (Admin Only)
+      case 'settings':
+        if (user.role === Role.Admin) {
+            return { title: 'Ajustes del Sistema', content: <SettingsPage /> };
+        }
+        break;
+
+      case 'integrations':
+        if (user.role === Role.Admin) {
+            return { title: 'Configuración de Integraciones', content: <IntegrationSettingsPage /> };
+        }
+        break;
+
+      case 'system-logs':
+        if (user.role === Role.Admin && isSuperUser) {
+            return { title: '', content: <SystemLogsPage /> };
+        }
+        break;
     }
-  } else if (user?.role === Role.Auxiliar) {
-    title = 'Despacho de Paquetes';
-    content = <DispatchScanner />;
-  } else if (user?.role === Role.Retiros) {
-    if (activeView === 'pickup-report') {
-      title = 'Reporte de Retiros';
-      content = <PickupReportPage />;
-    } else {
-      title = 'Gestión de Retiros';
-      content = <PickupDashboard />;
-    }
-  } else if (activeView === 'packages') {
-    title = 'Gestión de Paquetes';
-    content = <Dashboard />;
-  } else if (activeView === 'import-orders' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Importar Paquetes';
-    content = <ImportOrdersPage />;
-  } else if (activeView === 'users-admins' && user?.role === Role.Admin && isSuperUser) {
-    title = 'Gestión de Administradores y Operadores';
-    content = <UserManagement roleFilter={Role.Admin} />;
-  } else if (activeView === 'users-clients' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Gestión de Clientes';
-    content = <UserManagement roleFilter={Role.Client} />;
-  } else if (activeView === 'users-drivers' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Gestión de Conductores y Auxiliares';
-    content = <UserManagement roleFilter={Role.Driver} />;
-  } else if (activeView === 'users-retiros' && user?.role === Role.Admin) {
-    title = 'Gestión de Personal de Retiros';
-    content = <UserManagement roleFilter={Role.Retiros} />;
-  } else if (activeView === 'users-facturacion' && user?.role === Role.Admin) {
-    title = 'Gestión de Personal de Facturación';
-    content = <UserManagement roleFilter={Role.Facturacion} />;
-  } else if (activeView === 'users-auxiliares' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Gestión de Personal Auxiliar';
-    content = <UserManagement roleFilter={Role.Auxiliar} />;
-  } else if (activeView === 'users-operadores' && user?.role === Role.Admin) {
-    title = 'Gestión de Operadores de Sistemas';
-    content = <UserManagement roleFilter={Role.OperadorSistemas} />;
-  } else if (activeView === 'assign-pickups' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Gestión de Retiros';
-    content = <PickupDashboard />;
-  } else if (activeView === 'my-creations' && user?.role === Role.Client) {
-    title = ''; // Title is now handled within ClientDashboard
-    content = <ClientDashboard />;
-  } else if (activeView === 'my-performance' && user?.role === Role.Client) {
-    title = 'Rendimiento de Envíos';
-    content = <ClientPerformanceReportPage />;
-  } else if (activeView === 'global-billing' && user?.role === Role.Admin && isSuperUser) {
-    title = 'Facturación Masiva';
-    content = <GlobalBillingPage />;
-  } else if (activeView === 'billing-report' && user?.role === Role.Admin && isSuperUser) {
-    title = 'Informe de Facturación por Cliente';
-    content = <BillingReportPage />;
-  } else if (activeView === 'driver-performance' && user?.role === Role.Admin && isSuperUser) {
-    title = 'Informe de Rendimiento por Conductor';
-    content = <DriverPerformanceReportPage />;
-  } else if (activeView === 'pickup-report' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Reporte de Retiros';
-    content = <PickupReportPage />;
-  } else if (activeView === 'flex-discrepancies' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas || isSuperUser)) {
-    title = 'Discrepancias de Carga (Bodega)';
-    content = <DriverFlexDiscrepancyPage />;
-  } else if (activeView === 'zone-settings' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Configuración de Zonas';
-    content = <ZoneSettingsPage />;
-  } else if (activeView === 'live-map' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = 'Mapa en Vivo de Conductores';
-    content = <LiveMap />;
-  } else if (activeView === 'geolocate' && (user?.role === Role.Admin || user?.role === Role.OperadorSistemas)) {
-    title = ''; // Title handled inside component
-    content = <GeolocatePage />;
-  } else if (activeView === 'settings' && user?.role === Role.Admin) {
-    title = 'Ajustes del Sistema';
-    content = <SettingsPage />;
-  } else if (activeView === 'integrations' && user?.role === Role.Admin) {
-    title = 'Configuración de Integraciones';
-    content = <IntegrationSettingsPage />;
-  } else if (activeView === 'system-logs' && user?.role === Role.Admin && isSuperUser) {
-    title = ''; // Title handled inside component
-    content = <SystemLogsPage />;
-  } else {
-    // Fallback to default view if a view is invalid (e.g. non-admin accessing admin page)
+
+    // Default Fallback
+    console.warn(`[Navigation] View not found or Unauthorized: ${activeView} for role ${user.role}. Defaulting...`);
     const defaultView = getDefaultView();
-    setActiveView(defaultView);
-  }
+    if (activeView !== defaultView) {
+        // We use a timeout to avoid illegal state update while rendering
+        // Better yet: Just return the default view content here without forcing state sync just yet
+        const dViewData = getStaticViewData(defaultView);
+        return dViewData;
+    }
+    return { title: 'Gestión de Paquetes', content: <Dashboard /> };
+  };
+
+  const getStaticViewData = (view: string) => {
+    switch (view) {
+        case 'packages': return { title: 'Gestión de Paquetes', content: <Dashboard /> };
+        case 'my-creations': return { title: '', content: <ClientDashboard /> };
+        case 'global-billing': return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
+        case 'assign-pickups': return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
+        case 'scan-dispatch': return { title: 'Despacho de Paquetes', content: <DispatchScanner /> };
+        default: return { title: 'Gestión de Paquetes', content: <Dashboard /> };
+    }
+  };
+
+  const viewData = getViewContent();
+  const title = viewData?.title || '';
+  const content = viewData?.content || null;
+
+  // Handle automatic state correction in an effect, NOT in render body
+  useEffect(() => {
+    const verifiedContent = getViewContent();
+    if (!verifiedContent && activeView !== getDefaultView()) {
+        setActiveView(getDefaultView());
+    }
+  }, [user, activeView]);
+
 
   return (
     <div className="flex h-screen bg-[var(--background-primary)] overflow-hidden font-sans">
