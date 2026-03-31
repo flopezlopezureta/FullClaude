@@ -223,22 +223,29 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
 
         const url = `https://api.mercadolibre.com/shipment_labels?shipment_ids=${pkg.meliFlexCode}&response_type=pdf`;
         
-        const https = require('https');
-        const options = {
-            headers: { 'Authorization': `Bearer ${accessToken}` }
-        };
+        try {
+            const response = await fetch(url, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
 
-        https.get(url, options, (mlRes) => {
-            if (mlRes.statusCode !== 200) {
-                return res.status(mlRes.statusCode).json({ message: 'Error al obtener etiqueta de ML' });
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error(`[MeliLabel] Meli API Error (${response.status}):`, errorText);
+                return res.status(response.status).json({ message: 'Error al obtener etiqueta de ML', meliStatus: response.status });
             }
+
+            // Pipe PDF stream to the client
             res.setHeader('Content-Type', 'application/pdf');
             res.setHeader('Content-Disposition', `attachment; filename=etiqueta_${pkg.meliFlexCode}.pdf`);
-            mlRes.pipe(res);
-        }).on('error', (err) => {
-            console.error('[MeliLabel] Stream Error:', err);
+            
+            // Using Readable.fromWeb for Node 18+ fetch compatibility
+            const { Readable } = require('stream');
+            Readable.fromWeb(response.body).pipe(res);
+
+        } catch (fetchError) {
+            console.error('[MeliLabel] Fetch Error:', fetchError);
             res.status(500).json({ message: 'Error de conexión con ML' });
-        });
+        }
 
     } catch (err) {
         console.error('[MeliLabel] Error:', err);
