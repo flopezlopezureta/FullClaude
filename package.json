@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.4.1",
-  "versionComment": "Versión 2.4.1: Soporte para IDs JSON/h_code en escaneo de etiquetas Meli.",
+  "version": "2.4.2",
+  "versionComment": "Versión 2.4.2: Impresión multi-etiqueta (grilla A4), nitidez QR y solución de pérdida de datos en sync-meli.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
