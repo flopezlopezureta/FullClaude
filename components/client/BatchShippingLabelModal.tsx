@@ -230,35 +230,26 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               }
 
               body {
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
-              }
-
-              body * {
                 visibility: hidden !important;
-                display: none !important;
-              }
-
-              .batch-print-container, 
-              .batch-print-container *,
-              .batch-print-container div {
-                visibility: visible !important;
-                display: block !important;
+                background: white !important;
               }
 
               .batch-print-container {
-                display: block !important;
+                visibility: visible !important;
                 position: absolute !important;
                 top: 0 !important;
                 left: 0 !important;
                 width: 100% !important;
                 height: auto !important;
-                visibility: visible !important;
+                display: block !important;
                 opacity: 1 !important;
-                pointer-events: auto !important;
-                z-index: 99999 !important;
                 background: white !important;
+                z-index: 99999 !important;
+                pointer-events: auto !important;
+              }
+
+              .batch-print-container * {
+                visibility: visible !important;
               }
 
               /* Use Grid for multi-label */
@@ -278,6 +269,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               }
               .letter-grid {
                 display: grid !important;
+                grid-auto-flow: row;
                 grid-template-columns: repeat(2, 1fr);
                 grid-template-rows: repeat(2, 1fr);
                 width: 100%;
@@ -313,19 +305,16 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                  justify-content: center;
               }
 
-              /* Hide last page break to avoid extra blank page */
-              .last-label {
-                page-break-after: avoid;
-              }
-            }
+              .is-multi-label .label-wrapper {
+                 height: 148.5mm;
               }
 
-              /* Design 1, 2, 3 (100x150) -> Scale down slightly to fit exactly in half A4 (148.5mm) */
               .is-multi-label .label-wrapper > div {
-                 transform: scale(${isMultiLabel ? '0.96' : '1'});
+                 transform: scale(0.96);
                  transform-origin: center center;
               }
 
+              /* Hide last page break to avoid extra blank page */
               .last-label {
                 page-break-after: avoid;
               }
