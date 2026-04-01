@@ -25,7 +25,7 @@ const formatOptions = [
 const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packages: initialPackages, creatorName, onClose }) => {
     const { systemSettings } = useContext(AuthContext)!;
     const [packages, setPackages] = useState<Package[]>(initialPackages);
-    const [format, setFormat] = useState<LabelFormat>(systemSettings.labelFormat || LabelFormat.CompactThermal);
+    const [format, setFormat] = useState<LabelFormat>(systemSettings.labelFormat || LabelFormat.LetterMulti);
     const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
     const [progress, setProgress] = useState(0);
     const [isMultiLabel, setIsMultiLabel] = useState(false);
@@ -179,16 +179,16 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
             </div>
         </div>
         
-        {/* Printable Area - Robust visibility for print engines */}
+        {/* Printable Area - Robust visibility and natural page-breaking */}
         <div 
             className={`batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}
             style={{
                 position: 'fixed',
-                top: '-9999px',
-                left: '-9999px',
-                width: '0',
-                height: '0',
-                overflow: 'hidden',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: 'auto',
+                overflow: 'visible',
                 visibility: 'hidden',
                 pointerEvents: 'none',
                 zIndex: -100
@@ -225,34 +225,36 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 ${!isMultiLabel && format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.A4Half ? 'size: 210mm 148.5mm; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
-                ${!isMultiLabel && format === LabelFormat.LetterMulti ? 'size: 8.5in 11in; margin: 0;' : ''}
+                ${format === LabelFormat.LetterMulti ? 'size: letter; margin: 0;' : ''}
                 ${isMultiLabel ? 'size: 210mm 297mm; margin: 0;' : ''}
               }
 
               body {
                 visibility: hidden !important;
                 background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
               }
 
               .batch-print-container {
                 visibility: visible !important;
-                position: absolute !important;
+                display: block !important;
+                position: relative !important;
                 top: 0 !important;
                 left: 0 !important;
                 width: 100% !important;
                 height: auto !important;
-                display: block !important;
                 opacity: 1 !important;
-                background: white !important;
-                z-index: 99999 !important;
                 pointer-events: auto !important;
+                z-index: 99999 !important;
+                background: white !important;
+                overflow: visible !important;
               }
 
               .batch-print-container * {
                 visibility: visible !important;
               }
 
-              /* Use Grid for multi-label */
               .batch-print-container.is-multi-label,
               .batch-print-container.format-letter_multi .letter-grid {
                 display: grid !important;
@@ -263,6 +265,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 width: 8.5in;
                 height: 11in;
                 page-break-after: always;
+                page-break-inside: avoid;
                 background-color: white;
                 display: block !important;
                 overflow: hidden;
@@ -291,6 +294,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
 
               .print-page-break {
                 page-break-after: always;
+                page-break-inside: avoid;
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
@@ -303,6 +307,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                  display: flex !important;
                  align-items: center;
                  justify-content: center;
+                 page-break-after: always;
               }
 
               .is-multi-label .label-wrapper {
@@ -314,9 +319,8 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                  transform-origin: center center;
               }
 
-              /* Hide last page break to avoid extra blank page */
               .last-label {
-                page-break-after: avoid;
+                page-break-after: avoid !important;
               }
             }
         `}</style>
