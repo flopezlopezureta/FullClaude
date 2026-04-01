@@ -27,6 +27,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
     const [format, setFormat] = useState<LabelFormat>(systemSettings.labelFormat || LabelFormat.CompactThermal);
     const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
     const [progress, setProgress] = useState(0);
+    const [isMultiLabel, setIsMultiLabel] = useState(false);
 
     // Effect to fetch authentic ML tracking IDs for all packages in batch
     useEffect(() => {
@@ -96,9 +97,21 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                          </select>
                     </div>
 
-                    <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)] transition-all">
-                        <IconX className="w-6 h-6" />
-                    </button>
+                    <div className="flex items-center space-x-6">
+                        <label className="flex items-center space-x-2 cursor-pointer bg-white/50 px-3 py-1.5 rounded-xl border border-[var(--border-primary)] hover:bg-white/80 transition-colors">
+                            <input 
+                                type="checkbox" 
+                                checked={isMultiLabel} 
+                                onChange={(e) => setIsMultiLabel(e.target.checked)}
+                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                            />
+                            <span className="text-xs font-black text-[var(--text-primary)]">Varias por hoja (A4)</span>
+                        </label>
+
+                        <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)] transition-all">
+                            <IconX className="w-6 h-6" />
+                        </button>
+                    </div>
                 </header>
 
                 <div className="flex-1 overflow-y-auto p-10 bg-slate-200 shadow-inner custom-scrollbar">
@@ -145,7 +158,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
         </div>
         
         {/* Printable Area */}
-        <div className={`hidden print:block batch-print-container format-${format}`}>
+        <div className={`hidden print:block batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}>
             {packages.map((pkg, idx) => (
                 <div key={pkg.id} className={`print-page-break label-wrapper ${idx === packages.length - 1 ? 'last-label' : ''}`}>
                     <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
@@ -158,10 +171,11 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               @page {
                 margin: 0;
                 padding: 0;
-                ${format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl ? 'size: 100mm 150mm; margin: 0;' : ''}
-                ${format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 10mm;' : ''}
-                ${format === LabelFormat.A4Half ? 'size: 210mm 148.5mm; margin: 0;' : ''}
-                ${format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
+                ${!isMultiLabel && (format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl) ? 'size: 100mm 150mm; margin: 0;' : ''}
+                ${!isMultiLabel && format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 10mm;' : ''}
+                ${!isMultiLabel && format === LabelFormat.A4Half ? 'size: 210mm 148.5mm; margin: 0;' : ''}
+                ${!isMultiLabel && format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
+                ${isMultiLabel ? 'size: 210mm 297mm; margin: 0;' : ''}
               }
               body * {
                 visibility: hidden;
@@ -175,16 +189,48 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 top: 0;
                 width: 100%;
               }
+
+              /* Multi-label Grid Settings */
+              .batch-print-container.is-multi-label {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr);
+                gap: 0px;
+                background-color: white;
+                height: auto;
+              }
+
               .print-page-break {
-                page-break-after: always;
+                page-break-after: ${isMultiLabel ? 'auto' : 'always'};
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
+                overflow: hidden;
               }
+
               .label-wrapper {
                  width: 100%;
-                 height: 100vh;
+                 height: ${isMultiLabel ? 'auto' : '100vh'};
+                 min-height: ${isMultiLabel ? 'auto' : '100vh'};
               }
+
+              /* Scaling for designers to fit grid */
+              .is-multi-label .label-wrapper {
+                 border: 0.5px dashed #ccc;
+                 overflow: hidden;
+              }
+
+              /* A4 Single x 2 on A4 page */
+              .is-multi-label.format-${LabelFormat.A4Half} .print-page-break {
+                 height: 148.5mm;
+                 border-bottom: 0.5px dashed #000;
+              }
+
+              /* Design 1, 2, 3 (100x150) -> Scale down to fit 2x2 on A4 if possible, or 2x1 */
+              .is-multi-label .label-wrapper > div {
+                 transform: scale(${isMultiLabel ? '0.98' : '1'});
+                 transform-origin: center center;
+              }
+
               .last-label {
                 page-break-after: avoid;
               }

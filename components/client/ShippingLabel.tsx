@@ -104,7 +104,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         <div className={`mt-auto pt-3 border-t-[3px] border-black flex items-center justify-between`}>
             <div className="flex flex-col items-center">
                 {qrCodeUrl ? (
-                    <img src={qrCodeUrl} alt="QR Code" className={large ? 'w-36 h-36' : 'w-28 h-28'} />
+                    <img src={qrCodeUrl} alt="QR Code" className={large ? 'w-36 h-36' : 'w-28 h-28'} style={{ imageRendering: 'pixelated' }} />
                 ) : (
                     <div className={`${large ? 'w-36 h-36' : 'w-28 h-28'} bg-gray-100 animate-pulse`} />
                 )}
@@ -157,7 +157,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 </div>
                 <div className="mt-auto border-t-4 border-black pt-4 flex items-center justify-between">
                     <div className="flex flex-col items-center">
-                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-40 h-40" />}
+                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-40 h-40" style={{ imageRendering: 'pixelated' }} />}
                         <p className="text-[10px] font-black mt-2">DISEÑO 1</p>
                     </div>
                     <div className="flex-1 pl-6 text-right">
@@ -203,7 +203,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <p className="text-[10px] font-bold mt-1 italic">{systemSettings.companyName}</p>
                     </div>
                     <div className="flex justify-end">
-                         {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-32 h-32" />}
+                         {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-32 h-32" style={{ imageRendering: 'pixelated' }} />}
                     </div>
                 </div>
             </div>
@@ -218,7 +218,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     <div className="rotate-90 origin-center whitespace-nowrap mt-20">
                          <p className="text-4xl font-black tracking-[0.2em]">{pkg.recipientCommune.toUpperCase()}</p>
                     </div>
-                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full invert p-2 bg-white" />}
+                    {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full invert p-2 bg-white" style={{ imageRendering: 'pixelated' }} />}
                     <p className="text-[10px] font-black uppercase tracking-widest">DISEÑO 3</p>
                 </div>
                 <div className="flex-1 p-6 flex flex-col">
@@ -268,7 +268,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     </div>
                     <div className="flex flex-col items-center justify-start space-y-10">
                         <div className="p-6 bg-white shadow-2xl border-2 border-black rounded-xl">
-                            {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-80 h-80" />}
+                            {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-80 h-80" style={{ imageRendering: 'pixelated' }} />}
                         </div>
                         <div className="text-center">
                             <p className="text-xl font-black uppercase text-gray-400 mb-2">Nombre Destinatario:</p>
@@ -320,7 +320,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 <div className="mt-4 pt-4 border-t-2 border-dashed border-gray-300 flex items-center justify-between">
                     <div className="flex flex-col">
                         <p className="text-[8px] font-black uppercase opacity-30 tracking-[0.4em] mb-4">SCAN AREA</p>
-                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-24 h-24" />}
+                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-24 h-24" style={{ imageRendering: 'pixelated' }} />}
                     </div>
                     <div className="text-right">
                          <p className="text-[10px] font-black italic">{systemSettings.companyName}</p>
@@ -363,7 +363,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                      </div>
                 </div>
                 <div className="mt-auto flex items-center justify-center py-2">
-                     {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20" />}
+                     {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20" style={{ imageRendering: 'pixelated' }} />}
                 </div>
             </div>
         );
