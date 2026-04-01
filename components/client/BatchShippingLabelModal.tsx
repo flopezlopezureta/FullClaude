@@ -179,8 +179,21 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
             </div>
         </div>
         
-        {/* Printable Area */}
-        <div className={`hidden print:block batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}>
+        {/* Printable Area - Robust visibility for print engines */}
+        <div 
+            className={`batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}
+            style={{
+                position: 'fixed',
+                top: '-9999px',
+                left: '-9999px',
+                width: '0',
+                height: '0',
+                overflow: 'hidden',
+                visibility: 'hidden',
+                pointerEvents: 'none',
+                zIndex: -100
+            }}
+        >
             {format === LabelFormat.LetterMulti ? (
                 // Chunk by 4 for Letter Multi (2x2 grid per page)
                 Array.from({ length: Math.ceil(packages.length / 4) }).map((_, pageIdx) => (
@@ -209,23 +222,49 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 margin: 0;
                 padding: 0;
                 ${!isMultiLabel && (format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl) ? 'size: 100mm 150mm; margin: 0;' : ''}
-                ${!isMultiLabel && format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 10mm;' : ''}
+                ${!isMultiLabel && format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.A4Half ? 'size: 210mm 148.5mm; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.LetterMulti ? 'size: 8.5in 11in; margin: 0;' : ''}
                 ${isMultiLabel ? 'size: 210mm 297mm; margin: 0;' : ''}
               }
+
+              body {
+                background: white !important;
+                margin: 0 !important;
+                padding: 0 !important;
+              }
+
               body * {
-                visibility: hidden;
+                visibility: hidden !important;
+                display: none !important;
               }
-              .batch-print-container, .batch-print-container * {
+
+              .batch-print-container, 
+              .batch-print-container *,
+              .batch-print-container div {
                 visibility: visible !important;
+                display: block !important;
               }
+
               .batch-print-container {
-                position: relative;
-                width: 100%;
-                margin: 0;
-                padding: 0;
+                display: block !important;
+                position: absolute !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                visibility: visible !important;
+                opacity: 1 !important;
+                pointer-events: auto !important;
+                z-index: 99999 !important;
+                background: white !important;
+              }
+
+              /* Use Grid for multi-label */
+              .batch-print-container.is-multi-label,
+              .batch-print-container.format-letter_multi .letter-grid {
+                display: grid !important;
               }
 
               /* Letter Multi-label (2x2) */
@@ -234,7 +273,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 height: 11in;
                 page-break-after: always;
                 background-color: white;
-                display: block;
+                display: block !important;
                 overflow: hidden;
               }
               .letter-grid {
@@ -252,40 +291,33 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 align-items: center;
                 justify-content: center;
                 overflow: hidden;
-                border: 0.1px dashed rgba(0,0,0,0.05); /* Very subtle cut guide */
               }
               .label-wrapper-letter > div {
-                transform: scale(0.92); /* Scale 100x150 to fit in 4.25"x5.5" */
+                transform: scale(0.92); 
                 transform-origin: center center;
               }
 
-              /* Multi-label Grid Settings */
-              .batch-print-container.is-multi-label {
-                display: grid !important;
-                grid-template-columns: repeat(2, 1fr);
-                gap: 0px;
-                background-color: white;
-                height: auto;
-              }
-
               .print-page-break {
-                page-break-after: ${isMultiLabel ? 'auto' : 'always'};
+                page-break-after: always;
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
-                overflow: hidden;
+                width: 100%;
               }
 
               .label-wrapper {
                  width: 100%;
-                 height: ${isMultiLabel ? '148.5mm' : '100vh'};
-                 min-height: ${isMultiLabel ? 'auto' : '100vh'};
+                 height: 100vh;
+                 display: flex !important;
+                 align-items: center;
+                 justify-content: center;
               }
 
-              /* Scaling for designers to fit grid */
-              .is-multi-label .label-wrapper {
-                 border: 0.5px dashed #ccc;
-                 overflow: hidden;
+              /* Hide last page break to avoid extra blank page */
+              .last-label {
+                page-break-after: avoid;
+              }
+            }
               }
 
               /* Design 1, 2, 3 (100x150) -> Scale down slightly to fit exactly in half A4 (148.5mm) */
