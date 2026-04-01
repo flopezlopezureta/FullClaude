@@ -184,10 +184,10 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 visibility: visible !important;
               }
               .batch-print-container {
-                position: absolute;
-                left: 0;
-                top: 0;
+                position: relative;
                 width: 100%;
+                margin: 0;
+                padding: 0;
               }
 
               /* Multi-label Grid Settings */
@@ -209,7 +209,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
 
               .label-wrapper {
                  width: 100%;
-                 height: ${isMultiLabel ? 'auto' : '100vh'};
+                 height: ${isMultiLabel ? '148.5mm' : '100vh'};
                  min-height: ${isMultiLabel ? 'auto' : '100vh'};
               }
 
@@ -219,15 +219,9 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                  overflow: hidden;
               }
 
-              /* A4 Single x 2 on A4 page */
-              .is-multi-label.format-${LabelFormat.A4Half} .print-page-break {
-                 height: 148.5mm;
-                 border-bottom: 0.5px dashed #000;
-              }
-
-              /* Design 1, 2, 3 (100x150) -> Scale down to fit 2x2 on A4 if possible, or 2x1 */
+              /* Design 1, 2, 3 (100x150) -> Scale down slightly to fit exactly in half A4 (148.5mm) */
               .is-multi-label .label-wrapper > div {
-                 transform: scale(${isMultiLabel ? '0.98' : '1'});
+                 transform: scale(${isMultiLabel ? '0.96' : '1'});
                  transform-origin: center center;
               }
 
