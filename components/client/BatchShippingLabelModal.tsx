@@ -19,6 +19,7 @@ const formatOptions = [
     { id: LabelFormat.A4Single, name: 'Diseño 4', size: 'Hoja A4' },
     { id: LabelFormat.A4Half, name: 'Diseño 5', size: 'Hoja A4 (x2)' },
     { id: LabelFormat.MinimalSticker, name: 'Diseño 6', size: 'A6 / 105x148' },
+    { id: LabelFormat.LetterMulti, name: 'Hoja Carta (x4)', size: '8.5"x11" (x4)' },
 ];
 
 const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packages: initialPackages, creatorName, onClose }) => {
@@ -63,7 +64,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
         window.print();
     };
 
-    const isScaleFormat = format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl || format === LabelFormat.MinimalSticker;
+    const isScaleFormat = format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl || format === LabelFormat.MinimalSticker || format === LabelFormat.LetterMulti;
 
     return (
         <>
@@ -98,15 +99,17 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                     </div>
 
                     <div className="flex items-center space-x-6">
-                        <label className="flex items-center space-x-2 cursor-pointer bg-white/50 px-3 py-1.5 rounded-xl border border-[var(--border-primary)] hover:bg-white/80 transition-colors">
-                            <input 
-                                type="checkbox" 
-                                checked={isMultiLabel} 
-                                onChange={(e) => setIsMultiLabel(e.target.checked)}
-                                className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
-                            />
-                            <span className="text-xs font-black text-[var(--text-primary)]">Varias por hoja (A4)</span>
-                        </label>
+                        {format !== LabelFormat.LetterMulti && (
+                            <label className="flex items-center space-x-2 cursor-pointer bg-white/50 px-3 py-1.5 rounded-xl border border-[var(--border-primary)] hover:bg-white/80 transition-colors">
+                                <input 
+                                    type="checkbox" 
+                                    checked={isMultiLabel} 
+                                    onChange={(e) => setIsMultiLabel(e.target.checked)}
+                                    className="w-4 h-4 text-indigo-600 border-gray-300 rounded focus:ring-indigo-500"
+                                />
+                                <span className="text-xs font-black text-[var(--text-primary)]">Varias por hoja (A4)</span>
+                            </label>
+                        )}
 
                         <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)] transition-all">
                             <IconX className="w-6 h-6" />
@@ -127,14 +130,14 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                         </div>
                     )}
                     
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-10 items-start justify-items-center">
+                    <div className={`grid gap-10 items-start justify-items-center ${format === LabelFormat.LetterMulti ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1 md:grid-cols-2'}`}>
                         {packages.map((pkg) => (
-                            <div key={pkg.id} className={`bg-white shadow-2xl relative ${isScaleFormat ? 'scale-75 origin-top' : 'w-full'}`}>
+                            <div key={pkg.id} className={`bg-white shadow-2xl relative ${isScaleFormat ? (format === LabelFormat.LetterMulti ? 'scale-90' : 'scale-75') : 'w-full'} origin-top`}>
                                 <div className="absolute top-2 right-2 flex space-x-1 print:hidden z-10">
                                      {loadingIds.has(pkg.id) && <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>}
                                      {pkg.source === PackageSource.MercadoLibre && !loadingIds.has(pkg.id) && pkg.trackingId && <div className="text-[10px] font-black bg-black text-white px-2 py-0.5 rounded-full">SCA OK</div>}
                                 </div>
-                                <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
+                                <ShippingLabel pkg={pkg} creatorName={creatorName} format={format === LabelFormat.LetterMulti ? LabelFormat.CompactThermal : format} />
                             </div>
                         ))}
                     </div>
@@ -159,11 +162,26 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
         
         {/* Printable Area */}
         <div className={`hidden print:block batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}>
-            {packages.map((pkg, idx) => (
-                <div key={pkg.id} className={`print-page-break label-wrapper ${idx === packages.length - 1 ? 'last-label' : ''}`}>
-                    <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
-                </div>
-            ))}
+            {format === LabelFormat.LetterMulti ? (
+                // Chunk by 4 for Letter Multi (2x2 grid per page)
+                Array.from({ length: Math.ceil(packages.length / 4) }).map((_, pageIdx) => (
+                    <div key={pageIdx} className="letter-page print-page-break">
+                        <div className="letter-grid">
+                            {packages.slice(pageIdx * 4, pageIdx * 4 + 4).map((pkg) => (
+                                <div key={pkg.id} className="label-wrapper-letter">
+                                    <ShippingLabel pkg={pkg} creatorName={creatorName} format={LabelFormat.CompactThermal} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))
+            ) : (
+                packages.map((pkg, idx) => (
+                    <div key={pkg.id} className={`print-page-break label-wrapper ${idx === packages.length - 1 ? 'last-label' : ''}`}>
+                        <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
+                    </div>
+                ))
+            )}
         </div>
 
         <style>{`
@@ -175,6 +193,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 ${!isMultiLabel && format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 10mm;' : ''}
                 ${!isMultiLabel && format === LabelFormat.A4Half ? 'size: 210mm 148.5mm; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
+                ${!isMultiLabel && format === LabelFormat.LetterMulti ? 'size: 8.5in 11in; margin: 0;' : ''}
                 ${isMultiLabel ? 'size: 210mm 297mm; margin: 0;' : ''}
               }
               body * {
@@ -188,6 +207,37 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 width: 100%;
                 margin: 0;
                 padding: 0;
+              }
+
+              /* Letter Multi-label (2x2) */
+              .letter-page {
+                width: 8.5in;
+                height: 11in;
+                page-break-after: always;
+                background-color: white;
+                display: block;
+                overflow: hidden;
+              }
+              .letter-grid {
+                display: grid !important;
+                grid-template-columns: repeat(2, 1fr);
+                grid-template-rows: repeat(2, 1fr);
+                width: 100%;
+                height: 100%;
+                gap: 0;
+              }
+              .label-wrapper-letter {
+                width: 100%;
+                height: 5.5in;
+                display: flex !important;
+                align-items: center;
+                justify-content: center;
+                overflow: hidden;
+                border: 0.1px dashed rgba(0,0,0,0.05); /* Very subtle cut guide */
+              }
+              .label-wrapper-letter > div {
+                transform: scale(0.92); /* Scale 100x150 to fit in 4.25"x5.5" */
+                transform-origin: center center;
               }
 
               /* Multi-label Grid Settings */

@@ -83,4 +83,5 @@ export enum LabelFormat {
   A4Half = 'a4_half',
   ZebraZpl = 'zebra_zpl',
   MinimalSticker = 'minimal_sticker',
+  LetterMulti = 'letter_multi',
 }
