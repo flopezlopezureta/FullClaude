@@ -103,6 +103,10 @@ const DriverDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    // Solo iniciamos el intervalo si NO estamos en proceso de entrega o reporte
+    // Esto evita que refrescos accidentales en segundo plano cierren los modales
+    if (deliveringPackage || reportingProblemPackage) return;
+
     fetchData(true); // Initial background fetch
     const intervalId = setInterval(() => fetchData(true), 15000); // Poll every 15 seconds instead of 10
     
@@ -114,7 +118,7 @@ const DriverDashboard: React.FC = () => {
     }
 
     return () => clearInterval(intervalId);
-  }, [auth?.user]);
+  }, [auth?.user, deliveringPackage, reportingProblemPackage]);
 
   // Effect to detect when all packages are processed
   useEffect(() => {
