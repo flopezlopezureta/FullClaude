@@ -598,14 +598,17 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
         
         const placeholders = packageIds.map((_, i) => `$${i + 4}`).join(', ');
 
-        // Force status to ASIGNADO so it reflects that a driver holds it
+        // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
+        const targetStatus = driverId && driverId !== 'none' ? 'ASIGNADO' : 'RETIRADO';
+        const finalDriverId = driverId === 'none' ? null : driverId;
+
         const updateQuery = `
             UPDATE packages 
-            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = 'ASIGNADO' 
+            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4
             WHERE id IN (${placeholders})
         `;
         
-        await client.query(updateQuery, [driverId, newDeliveryDate, new Date(), ...packageIds]);
+        await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, ...packageIds]);
 
         // Create tracking events for all updated packages
         const eventPromises = packageIds.map(packageId => {
@@ -707,10 +710,11 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { driverId, newDeliveryDate } = req.body;
     try {
-        // Force status to ASIGNADO
+        // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
+        const targetStatus = driverId ? 'ASIGNADO' : 'RETIRADO';
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = \'ASIGNADO\' WHERE id = $4 RETURNING *',
-            [driverId, newDeliveryDate, new Date(), id]
+            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4 WHERE id = $5 RETURNING *',
+            [driverId, newDeliveryDate, new Date(), targetStatus, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
