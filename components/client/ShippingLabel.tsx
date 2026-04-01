@@ -45,125 +45,40 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         generateQR();
     }, [qrContent]);
 
-    const renderHeader = (compact = false) => (
-        <div className={`flex justify-between items-start border-b-2 border-black ${compact ? 'pb-1 mb-1' : 'pb-2 mb-2'}`}>
-            <div className="min-w-0 flex-1">
-                <h2 className={`${compact ? 'text-sm' : 'text-lg'} font-black truncate leading-tight`}>
-                    {systemSettings.companyName.toUpperCase()}
-                </h2>
-                <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} truncate mt-0.5`}>
-                    Remitente: <span className="font-bold">{creatorName}</span>
-                </p>
-            </div>
-            <div className="text-right flex-shrink-0 ml-2">
-                <p className={`${compact ? 'text-[8px]' : 'text-[10px]'} font-bold`}>{new Date().toLocaleDateString('es-CL')}</p>
-                {isMeli && (
-                    <span className="inline-block bg-yellow-400 text-black px-1 rounded-[2px] text-[10px] font-black mt-0.5 animate-pulse">
-                        FLEX
-                    </span>
-                 )}
-            </div>
-        </div>
-    );
-
-    const renderDestination = (large = false) => (
-        <div className="flex-1 flex flex-col">
-            {/* DESTINATION COMMUNE - HIGHLIGHTED WITHOUT BLACK BLOCK */}
-            <div className="bg-white text-black p-3 mb-3 text-center border-4 border-black rounded-lg">
-                <p className={`${large ? 'text-sm' : 'text-[12px]'} font-black uppercase tracking-[0.3em] mb-1 opacity-60 underline`}>Comuna de Destino</p>
-                <p className={`${large ? 'text-6xl' : 'text-4xl'} font-[1000] uppercase leading-none py-1`}>{pkg.recipientCommune}</p>
-            </div>
-
-            {/* RECIPIENT DATA - NO TRUNCATION */}
-            <div className={`border-[3px] border-black ${large ? 'p-4' : 'p-3'} rounded-sm flex-1 flex flex-col space-y-3`}>
-                <div>
-                    <p className="text-[11px] font-black uppercase text-gray-500 mb-1 tracking-tighter">Destinatario:</p>
-                    <p className={`${large ? 'text-2xl' : 'text-xl'} font-black leading-[1.1]`}>
-                        {pkg.recipientName}
-                    </p>
-                    {pkg.recipientRut && (
-                        <p className={`${large ? 'text-lg' : 'text-md'} font-bold text-gray-700 mt-1`}>RUT: {pkg.recipientRut}</p>
-                    )}
-                </div>
-
-                <div className="pt-2 border-t-2 border-dashed border-gray-300">
-                    <p className="text-[11px] font-black uppercase text-gray-500 mb-1 tracking-tighter">Dirección de Entrega:</p>
-                    <p className={`${large ? 'text-xl' : 'text-lg'} font-bold leading-tight`}>{pkg.recipientAddress}</p>
-                    <p className={`${large ? 'text-lg' : 'text-md'} font-medium mt-1 italic text-gray-600`}>{pkg.recipientCommune}, {pkg.recipientCity}</p>
-                </div>
-
-                <div className="pt-2 border-t-2 border-dashed border-gray-300">
-                     <p className="text-[11px] font-black uppercase text-gray-500 mb-1 tracking-tighter">Contacto:</p>
-                     <p className={`${large ? 'text-2xl' : 'text-xl'} font-black tracking-tight`}>📱 {pkg.recipientPhone}</p>
-                </div>
-            </div>
-        </div>
-    );
-
-    const renderFooter = (large = false) => (
-        <div className={`mt-auto pt-3 border-t-[3px] border-black flex items-center justify-between`}>
-            <div className="flex flex-col items-center">
-                {qrCodeUrl ? (
-                    <img src={qrCodeUrl} alt="QR Code" className={large ? 'w-36 h-36' : 'w-28 h-28'} style={{ imageRendering: 'pixelated' }} />
-                ) : (
-                    <div className={`${large ? 'w-36 h-36' : 'w-28 h-28'} bg-gray-100 animate-pulse`} />
-                )}
-                <p className="text-[10px] font-black mt-2 uppercase text-gray-800 tracking-wider">
-                    {isMeli ? 'Escanear ML Flex' : 'Uso Logístico'}
-                </p>
-            </div>
-            
-            <div className="flex flex-col items-end flex-1 pl-4 text-right justify-center">
-                <p className="text-[10px] font-bold text-gray-500 uppercase mb-1">
-                    {isMeli ? 'Envío Mercado Libre' : 'ID de Seguimiento'}
-                </p>
-                <div className="bg-gray-100 p-2 rounded-sm border border-gray-200 w-full">
-                    <p className={`${large ? 'text-xl' : 'text-lg'} font-mono font-black break-all leading-none`}>
-                        {qrContent}
-                    </p>
-                </div>
-                <div className="w-full h-3 bg-black mt-3"></div>
-                <p className="text-[10px] font-black mt-1 tracking-widest">
-                    {isMeli ? 'ORIGINAL ML FLEX' : 'SISTEMA PROPIO'}
-                </p>
-            </div>
-        </div>
-    );
-
     // --- 6 DISEÑOS DE INFORMACIÓN ---
     
     // DISEÑO 1: ENFOQUE LOGÍSTICO (COMUNA XL)
     if (format === LabelFormat.CompactThermal) {
         return (
-            <div className="bg-white p-6 font-sans text-black w-[100mm] h-[150mm] border-[6px] border-black flex flex-col overflow-hidden">
+            <div className="bg-white p-5 font-sans text-black w-[100mm] h-[150mm] border-4 border-black flex flex-col overflow-hidden">
                 <div className="text-center mb-4">
-                    <h2 className="text-xl font-black">{systemSettings.companyName.toUpperCase()}</h2>
+                    <h2 className="text-lg font-black tracking-tight">{systemSettings.companyName.toUpperCase()}</h2>
                     <p className="text-[10px] uppercase font-bold text-gray-400 tracking-widest">Hoja de Ruta Logística</p>
                 </div>
-                <div className="bg-white text-black p-4 text-center border-8 border-black rounded-2xl mb-6 shadow-[4px_4px_0px_#000]">
-                    <p className="text-sm font-black uppercase tracking-[0.4em] mb-1 opacity-50">Destino Prioritario</p>
-                    <p className="text-7xl font-[1000] uppercase leading-none">{pkg.recipientCommune}</p>
+                <div className="bg-white text-black p-3 text-center border-4 border-black rounded-xl mb-4 shadow-[3px_3px_0px_#000]">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] mb-1 opacity-50">Destino Prioritario</p>
+                    <p className={`font-[1000] uppercase leading-none ${pkg.recipientCommune.length > 12 ? 'text-4xl' : 'text-5xl'}`}>{pkg.recipientCommune}</p>
                 </div>
-                <div className="flex-1 space-y-4">
-                    <div className="border-l-8 border-black pl-4">
+                <div className="flex-1 space-y-3">
+                    <div className="border-l-4 border-black pl-3">
                         <p className="text-[10px] font-black uppercase text-gray-400">Entrega para:</p>
-                        <p className="text-3xl font-black leading-none">{pkg.recipientName}</p>
-                        {pkg.recipientRut && <p className="text-lg font-bold mt-1">RUT: {pkg.recipientRut}</p>}
+                        <p className="text-2xl font-black leading-none">{pkg.recipientName}</p>
+                        {pkg.recipientRut && <p className="text-md font-bold mt-1">RUT: {pkg.recipientRut}</p>}
                     </div>
                     <div className="pt-2 border-t-2 border-dashed border-gray-300">
                         <p className="text-[10px] font-black uppercase text-gray-400">Dirección:</p>
-                        <p className="text-2xl font-bold leading-tight">{pkg.recipientAddress}</p>
+                        <p className="text-xl font-bold leading-tight">{pkg.recipientAddress}</p>
+                        <p className="text-sm font-medium mt-1 italic text-gray-600">{pkg.recipientCommune}, {pkg.recipientCity}</p>
                     </div>
                 </div>
-                <div className="mt-auto border-t-4 border-black pt-4 flex items-center justify-between">
+                <div className="mt-auto border-t-2 border-black pt-3 flex items-center justify-between">
                     <div className="flex flex-col items-center">
-                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-40 h-40" style={{ imageRendering: 'pixelated' }} />}
-                        <p className="text-[10px] font-black mt-2">DISEÑO 1</p>
+                        {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-32 h-32" style={{ imageRendering: 'pixelated' }} />}
                     </div>
-                    <div className="flex-1 pl-6 text-right">
-                         <p className="text-[10px] font-bold text-gray-400 uppercase">ID Operativo:</p>
-                         <p className="text-xl font-mono font-black break-all">{qrContent}</p>
-                         <div className="w-full h-4 bg-black mt-4"></div>
+                    <div className="flex-1 pl-4 text-right">
+                         <p className="text-[9px] font-bold text-gray-400 uppercase">ID Operativo:</p>
+                         <p className="text-lg font-mono font-black break-all leading-tight">{qrContent}</p>
+                         <div className="w-full h-3 bg-black mt-2"></div>
                     </div>
                 </div>
             </div>
@@ -173,37 +88,37 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     // DISEÑO 2: ENFOQUE IDENTIDAD (NOMBRE & RUT)
     if (format === LabelFormat.FullThermal) {
         return (
-            <div className="bg-white p-6 font-sans text-black w-[100mm] h-[150mm] border-[4px] border-black flex flex-col overflow-hidden">
-                <div className="bg-black text-white p-3 text-center mb-4">
-                    <p className="text-2xl font-black tracking-tighter">IDENTIFICACIÓN DE ENTREGA</p>
+            <div className="bg-white p-4 font-sans text-black w-[100mm] h-[150mm] border-2 border-black flex flex-col overflow-hidden">
+                <div className="bg-black text-white p-2 text-center mb-4">
+                    <p className="text-xl font-black tracking-tighter">IDENTIFICACIÓN DE ENTREGA</p>
                 </div>
-                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-6">
-                    <div className="w-full border-b-4 border-black pb-4">
-                         <p className="text-xs font-black uppercase text-gray-400 mb-2 tracking-widest">Titular de la Orden:</p>
-                         <p className="text-5xl font-black leading-none break-words underline decoration-4 underline-offset-8">{pkg.recipientName}</p>
+                <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="w-full border-b-2 border-black pb-4">
+                         <p className="text-[10px] font-black uppercase text-gray-400 mb-2 tracking-widest">Titular de la Orden:</p>
+                         <p className={`font-black leading-none break-words underline decoration-2 underline-offset-4 ${pkg.recipientName.length > 20 ? 'text-3xl' : 'text-4xl'}`}>{pkg.recipientName}</p>
                     </div>
-                    <div className="flex justify-between w-full px-4">
+                    <div className="flex justify-between w-full px-2">
                         <div className="text-left">
-                            <p className="text-[10px] font-black text-gray-400 uppercase">Documento (RUT):</p>
-                            <p className="text-2xl font-black">{pkg.recipientRut || 'NO REGISTRADO'}</p>
+                            <p className="text-[9px] font-black text-gray-400 uppercase">Documento (RUT):</p>
+                            <p className="text-xl font-black">{pkg.recipientRut || 'NO REGISTRADO'}</p>
                         </div>
                         <div className="text-right">
-                             <p className="text-[10px] font-black text-gray-400 uppercase">Comuna:</p>
-                             <p className="text-2xl font-black">{pkg.recipientCommune}</p>
+                             <p className="text-[9px] font-black text-gray-400 uppercase">Comuna:</p>
+                             <p className="text-xl font-black">{pkg.recipientCommune}</p>
                         </div>
                     </div>
-                    <div className="w-full bg-gray-50 border-2 border-black p-4 rounded-xl">
-                        <p className="text-[10px] font-black text-gray-400 uppercase mb-1">Punto de Entrega:</p>
-                        <p className="text-xl font-bold leading-tight">{pkg.recipientAddress}</p>
+                    <div className="w-full bg-gray-50 border border-black p-3 rounded-lg">
+                        <p className="text-[9px] font-black text-gray-400 uppercase mb-1">Punto de Entrega:</p>
+                        <p className="text-lg font-bold leading-tight">{pkg.recipientAddress}</p>
                     </div>
                 </div>
-                <div className="mt-auto grid grid-cols-2 gap-4 border-t-2 border-black pt-4">
+                <div className="mt-auto grid grid-cols-2 gap-4 border-t border-black pt-4">
                     <div className="flex flex-col justify-center">
-                        <p className="text-[10px] font-black tracking-widest text-blue-600">DISEÑO 2</p>
-                        <p className="text-[10px] font-bold mt-1 italic">{systemSettings.companyName}</p>
+                        <p className="text-[9px] font-black tracking-widest text-blue-600">DISEÑO 2</p>
+                        <p className="text-[9px] font-bold mt-1 italic">{systemSettings.companyName}</p>
                     </div>
                     <div className="flex justify-end">
-                         {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-32 h-32" style={{ imageRendering: 'pixelated' }} />}
+                         {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-28 h-28" style={{ imageRendering: 'pixelated' }} />}
                     </div>
                 </div>
             </div>
@@ -213,31 +128,31 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     // DISEÑO 3: ENFOQUE INDUSTRIAL (SIDEBAR QR)
     if (format === LabelFormat.ZebraZpl) {
         return (
-            <div className="bg-white font-sans text-black w-[101.6mm] h-[152.4mm] border-4 border-black flex overflow-hidden">
-                <div className="w-1/3 bg-black text-white p-4 flex flex-col items-center justify-between border-r-4 border-black">
-                    <div className="rotate-90 origin-center whitespace-nowrap mt-20">
-                         <p className="text-4xl font-black tracking-[0.2em]">{pkg.recipientCommune.toUpperCase()}</p>
+            <div className="bg-white font-sans text-black w-[101.6mm] h-[152.4mm] border-2 border-black flex overflow-hidden">
+                <div className="w-1/3 bg-black text-white p-3 flex flex-col items-center justify-between border-r-2 border-black">
+                    <div className="rotate-90 origin-center whitespace-nowrap mt-16">
+                         <p className="text-3xl font-black tracking-widest">{pkg.recipientCommune.toUpperCase()}</p>
                     </div>
                     {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full invert p-2 bg-white" style={{ imageRendering: 'pixelated' }} />}
-                    <p className="text-[10px] font-black uppercase tracking-widest">DISEÑO 3</p>
+                    <p className="text-[9px] font-black uppercase tracking-widest">DISEÑO 3</p>
                 </div>
-                <div className="flex-1 p-6 flex flex-col">
-                    <div className="border-b-4 border-black pb-4 mb-4">
-                        <h2 className="text-xl font-black tracking-tighter">{systemSettings.companyName}</h2>
+                <div className="flex-1 p-5 flex flex-col">
+                    <div className="border-b-2 border-black pb-3 mb-4">
+                        <h2 className="text-lg font-black tracking-tighter">{systemSettings.companyName}</h2>
                     </div>
-                    <div className="mb-6">
-                        <p className="text-xs font-black uppercase text-gray-500 mb-1">Destinatario:</p>
-                        <p className="text-3xl font-black leading-tight mb-2">{pkg.recipientName}</p>
-                        <p className="text-2xl font-bold">📞 {pkg.recipientPhone}</p>
+                    <div className="mb-4">
+                        <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Destinatario:</p>
+                        <p className="text-2xl font-black leading-tight mb-2">{pkg.recipientName}</p>
+                        <p className="text-xl font-bold">📞 {pkg.recipientPhone}</p>
                     </div>
-                    <div className="flex-1 bg-yellow-50 border-b-8 border-yellow-400 p-4">
-                        <p className="text-xs font-black uppercase text-gray-500 mb-1">Instrucciones de Dirección:</p>
-                        <p className="text-2xl font-black leading-tight">{pkg.recipientAddress}</p>
-                        <p className="text-xl font-bold mt-2 italic text-gray-600">{pkg.recipientCommune}, {pkg.recipientCity}</p>
+                    <div className="flex-1 bg-yellow-50 border-b-4 border-yellow-400 p-3">
+                        <p className="text-[10px] font-black uppercase text-gray-500 mb-1">Instrucciones / Dirección:</p>
+                        <p className="text-xl font-black leading-tight">{pkg.recipientAddress}</p>
+                        <p className="text-lg font-bold mt-1 italic text-gray-600">{pkg.recipientCommune}, {pkg.recipientCity}</p>
                     </div>
-                    <div className="mt-4">
-                         <p className="text-[10px] font-black text-gray-400 uppercase">Referencia de Seguimiento:</p>
-                         <p className="text-sm font-mono font-black break-all">{qrContent}</p>
+                    <div className="mt-3">
+                         <p className="text-[9px] font-black text-gray-400 uppercase">Seguimiento:</p>
+                         <p className="text-xs font-mono font-black break-all">{qrContent}</p>
                     </div>
                 </div>
             </div>

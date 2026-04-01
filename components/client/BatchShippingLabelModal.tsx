@@ -29,6 +29,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
     const [loadingIds, setLoadingIds] = useState<Set<string>>(new Set());
     const [progress, setProgress] = useState(0);
     const [isMultiLabel, setIsMultiLabel] = useState(false);
+    const [letterDesign, setLetterDesign] = useState<LabelFormat>(LabelFormat.CompactThermal);
 
     // Effect to fetch authentic ML tracking IDs for all packages in batch
     useEffect(() => {
@@ -87,15 +88,33 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                         </div>
                     </div>
                     
-                    <div className="flex items-center space-x-4 bg-[var(--background-muted)] px-3 py-1.5 rounded-xl border border-[var(--border-primary)]">
-                         <span className="text-xs font-bold text-[var(--text-muted)]">Diseño:</span>
-                         <select 
-                            value={format} 
-                            onChange={(e) => setFormat(e.target.value as LabelFormat)}
-                            className="bg-transparent border-none text-sm font-black text-[var(--text-primary)] focus:ring-0 cursor-pointer"
-                         >
-                            {formatOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name} ({opt.size})</option>)}
-                         </select>
+                    <div className="flex items-center space-x-3">
+                        <div className="flex items-center space-x-2 bg-[var(--background-muted)] px-3 py-1.5 rounded-xl border border-[var(--border-primary)]">
+                             <span className="text-xs font-bold text-[var(--text-muted)]">Papel:</span>
+                             <select 
+                                value={format} 
+                                onChange={(e) => setFormat(e.target.value as LabelFormat)}
+                                className="bg-transparent border-none text-sm font-black text-[var(--text-primary)] focus:ring-0 cursor-pointer"
+                             >
+                                {formatOptions.map(opt => <option key={opt.id} value={opt.id}>{opt.name} ({opt.size})</option>)}
+                             </select>
+                        </div>
+
+                        {format === LabelFormat.LetterMulti && (
+                             <div className="flex items-center space-x-2 bg-[var(--background-muted)] px-3 py-1.5 rounded-xl border border-[var(--border-primary)] animate-fade-in">
+                                <span className="text-xs font-bold text-indigo-600">Diseño:</span>
+                                <select 
+                                    value={letterDesign} 
+                                    onChange={(e) => setLetterDesign(e.target.value as LabelFormat)}
+                                    className="bg-transparent border-none text-sm font-black text-[var(--text-primary)] focus:ring-0 cursor-pointer"
+                                >
+                                    <option value={LabelFormat.CompactThermal}>Diseño 1</option>
+                                    <option value={LabelFormat.FullThermal}>Diseño 2</option>
+                                    <option value={LabelFormat.ZebraZpl}>Diseño 3</option>
+                                    <option value={LabelFormat.MinimalSticker}>Diseño 6</option>
+                                </select>
+                           </div>
+                        )}
                     </div>
 
                     <div className="flex items-center space-x-6">
@@ -137,7 +156,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                                      {loadingIds.has(pkg.id) && <div className="w-4 h-4 border-2 border-black border-t-transparent rounded-full animate-spin"></div>}
                                      {pkg.source === PackageSource.MercadoLibre && !loadingIds.has(pkg.id) && pkg.trackingId && <div className="text-[10px] font-black bg-black text-white px-2 py-0.5 rounded-full">SCA OK</div>}
                                 </div>
-                                <ShippingLabel pkg={pkg} creatorName={creatorName} format={format === LabelFormat.LetterMulti ? LabelFormat.CompactThermal : format} />
+                                <ShippingLabel pkg={pkg} creatorName={creatorName} format={format === LabelFormat.LetterMulti ? letterDesign : format} />
                             </div>
                         ))}
                     </div>
@@ -169,7 +188,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                         <div className="letter-grid">
                             {packages.slice(pageIdx * 4, pageIdx * 4 + 4).map((pkg) => (
                                 <div key={pkg.id} className="label-wrapper-letter">
-                                    <ShippingLabel pkg={pkg} creatorName={creatorName} format={LabelFormat.CompactThermal} />
+                                    <ShippingLabel pkg={pkg} creatorName={creatorName} format={letterDesign} />
                                 </div>
                             ))}
                         </div>
