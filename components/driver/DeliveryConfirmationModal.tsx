@@ -130,7 +130,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rutError, setRutError] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
 
   const auth = useContext(AuthContext);
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
@@ -190,21 +190,68 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const compressImage = (file: File): Promise<string> => {
+      return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+              const img = new Image();
+              img.onload = () => {
+                  const canvas = document.createElement('canvas');
+                  let width = img.width;
+                  let height = img.height;
+                  const maxDim = 1200;
+
+                  if (width > height) {
+                      if (width > maxDim) {
+                          height *= maxDim / width;
+                          width = maxDim;
+                      }
+                  } else {
+                      if (height > maxDim) {
+                          width *= maxDim / height;
+                          height = maxDim;
+                      }
+                  }
+
+                  canvas.width = width;
+                  canvas.height = height;
+                  const ctx = canvas.getContext('2d');
+                  ctx?.drawImage(img, 0, 0, width, height);
+                  
+                  // Compresión a JPEG con calidad 0.7 para ahorrar mucha memoria
+                  const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+                  resolve(compressedDataUrl);
+              };
+              img.onerror = reject;
+              img.src = e.target?.result as string;
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+      });
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const remaining = requiredPhotos - photosBase64.length;
-      const filesToProcess = Array.from(files).slice(0, remaining);
-      
-      filesToProcess.forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPhotosBase64(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-      // Reset input value to allow selecting same file again if needed
-      e.target.value = '';
+      setIsCompressing(true);
+      try {
+        const remaining = requiredPhotos - photosBase64.length;
+        const filesToProcess = Array.from(files).slice(0, remaining);
+        
+        const newPhotos: string[] = [];
+        for (const file of filesToProcess) {
+            const compressed = await compressImage(file);
+            newPhotos.push(compressed);
+        }
+        
+        setPhotosBase64(prev => [...prev, ...newPhotos]);
+      } catch (err) {
+        console.error("Error compressing images:", err);
+        setError("Error al procesar las imágenes. Intenta con un archivo más pequeño.");
+      } finally {
+        setIsCompressing(false);
+        e.target.value = '';
+      }
     }
   };
   
@@ -212,7 +259,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       setPhotosBase64(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const isFormValid = receiverName.trim() !== '' && (!isRutRequired || (receiverId.trim() !== '' && !rutError)) && photosBase64.length >= requiredPhotos;
+  const isFormValid = receiverName.trim() !== '' && (!isRutRequired || (receiverId.trim() !== '' && !rutError)) && photosBase64.length >= requiredPhotos && !isCompressing;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,8 +278,14 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     }
   };
 
+  const handleBackdropClick = (e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+        onClose();
+    }
+  };
+
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
+    <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={handleBackdropClick}>
       <div className="bg-[var(--background-secondary)] rounded-xl shadow-2xl w-full max-w-lg animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
         <header className="flex items-start justify-between p-4 border-b border-[var(--border-primary)]">
             <div>
@@ -297,19 +350,24 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                                 <IconCamera className="w-8 h-8 mb-2" />
                                 <span className="text-sm font-semibold">Cámara</span>
                             </button>
-                            <button type="button" onClick={() => fileInputRef.current?.click()} className={`flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors`}>
+                            <label className={`flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer`}>
                                 <IconPhoto className="w-8 h-8 mb-2" />
                                 <span className="text-sm font-semibold">Galería</span>
-                            </button>
+                                <input 
+                                    type="file" 
+                                    onChange={handleFileChange} 
+                                    accept="image/*" 
+                                    multiple 
+                                    className="hidden" 
+                                />
+                            </label>
                         </div>
-                        <input 
-                            type="file" 
-                            ref={fileInputRef} 
-                            onChange={handleFileChange} 
-                            accept="image/*" 
-                            multiple 
-                            className="hidden" 
-                        />
+                        {isCompressing && (
+                            <div className="flex items-center justify-center space-x-2 text-indigo-600 animate-pulse py-2">
+                                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-xs font-bold">Optimizando imágenes...</span>
+                            </div>
+                        )}
                         <p className="text-xs text-[var(--text-muted)]">
                             Faltan {photosRemaining} foto{photosRemaining > 1 ? 's' : ''} requerida{photosRemaining > 1 ? 's' : ''}
                         </p>
