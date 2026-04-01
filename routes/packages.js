@@ -596,7 +596,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
         }
         const driverName = driverRows[0].name;
         
-        const placeholders = packageIds.map((_, i) => `$${i + 4}`).join(', ');
+        const placeholders = packageIds.map((_, i) => `$${i + 5}`).join(', ');
 
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
         const targetStatus = driverId && driverId !== 'none' ? 'ASIGNADO' : 'RETIRADO';
