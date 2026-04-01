@@ -176,6 +176,8 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 margin: 0 !important;
                 padding: 0 !important;
                 box-sizing: border-box;
+                transform: scale(0.95);
+                transform-origin: center center;
               }
             }
         `}</style>
