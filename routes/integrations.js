@@ -497,12 +497,24 @@ router.get('/admin/cleanup-deep', async (req, res) => {
 
 // POST /api/integrations/import/meli-scanned
 router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
-    const { clientId, scannedId, flexCode } = req.body;
+    let { clientId, scannedId, flexCode } = req.body;
+
+    // [NUEVO] Si scannedId o flexCode vienen como JSON (etiqueta oficial), extraer solo el ID
+    const extractId = (text) => {
+        if (text && typeof text === 'string' && text.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(text);
+                if (parsed.id) return String(parsed.id);
+            } catch (e) {}
+        }
+        return text;
+    };
+
+    scannedId = extractId(scannedId);
+    flexCode = extractId(flexCode);
 
     try {
         // 1. Get Valid Integration
-        const meliIntegration = await getValidMeliIntegration(clientId);
-        const { rows: userRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [clientId]);
 
         // 2. Get Shipment Details from ML
         const shipment = await makeMeliGetRequest(`/shipments/${scannedId}`, meliIntegration.accessToken);

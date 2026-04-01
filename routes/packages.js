@@ -779,6 +779,17 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         // If a flexCode is explicitly provided in the body, use it.
         // Otherwise, if scanned ID is different from internal ID and we don't have a flex code, save it.
         let flexCodeToSave = flexCode || currentPkg.meliFlexCode;
+
+        // [NUEVO] Si flexCodeToSave es un JSON (etiqueta oficial), extraer solo el ID
+        if (flexCodeToSave && flexCodeToSave.startsWith('{')) {
+            try {
+                const parsed = JSON.parse(flexCodeToSave);
+                if (parsed.id) flexCodeToSave = String(parsed.id);
+            } catch (e) {
+                // Fallback si no es un JSON válido
+            }
+        }
+
         if (!flexCode && id !== realId && !currentPkg.meliFlexCode) {
             flexCodeToSave = id;
         }

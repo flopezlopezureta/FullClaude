@@ -599,6 +599,14 @@ async function cleanupDuplicates() {
 
 // [NUEVO] Función para importar un paquete específico en tiempo real (Just-In-Time)
 async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter = false) {
+    // [NUEVO] Si shipmentId es un JSON (etiqueta oficial), extraer solo el ID
+    if (shipmentId && typeof shipmentId === 'string' && shipmentId.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(shipmentId);
+            if (parsed.id) shipmentId = String(parsed.id);
+        } catch (e) {}
+    }
+
     console.log(`[MeliPolling] Attempting just-in-time import for Shipment ID ${shipmentId} (Client: ${clientId}, SkipRegionFilter: ${skipRegionFilter})`);
     try {
         const accessToken = await getValidMeliToken(clientId);
