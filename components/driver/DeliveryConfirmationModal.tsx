@@ -278,10 +278,18 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     }
   };
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   const handleBackdropClick = (e: React.MouseEvent) => {
-    if (e.target === e.currentTarget) {
-        onClose();
-    }
+    // Hemos desactivado el cierre por backdrop para evitar accidentes en móviles
+    // al interactuar con el selector de archivos o la cámara.
+    e.stopPropagation();
+  };
+
+  const handleGalleryClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      e.preventDefault();
+      fileInputRef.current?.click();
   };
 
   return (
@@ -350,18 +358,19 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                                 <IconCamera className="w-8 h-8 mb-2" />
                                 <span className="text-sm font-semibold">Cámara</span>
                             </button>
-                            <label className={`flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer`}>
+                            <button type="button" onClick={handleGalleryClick} className={`flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors`}>
                                 <IconPhoto className="w-8 h-8 mb-2" />
                                 <span className="text-sm font-semibold">Galería</span>
-                                <input 
-                                    type="file" 
-                                    onChange={handleFileChange} 
-                                    accept="image/*" 
-                                    multiple 
-                                    className="hidden" 
-                                />
-                            </label>
+                            </button>
                         </div>
+                        <input 
+                            type="file" 
+                            ref={fileInputRef}
+                            onChange={handleFileChange} 
+                            accept="image/*" 
+                            multiple 
+                            className="hidden" 
+                        />
                         {isCompressing && (
                             <div className="flex items-center justify-center space-x-2 text-indigo-600 animate-pulse py-2">
                                 <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
