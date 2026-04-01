@@ -279,7 +279,7 @@ async function syncPackage(packageId) {
     console.log(`[MeliPolling] Manually syncing package ${packageId}...`);
     try {
         const { rows } = await db.query(`
-            SELECT id, "meliOrderId", "meliFlexCode", "driverId", status, "creatorId", source 
+            SELECT * 
             FROM packages 
             WHERE id = $1
         `, [packageId]);
