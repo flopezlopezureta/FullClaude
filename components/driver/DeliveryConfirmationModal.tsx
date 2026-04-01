@@ -192,41 +192,41 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
 
   const compressImage = (file: File): Promise<string> => {
       return new Promise((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onload = (e) => {
-              const img = new Image();
-              img.onload = () => {
-                  const canvas = document.createElement('canvas');
-                  let width = img.width;
-                  let height = img.height;
-                  const maxDim = 1200;
+          const url = URL.createObjectURL(file);
+          const img = new Image();
+          img.onload = () => {
+              const canvas = document.createElement('canvas');
+              let width = img.width;
+              let height = img.height;
+              const maxDim = 1200;
 
-                  if (width > height) {
-                      if (width > maxDim) {
-                          height *= maxDim / width;
-                          width = maxDim;
-                      }
-                  } else {
-                      if (height > maxDim) {
-                          width *= maxDim / height;
-                          height = maxDim;
-                      }
+              if (width > height) {
+                  if (width > maxDim) {
+                      height *= maxDim / width;
+                      width = maxDim;
                   }
+              } else {
+                  if (height > maxDim) {
+                      width *= maxDim / height;
+                      height = maxDim;
+                  }
+              }
 
-                  canvas.width = width;
-                  canvas.height = height;
-                  const ctx = canvas.getContext('2d');
-                  ctx?.drawImage(img, 0, 0, width, height);
-                  
-                  // Compresión a JPEG con calidad 0.7 para ahorrar mucha memoria
-                  const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-                  resolve(compressedDataUrl);
-              };
-              img.onerror = reject;
-              img.src = e.target?.result as string;
+              canvas.width = width;
+              canvas.height = height;
+              const ctx = canvas.getContext('2d');
+              ctx?.drawImage(img, 0, 0, width, height);
+              
+              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
+              // Limpiar memoria
+              URL.revokeObjectURL(url);
+              resolve(compressedDataUrl);
           };
-          reader.onerror = reject;
-          reader.readAsDataURL(file);
+          img.onerror = (err) => {
+              URL.revokeObjectURL(url);
+              reject(err);
+          };
+          img.src = url;
       });
   };
 
