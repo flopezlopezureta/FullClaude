@@ -93,8 +93,8 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
         >
             {format === LabelFormat.LetterMulti || isMultiLabel ? (
                 // Chunk by 4 for Letter Multi (2x2 grid per page)
-                Array.from({ length: Math.ceil(packages.length / 4) }).map((_, pageIdx) => (
-                    <div key={pageIdx} className="letter-page print-page-break">
+                Array.from({ length: Math.ceil(packages.length / 4) }).map((_, pageIdx, pageArr) => (
+                    <div key={pageIdx} className={`letter-page ${pageIdx < pageArr.length - 1 ? 'print-page-break' : ''}`}>
                         <div className="letter-grid">
                             {packages.slice(pageIdx * 4, pageIdx * 4 + 4).map((pkg) => (
                                 <div key={pkg.id} className="label-wrapper-letter">
@@ -106,7 +106,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 ))
             ) : (
                 packages.map((pkg, idx) => (
-                    <div key={pkg.id} className={`print-page-break label-wrapper ${idx === packages.length - 1 ? 'last-label' : ''}`}>
+                    <div key={pkg.id} className={`label-wrapper ${idx < packages.length - 1 ? 'print-page-break' : 'last-label'}`}>
                         <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
                     </div>
                 ))
@@ -279,12 +279,14 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               /* Letter Multi-label (2x2) */
               .letter-page {
                 width: 8.5in;
-                height: 11in;
-                page-break-after: always;
+                height: 10.95in; /* Slightly less than 11in to avoid overflow */
+                max-height: 11in;
+                page-break-after: auto;
                 page-break-inside: avoid;
                 background-color: white;
                 display: block !important;
                 overflow: hidden;
+                box-sizing: border-box;
               }
               .letter-grid {
                 display: grid !important;
@@ -323,7 +325,8 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                  display: flex !important;
                  align-items: center;
                  justify-content: center;
-                 page-break-after: always;
+                 page-break-after: auto;
+                 box-sizing: border-box;
               }
 
               .is-multi-label .label-wrapper {

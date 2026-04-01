@@ -154,9 +154,9 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 margin: 0;
                 padding: 0;
                 ${format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl ? 'size: 100mm 150mm; margin: 0;' : ''}
-                ${format === LabelFormat.A4Single ? 'size: 210mm 297mm; margin: 10mm;' : ''}
-                ${format === LabelFormat.A4Half ? 'size: 210mm 297mm; margin: 0;' : ''}
-                ${format === LabelFormat.MinimalSticker ? 'size: 62mm 100mm; margin: 0;' : ''}
+                ${format === LabelFormat.A4Single ? 'size: letter; margin: 0;' : ''}
+                ${format === LabelFormat.A4Half ? 'size: letter; margin: 0;' : ''}
+                ${format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
               }
               body * {
                 visibility: hidden;
@@ -175,6 +175,7 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 justify-content: center;
                 margin: 0 !important;
                 padding: 0 !important;
+                box-sizing: border-box;
               }
             }
         `}</style>

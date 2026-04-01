@@ -308,7 +308,7 @@ body {
   .print\:shadow-none { box-shadow: none !important; }
 
   @page {
-    size: letter portrait;
-    margin: 0.5in;
+    size: auto;
+    margin: 0mm;
   }
 }
