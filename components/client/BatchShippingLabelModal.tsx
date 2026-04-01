@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
+import { createPortal } from 'react-dom';
 import { IconX, IconPrinter } from '../Icon';
 import { Package } from '../../types';
 import ShippingLabel from './ShippingLabel';
@@ -31,6 +32,12 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
     const [progress, setProgress] = useState(0);
     const [isMultiLabel, setIsMultiLabel] = useState(false);
     const [letterDesign, setLetterDesign] = useState<LabelFormat>(LabelFormat.CompactThermal);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     // Effect to fetch authentic ML tracking IDs for all packages in batch
     useEffect(() => {
@@ -67,6 +74,45 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
     };
 
     const isScaleFormat = format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl || format === LabelFormat.MinimalSticker || format === LabelFormat.LetterMulti;
+
+    const printableArea = (
+        <div 
+            id="print-portal-container"
+            className={`batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}
+            style={{
+                position: 'fixed',
+                top: '0',
+                left: '0',
+                width: '100%',
+                height: 'auto',
+                overflow: 'visible',
+                visibility: 'hidden',
+                pointerEvents: 'none',
+                zIndex: -100
+            }}
+        >
+            {format === LabelFormat.LetterMulti || isMultiLabel ? (
+                // Chunk by 4 for Letter Multi (2x2 grid per page)
+                Array.from({ length: Math.ceil(packages.length / 4) }).map((_, pageIdx) => (
+                    <div key={pageIdx} className="letter-page print-page-break">
+                        <div className="letter-grid">
+                            {packages.slice(pageIdx * 4, pageIdx * 4 + 4).map((pkg) => (
+                                <div key={pkg.id} className="label-wrapper-letter">
+                                    <ShippingLabel pkg={pkg} creatorName={creatorName} format={format === LabelFormat.LetterMulti ? letterDesign : format} />
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                ))
+            ) : (
+                packages.map((pkg, idx) => (
+                    <div key={pkg.id} className={`print-page-break label-wrapper ${idx === packages.length - 1 ? 'last-label' : ''}`}>
+                        <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
+                    </div>
+                ))
+            )}
+        </div>
+    );
 
     return (
         <>
@@ -184,43 +230,9 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 </footer>
             </div>
         </div>
-        
-        {/* Printable Area - Robust visibility and natural page-breaking */}
-        <div 
-            className={`batch-print-container format-${format} ${isMultiLabel ? 'is-multi-label' : ''}`}
-            style={{
-                position: 'fixed',
-                top: '0',
-                left: '0',
-                width: '100%',
-                height: 'auto',
-                overflow: 'visible',
-                visibility: 'hidden',
-                pointerEvents: 'none',
-                zIndex: -100
-            }}
-        >
-            {format === LabelFormat.LetterMulti || isMultiLabel ? (
-                // Chunk by 4 for Letter Multi (2x2 grid per page)
-                Array.from({ length: Math.ceil(packages.length / 4) }).map((_, pageIdx) => (
-                    <div key={pageIdx} className="letter-page print-page-break">
-                        <div className="letter-grid">
-                            {packages.slice(pageIdx * 4, pageIdx * 4 + 4).map((pkg) => (
-                                <div key={pkg.id} className="label-wrapper-letter">
-                                    <ShippingLabel pkg={pkg} creatorName={creatorName} format={format === LabelFormat.LetterMulti ? letterDesign : format} />
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                ))
-            ) : (
-                packages.map((pkg, idx) => (
-                    <div key={pkg.id} className={`print-page-break label-wrapper ${idx === packages.length - 1 ? 'last-label' : ''}`}>
-                        <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
-                    </div>
-                ))
-            )}
-        </div>
+
+        {/* Portal for printing - Outside of #root div during print events */}
+        {mounted && createPortal(printableArea, document.body)}
 
         <style>{`
             @media print {
@@ -232,13 +244,13 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 ${!isMultiLabel && format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
               }
 
-              body {
+              /* Hide everything related to #root and UI */
+              body > *:not(.batch-print-container) {
+                display: none !important;
                 visibility: hidden !important;
-                background: white !important;
-                margin: 0 !important;
-                padding: 0 !important;
               }
 
+              /* Ensure Portal container is visible */
               .batch-print-container {
                 visibility: visible !important;
                 display: block !important;
@@ -249,13 +261,14 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 height: auto !important;
                 opacity: 1 !important;
                 pointer-events: auto !important;
-                z-index: 99999 !important;
+                z-index: 999999 !important;
                 background: white !important;
                 overflow: visible !important;
               }
 
               .batch-print-container * {
                 visibility: visible !important;
+                display: block !important;
               }
 
               .batch-print-container.is-multi-label,
