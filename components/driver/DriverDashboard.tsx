@@ -59,6 +59,21 @@ const DriverDashboard: React.FC = () => {
     }
   }, [auth?.user?.id]);
 
+  // Restore delivering package if it was interrupted
+  useEffect(() => {
+    if (myPackages.length > 0 && !deliveringPackage) {
+        const pendingId = localStorage.getItem(`pending_delivering_id_${auth?.user?.id}`);
+        if (pendingId) {
+            const pkg = myPackages.find(p => p.id === pendingId);
+            if (pkg && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Problem) {
+                setDeliveringPackage(pkg);
+            } else {
+                localStorage.removeItem(`pending_delivering_id_${auth?.user?.id}`);
+            }
+        }
+    }
+  }, [myPackages, auth?.user?.id]);
+
   const fetchData = async (silent = false) => {
       if (!auth?.user) return;
       if (isInitialLoad.current && !silent) {
@@ -147,6 +162,9 @@ const DriverDashboard: React.FC = () => {
 
   const handleStartDelivery = (pkg: Package) => {
     setDeliveringPackage(pkg);
+    if (auth?.user) {
+        localStorage.setItem(`pending_delivering_id_${auth.user.id}`, pkg.id);
+    }
   };
 
   const handleReportProblem = (pkg: Package) => {
@@ -161,6 +179,9 @@ const DriverDashboard: React.FC = () => {
       }
       setMyPackages(prev => prev.map(p => p.id === pkgId ? updatedPackage : p));
       setDeliveringPackage(null);
+      if (auth?.user) {
+          localStorage.removeItem(`pending_delivering_id_${auth.user.id}`);
+      }
 
       // --- NEW NOTIFICATION LOGIC ---
       if (auth?.systemSettings.messagingPlan && auth.systemSettings.messagingPlan !== MessagingPlan.None) {
@@ -356,8 +377,14 @@ const DriverDashboard: React.FC = () => {
 
       {deliveringPackage && (
         <DeliveryConfirmationModal
+          key={deliveringPackage.id}
           pkg={deliveringPackage}
-          onClose={() => setDeliveringPackage(null)}
+          onClose={() => {
+              setDeliveringPackage(null);
+              if (auth?.user) {
+                  localStorage.removeItem(`pending_delivering_id_${auth.user.id}`);
+              }
+          }}
           onConfirm={handleConfirmDelivery}
         />
       )}

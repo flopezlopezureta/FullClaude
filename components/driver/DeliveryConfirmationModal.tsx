@@ -3,6 +3,7 @@ import { Package } from '../../types';
 import { DeliveryConfirmationData } from '../../services/api';
 import { IconX, IconUser, IconId, IconCamera, IconAlertTriangle, IconCheckCircle, IconPhoto } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
+import imageCompression from 'browser-image-compression';
 
 interface DeliveryConfirmationModalProps {
   pkg: Package;
@@ -190,64 +191,57 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     }
   };
 
-  const compressImage = (file: File): Promise<string> => {
-      return new Promise((resolve, reject) => {
-          const url = URL.createObjectURL(file);
-          const img = new Image();
-          img.onload = () => {
-              const canvas = document.createElement('canvas');
-              let width = img.width;
-              let height = img.height;
-              const maxDim = 1200;
+  const compressImage = async (file: File): Promise<string> => {
+      // Guard de seguridad: si el archivo supera los 15MB, no intentamos procesarlo
+      if (file.size > 15 * 1024 * 1024) {
+          throw new Error(`El archivo ${file.name} es demasiado grande (> 15MB). Por favor, intenta con otro.`);
+      }
 
-              if (width > height) {
-                  if (width > maxDim) {
-                      height *= maxDim / width;
-                      width = maxDim;
-                  }
-              } else {
-                  if (height > maxDim) {
-                      width *= maxDim / height;
-                      height = maxDim;
-                  }
-              }
+      const options = {
+          maxSizeMB: 1, // Tamaño máximo aproximado
+          maxWidthOrHeight: 1280, // Resolución máxima de 1280px (según lo solicitado)
+          useWebWorker: true,
+          initialQuality: 0.75, // Calidad del 75% (según lo solicitado)
+      };
 
-              canvas.width = width;
-              canvas.height = height;
-              const ctx = canvas.getContext('2d');
-              ctx?.drawImage(img, 0, 0, width, height);
-              
-              const compressedDataUrl = canvas.toDataURL('image/jpeg', 0.7);
-              // Limpiar memoria
-              URL.revokeObjectURL(url);
-              resolve(compressedDataUrl);
-          };
-          img.onerror = (err) => {
-              URL.revokeObjectURL(url);
-              reject(err);
-          };
-          img.src = url;
-      });
+      try {
+          const compressedFile = await imageCompression(file, options);
+          return new Promise((resolve, reject) => {
+              const reader = new FileReader();
+              reader.onloadend = () => resolve(reader.result as string);
+              reader.onerror = reject;
+              reader.readAsDataURL(compressedFile);
+          });
+      } catch (error) {
+          console.error('Error comprimiendo imagen:', error);
+          throw error;
+      }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       setIsCompressing(true);
+      setError(null);
       try {
         const remaining = requiredPhotos - photosBase64.length;
         const filesToProcess = Array.from(files).slice(0, remaining);
         
         const newPhotos: string[] = [];
         for (const file of filesToProcess) {
-            const compressed = await compressImage(file);
-            newPhotos.push(compressed);
+            try {
+                const compressed = await compressImage(file);
+                newPhotos.push(compressed);
+            } catch (fileErr: any) {
+                setError(fileErr.message);
+                // Si falla uno, seguimos con el resto de la selección (si hay)
+            }
         }
         
         setPhotosBase64(prev => [...prev, ...newPhotos]);
       } catch (err) {
-        console.error("Error compressing images:", err);
-        setError("Error al procesar las imágenes. Intenta con un archivo más pequeño.");
+        console.error("Error global en procesamiento de imágenes:", err);
+        setError("Error crítico al procesar las imágenes. Por favor intenta de nuevo.");
       } finally {
         setIsCompressing(false);
         e.target.value = '';
