@@ -61,7 +61,10 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     <div className="border-l-2 border-black pl-3">
                         <p className="text-[9px] font-black uppercase text-gray-400">Entrega para:</p>
                         <p className="text-lg font-black leading-none">{pkg.recipientName}</p>
-                        {pkg.recipientRut && <p className="text-sm font-bold mt-1">RUT: {pkg.recipientRut}</p>}
+                        <div className="flex space-x-2 items-center mt-1">
+                             {pkg.recipientPhone && <p className="text-sm font-bold">📞 {pkg.recipientPhone}</p>}
+                             {pkg.recipientRut && <p className="text-sm font-bold opacity-60">RUT: {pkg.recipientRut}</p>}
+                        </div>
                     </div>
                     <div className="pt-2 border-t border-dashed border-gray-300">
                         <p className="text-[9px] font-black uppercase text-gray-400">Dirección:</p>
@@ -94,6 +97,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     <div className="w-full border-b border-black pb-4">
                          <p className="text-[9px] font-black uppercase text-gray-400 mb-2 tracking-widest">Titular de la Orden:</p>
                          <p className={`font-black leading-none break-words underline underline-offset-4 ${pkg.recipientName.length > 20 ? 'text-xl' : 'text-2xl'}`}>{pkg.recipientName}</p>
+                         {pkg.recipientPhone && <p className="text-md font-bold mt-2">📞 {pkg.recipientPhone}</p>}
                     </div>
                     <div className="flex justify-between w-full px-2">
                         <div className="text-left">
@@ -186,6 +190,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <div className="text-center">
                             <p className="text-xs font-black uppercase text-gray-400 mb-1">Nombre Destinatario:</p>
                             <p className="text-2xl font-black">{pkg.recipientName}</p>
+                            {pkg.recipientPhone && <p className="text-xl font-bold mt-2">📞 {pkg.recipientPhone}</p>}
                         </div>
                     </div>
                 </div>
