@@ -16,12 +16,9 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
 
     const isMeli = pkg.source === PackageSource.MercadoLibre;
     
-    // Format date for display
-    const formattedDate = pkg.createdAt ? new Date(pkg.createdAt).toLocaleDateString('es-CL', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric'
-    }) : new Date().toLocaleDateString('es-CL');
+    // Format date for display (Example: "2 ABR")
+    const dateObj = pkg.createdAt ? new Date(pkg.createdAt) : new Date();
+    const formattedDate = `${dateObj.getDate()} ${dateObj.toLocaleDateString('es-CL', { month: 'short' }).toUpperCase().replace('.', '')}`;
 
     // Version: 2.3.4 - Global Font Reduction
     // Determine QR content for Driver (Flexeo)
