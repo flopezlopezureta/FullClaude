@@ -389,13 +389,13 @@ const ClientDashboard: React.FC = () => {
             printingPackages.length === 1 ? (
                 <ShippingLabelModal
                     pkg={printingPackages[0]}
-                    creatorName={auth.user.name}
+                    creatorName={auth.user.companyName || auth.user.name}
                     onClose={() => setPrintingPackages([])}
                 />
             ) : (
                 <BatchShippingLabelModal
                     packages={printingPackages}
-                    creatorName={auth.user.name}
+                    creatorName={auth.user.companyName || auth.user.name}
                     onClose={() => setPrintingPackages([])}
                 />
             )

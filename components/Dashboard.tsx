@@ -797,13 +797,19 @@ const Dashboard: React.FC = () => {
           printingPackages.length === 1 ? (
               <ShippingLabelModal
                 pkg={printingPackages[0]}
-                creatorName={users.find(u => u.id === printingPackages[0].creatorId)?.name || 'Cliente Desconocido'}
+                creatorName={(() => {
+                  const user = users.find(u => u.id === printingPackages[0].creatorId);
+                  return user?.companyName || user?.name || 'Cliente Desconocido';
+                })()}
                 onClose={() => setPrintingPackages([])}
               />
           ) : (
               <BatchShippingLabelModal
                 packages={printingPackages}
-                creatorName={users.find(u => u.id === printingPackages[0].creatorId)?.name || 'Cliente Desconocido'}
+                creatorName={(() => {
+                  const user = users.find(u => u.id === printingPackages[0].creatorId);
+                  return user?.companyName || user?.name || 'Cliente Desconocido';
+                })()}
                 onClose={() => setPrintingPackages([])}
               />
           )
