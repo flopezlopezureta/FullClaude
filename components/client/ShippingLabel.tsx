@@ -55,16 +55,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
             <div className="bg-white p-5 font-sans text-black w-[100mm] h-[150mm] border-4 border-black flex flex-col overflow-hidden">
                 <div className="text-center mb-2">
                     <h2 className="text-md font-black tracking-tight leading-none">{systemSettings.companyName.toUpperCase()}</h2>
-                    <div className="flex justify-center items-center space-x-3 mt-1.5 border-y border-black/10 py-1">
-                        <div className="flex flex-col items-center">
-                            <p className="text-[6px] font-black uppercase text-gray-400">Remitente:</p>
-                            <p className="text-[10px] font-bold text-black uppercase leading-none truncate max-w-[45mm]">{creatorName}</p>
-                        </div>
-                        <div className="w-[1px] h-4 bg-black/20"></div>
-                        <div className="flex flex-col items-center">
-                            <p className="text-[6px] font-black uppercase text-gray-400">Fecha:</p>
-                            <p className="text-[11px] font-black text-black leading-none">{formattedDate}</p>
-                        </div>
+                    <div className="flex justify-center items-center space-x-2 mt-1.5 border-y border-black/10 py-1 px-1">
+                        <span className="text-[7px] font-black uppercase text-gray-400">Remitente:</span>
+                        <span className="text-[10px] font-bold text-black uppercase truncate max-w-[40mm]">{creatorName}</span>
+                        <span className="text-gray-300 mx-1">|</span>
+                        <span className="text-[7px] font-black uppercase text-gray-400">Fecha:</span>
+                        <span className="text-[11px] font-black text-black">{formattedDate}</span>
                     </div>
                 </div>
                 <div className="bg-white text-black p-3 text-center border-2 border-black rounded-xl mb-4">

@@ -277,9 +277,9 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               /* Letter Multi-label (2x2) */
               .letter-page {
                 width: 8.5in;
-                height: 10.7in; /* Reduced further to ensure no overflow */
-                max-height: 10.8in;
-                padding: 5mm 0 0 0; /* Anti-cut safety margin */
+                height: 10.6in; /* Conservative height for Letter size */
+                max-height: 10.6in;
+                padding: 4mm 0 0 0; /* Safety padding at top */
                 page-break-after: auto;
                 page-break-inside: avoid;
                 background-color: white;
@@ -298,14 +298,14 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               }
                .label-wrapper-letter {
                 width: 100%;
-                height: 5.35in; /* Half of 10.7in */
+                height: 5.3in; /* Exactly half of 10.6in Grid Area */
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
                 overflow: hidden;
               }
                .label-wrapper-letter > div {
-                 transform: scale(0.88); /* Reduced scaling for more safety margin */
+                 transform: scale(0.85); /* Conservative scaling to prevent bottom overflow */
                  transform-origin: center center;
                }
 
