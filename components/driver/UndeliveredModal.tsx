@@ -153,40 +153,38 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
       setIsCompressing(true);
       setError('');
       try {
-        const newPhotos: string[] = [];
-        for (const file of Array.from(files)) {
-            // Guard de seguridad: si el archivo supera los 15MB, no intentamos procesarlo
-            if (file.size > 15 * 1024 * 1024) {
-                 continue;
-            }
-            
-            const options = {
-                maxSizeMB: 0.6,
-                maxWidthOrHeight: 1280,
-                useWebWorker: true,
-                initialQuality: 0.75,
-            };
-            
-            try {
-                const compressedFile = await imageCompression(file, options);
-                const reader = new FileReader();
-                const base64: string = await new Promise((resolve, reject) => {
-                    reader.onloadend = () => resolve(reader.result as string);
-                    reader.onerror = reject;
-                    reader.readAsDataURL(compressedFile);
-                });
-                newPhotos.push(base64);
-            } catch (err) {
-                console.error("Error comprimiendo imagen en UndeliveredModal", err);
-            }
-        }
-        setPhotosBase64(prev => [...prev, ...newPhotos]);
+          const file = files[0]; // Seleccionamos solo uno para máxima estabilidad
+          
+          if (file.size > 15 * 1024 * 1024) {
+               setError("Archivo demasiado grande (máximo 15MB).");
+               return;
+          }
+          
+          const options = {
+              maxSizeMB: 0.6,
+              maxWidthOrHeight: 1280,
+              useWebWorker: true,
+              initialQuality: 0.75,
+          };
+          
+          try {
+              const compressedFile = await imageCompression(file, options);
+              const reader = new FileReader();
+              const base64: string = await new Promise((resolve, reject) => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(compressedFile);
+              });
+              setPhotosBase64(prev => [...prev, base64]);
+          } catch (err) {
+              console.error("Error comprimiendo imagen en UndeliveredModal", err);
+              setError("Error al comprimir la imagen.");
+          }
       } catch (err) {
-          console.error("Error global en procesamiento de imágenes", err);
-          setError("Error al procesar las imágenes.");
+          setError("Error al procesar la imagen.");
       } finally {
           setIsCompressing(false);
-          e.target.value = '';
+          if (e.target) e.target.value = '';
       }
     }
   };

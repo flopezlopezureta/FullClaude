@@ -178,40 +178,38 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
       setIsCompressing(true);
       setError(null);
       try {
-          const remaining = requiredPhotos - photosBase64.length;
-          const filesToProcess = Array.from(files).slice(0, remaining);
-          const newPhotos: string[] = [];
+          const file = files[0]; // Uno por uno por estabilidad nativa
           
-          for (const file of filesToProcess) {
-              if (file.size > 15 * 1024 * 1024) continue;
-              
-              const options = {
-                  maxSizeMB: 0.6,
-                  maxWidthOrHeight: 1280,
-                  useWebWorker: true,
-                  initialQuality: 0.75,
-              };
-              
-              try {
-                  const compressedFile = await imageCompression(file, options);
-                  const reader = new FileReader();
-                  const base64: string = await new Promise((resolve, reject) => {
-                      reader.onloadend = () => resolve(reader.result as string);
-                      reader.onerror = reject;
-                      reader.readAsDataURL(compressedFile);
-                  });
-                  newPhotos.push(base64);
-              } catch (err) {
-                  console.error("Error compressing return photo", err);
-              }
+          if (file.size > 15 * 1024 * 1024) {
+               setError("Imagen demasiado grande (máximo 15MB).");
+               return;
           }
-          setPhotosBase64(prev => [...prev, ...newPhotos]);
+          
+          const options = {
+              maxSizeMB: 0.6,
+              maxWidthOrHeight: 1280,
+              useWebWorker: true,
+              initialQuality: 0.75,
+          };
+          
+          try {
+              const compressedFile = await imageCompression(file, options);
+              const reader = new FileReader();
+              const base64: string = await new Promise((resolve, reject) => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(compressedFile);
+              });
+              setPhotosBase64(prev => [...prev, base64]);
+          } catch (err) {
+              console.error("Error comprimiendo imagen en ReturnModal", err);
+              setError("Error al comprimir la imagen.");
+          }
       } catch (err) {
-          console.error("Global error in return photo processing", err);
-          setError("Error al procesar las imágenes.");
+          setError("Error al procesar la imagen.");
       } finally {
           setIsCompressing(false);
-          e.target.value = '';
+          if (e.target) e.target.value = '';
       }
     }
   };
@@ -318,8 +316,7 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
                             type="file" 
                             ref={fileInputRef} 
                             onChange={handleFileChange} 
-                            accept="image/jpeg,image/png,image/heic,image/heif" 
-                            multiple 
+                            accept="image/*" 
                             className="hidden" 
                         />
                         {isCompressing && (

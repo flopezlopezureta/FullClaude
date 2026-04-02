@@ -132,6 +132,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const [rutError, setRutError] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const auth = useContext(AuthContext);
 
@@ -245,60 +246,44 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     }
   };
 
-  const compressImage = async (file: File): Promise<string> => {
-      // Guard de seguridad: si el archivo supera los 15MB, no intentamos procesarlo
-      if (file.size > 15 * 1024 * 1024) {
-          throw new Error(`El archivo ${file.name} es demasiado grande (> 15MB). Por favor, intenta con otro.`);
-      }
-
-      const options = {
-          maxSizeMB: 0.6, // Reducido a 600KB para ahorrar recursos
-          maxWidthOrHeight: 1280, // Resolución máxima de 1280px
-          useWebWorker: true,
-          initialQuality: 0.75, // Calidad del 75%
-      };
-
-      try {
-          const compressedFile = await imageCompression(file, options);
-          return new Promise((resolve, reject) => {
-              const reader = new FileReader();
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = reject;
-              reader.readAsDataURL(compressedFile);
-          });
-      } catch (error) {
-          console.error('Error comprimiendo imagen:', error);
-          throw error;
-      }
-  };
-
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
       setIsCompressing(true);
       setError(null);
       try {
-        const remaining = requiredPhotos - photosBase64.length;
-        const filesToProcess = Array.from(files).slice(0, remaining);
-        
-        const newPhotos: string[] = [];
-        for (const file of filesToProcess) {
-            try {
-                const compressed = await compressImage(file);
-                newPhotos.push(compressed);
-            } catch (fileErr: any) {
-                setError(fileErr.message);
-                // Si falla uno, seguimos con el resto de la selección (si hay)
-            }
-        }
-        
-        setPhotosBase64(prev => [...prev, ...newPhotos]);
+          const file = files[0]; // Seleccionamos solo uno para máxima estabilidad nativa
+          
+          if (file.size > 15 * 1024 * 1024) {
+               setError("La imagen es demasiado grande (máximo 15MB).");
+               return;
+          }
+          
+          const options = {
+              maxSizeMB: 0.6,
+              maxWidthOrHeight: 1280,
+              useWebWorker: true,
+              initialQuality: 0.75,
+          };
+          
+          try {
+              const compressedFile = await imageCompression(file, options);
+              const reader = new FileReader();
+              const base64: string = await new Promise((resolve, reject) => {
+                  reader.onloadend = () => resolve(reader.result as string);
+                  reader.onerror = reject;
+                  reader.readAsDataURL(compressedFile);
+              });
+              setPhotosBase64(prev => [...prev, base64]);
+          } catch (err) {
+              console.error("Error comprimiendo imagen", err);
+              setError("Error al comprimir la imagen.");
+          }
       } catch (err) {
-        console.error("Error global en procesamiento de imágenes:", err);
-        setError("Error crítico al procesar las imágenes. Por favor intenta de nuevo.");
+          setError("Error al procesar la imagen.");
       } finally {
-        setIsCompressing(false);
-        e.target.value = '';
+          setIsCompressing(false);
+          if (e.target) e.target.value = '';
       }
     }
   };
@@ -404,17 +389,17 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                                 <IconCamera className="w-8 h-8 mb-2" />
                                 <span className="text-sm font-semibold">Cámara</span>
                             </button>
-                            <label className={`relative flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer`}>
+                            <button type="button" onClick={() => fileInputRef.current?.click()} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)] hover:border-[var(--brand-primary)] hover:text-[var(--brand-primary)] transition-colors cursor-pointer relative">
                                 <IconPhoto className="w-8 h-8 mb-2" />
                                 <span className="text-sm font-semibold">Galería</span>
-                                <input 
-                                    type="file" 
-                                    onChange={handleFileChange} 
-                                    accept="image/jpeg,image/png,image/heic,image/heif" 
-                                    multiple 
-                                    className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
-                                />
-                            </label>
+                            </button>
+                            <input 
+                                type="file" 
+                                ref={fileInputRef}
+                                onChange={handleFileChange} 
+                                accept="image/*" 
+                                className="hidden" 
+                            />
                         </div>
                         {isCompressing && (
                             <div className="flex items-center justify-center space-x-2 text-indigo-600 animate-pulse py-2">
