@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package } from '../../types';
-import { IconX, IconAlertTriangle, IconCamera, IconPhoto } from '../Icon';
+import { IconX, IconAlertTriangle, IconCamera, IconPhoto, IconCheckCircle } from '../Icon';
 import imageCompression from 'browser-image-compression';
 
 interface UndeliveredModalProps {
@@ -87,7 +87,43 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // --- PERSISTENCE LOGIC ---
+  const STORAGE_KEY_PREFIX = `undelivered_draft_${pkg.id}_`;
+
+  const clearDraft = () => {
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}reason`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}customReason`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}photos`);
+  };
+
+  useEffect(() => {
+    const savedReason = localStorage.getItem(`${STORAGE_KEY_PREFIX}reason`);
+    const savedCustom = localStorage.getItem(`${STORAGE_KEY_PREFIX}customReason`);
+    const savedPhotos = localStorage.getItem(`${STORAGE_KEY_PREFIX}photos`);
+
+    if (savedReason) setReason(savedReason);
+    if (savedCustom) setCustomReason(savedCustom);
+    if (savedPhotos) {
+        try { setPhotosBase64(JSON.parse(savedPhotos)); } catch(e) { console.error(e); }
+    }
+
+    if (savedReason || savedCustom || savedPhotos) {
+        setIsRestored(true);
+        setTimeout(() => setIsRestored(false), 3000);
+    }
+  }, [pkg.id]);
+
+  useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}reason`, reason); }, [reason, STORAGE_KEY_PREFIX]);
+  useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}customReason`, customReason); }, [customReason, STORAGE_KEY_PREFIX]);
+  useEffect(() => {
+     try {
+         const json = JSON.stringify(photosBase64);
+         if (json.length < 4 * 1024 * 1024) localStorage.setItem(`${STORAGE_KEY_PREFIX}photos`, json);
+     } catch(e) {}
+  }, [photosBase64, STORAGE_KEY_PREFIX]);
 
   const finalReason = reason === "Otro motivo (especificar)" ? customReason : reason;
   const isFormValid = finalReason.trim() !== '' && photosBase64.length > 0;
@@ -100,6 +136,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
     setError('');
     try {
       await onConfirm(pkg.id, finalReason, photosBase64);
+      clearDraft();
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error al reportar el problema.');
       setIsLoading(false);
@@ -124,10 +161,10 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
             }
             
             const options = {
-                maxSizeMB: 0.2,
-                maxWidthOrHeight: 1024,
+                maxSizeMB: 0.6,
+                maxWidthOrHeight: 1280,
                 useWebWorker: true,
-                initialQuality: 0.6,
+                initialQuality: 0.75,
             };
             
             try {
@@ -162,13 +199,18 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">Reportar Problema de Entrega</h3>
                 <p className="text-sm text-[var(--text-muted)]">Paquete: <span className="font-medium text-[var(--brand-primary)]">{pkg.id}</span></p>
             </div>
-          <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
+          <button onClick={() => { clearDraft(); onClose(); }} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
             <IconX className="w-6 h-6" />
           </button>
         </header>
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            {isRestored && (
+                <div className="flex items-center text-[10px] text-green-600 font-bold bg-green-50 px-2 py-1 rounded-md w-fit animate-pulse">
+                    <IconCheckCircle className="w-3 h-3 mr-1" /> Datos recuperados automáticamente
+                </div>
+            )}
             {error && <p className="text-sm text-[var(--error-text)] bg-[var(--error-bg)] p-3 rounded-md flex items-center"><IconAlertTriangle className="w-4 h-4 mr-2"/> {error}</p>}
             
             <div>
@@ -246,7 +288,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
           </div>
 
           <footer className="px-6 py-4 bg-[var(--background-muted)] rounded-b-xl flex justify-end space-x-3">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
+            <button type="button" onClick={() => { clearDraft(); onClose(); }} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
             <button type="submit" disabled={!isFormValid || isLoading} className="px-4 py-2 text-sm font-medium text-white bg-red-600 border border-transparent rounded-md shadow-sm hover:bg-red-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
               {isLoading ? 'Reportando...' : 'Confirmar Problema'}
             </button>

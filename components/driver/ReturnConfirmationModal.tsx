@@ -3,6 +3,7 @@ import { Package } from '../../types';
 import { DeliveryConfirmationData } from '../../services/api';
 import { IconX, IconUser, IconId, IconCamera, IconAlertTriangle, IconCheckCircle, IconPhoto } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
+import imageCompression from 'browser-image-compression';
 
 interface ReturnConfirmationModalProps {
   pkg: Package;
@@ -43,8 +44,8 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
             const canvas = canvasRef.current;
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
-            canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            onCapture(canvas.toDataURL('image/jpeg', 0.8));
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            onCapture(dataUrl);
         }
     };
 
@@ -94,9 +95,46 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rutError, setRutError] = useState<string | null>(null);
+  const [isCompressing, setIsCompressing] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const auth = useContext(AuthContext);
+
+  // --- PERSISTENCE LOGIC ---
+  const STORAGE_KEY_PREFIX = `return_draft_${pkg.id}_`;
+
+  const clearDraft = () => {
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}name`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}id`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}photos`);
+  };
+
+  useEffect(() => {
+    const savedName = localStorage.getItem(`${STORAGE_KEY_PREFIX}name`);
+    const savedId = localStorage.getItem(`${STORAGE_KEY_PREFIX}id`);
+    const savedPhotos = localStorage.getItem(`${STORAGE_KEY_PREFIX}photos`);
+
+    if (savedName) setReceiverName(savedName);
+    if (savedId) setReceiverId(savedId);
+    if (savedPhotos) {
+        try { setPhotosBase64(JSON.parse(savedPhotos)); } catch(e) { console.error(e); }
+    }
+
+    if (savedName || savedId || savedPhotos) {
+        setIsRestored(true);
+        setTimeout(() => setIsRestored(false), 3000);
+    }
+  }, [pkg.id]);
+
+  useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}name`, receiverName); }, [receiverName, STORAGE_KEY_PREFIX]);
+  useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}id`, receiverId); }, [receiverId, STORAGE_KEY_PREFIX]);
+  useEffect(() => {
+     try {
+         const json = JSON.stringify(photosBase64);
+         if (json.length < 4 * 1024 * 1024) localStorage.setItem(`${STORAGE_KEY_PREFIX}photos`, json);
+     } catch(e) {}
+  }, [photosBase64, STORAGE_KEY_PREFIX]);
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
   const photosRemaining = requiredPhotos - photosBase64.length;
 
@@ -134,20 +172,47 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
     }
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      const remaining = requiredPhotos - photosBase64.length;
-      const filesToProcess = Array.from(files).slice(0, remaining);
-      
-      filesToProcess.forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPhotosBase64(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-      e.target.value = '';
+      setIsCompressing(true);
+      setError(null);
+      try {
+          const remaining = requiredPhotos - photosBase64.length;
+          const filesToProcess = Array.from(files).slice(0, remaining);
+          const newPhotos: string[] = [];
+          
+          for (const file of filesToProcess) {
+              if (file.size > 15 * 1024 * 1024) continue;
+              
+              const options = {
+                  maxSizeMB: 0.6,
+                  maxWidthOrHeight: 1280,
+                  useWebWorker: true,
+                  initialQuality: 0.75,
+              };
+              
+              try {
+                  const compressedFile = await imageCompression(file, options);
+                  const reader = new FileReader();
+                  const base64: string = await new Promise((resolve, reject) => {
+                      reader.onloadend = () => resolve(reader.result as string);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(compressedFile);
+                  });
+                  newPhotos.push(base64);
+              } catch (err) {
+                  console.error("Error compressing return photo", err);
+              }
+          }
+          setPhotosBase64(prev => [...prev, ...newPhotos]);
+      } catch (err) {
+          console.error("Global error in return photo processing", err);
+          setError("Error al procesar las imágenes.");
+      } finally {
+          setIsCompressing(false);
+          e.target.value = '';
+      }
     }
   };
   
@@ -168,6 +233,7 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
         receiverId,
         photosBase64,
       });
+      clearDraft();
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error inesperado.');
       setIsLoading(false);
@@ -181,8 +247,13 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
             <div>
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">Confirmar Devolución: <span className="text-[var(--brand-primary)]">{pkg.id}</span></h3>
                 <p className="text-sm text-[var(--text-muted)]">A: {pkg.origin}</p>
+                {isRestored && (
+                    <div className="mt-1 flex items-center text-[10px] text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded-full w-fit animate-pulse">
+                        <IconCheckCircle className="w-3 h-3 mr-1" /> Datos recuperados automáticamente
+                    </div>
+                )}
             </div>
-          <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
+          <button onClick={() => { clearDraft(); onClose(); }} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
             <IconX className="w-6 h-6" />
           </button>
         </header>
@@ -247,10 +318,16 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
                             type="file" 
                             ref={fileInputRef} 
                             onChange={handleFileChange} 
-                            accept="image/*" 
+                            accept="image/jpeg,image/png,image/heic,image/heif" 
                             multiple 
                             className="hidden" 
                         />
+                        {isCompressing && (
+                            <div className="flex items-center justify-center space-x-2 text-indigo-600 animate-pulse py-2">
+                                <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                                <span className="text-xs font-bold">Optimizando imágenes...</span>
+                            </div>
+                        )}
                         <p className="text-xs text-[var(--text-muted)]">
                             Faltan {photosRemaining} foto{photosRemaining > 1 ? 's' : ''} requerida{photosRemaining > 1 ? 's' : ''}
                         </p>
@@ -263,7 +340,7 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
           </div>
 
           <footer className="px-6 py-4 bg-[var(--background-muted)] rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
+            <button type="button" onClick={() => { clearDraft(); onClose(); }} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
             <button type="submit" disabled={!isFormValid || isLoading} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
               {isLoading ? 'Confirmando...' : 'Confirmar Devolución'}
             </button>
