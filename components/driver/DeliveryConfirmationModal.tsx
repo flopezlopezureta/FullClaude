@@ -122,18 +122,72 @@ const validateRut = (rutCompleto: string): boolean => {
     return dv === dvCalculado;
 };
 
-
 const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ pkg, onClose, onConfirm }) => {
   const [receiverName, setReceiverName] = useState(pkg.recipientName || '');
-  const [receiverId, setReceiverId] =useState('');
+  const [receiverId, setReceiverId] = useState('');
   const [photosBase64, setPhotosBase64] = useState<string[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rutError, setRutError] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
+  const [isRestored, setIsRestored] = useState(false);
 
   const auth = useContext(AuthContext);
+
+  // --- PERSISTENCE LOGIC ---
+  const STORAGE_KEY_PREFIX = `delivery_draft_${pkg.id}_`;
+
+  // Hydration on mount
+  useEffect(() => {
+    const savedName = localStorage.getItem(`${STORAGE_KEY_PREFIX}name`);
+    const savedId = localStorage.getItem(`${STORAGE_KEY_PREFIX}id`);
+    const savedPhotos = localStorage.getItem(`${STORAGE_KEY_PREFIX}photos`);
+
+    if (savedName) setReceiverName(savedName);
+    if (savedId) setReceiverId(savedId);
+    if (savedPhotos) {
+        try {
+            setPhotosBase64(JSON.parse(savedPhotos));
+        } catch (e) {
+            console.error("Error parsing saved photos", e);
+        }
+    }
+    
+    if (savedName || savedId || savedPhotos) {
+        setIsRestored(true);
+        // Clear the "restored" message after 3 seconds
+        setTimeout(() => setIsRestored(false), 3000);
+    }
+  }, [pkg.id]);
+
+  // Auto-save on changes
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}name`, receiverName);
+  }, [receiverName, STORAGE_KEY_PREFIX]);
+
+  useEffect(() => {
+    localStorage.setItem(`${STORAGE_KEY_PREFIX}id`, receiverId);
+  }, [receiverId, STORAGE_KEY_PREFIX]);
+
+  useEffect(() => {
+    try {
+        const photosJson = JSON.stringify(photosBase64);
+        // LocalStorage is typically 5MB-10MB. We only save if it's not too huge.
+        if (photosJson.length < 4 * 1024 * 1024) { 
+            localStorage.setItem(`${STORAGE_KEY_PREFIX}photos`, photosJson);
+        }
+    } catch (e) {
+        console.warn("Could not save photos to localStorage (quota exceeded)", e);
+    }
+  }, [photosBase64, STORAGE_KEY_PREFIX]);
+
+  // Cleanup helper
+  const clearDraft = () => {
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}name`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}id`);
+    localStorage.removeItem(`${STORAGE_KEY_PREFIX}photos`);
+  };
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
   const isRutRequired = auth?.systemSettings.isRutRequired ?? true;
   const photosRemaining = requiredPhotos - photosBase64.length;
@@ -266,6 +320,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
         receiverId,
         photosBase64,
       });
+      clearDraft();
     } catch (err: any) {
       setError(err.message || 'Ocurrió un error inesperado al confirmar la entrega.');
       setIsLoading(false);
@@ -285,8 +340,13 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
             <div>
                 <h3 className="text-lg font-bold text-[var(--text-primary)]">Confirmar Entrega: <span className="text-[var(--brand-primary)]">{pkg.id}</span></h3>
                 <p className="text-sm text-[var(--text-muted)]">Para: {pkg.recipientName}</p>
+                {isRestored && (
+                    <div className="mt-1 flex items-center text-[10px] text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded-full w-fit animate-pulse">
+                        <IconCheckCircle className="w-3 h-3 mr-1" /> Datos recuperados automáticamente
+                    </div>
+                )}
             </div>
-          <button onClick={onClose} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
+          <button onClick={() => { clearDraft(); onClose(); }} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
             <IconX className="w-6 h-6" />
           </button>
         </header>
@@ -350,7 +410,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                                 <input 
                                     type="file" 
                                     onChange={handleFileChange} 
-                                    accept="image/*" 
+                                    accept="image/jpeg,image/png,image/heic,image/heif" 
                                     multiple 
                                     className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
                                 />
@@ -374,7 +434,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
           </div>
 
           <footer className="px-6 py-4 bg-[var(--background-muted)] rounded-b-xl flex justify-end space-x-3 border-t border-[var(--border-primary)]">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
+            <button type="button" onClick={() => { clearDraft(); onClose(); }} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)]">Cancelar</button>
             <button type="submit" disabled={!isFormValid || isLoading} className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-md shadow-sm hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
               {isLoading ? 'Confirmando...' : 'Confirmar Entrega'}
             </button>
