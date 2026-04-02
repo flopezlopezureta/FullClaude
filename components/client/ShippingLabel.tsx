@@ -49,9 +49,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     if (format === LabelFormat.CompactThermal) {
         return (
             <div className="bg-white p-5 font-sans text-black w-[100mm] h-[150mm] border-4 border-black flex flex-col overflow-hidden">
-                <div className="text-center mb-4">
-                    <h2 className="text-md font-black tracking-tight">{systemSettings.companyName.toUpperCase()}</h2>
-                    <p className="text-[9px] uppercase font-bold text-gray-400 tracking-widest">Hoja de Ruta Logística</p>
+                <div className="text-center mb-2">
+                    <h2 className="text-md font-black tracking-tight leading-none">{systemSettings.companyName.toUpperCase()}</h2>
+                    <div className="flex flex-col mt-1">
+                        <p className="text-[7px] font-black uppercase text-gray-400">Remitente:</p>
+                        <p className="text-[10px] font-bold text-black uppercase leading-none">{creatorName}</p>
+                    </div>
                 </div>
                 <div className="bg-white text-black p-3 text-center border-2 border-black rounded-xl mb-4">
                     <p className="text-[9px] font-black uppercase tracking-[0.3em] mb-1 opacity-50">Destino Prioritario</p>
@@ -90,8 +93,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
     if (format === LabelFormat.FullThermal) {
         return (
             <div className="bg-white p-4 font-sans text-black w-[100mm] h-[150mm] border-2 border-black flex flex-col overflow-hidden">
-                <div className="bg-black text-white p-1.5 text-center mb-4">
+                <div className="bg-black text-white p-1.5 text-center mb-1">
                     <p className="text-lg font-black tracking-tighter">IDENTIFICACIÓN DE ENTREGA</p>
+                </div>
+                <div className="text-center mb-3">
+                    <p className="text-[7px] font-black uppercase text-gray-400">Remitente:</p>
+                    <p className="text-[10px] font-bold text-black">{creatorName}</p>
                 </div>
                 <div className="flex-1 flex flex-col items-center justify-center text-center space-y-4">
                     <div className="w-full border-b border-black pb-4">
@@ -141,6 +148,10 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 <div className="flex-1 p-4 flex flex-col">
                     <div className="border-b border-black pb-2 mb-3">
                         <h2 className="text-sm font-black tracking-tighter">{systemSettings.companyName}</h2>
+                        <div className="mt-1">
+                             <p className="text-[6px] font-black uppercase text-gray-400 leading-none">Remitente:</p>
+                             <p className="text-[8px] font-bold text-black uppercase">{creatorName}</p>
+                        </div>
                     </div>
                     <div className="mb-3">
                         <p className="text-[8px] font-black uppercase text-gray-500 mb-0.5">Destinatario:</p>
@@ -166,7 +177,10 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         return (
             <div className="bg-white p-8 font-sans text-black w-full h-full min-h-[297mm] flex flex-col border-4 border-gray-100">
                 <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-6">
-                    <h1 className="text-2xl font-black tracking-tighter">{systemSettings.companyName.toUpperCase()}</h1>
+                    <div>
+                        <h1 className="text-2xl font-black tracking-tighter">{systemSettings.companyName.toUpperCase()}</h1>
+                        <p className="text-sm font-bold text-gray-500 mt-1 uppercase tracking-wider">Remitente: {creatorName}</p>
+                    </div>
                     <div className="bg-black text-white px-3 py-1 font-black text-xs">DISEÑO 4</div>
                 </div>
                 <div className="grid grid-cols-2 gap-8 flex-1">
@@ -209,6 +223,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         return (
             <div className="bg-white p-5 font-sans text-black w-full h-[148mm] border-2 border-black flex flex-col overflow-hidden relative">
                 <div className="absolute top-0 right-0 bg-black text-white p-1.5 font-black text-[7px] uppercase tracking-widest leading-none">DISEÑO 5</div>
+                <div className="flex justify-between items-start mb-2">
+                    <div className="flex flex-col">
+                        <p className="text-[7px] font-black uppercase text-gray-400">Remitente (Sender):</p>
+                        <p className="text-[10px] font-bold text-black uppercase">{creatorName}</p>
+                    </div>
+                </div>
                 <div className="border-b border-black pb-2 mb-3">
                     <p className="text-[8px] font-black uppercase text-gray-400">Clave de Envío:</p>
                     <p className="text-xl font-mono font-[1000] tracking-tighter break-all leading-none">{qrContent}</p>
@@ -253,7 +273,10 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         return (
             <div className="bg-white p-2 font-sans text-black w-[105mm] h-[148mm] border border-slate-300 flex flex-col overflow-hidden leading-tight">
                 <div className="bg-slate-100 px-2 py-1 border-b border-black flex justify-between items-center mb-1">
-                    <p className="text-[7px] font-black uppercase">{systemSettings.companyName}</p>
+                    <div className="flex flex-col">
+                        <p className="text-[7px] font-black uppercase leading-none">{systemSettings.companyName}</p>
+                        <p className="text-[6px] font-bold truncate max-w-[50mm] mt-1 text-slate-500 overflow-hidden">Fm: {creatorName}</p>
+                    </div>
                     <p className="text-[7px] font-black text-slate-400">DISEÑO 6</p>
                 </div>
                 <div className="grid grid-cols-2 gap-1 mb-2">

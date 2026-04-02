@@ -174,7 +174,7 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 align-items: center;
                 justify-content: center;
                 margin: 0 !important;
-                padding: 0 !important;
+                padding: 5mm 0 0 0 !important; /* Anti-cut safety margin */
                 box-sizing: border-box;
                 transform: scale(0.95);
                 transform-origin: center center;

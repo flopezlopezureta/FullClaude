@@ -1,10 +1,9 @@
-import React, { useEffect, useState, useContext } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { IconX, IconPrinter } from '../Icon';
 import { Package } from '../../types';
 import ShippingLabel from './ShippingLabel';
 import { LabelFormat, PackageSource } from '../../constants';
-import { AuthContext } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
 
 interface BatchShippingLabelModalProps {
@@ -24,7 +23,6 @@ const formatOptions = [
 ];
 
 const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packages: initialPackages, creatorName, onClose }) => {
-    const { systemSettings } = useContext(AuthContext)!;
     const [packages, setPackages] = useState<Package[]>(initialPackages);
     // Hardcode Carta as default
     const [format, setFormat] = useState<LabelFormat>(LabelFormat.LetterMulti);
@@ -281,6 +279,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 width: 8.5in;
                 height: 10.7in; /* Reduced further to ensure no overflow */
                 max-height: 10.8in;
+                padding: 5mm 0 0 0; /* Anti-cut safety margin */
                 page-break-after: auto;
                 page-break-inside: avoid;
                 background-color: white;
@@ -322,6 +321,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               .label-wrapper {
                  width: 100%;
                  height: 100vh;
+                 padding-top: 5mm; /* Anti-cut safety margin */
                  display: flex !important;
                  align-items: center;
                  justify-content: center;
