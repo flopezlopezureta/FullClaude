@@ -55,12 +55,9 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
             <div className="bg-white p-5 font-sans text-black w-[100mm] h-[150mm] border-4 border-black flex flex-col overflow-hidden">
                 <div className="text-center mb-2">
                     <h2 className="text-md font-black tracking-tight leading-none">{systemSettings.companyName.toUpperCase()}</h2>
-                    <div className="flex flex-row flex-nowrap justify-center items-center space-x-1 mt-1.5 border-y border-black/10 py-1 px-1 whitespace-nowrap overflow-hidden">
-                        <span className="text-[7px] font-black uppercase text-gray-400 whitespace-nowrap">Remitente:</span>
-                        <span className="text-[10px] font-bold text-black uppercase truncate max-w-[40mm] whitespace-nowrap">{creatorName}</span>
-                        <span className="text-gray-300 mx-1">|</span>
-                        <span className="text-[7px] font-black uppercase text-gray-400 whitespace-nowrap">Fecha:</span>
-                        <span className="text-[11px] font-black text-black whitespace-nowrap">{formattedDate}</span>
+                    <div className="flex flex-row flex-nowrap justify-between items-center mt-1.5 border-y border-black/10 py-1 px-2 overflow-hidden">
+                        <span className="text-[10px] font-black text-black uppercase truncate max-w-[60mm] text-left">{creatorName}</span>
+                        <span className="text-[10px] font-black text-black whitespace-nowrap text-right">{formattedDate}</span>
                     </div>
                 </div>
                 <div className="bg-white text-black p-3 text-center border-2 border-black rounded-xl mb-4">
@@ -104,12 +101,10 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     <p className="text-lg font-black tracking-tighter">IDENTIFICACIÓN DE ENTREGA</p>
                 </div>
                 <div className="flex justify-between items-center px-4 mb-2 bg-gray-50 border-b border-black py-1">
-                    <div className="text-left">
-                        <p className="text-[6px] font-black uppercase text-gray-400">Remitente:</p>
-                        <p className="text-[10px] font-bold text-black truncate max-w-[50mm]">{creatorName}</p>
+                    <div className="text-left flex-1 overflow-hidden pr-2">
+                        <p className="text-[11px] font-black text-black truncate uppercase">{creatorName}</p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-[6px] font-black uppercase text-gray-400">Fecha:</p>
+                    <div className="text-right whitespace-nowrap">
                         <p className="text-[11px] font-black text-black">{formattedDate}</p>
                     </div>
                 </div>
@@ -161,13 +156,11 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 <div className="flex-1 p-4 flex flex-col">
                     <div className="border-b border-black pb-2 mb-3">
                         <h2 className="text-sm font-black tracking-tighter">{systemSettings.companyName}</h2>
-                        <div className="mt-1 flex justify-between items-end">
-                             <div>
-                                <p className="text-[5px] font-black uppercase text-gray-400 leading-none">Remitente:</p>
-                                <p className="text-[9px] font-bold text-black uppercase truncate max-w-[40mm]">{creatorName}</p>
+                        <div className="mt-1 flex justify-between items-end pb-1 border-b border-gray-100">
+                             <div className="flex-1 overflow-hidden pr-2">
+                                <p className="text-[10px] font-black text-black uppercase truncate">{creatorName}</p>
                              </div>
-                             <div className="text-right">
-                                <p className="text-[5px] font-black uppercase text-gray-400 leading-none">Fecha:</p>
+                             <div className="text-right whitespace-nowrap">
                                 <p className="text-[10px] font-black text-black">{formattedDate}</p>
                              </div>
                         </div>
@@ -198,9 +191,9 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 <div className="flex justify-between items-center border-b-2 border-black pb-4 mb-6">
                     <div>
                         <h1 className="text-2xl font-black tracking-tighter">{systemSettings.companyName.toUpperCase()}</h1>
-                        <div className="flex items-center space-x-4 mt-1">
-                            <p className="text-md font-bold text-gray-500 uppercase tracking-wider border-r border-gray-300 pr-4">Remitente: {creatorName}</p>
-                            <p className="text-lg font-black text-black">FECHA: {formattedDate}</p>
+                        <div className="flex items-center space-x-6 mt-1">
+                            <p className="text-xl font-black text-black uppercase truncate max-w-[100mm]">{creatorName}</p>
+                            <p className="text-xl font-black text-black border-l-2 border-black pl-6">{formattedDate}</p>
                         </div>
                     </div>
                     <div className="bg-black text-white px-3 py-1 font-black text-xs">DISEÑO 4</div>
@@ -246,13 +239,11 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
             <div className="bg-white p-5 font-sans text-black w-full h-[148mm] border-2 border-black flex flex-col overflow-hidden relative">
                 <div className="absolute top-0 right-0 bg-black text-white p-1.5 font-black text-[7px] uppercase tracking-widest leading-none">DISEÑO 5</div>
                 <div className="flex justify-between items-end mb-4 border-b border-gray-100 pb-2">
-                    <div className="flex flex-col">
-                        <p className="text-[7px] font-black uppercase text-gray-400">Remitente:</p>
-                        <p className="text-[12px] font-[1000] text-black uppercase">{creatorName}</p>
+                    <div className="flex flex-col flex-1 overflow-hidden pr-3">
+                        <p className="text-[13px] font-[1000] text-black uppercase truncate">{creatorName}</p>
                     </div>
-                    <div className="text-right">
-                        <p className="text-[7px] font-black uppercase text-gray-400">Fecha de Envío:</p>
-                        <p className="text-[12px] font-black text-black border border-black px-2 py-0.5 rounded-sm">{formattedDate}</p>
+                    <div className="text-right whitespace-nowrap">
+                        <p className="text-[12px] font-black text-black border border-black px-2 py-0.5 rounded-sm bg-gray-50">{formattedDate}</p>
                     </div>
                 </div>
                 <div className="border-b border-black pb-2 mb-3">
@@ -299,14 +290,14 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         return (
             <div className="bg-white p-2 font-sans text-black w-[105mm] h-[148mm] border border-slate-300 flex flex-col overflow-hidden leading-tight">
                 <div className="bg-slate-100 px-2 py-1 border-b border-black flex justify-between items-center mb-1">
-                    <div className="flex flex-col">
-                        <p className="text-[7px] font-black uppercase leading-none">{systemSettings.companyName}</p>
-                        <div className="flex items-center space-x-2 mt-1">
-                            <p className="text-[6px] font-bold truncate max-w-[35mm] text-slate-500 overflow-hidden leading-none">Fm: {creatorName}</p>
-                            <p className="text-[7px] font-black text-black leading-none italic">{formattedDate}</p>
+                    <div className="flex flex-col flex-1 overflow-hidden pr-2">
+                        <p className="text-[8px] font-black uppercase leading-none">{systemSettings.companyName}</p>
+                        <div className="flex items-center justify-between mt-1">
+                            <p className="text-[8px] font-black text-black truncate max-w-[40mm]">{creatorName}</p>
+                            <p className="text-[8px] font-black text-black">{formattedDate}</p>
                         </div>
                     </div>
-                    <p className="text-[7px] font-black text-slate-400">DISEÑO 6</p>
+                    <p className="text-[7px] font-black text-slate-400 ml-2">D6</p>
                 </div>
                 <div className="grid grid-cols-2 gap-1 mb-2">
                     <div className="border border-black p-1">

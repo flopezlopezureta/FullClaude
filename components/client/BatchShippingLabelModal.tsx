@@ -277,9 +277,10 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               /* Letter Multi-label (2x2) */
               .letter-page {
                 width: 8.5in;
-                height: 10.6in; /* Conservative height for Letter size */
-                max-height: 10.6in;
-                padding: 4mm 0 0 0; /* Safety padding at top */
+                height: 10.5in; /* Conservative safe height for Letter size */
+                max-height: 10.5in;
+                padding: 0; 
+                margin: 0;
                 page-break-after: auto;
                 page-break-inside: avoid;
                 background-color: white;
@@ -298,14 +299,19 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
               }
                .label-wrapper-letter {
                 width: 100%;
-                height: 5.3in; /* Exactly half of 10.6in Grid Area */
+                height: 5.25in; /* Exactly half of the grid bounds */
+                max-height: 5.25in;
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
                 overflow: hidden;
+                box-sizing: border-box;
               }
                .label-wrapper-letter > div {
-                 transform: scale(0.85); /* Conservative scaling to prevent bottom overflow */
+                 /* Zoom actually recalculates layout bounds in Chromium, preventing page jumps */
+                 zoom: 0.82;
+                 /* Fallback scale */
+                 transform: scale(0.82); 
                  transform-origin: center center;
                }
 
