@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Package } from '../../types';
 import { IconX, IconAlertTriangle, IconCamera, IconPhoto } from '../Icon';
+import imageCompression from 'browser-image-compression';
 
 interface UndeliveredModalProps {
   pkg: Package;
@@ -51,7 +52,8 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
             canvas.width = video.videoWidth;
             canvas.height = video.videoHeight;
             canvas.getContext('2d')?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            onCapture(canvas.toDataURL('image/jpeg', 0.8));
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            onCapture(dataUrl);
         }
     };
 
@@ -84,6 +86,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isCompressing, setIsCompressing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const finalReason = reason === "Otro motivo (especificar)" ? customReason : reason;
@@ -107,17 +110,47 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
       setPhotosBase64(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files && files.length > 0) {
-      Array.from(files).forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          setPhotosBase64(prev => [...prev, reader.result as string]);
-        };
-        reader.readAsDataURL(file);
-      });
-      e.target.value = '';
+      setIsCompressing(true);
+      setError('');
+      try {
+        const newPhotos: string[] = [];
+        for (const file of Array.from(files)) {
+            // Guard de seguridad: si el archivo supera los 15MB, no intentamos procesarlo
+            if (file.size > 15 * 1024 * 1024) {
+                 continue;
+            }
+            
+            const options = {
+                maxSizeMB: 0.2,
+                maxWidthOrHeight: 1024,
+                useWebWorker: true,
+                initialQuality: 0.6,
+            };
+            
+            try {
+                const compressedFile = await imageCompression(file, options);
+                const reader = new FileReader();
+                const base64: string = await new Promise((resolve, reject) => {
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(compressedFile);
+                });
+                newPhotos.push(base64);
+            } catch (err) {
+                console.error("Error comprimiendo imagen en UndeliveredModal", err);
+            }
+        }
+        setPhotosBase64(prev => [...prev, ...newPhotos]);
+      } catch (err) {
+          console.error("Error global en procesamiento de imágenes", err);
+          setError("Error al procesar las imágenes.");
+      } finally {
+          setIsCompressing(false);
+          e.target.value = '';
+      }
     }
   };
 
@@ -181,7 +214,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                         ))}
                     </div>
                 )}
-                 <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-3">
                     <button type="button" onClick={() => setIsCameraOpen(true)} className="flex flex-col items-center justify-center p-4 border-2 border-dashed border-[var(--border-secondary)] rounded-lg text-[var(--text-muted)] hover:bg-[var(--background-hover)]">
                         <IconCamera className="w-8 h-8 mb-2" />
                         <span className="text-sm font-semibold">Cámara</span>
@@ -191,14 +224,23 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                         <span className="text-sm font-semibold">Galería</span>
                     </button>
                 </div>
+
+                {isCompressing && (
+                    <div className="flex items-center justify-center space-x-2 text-indigo-600 animate-pulse py-2">
+                        <div className="w-4 h-4 border-2 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+                        <span className="text-xs font-bold">Optimizando imágenes...</span>
+                    </div>
+                )}
+
                 <input 
                     type="file" 
                     ref={fileInputRef} 
                     onChange={handleFileChange} 
-                    accept="image/*" 
+                    accept="image/jpeg,image/png,image/heic,image/heif" 
                     multiple 
                     className="hidden" 
                 />
+                
                 {isCameraOpen && <CameraView onCapture={(dataUrl) => { setPhotosBase64(prev => [...prev, dataUrl]); setIsCameraOpen(false); }} onCancel={() => setIsCameraOpen(false)} />}
             </div>
           </div>

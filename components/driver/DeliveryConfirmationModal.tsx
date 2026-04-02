@@ -252,10 +252,10 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       }
 
       const options = {
-          maxSizeMB: 1, // Tamaño máximo aproximado
-          maxWidthOrHeight: 1280, // Resolución máxima de 1280px (según lo solicitado)
+          maxSizeMB: 0.2, // Reducido a 200KB para ahorrar recursos
+          maxWidthOrHeight: 1024, // Resolución máxima de 1024px
           useWebWorker: true,
-          initialQuality: 0.75, // Calidad del 75% (según lo solicitado)
+          initialQuality: 0.6, // Calidad del 60%
       };
 
       try {
