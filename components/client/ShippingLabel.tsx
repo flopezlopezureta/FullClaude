@@ -55,12 +55,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
             <div className="bg-white p-5 font-sans text-black w-[100mm] h-[150mm] border-4 border-black flex flex-col overflow-hidden">
                 <div className="text-center mb-2">
                     <h2 className="text-md font-black tracking-tight leading-none">{systemSettings.companyName.toUpperCase()}</h2>
-                    <div className="flex justify-center items-center space-x-2 mt-1.5 border-y border-black/10 py-1 px-1">
-                        <span className="text-[7px] font-black uppercase text-gray-400">Remitente:</span>
-                        <span className="text-[10px] font-bold text-black uppercase truncate max-w-[40mm]">{creatorName}</span>
+                    <div className="flex flex-row flex-nowrap justify-center items-center space-x-1 mt-1.5 border-y border-black/10 py-1 px-1 whitespace-nowrap overflow-hidden">
+                        <span className="text-[7px] font-black uppercase text-gray-400 whitespace-nowrap">Remitente:</span>
+                        <span className="text-[10px] font-bold text-black uppercase truncate max-w-[40mm] whitespace-nowrap">{creatorName}</span>
                         <span className="text-gray-300 mx-1">|</span>
-                        <span className="text-[7px] font-black uppercase text-gray-400">Fecha:</span>
-                        <span className="text-[11px] font-black text-black">{formattedDate}</span>
+                        <span className="text-[7px] font-black uppercase text-gray-400 whitespace-nowrap">Fecha:</span>
+                        <span className="text-[11px] font-black text-black whitespace-nowrap">{formattedDate}</span>
                     </div>
                 </div>
                 <div className="bg-white text-black p-3 text-center border-2 border-black rounded-xl mb-4">
