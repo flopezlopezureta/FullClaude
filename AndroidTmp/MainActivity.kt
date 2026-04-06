@@ -158,23 +158,32 @@ class WebAppInterface(private val mContext: android.content.Context) {
     @JavascriptInterface
     fun downloadFile(content: String, fileName: String) {
         try {
-            val file = java.io.File(mContext.cacheDir, fileName)
+            // Usamos externalCacheDir para asegurar que otras carpetas puedan leerlo con el permiso de GrantUri
+            val file = java.io.File(mContext.externalCacheDir, fileName)
             file.writeText(content)
+            
             val uri = androidx.core.content.FileProvider.getUriForFile(
                 mContext,
-                "${mContext.packageName}.provider",
+                "com.fullenvios.myapplication.provider",
                 file
             )
-            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
-                type = "text/csv"
-                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+            
+            // Intent dual: Intentar con ACTION_VIEW (abrir) o ACTION_SEND (compartir) 
+            // ACTION_VIEW es ideal para "Abrir con..." lo que solicita el usuario (Importar)
+            val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "text/csv")
                 addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             }
-            val chooser = android.content.Intent.createChooser(intent, "Abrir con Circuit")
+            
+            // Si el dispositivo tiene una App para esto, lanzará el chooser automáticamente
+            val chooser = android.content.Intent.createChooser(intent, "Importar en Circuit")
             chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
             mContext.startActivity(chooser)
         } catch (e: Exception) {
             e.printStackTrace()
+            // Mensaje de depuración en LogCat por si falla
+            android.util.Log.e("WebViewBridge", "Error al descargar/abrir archivo: ${e.message}")
         }
     }
 }
