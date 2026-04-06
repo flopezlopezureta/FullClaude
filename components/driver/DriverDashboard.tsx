@@ -267,9 +267,9 @@ const DriverDashboard: React.FC = () => {
                 try {
                     await navigator.clipboard.writeText(rawTextList);
                     
-                    // Mostrar Toast de 1 segundo ("rutas copiadas a circuit")
+                    // Mostrar Toast de 1 segundo
                     const toast = document.createElement("div");
-                    toast.textContent = "rutas copiadas a circuit";
+                    toast.textContent = "rutas copiadas, pegar en circuit";
                     toast.style.position = "fixed";
                     toast.style.bottom = "80px";
                     toast.style.left = "50%";
