@@ -1,6 +1,6 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../contexts/AuthContext';
-import { IconCube, IconEye, IconEyeOff } from '../components/Icon';
+import { IconEye, IconEyeOff } from '../components/Icon';
 import { api, RegisterData } from '../services/api';
 import { Role } from '../constants';
 
@@ -169,7 +169,7 @@ const AuthPage: React.FC = () => {
     <div className="min-h-screen flex flex-col justify-center items-center p-4 bg-[var(--background-primary)]">
       <div className="max-w-md w-full mx-auto">
         <div className="flex justify-center items-center space-x-3 mb-6">
-            <IconCube className="h-10 w-10 text-[var(--brand-primary)]" />
+            <img src="/logo.png" alt="Logo" className="h-12 w-auto drop-shadow-md" />
             <h1 className="text-3xl font-bold text-center text-[var(--text-primary)]">
               {auth?.systemSettings.companyName || 'Sistema de Seguimiento'}
             </h1>

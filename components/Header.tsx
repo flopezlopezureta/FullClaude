@@ -1,7 +1,7 @@
 
 
 import React, { useContext } from 'react';
-import { IconCube, IconUser, IconLogOut } from './Icon';
+import { IconUser, IconLogOut } from './Icon';
 import { AuthContext } from '../contexts/AuthContext';
 
 const Header: React.FC = () => {
@@ -12,7 +12,7 @@ const Header: React.FC = () => {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center space-x-3">
-            <IconCube className="h-8 w-8 text-[var(--brand-primary)]" />
+            <img src="/logo.png" alt="Logo" className="h-10 w-auto drop-shadow-sm" />
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">
               Sistema de Seguimiento de Paquetes
             </h1>
