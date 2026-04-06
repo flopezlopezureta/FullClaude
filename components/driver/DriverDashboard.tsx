@@ -249,57 +249,51 @@ const DriverDashboard: React.FC = () => {
 
         // 1. INTEGRACION NATIVA ANDROID APP (Requiere App Actualizada)
         // @ts-ignore
-        if (window.AndroidApp && window.AndroidApp.shareText) {
+        if (window.AndroidApp) {
             try {
                 // @ts-ignore
-                window.AndroidApp.shareText(rawTextList, "Ruta Circuit");
-                return; // Exito compartiendo nativamente
+                if (window.AndroidApp.downloadFile) {
+                    // Generamos un CSV real para que Circuit lo abra como archivo
+                    // @ts-ignore
+                    window.AndroidApp.downloadFile(csvContent, filename);
+                } else {
+                    // Fallback para versiones que solo tienen shareText
+                    // @ts-ignore
+                    window.AndroidApp.shareText(rawTextList, "Ruta Circuit");
+                }
+                
+                // Mostrar Toast elegante de 2 segundos para confirmación
+                const toast = document.createElement("div");
+                toast.textContent = "✅ rutas descargadas, importar en circuit";
+                toast.style.position = "fixed";
+                toast.style.bottom = "100px";
+                toast.style.left = "50%";
+                toast.style.transform = "translateX(-50%)";
+                toast.style.backgroundColor = "var(--brand-primary, #4A90E2)";
+                toast.style.color = "white";
+                toast.style.padding = "14px 24px";
+                toast.style.borderRadius = "50px";
+                toast.style.boxShadow = "0 8px 16px rgba(0,0,0,0.15)";
+                toast.style.zIndex = "9999";
+                toast.style.fontWeight = "600";
+                toast.style.fontSize = "15px";
+                toast.style.whiteSpace = "nowrap";
+                toast.style.transition = "opacity 0.4s ease-in-out";
+                
+                document.body.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.opacity = "0";
+                    setTimeout(() => document.body.removeChild(toast), 400);
+                }, 2000);
+
+                return; // Exito
             } catch (e) {
-                console.error("Intento nativo falló", e);
+                console.error("Intento en App falló", e);
             }
         }
 
-        // Fallback: Si Falla el Share API o no está disponible (ejemplo: Android WebView antiguo)
+        // Fallback para Navegadores Web (PC o Chrome Mobile)
         const runFallback = async () => {
-            const isAndroidWebView = /wv/i.test(navigator.userAgent) || (/Android/i.test(navigator.userAgent) && !/Chrome\/[.0-9]* Mobile/i.test(navigator.userAgent));
-            
-            if (isAndroidWebView) {
-                // En la APP Android (WebView antiguo), copiamos al portapapeles.
-                try {
-                    await navigator.clipboard.writeText(rawTextList);
-                    
-                    // Mostrar Toast elegante de 2 segundos
-                    const toast = document.createElement("div");
-                    toast.textContent = "✅ Rutas copiadas, pegar en Circuit";
-                    toast.style.position = "fixed";
-                    toast.style.bottom = "100px";
-                    toast.style.left = "50%";
-                    toast.style.transform = "translateX(-50%)";
-                    toast.style.backgroundColor = "var(--brand-primary, #4A90E2)";
-                    toast.style.color = "white";
-                    toast.style.padding = "14px 24px";
-                    toast.style.borderRadius = "50px";
-                    toast.style.boxShadow = "0 8px 16px rgba(0,0,0,0.15)";
-                    toast.style.zIndex = "9999";
-                    toast.style.fontWeight = "600";
-                    toast.style.fontSize = "15px";
-                    toast.style.whiteSpace = "nowrap";
-                    toast.style.transition = "opacity 0.4s ease-in-out, transform 0.4s easeOutBack";
-                    
-                    document.body.appendChild(toast);
-                    
-                    setTimeout(() => {
-                        toast.style.opacity = "0";
-                        setTimeout(() => document.body.removeChild(toast), 400);
-                    }, 2000);
-                    
-                } catch (e) {
-                    console.error(e);
-                    alert("No se pudo copiar al portapapeles.");
-                }
-                return;
-            }
-
             // Descarga regular para PC o navegadores móviles completos
             const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -312,6 +306,25 @@ const DriverDashboard: React.FC = () => {
             link.click();
             document.body.removeChild(link);
             setTimeout(() => URL.revokeObjectURL(url), 100);
+
+            // Toast de confirmación en Web
+            const toast = document.createElement("div");
+            toast.textContent = "✅ rutas descargadas, importar en circuit";
+            toast.style.position = "fixed";
+            toast.style.bottom = "100px";
+            toast.style.left = "50%";
+            toast.style.transform = "translateX(-50%)";
+            toast.style.backgroundColor = "var(--brand-primary, #4A90E2)";
+            toast.style.color = "white";
+            toast.style.padding = "14px 24px";
+            toast.style.borderRadius = "50px";
+            toast.style.zIndex = "9999";
+            
+            document.body.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = "0";
+                setTimeout(() => document.body.removeChild(toast), 400);
+            }, 2000);
         };
 
         // 2. Intentar compartir de forma nativa a la app Circuit (funciona en Mobile Web Moderno)

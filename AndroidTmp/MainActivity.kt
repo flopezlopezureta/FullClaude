@@ -154,4 +154,27 @@ class WebAppInterface(private val mContext: android.content.Context) {
         shareIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
         mContext.startActivity(shareIntent)
     }
+
+    @JavascriptInterface
+    fun downloadFile(content: String, fileName: String) {
+        try {
+            val file = java.io.File(mContext.cacheDir, fileName)
+            file.writeText(content)
+            val uri = androidx.core.content.FileProvider.getUriForFile(
+                mContext,
+                "${mContext.packageName}.provider",
+                file
+            )
+            val intent = android.content.Intent(android.content.Intent.ACTION_SEND).apply {
+                type = "text/csv"
+                putExtra(android.content.Intent.EXTRA_STREAM, uri)
+                addFlags(android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+            val chooser = android.content.Intent.createChooser(intent, "Abrir con Circuit")
+            chooser.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+            mContext.startActivity(chooser)
+        } catch (e: Exception) {
+            e.printStackTrace()
+        }
+    }
 }
