@@ -246,7 +246,39 @@ const DriverDashboard: React.FC = () => {
         
         const file = new File([`\uFEFF${csvContent}`], filename, { type: 'text/csv' });
 
-        // Intentar compartir de forma nativa a la app Circuit (funciona excelentemente en WebViews de Android / iOS)
+        // Fallback: Si Falla el Share API o no está disponible (ejemplo: Android WebView)
+        const runFallback = async () => {
+            const isAndroidWebView = /wv/i.test(navigator.userAgent) || (/Android/i.test(navigator.userAgent) && !/Chrome\/[.0-9]* Mobile/i.test(navigator.userAgent));
+            
+            if (isAndroidWebView) {
+                // En la APP Android (WebView), la descarga Blob falla en silencio. 
+                // Solución rápida y efectiva sin actualizar el APK: Copiar al portapapeles.
+                const rawTextList = pendingPackages.map(p => `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity} (${p.recipientName})`).join('\n');
+                try {
+                    await navigator.clipboard.writeText(rawTextList);
+                    alert("⚠️ Esta versión de la App restringe las descargas.\n\n✅ ¡Pero las direcciones han sido COPIADAS!\n\n📲 Solo abre tu app de 'Circuit', selecciona 'Añadir varias paradas' y PEGA la lista.");
+                } catch (e) {
+                    console.error(e);
+                    alert("No se pudo copiar al portapapeles. Por favor avisa a soporte.");
+                }
+                return;
+            }
+
+            // Descarga regular para PC o navegadores móviles completos
+            const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            
+            link.setAttribute("href", url);
+            link.setAttribute("download", filename);
+            link.style.visibility = 'hidden';
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(url), 100);
+        };
+
+        // Intentar compartir de forma nativa a la app Circuit (funciona excelentemente en Mobile Web)
         if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
             try {
                 await navigator.share({
@@ -256,26 +288,15 @@ const DriverDashboard: React.FC = () => {
                 });
                 return; // Exito compartiendo
             } catch (err: any) {
-                // Si el usuario cancela (AbortError) simplemente salimos y no intentamos descargar
                 if (err.name === 'AbortError') return;
-                console.log("Share API falló, intentando descarga local", err);
+                console.log("Share API falló, intentando fallback local", err);
+                await runFallback();
             }
+        } else {
+             // El navegador no soporta share file
+             await runFallback();
         }
 
-        // Fallback: descarga regular (Puede no funcionar en WebViews si no existe DownloadListener)
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement("a");
-        
-        link.setAttribute("href", url);
-        link.setAttribute("download", filename);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        // Cleanup the URL object
-        setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (error) {
         console.error("Export failed", error);
         alert("Error al exportar. Por favor intente de nuevo.");

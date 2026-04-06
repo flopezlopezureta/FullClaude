@@ -29,7 +29,9 @@ class MainActivity : ComponentActivity() {
             val permissions = arrayOf(
                 android.Manifest.permission.CAMERA,
                 android.Manifest.permission.READ_EXTERNAL_STORAGE,
-                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.ACCESS_COARSE_LOCATION
             )
             val missingPermissions = permissions.filter {
                 checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
@@ -57,6 +59,9 @@ class MainActivity : ComponentActivity() {
         settings.databaseEnabled = true
         settings.javaScriptCanOpenWindowsAutomatically = true
 
+        // Permite abrir funciones de geolocalización en la WebView
+        settings.setGeolocationEnabled(true)
+
         // Bloquea el botón gigante de Play
         settings.mediaPlaybackRequiresUserGesture = false
         // Permite abrir contenido seguro desde red
@@ -64,12 +69,19 @@ class MainActivity : ComponentActivity() {
 
         webView.webChromeClient = object : WebChromeClient() {
             
-            // ELIMINAR EL PANTALLAZO DEL BOTÓN PLAY GIGANTE: 
-            // Reemplaza el ícono de "Cargando video" por un pixel transparente.
+            // ELIMINAR EL PANTALLAZO DEL BOTÓN PLAY GIGANTE
             override fun getDefaultVideoPoster(): Bitmap? {
                 val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
                 bitmap.eraseColor(Color.TRANSPARENT)
                 return bitmap
+            }
+
+            // Otorga permiso a GPS nativo al navegador web automáticamente
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: GeolocationPermissions.Callback?
+            ) {
+                callback?.invoke(origin, true, false)
             }
 
             // Otorga permiso a la cámara en el navegador web
