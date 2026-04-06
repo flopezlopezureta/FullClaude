@@ -266,7 +266,30 @@ const DriverDashboard: React.FC = () => {
                 // En la APP Android (WebView antiguo), copiamos al portapapeles.
                 try {
                     await navigator.clipboard.writeText(rawTextList);
-                    alert("✅ Direcciones COPIADAS al portapapeles.\n\nAbre la app Circuit y elige 'Pegar lista'.");
+                    
+                    // Mostrar Toast de 1 segundo ("rutas copiadas a circuit")
+                    const toast = document.createElement("div");
+                    toast.textContent = "rutas copiadas a circuit";
+                    toast.style.position = "fixed";
+                    toast.style.bottom = "80px";
+                    toast.style.left = "50%";
+                    toast.style.transform = "translateX(-50%)";
+                    toast.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+                    toast.style.color = "white";
+                    toast.style.padding = "10px 20px";
+                    toast.style.borderRadius = "30px";
+                    toast.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+                    toast.style.zIndex = "9999";
+                    toast.style.fontSize = "14px";
+                    toast.style.transition = "opacity 0.3s ease-in-out";
+                    
+                    document.body.appendChild(toast);
+                    
+                    setTimeout(() => {
+                        toast.style.opacity = "0";
+                        setTimeout(() => document.body.removeChild(toast), 300);
+                    }, 1000);
+                    
                 } catch (e) {
                     console.error(e);
                     alert("No se pudo copiar al portapapeles.");
