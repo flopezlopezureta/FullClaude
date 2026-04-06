@@ -1,0 +1,128 @@
+package com.fullenvios.myapplication
+
+import android.annotation.SuppressLint
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.graphics.Bitmap
+import android.graphics.Color
+import android.net.Uri
+import android.os.Build
+import android.os.Bundle
+import android.view.View
+import android.webkit.*
+import androidx.activity.ComponentActivity
+
+class MainActivity : ComponentActivity() {
+
+    private lateinit var webView: WebView
+    private var mFilePathCallback: ValueCallback<Array<Uri>>? = null
+    private val FILECHOOSER_RESULTCODE = 1
+    private val PERMISSION_REQUEST_CODE = 1234
+
+    @SuppressLint("SetJavaScriptEnabled")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+
+        // SOLUCIÓN DEFINITIVA: Solicitar permisos a la fuerza al abrir la App (Android 6.0+)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            val permissions = arrayOf(
+                android.Manifest.permission.CAMERA,
+                android.Manifest.permission.READ_EXTERNAL_STORAGE,
+                android.Manifest.permission.WRITE_EXTERNAL_STORAGE
+            )
+            val missingPermissions = permissions.filter {
+                checkSelfPermission(it) != PackageManager.PERMISSION_GRANTED
+            }
+            if (missingPermissions.isNotEmpty()) {
+                requestPermissions(missingPermissions.toTypedArray(), PERMISSION_REQUEST_CODE)
+            }
+        }
+
+        webView = WebView(this)
+        setContentView(webView)
+
+        // PANTALLA COMPLETA
+        window.decorView.systemUiVisibility = (View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY
+                or View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
+                or View.SYSTEM_UI_FLAG_FULLSCREEN)
+
+        val settings = webView.settings
+        settings.javaScriptEnabled = true
+        settings.domStorageEnabled = true
+        settings.allowFileAccess = true
+        settings.allowContentAccess = true
+        settings.databaseEnabled = true
+        settings.javaScriptCanOpenWindowsAutomatically = true
+
+        // Bloquea el botón gigante de Play
+        settings.mediaPlaybackRequiresUserGesture = false
+        // Permite abrir contenido seguro desde red
+        settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
+
+        webView.webChromeClient = object : WebChromeClient() {
+            
+            // ELIMINAR EL PANTALLAZO DEL BOTÓN PLAY GIGANTE: 
+            // Reemplaza el ícono de "Cargando video" por un pixel transparente.
+            override fun getDefaultVideoPoster(): Bitmap? {
+                val bitmap = Bitmap.createBitmap(1, 1, Bitmap.Config.ARGB_8888)
+                bitmap.eraseColor(Color.TRANSPARENT)
+                return bitmap
+            }
+
+            // Otorga permiso a la cámara en el navegador web
+            override fun onPermissionRequest(request: PermissionRequest?) {
+                request?.grant(request.resources)
+            }
+
+            override fun onShowFileChooser(
+                webView: WebView?,
+                filePathCallback: ValueCallback<Array<Uri>>?,
+                fileChooserParams: FileChooserParams?
+            ): Boolean {
+                if (mFilePathCallback != null) {
+                    mFilePathCallback?.onReceiveValue(null)
+                }
+                mFilePathCallback = filePathCallback
+
+                val intent = fileChooserParams?.createIntent()
+                try {
+                    startActivityForResult(intent!!, FILECHOOSER_RESULTCODE)
+                } catch (e: ActivityNotFoundException) {
+                    mFilePathCallback = null
+                    return false
+                }
+                return true
+            }
+        }
+
+        webView.webViewClient = object : WebViewClient() {
+            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
+                return false
+            }
+        }
+
+        webView.loadUrl("https://fullenvios.selcom.cl")
+    }
+
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: Intent?) {
+        if (requestCode == FILECHOOSER_RESULTCODE) {
+            if (mFilePathCallback == null) return
+            mFilePathCallback!!.onReceiveValue(WebChromeClient.FileChooserParams.parseResult(resultCode, data))
+            mFilePathCallback = null
+        } else {
+            super.onActivityResult(requestCode, resultCode, data)
+        }
+    }
+
+    @Deprecated("Deprecated in Java")
+    override fun onBackPressed() {
+        if (webView.canGoBack()) {
+            webView.goBack()
+        } else {
+            super.onBackPressed()
+        }
+    }
+}

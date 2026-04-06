@@ -20,29 +20,17 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
         let mediaStream: MediaStream | null = null;
         const startCamera = async () => {
             try {
-                const videoConstraints: MediaTrackConstraints = {
-                    facingMode: 'environment',
-                    width: { ideal: 1920 },
-                    height: { ideal: 1080 }
-                };
+                // Simplificado exactamente como indicaste para arranque inmediato
                 try {
-                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: videoConstraints });
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
                 } catch (err) {
-                    console.warn("Could not get environment camera, falling back to default.", err);
+                    // Fallback rápido si el teléfono no detecta explícitamente "environment"
                     mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
                 }
                 const video = videoRef.current;
                 if (video) {
                     video.srcObject = mediaStream;
-                    video.onloadedmetadata = () => {
-                         const playPromise = video.play();
-                        if (playPromise !== undefined) {
-                            playPromise.catch(err => {
-                                console.error("Video play failed:", err);
-                                setCameraError("No se pudo iniciar la reproducción de la cámara.");
-                            });
-                        }
-                    };
+                    // Ya tiene autoPlay en la etiqueta, así que arrancará de inmediato.
                 }
             } catch (err: any) {
                 console.error("Camera Error:", err.name, err.message);

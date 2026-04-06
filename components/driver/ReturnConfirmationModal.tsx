@@ -20,11 +20,14 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
         let mediaStream: MediaStream | null = null;
         const startCamera = async () => {
             try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                try {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                } catch (err) {
+                    mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                }
                 const video = videoRef.current;
                 if (video) {
                     video.srcObject = mediaStream;
-                    video.onloadedmetadata = () => video.play().catch(() => setCameraError("No se pudo iniciar la cámara."));
                 }
             } catch (err: any) {
                 let message = "No se pudo acceder a la cámara. Revisa los permisos.";

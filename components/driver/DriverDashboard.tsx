@@ -9,7 +9,7 @@ import PackageDetailModal from '../PackageDetailModal';
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 import UndeliveredModal from './UndeliveredModal';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconArchive, IconTruck, IconFileExport, IconRoute, IconAlertTriangle } from '../Icon';
+import { IconArchive, IconTruck, IconRoute, IconAlertTriangle } from '../Icon';
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
 import RouteOptimizerModal from '../modals/RouteOptimizerModal';
 
@@ -242,12 +242,33 @@ const DriverDashboard: React.FC = () => {
         ].map(escapeCsvField).join(','));
 
         const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
+        const filename = `Circuit_${driverName}_${dateStr}.csv`;
+        
+        const file = new File([`\uFEFF${csvContent}`], filename, { type: 'text/csv' });
+
+        // Intentar compartir de forma nativa a la app Circuit (funciona excelentemente en WebViews de Android / iOS)
+        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+            try {
+                await navigator.share({
+                    files: [file],
+                    title: 'Ruta Circuit',
+                    text: 'Abrir ruta con Circuit Route Planner'
+                });
+                return; // Exito compartiendo
+            } catch (err: any) {
+                // Si el usuario cancela (AbortError) simplemente salimos y no intentamos descargar
+                if (err.name === 'AbortError') return;
+                console.log("Share API falló, intentando descarga local", err);
+            }
+        }
+
+        // Fallback: descarga regular (Puede no funcionar en WebViews si no existe DownloadListener)
         const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement("a");
         
         link.setAttribute("href", url);
-        link.setAttribute("download", `Circuit_${driverName}_${dateStr}.csv`);
+        link.setAttribute("download", filename);
         link.style.visibility = 'hidden';
         document.body.appendChild(link);
         link.click();
@@ -257,7 +278,7 @@ const DriverDashboard: React.FC = () => {
         setTimeout(() => URL.revokeObjectURL(url), 100);
     } catch (error) {
         console.error("Export failed", error);
-        alert("Error al exportar.");
+        alert("Error al exportar. Por favor intente de nuevo.");
     } finally {
         setIsExporting(false);
     }
@@ -319,8 +340,8 @@ const DriverDashboard: React.FC = () => {
                 disabled={pendingPackages.length === 0 || isExporting}
                 className={`flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[var(--text-on-brand)] bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] disabled:bg-slate-400 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse' : ''}`}
             >
-                <IconFileExport className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
-                {isExporting ? 'Exportando...' : 'Exportar'}
+                <IconRoute className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
+                {isExporting ? 'Enviando...' : 'Enviar a Circuit'}
             </button>
         </div>
         <span className="ml-auto bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
