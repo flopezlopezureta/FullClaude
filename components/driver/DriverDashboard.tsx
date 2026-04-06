@@ -234,17 +234,18 @@ const DriverDashboard: React.FC = () => {
             const str = String(field || '').replace(/"/g, '""');
             return `"${str}"`;
         };
-        const circuitHeaders = ['Address', 'Name'];
+        const circuitHeaders = ['Address'];
         
         const circuitRows = pendingPackages.map(p => [
-            `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
-            p.recipientName
+            `${p.recipientAddress}, ${p.recipientCommune}`
         ].map(escapeCsvField).join(','));
 
         const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
         const filename = `Circuit_${driverName}_${dateStr}.csv`;
         const file = new File([`\uFEFF${csvContent}`], filename, { type: 'text/csv' });
-        const rawTextList = pendingPackages.map(p => `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity} (${p.recipientName})`).join('\n');
+        
+        // Solo enviar direccion y comuna según solicitud
+        const rawTextList = pendingPackages.map(p => `${p.recipientAddress}, ${p.recipientCommune}`).join('\n');
 
         // 1. INTEGRACION NATIVA ANDROID APP (Requiere App Actualizada)
         // @ts-ignore
@@ -267,28 +268,30 @@ const DriverDashboard: React.FC = () => {
                 try {
                     await navigator.clipboard.writeText(rawTextList);
                     
-                    // Mostrar Toast de 1 segundo
+                    // Mostrar Toast elegante de 2 segundos
                     const toast = document.createElement("div");
-                    toast.textContent = "rutas copiadas, pegar en circuit";
+                    toast.textContent = "✅ Rutas copiadas, pegar en Circuit";
                     toast.style.position = "fixed";
-                    toast.style.bottom = "80px";
+                    toast.style.bottom = "100px";
                     toast.style.left = "50%";
                     toast.style.transform = "translateX(-50%)";
-                    toast.style.backgroundColor = "rgba(0, 0, 0, 0.8)";
+                    toast.style.backgroundColor = "var(--brand-primary, #4A90E2)";
                     toast.style.color = "white";
-                    toast.style.padding = "10px 20px";
-                    toast.style.borderRadius = "30px";
-                    toast.style.boxShadow = "0 4px 6px rgba(0,0,0,0.1)";
+                    toast.style.padding = "14px 24px";
+                    toast.style.borderRadius = "50px";
+                    toast.style.boxShadow = "0 8px 16px rgba(0,0,0,0.15)";
                     toast.style.zIndex = "9999";
-                    toast.style.fontSize = "14px";
-                    toast.style.transition = "opacity 0.3s ease-in-out";
+                    toast.style.fontWeight = "600";
+                    toast.style.fontSize = "15px";
+                    toast.style.whiteSpace = "nowrap";
+                    toast.style.transition = "opacity 0.4s ease-in-out, transform 0.4s easeOutBack";
                     
                     document.body.appendChild(toast);
                     
                     setTimeout(() => {
                         toast.style.opacity = "0";
-                        setTimeout(() => document.body.removeChild(toast), 300);
-                    }, 1000);
+                        setTimeout(() => document.body.removeChild(toast), 400);
+                    }, 2000);
                     
                 } catch (e) {
                     console.error(e);
