@@ -266,10 +266,10 @@ const DriverDashboard: React.FC = () => {
                 // En la APP Android (WebView antiguo), copiamos al portapapeles.
                 try {
                     await navigator.clipboard.writeText(rawTextList);
-                    alert("⚠️ Esta versión de la App restringe las descargas.\n\n✅ ¡Pero las direcciones han sido COPIADAS!\n\n📲 Solo abre tu app de 'Circuit', selecciona 'Añadir varias paradas' y PEGA la lista.");
+                    alert("✅ Direcciones COPIADAS al portapapeles.\n\nAbre la app Circuit y elige 'Pegar lista'.");
                 } catch (e) {
                     console.error(e);
-                    alert("No se pudo copiar al portapapeles. Por favor avisa a soporte.");
+                    alert("No se pudo copiar al portapapeles.");
                 }
                 return;
             }
