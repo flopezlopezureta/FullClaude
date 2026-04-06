@@ -59,6 +59,9 @@ class MainActivity : ComponentActivity() {
         settings.databaseEnabled = true
         settings.javaScriptCanOpenWindowsAutomatically = true
 
+        // Interface para exportar a Circuit
+        webView.addJavascriptInterface(WebAppInterface(this), "AndroidApp")
+
         // Permite abrir funciones de geolocalización en la WebView
         settings.setGeolocationEnabled(true)
 
@@ -136,5 +139,19 @@ class MainActivity : ComponentActivity() {
         } else {
             super.onBackPressed()
         }
+    }
+}
+
+class WebAppInterface(private val mContext: android.content.Context) {
+    @JavascriptInterface
+    fun shareText(text: String, title: String) {
+        val sendIntent: android.content.Intent = android.content.Intent().apply {
+            action = android.content.Intent.ACTION_SEND
+            putExtra(android.content.Intent.EXTRA_TEXT, text)
+            type = "text/plain"
+        }
+        val shareIntent = android.content.Intent.createChooser(sendIntent, title)
+        shareIntent.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        mContext.startActivity(shareIntent)
     }
 }

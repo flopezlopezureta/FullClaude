@@ -243,17 +243,27 @@ const DriverDashboard: React.FC = () => {
 
         const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
         const filename = `Circuit_${driverName}_${dateStr}.csv`;
-        
         const file = new File([`\uFEFF${csvContent}`], filename, { type: 'text/csv' });
+        const rawTextList = pendingPackages.map(p => `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity} (${p.recipientName})`).join('\n');
 
-        // Fallback: Si Falla el Share API o no está disponible (ejemplo: Android WebView)
+        // 1. INTEGRACION NATIVA ANDROID APP (Requiere App Actualizada)
+        // @ts-ignore
+        if (window.AndroidApp && window.AndroidApp.shareText) {
+            try {
+                // @ts-ignore
+                window.AndroidApp.shareText(rawTextList, "Ruta Circuit");
+                return; // Exito compartiendo nativamente
+            } catch (e) {
+                console.error("Intento nativo falló", e);
+            }
+        }
+
+        // Fallback: Si Falla el Share API o no está disponible (ejemplo: Android WebView antiguo)
         const runFallback = async () => {
             const isAndroidWebView = /wv/i.test(navigator.userAgent) || (/Android/i.test(navigator.userAgent) && !/Chrome\/[.0-9]* Mobile/i.test(navigator.userAgent));
             
             if (isAndroidWebView) {
-                // En la APP Android (WebView), la descarga Blob falla en silencio. 
-                // Solución rápida y efectiva sin actualizar el APK: Copiar al portapapeles.
-                const rawTextList = pendingPackages.map(p => `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity} (${p.recipientName})`).join('\n');
+                // En la APP Android (WebView antiguo), copiamos al portapapeles.
                 try {
                     await navigator.clipboard.writeText(rawTextList);
                     alert("⚠️ Esta versión de la App restringe las descargas.\n\n✅ ¡Pero las direcciones han sido COPIADAS!\n\n📲 Solo abre tu app de 'Circuit', selecciona 'Añadir varias paradas' y PEGA la lista.");
@@ -278,8 +288,9 @@ const DriverDashboard: React.FC = () => {
             setTimeout(() => URL.revokeObjectURL(url), 100);
         };
 
-        // Intentar compartir de forma nativa a la app Circuit (funciona excelentemente en Mobile Web)
-        if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+        // 2. Intentar compartir de forma nativa a la app Circuit (funciona en Mobile Web Moderno)
+        // Se añade typeof check para evitar crash 'navigator.canShare is not a function' en WebViews
+        if (navigator.share && typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
             try {
                 await navigator.share({
                     files: [file],
