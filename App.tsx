@@ -2,7 +2,6 @@
 import React, { useContext, useEffect } from 'react';
 import { AuthContext, AuthProvider } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
-import LandingPage from './pages/LandingPage';
 import TrackingPage from './pages/TrackingPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
@@ -46,19 +45,8 @@ const AppContent: React.FC = () => {
     return <TrackingPage />;
   }
 
-  const isLoginRoute = window.location.pathname === '/login';
-
   if (!auth.user) {
-    if (isLoginRoute) {
-       return <AuthPage />;
-    }
-    // Si no está logueado y no está en /login ni en /track, mostrar LandingPage
-    return <LandingPage />;
-  }
-
-  // Si está logueado pero intenta ir al login (o al index) redirige visualmente o carga Dashboard.
-  if (isLoginRoute) {
-     window.history.replaceState({}, document.title, '/');
+    return <AuthPage />;
   }
 
   return <DashboardLayout />;
