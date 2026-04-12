@@ -163,6 +163,7 @@ const ClientSettingsPage: React.FC = () => {
                                     onChange={handleChange}
                                     className={inputClasses}
                                     placeholder="ejemplo.myshopify.com"
+                                    autoComplete="off"
                                 />
                             </div>
                             <div>
@@ -175,6 +176,7 @@ const ClientSettingsPage: React.FC = () => {
                                         onChange={handleChange}
                                         className={inputClasses}
                                         placeholder="shpat_xxxxxxxxxxxxxxxx"
+                                        autoComplete="new-password"
                                     />
                                     <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                                         {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
@@ -190,6 +192,7 @@ const ClientSettingsPage: React.FC = () => {
                                         value={settings.shopifyWebhookSecret}
                                         onChange={handleChange}
                                         className={inputClasses}
+                                        autoComplete="new-password"
                                     />
                                     <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                                         {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
@@ -244,6 +247,7 @@ const ClientSettingsPage: React.FC = () => {
                                     onChange={handleChange}
                                     className={inputClasses}
                                     placeholder="https://mitienda.com"
+                                    autoComplete="off"
                                 />
                             </div>
                             <div>
@@ -255,6 +259,7 @@ const ClientSettingsPage: React.FC = () => {
                                     onChange={handleChange}
                                     className={inputClasses}
                                     placeholder="ck_xxxxxxxxxxxxxxxx"
+                                    autoComplete="off"
                                 />
                             </div>
                             <div>
@@ -267,6 +272,7 @@ const ClientSettingsPage: React.FC = () => {
                                         onChange={handleChange}
                                         className={inputClasses}
                                         placeholder="cs_xxxxxxxxxxxxxxxx"
+                                        autoComplete="new-password"
                                     />
                                     <button type="button" onClick={() => togglePasswordVisibility('wooConsumerSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                                         {passwordVisibility.wooConsumerSecret ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
