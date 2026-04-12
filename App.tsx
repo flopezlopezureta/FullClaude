@@ -5,11 +5,9 @@ import TrackingPage from './pages/TrackingPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
-import LandingPage from './pages/LandingPage';
 
 const AppContent: React.FC = () => {
   const auth = useContext(AuthContext);
-  const [isLoginView, setIsLoginView] = React.useState(window.location.pathname === '/login');
 
   useEffect(() => {
     // Aggressively unregister any service workers to prevent caching issues.
@@ -29,7 +27,7 @@ const AppContent: React.FC = () => {
 
   useEffect(() => {
     const handlePopState = () => {
-      setIsLoginView(window.location.pathname === '/login');
+      // Re-trigger re-render on back/forward
     };
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
@@ -55,15 +53,8 @@ const AppContent: React.FC = () => {
   }
 
   if (!auth.user) {
-    if (isLoginView) {
-      return <AuthPage onBack={() => {
-        window.history.pushState({}, '', '/');
-        setIsLoginView(false);
-      }} />;
-    }
-    return <LandingPage onLogin={() => {
+    return <AuthPage onBack={() => {
       window.history.pushState({}, '', '/login');
-      setIsLoginView(true);
     }} />;
   }
 
