@@ -223,7 +223,7 @@ const DashboardLayout: React.FC = () => {
 
   // If we have no content yet (loading or redirecting), show a blank dashboard or skeleton
   const finalContent = content || <Dashboard />;
-  const finalTitle = title || (activeView === 'packages' ? 'Gestión de Paquetes' : '');
+  const finalTitle = title || (activeView === 'packages' ? 'GESTIÓN DE PAQUETES [ACTIVO]' : '');
 
   return (
     <div className="flex h-screen bg-[var(--background-primary)] overflow-hidden font-sans">

@@ -498,33 +498,33 @@ const Dashboard: React.FC = () => {
                             onClick={() => setIsBulkAssignModalOpen(true)}
                             disabled={selectedPackages.size === 0}
                             title="Asignar Conductor" 
-                            className="p-2.5 rounded-full hover:bg-blue-50 transition-all disabled:opacity-30"
+                            className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
                         >
-                            <IconUserPlus className="w-5 h-5 text-blue-600" />
+                            <IconUserPlus className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
                         </button>
                         <button 
                             onClick={() => setPrintingPackages(selectedPackageObjects)} 
                             title="Imprimir Etiquetas" 
-                            className="p-2.5 rounded-full hover:bg-indigo-50 transition-all disabled:opacity-30"
+                            className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
                             disabled={selectedPackages.size === 0}>
-                            <IconPrinter className="w-5 h-5 text-indigo-700" />
+                            <IconPrinter className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
                         </button>
                         <button 
                             onClick={() => setIsDeletePasswordModalOpen(true)} 
                             disabled={!canDeleteSelected} 
                             title="Eliminar Seleccionados" 
-                            className="p-2.5 rounded-full hover:bg-red-50 transition-all disabled:opacity-30">
-                            <IconTrash className="w-5 h-5 text-red-600" />
+                            className={`p-2.5 rounded-lg transition-all ${canDeleteSelected ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}>
+                            <IconTrash className={`w-6 h-6 ${canDeleteSelected ? 'text-white' : 'text-gray-500'}`} />
                         </button>
                         <button 
                             onClick={() => setIsExportModalOpen(true)} 
                             title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
-                            className={`p-2.5 rounded-full hover:bg-emerald-50 transition-all disabled:opacity-30 ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
+                            className={`p-2.5 rounded-lg transition-all ${totalPackages > 0 && !isExporting ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} ${isExporting ? 'animate-pulse' : ''}`}
                             disabled={totalPackages === 0 || isExporting}>
                             {isExporting ? (
-                                <IconLoader className="w-5 h-5 text-blue-600 animate-spin" />
+                                <IconLoader className="w-6 h-6 text-white animate-spin" />
                             ) : (
-                                <IconFileSpreadsheet className="w-5 h-5 text-emerald-800" />
+                                <IconFileSpreadsheet className={`w-6 h-6 ${totalPackages > 0 ? 'text-white' : 'text-gray-500'}`} />
                             )}
                         </button>
                     </div>
@@ -579,7 +579,8 @@ const Dashboard: React.FC = () => {
                                                 }
                                             });
                                         }}
-                                        className={`cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-gray-700 transition-colors flex items-center gap-2 ${statusFilter.includes(value as PackageStatus) ? 'bg-gray-800 font-bold' : ''}`}
+                                        style={{ backgroundColor: statusFilter.includes(value as PackageStatus) ? '#1a1f2e' : 'transparent', color: 'white' }}
+                                        className="cursor-pointer select-none relative py-2.5 pl-3 pr-4 hover:bg-gray-700 transition-colors flex items-center gap-3"
                                     >
                                         <input 
                                             type="checkbox" 
@@ -587,7 +588,7 @@ const Dashboard: React.FC = () => {
                                             readOnly 
                                             className={customCheckboxClass}
                                         />
-                                        <span className="text-white">
+                                        <span className="text-white font-bold text-[11px] uppercase tracking-wider">
                                             {label}
                                         </span>
                                     </li>
