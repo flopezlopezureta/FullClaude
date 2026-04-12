@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { User } from '../../types';
-import { IconSearch, IconPackage, IconCalendar, IconFileExport, IconFileSpreadsheet, IconRefresh } from '../Icon';
+import { IconSearch, IconPackage, IconCalendar, IconFileSpreadsheet, IconRefresh } from '../Icon';
 
 interface PackageFiltersProps {
   onOpenCreateModal: () => void;
@@ -23,8 +23,6 @@ interface PackageFiltersProps {
   onStartDateChange: (date: string) => void;
   endDate: string;
   onEndDateChange: (date: string) => void;
-  onExportRoute: () => void;
-  isExporting?: boolean;
   flexFilter: 'all' | 'flexed' | 'not_flexed';
   onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed') => void;
   quickFilter: 'all' | 'closed' | 'cancelled' | 'rescheduled';
@@ -55,8 +53,6 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onStartDateChange,
   endDate,
   onEndDateChange,
-  onExportRoute,
-  isExporting = false,
   flexFilter,
   onFlexFilterChange,
   quickFilter,
@@ -175,33 +171,23 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             >
                 <IconRefresh className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
-            {driverFilter && (
-                <button
-                    onClick={onExportRoute}
-                    disabled={isExporting}
-                    className={`flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-green-600 text-sm font-medium rounded-md shadow-sm text-green-700 bg-green-50 hover:bg-green-100 disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
-                >
-                    <IconFileExport className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
-                    {isExporting ? 'Exportando...' : 'Exportar Ruta'}
-                </button>
-            )}
-             <button
+            <button
                 onClick={onOpenQuickStatus}
-                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-blue-600 text-sm font-medium rounded-md shadow-sm text-blue-700 bg-blue-50 hover:bg-blue-100"
+                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-blue-500 text-sm font-bold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition-all"
             >
                 <IconSearch className="w-5 h-5 mr-2 -ml-1"/>
                 Consultar ID
             </button>
             <button
                 onClick={onOpenImportModal}
-                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md shadow-sm text-[var(--text-primary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)]"
+                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md shadow-sm text-[var(--text-primary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] transition-all"
             >
                 <IconFileSpreadsheet className="w-5 h-5 mr-2 -ml-1"/>
                 Importar Excel
             </button>
             <button
                 onClick={onOpenCreateModal}
-                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)]"
+                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] transition-all"
             >
                 <IconPackage className="w-5 h-5 mr-2 -ml-1"/>
                 Crear Paquete

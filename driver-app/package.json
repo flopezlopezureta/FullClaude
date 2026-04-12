@@ -1,0 +1,40 @@
+{
+  "name": "driver-app",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios",
+    "web": "expo start --web"
+  },
+  "dependencies": {
+    "@expo/vector-icons": "~14.0.4",
+    "@react-navigation/native": "^7.0.0",
+    "@react-navigation/native-stack": "^7.0.0",
+    "axios": "^1.6.7",
+    "expo": "~52.0.28",
+    "expo-barcode-scanner": "*",
+    "expo-camera": "~16.0.18",
+    "expo-file-system": "~18.0.12",
+    "expo-image-picker": "~16.0.6",
+    "expo-linear-gradient": "~14.0.2",
+    "expo-location": "~18.0.10",
+    "expo-secure-store": "~14.0.1",
+    "expo-sharing": "~13.0.1",
+    "expo-status-bar": "~2.0.1",
+    "react": "18.3.1",
+    "react-native": "0.76.9",
+    "react-native-gesture-handler": "~2.20.2",
+    "react-native-reanimated": "~3.16.1",
+    "react-native-safe-area-context": "4.12.0",
+    "react-native-screens": "~4.4.0",
+    "react-native-vector-icons": "*"
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.12",
+    "@types/react-native": "~0.73.0",
+    "typescript": "^5.3.3"
+  },
+  "private": true
+}

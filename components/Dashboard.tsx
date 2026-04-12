@@ -310,54 +310,6 @@ const Dashboard: React.FC = () => {
     return Array.from(cities).sort((a: string, b: string) => a.localeCompare(b));
   }, [packages]);
 
-  const handleExportRoute = async () => {
-    if (!driverFilter || totalPackages === 0 || isExporting) return;
-    const driver = drivers.find(d => d.id === driverFilter);
-    if (!driver) return;
-
-    setIsExporting(true);
-    try {
-            const { packages: allFilteredPackages } = await api.getPackages({ 
-                limit: 0, 
-                searchQuery, 
-                statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null, 
-                driverFilter, 
-                clientFilter, 
-                communeFilter, 
-                cityFilter, 
-                startDate, 
-                endDate,
-                flexFilter,
-                quickFilter
-            });
-
-        const dateStr = new Date().toISOString().split('T')[0];
-        const driverName = driver.name.replace(/\s+/g, '_');
-        const escapeCsvField = (field: any) => `"${String(field || '').replace(/"/g, '""')}"`;
-        const circuitHeaders = ['Address', 'Name'];
-        const circuitRows = allFilteredPackages.map(p => [
-            `${p.recipientAddress}, ${p.recipientCommune}, ${p.recipientCity}`,
-            p.recipientName
-        ].map(escapeCsvField).join(','));
-        
-        const csvContent = [circuitHeaders.join(','), ...circuitRows].join('\n');
-        const blob = new Blob([`\uFEFF${csvContent}`], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement("a");
-        const url = URL.createObjectURL(blob);
-        link.setAttribute("href", url);
-        link.setAttribute("download", `Circuit_${driverName}_${dateStr}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-    } catch (error) {
-        console.error("Failed to export route data", error);
-        alert("Error al exportar la ruta.");
-    } finally {
-        setIsExporting(false);
-    }
-  };
     
   const handleExportData = async (format: 'excel' | 'csv' = 'csv') => {
     if (totalPackages === 0 || isExporting) return;
@@ -509,8 +461,6 @@ const Dashboard: React.FC = () => {
             onStartDateChange={setStartDate}
             endDate={endDate}
             onEndDateChange={setEndDate}
-            onExportRoute={handleExportRoute}
-            isExporting={isExporting}
             flexFilter={flexFilter}
             onFlexFilterChange={setFlexFilter}
             quickFilter={quickFilter}
@@ -523,70 +473,72 @@ const Dashboard: React.FC = () => {
         />
       </div>
 
-        <div className="flex flex-wrap items-center gap-x-6 gap-y-3 p-3 border-b border-[var(--border-primary)]">
-            <div className="flex flex-wrap items-center gap-4">
-                <input
-                    type="checkbox"
-                    ref={checkboxRef}
-                    className={customCheckboxClass}
-                    checked={isAllOnPageSelected}
-                    onChange={handleSelectAllOnPageClick}
-                    disabled={packages.length === 0}
-                />
-                <div className="h-6 w-px bg-[var(--border-primary)]"></div>
-                <div className="flex items-center gap-2">
-                    {selectedPackages.size > 0 && (
-                        <span className="text-sm font-semibold text-[var(--text-primary)]">{selectedPackages.size} seleccionados</span>
-                    )}
-                    <button 
-                        onClick={() => setIsBulkAssignModalOpen(true)}
-                        disabled={selectedPackages.size === 0}
-                        title="Asignar Conductor" 
-                        className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                        <IconUserPlus className="w-5 h-5 text-[var(--text-secondary)]" />
-                    </button>
-                    <button 
-                        onClick={() => setPrintingPackages(selectedPackageObjects)} 
-                        title="Imprimir Etiquetas" 
-                        className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                        disabled={selectedPackages.size === 0}>
-                        <IconPrinter className="w-5 h-5 text-[var(--text-secondary)]" />
-                    </button>
-                    <button 
-                        onClick={() => setIsDeletePasswordModalOpen(true)} 
-                        disabled={!canDeleteSelected} 
-                        title="Eliminar Seleccionados" 
-                        className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                        <IconTrash className="w-5 h-5 text-[var(--text-secondary)]" />
-                    </button>
-                    <button 
-                        onClick={() => setIsExportModalOpen(true)} 
-                        title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
-                        className={`p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
-                        disabled={totalPackages === 0 || isExporting}>
-                        {isExporting ? (
-                            <IconLoader className="w-5 h-5 text-blue-600 animate-spin" />
-                        ) : (
-                            <IconFileSpreadsheet className="w-5 h-5 text-[var(--text-secondary)]" />
+        <div className="flex flex-col gap-3 p-3 border-b border-[var(--border-primary)]">
+            <div className="flex flex-wrap items-center justify-between w-full">
+                <div className="flex items-center gap-4">
+                    <input
+                        type="checkbox"
+                        ref={checkboxRef}
+                        className={customCheckboxClass}
+                        checked={isAllOnPageSelected}
+                        onChange={handleSelectAllOnPageClick}
+                        disabled={packages.length === 0}
+                    />
+                    <div className="h-6 w-px bg-[var(--border-primary)]"></div>
+                    <div className="flex items-center gap-2">
+                        {selectedPackages.size > 0 && (
+                            <span className="text-sm font-semibold text-[var(--brand-primary)] mr-2">{selectedPackages.size} seleccionados</span>
                         )}
-                    </button>
+                        <button 
+                            onClick={() => setIsBulkAssignModalOpen(true)}
+                            disabled={selectedPackages.size === 0}
+                            title="Asignar Conductor" 
+                            className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        >
+                            <IconUserPlus className="w-5 h-5 text-[var(--text-secondary)]" />
+                        </button>
+                        <button 
+                            onClick={() => setPrintingPackages(selectedPackageObjects)} 
+                            title="Imprimir Etiquetas" 
+                            className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            disabled={selectedPackages.size === 0}>
+                            <IconPrinter className="w-5 h-5 text-[var(--text-secondary)]" />
+                        </button>
+                        <button 
+                            onClick={() => setIsDeletePasswordModalOpen(true)} 
+                            disabled={!canDeleteSelected} 
+                            title="Eliminar Seleccionados" 
+                            className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                            <IconTrash className="w-5 h-5 text-[var(--text-secondary)]" />
+                        </button>
+                        <button 
+                            onClick={() => setIsExportModalOpen(true)} 
+                            title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
+                            className={`p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
+                            disabled={totalPackages === 0 || isExporting}>
+                            {isExporting ? (
+                                <IconLoader className="w-5 h-5 text-blue-600 animate-spin" />
+                            ) : (
+                                <IconFileSpreadsheet className="w-5 h-5 text-[var(--text-secondary)]" />
+                            )}
+                        </button>
+                    </div>
+
+                    {/* ML Polling Status */}
+                    {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-400 rounded-md text-blue-700 text-xs font-bold shadow-sm cursor-pointer hover:bg-blue-50 transition-colors">
+                            <IconMercadoLibre className="w-4 h-4 text-blue-600" />
+                            <span className="whitespace-nowrap uppercase tracking-tighter">Próxima revisión ML: {timeLeft}s</span>
+                            {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                             <div className="ml-1 w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
+                        </div>
+                    )}
                 </div>
 
-                {/* ML Polling Status */}
-                {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
-                    <div className="flex items-center gap-2 px-3 py-1 bg-blue-50 border border-blue-100 rounded-full text-blue-700 text-xs font-medium shadow-sm">
-                        <IconMercadoLibre className="w-3.5 h-3.5" />
-                        <span className="whitespace-nowrap">Próxima revisión ML: {timeLeft}s</span>
-                        {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
-                    </div>
-                )}
-            </div>
-            
-            <div className="flex items-center justify-start flex-wrap gap-x-6 gap-y-3">
-                <div className="flex items-center gap-2">
-                    <label className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Ver:</label>
-                    <div className="relative w-48" ref={statusDropdownRef}>
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <label className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Ver:</label>
+                        <div className="relative w-48" ref={statusDropdownRef}>
                         <button
                             type="button"
                             onClick={() => setIsStatusDropdownOpen(prev => !prev)}
@@ -666,43 +618,45 @@ const Dashboard: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex-1 text-center">
-                <span className="text-sm font-bold text-[var(--brand-primary)]">Total de paquetes en sistema: {totalPackages}</span>
             </div>
 
-            {totalPackages > 0 && (
-                <div className="text-sm text-[var(--text-secondary)]">
-                    <div className="flex flex-wrap items-center justify-end gap-4">
-                        <div className="flex items-center gap-2">
-                            <label htmlFor="items-per-page-admin" className="text-[var(--text-secondary)] whitespace-nowrap">Filas por página:</label>
-                            <select
-                                id="items-per-page-admin"
-                                value={itemsPerPage}
-                                onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                                className="bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md py-1 pl-2 pr-7 text-sm focus:ring-[var(--brand-secondary)] focus:border-[var(--brand-secondary)]"
-                                aria-label="Filas por página"
-                            >
-                                <option value={10}>10</option>
-                                <option value={25}>25</option>
-                                <option value={50}>50</option>
-                                <option value={100}>100</option>
-                            </select>
-                        </div>
-                        
-                        <span className="whitespace-nowrap">
+            <div className="flex flex-wrap items-center justify-between w-full mt-2">
+                <div className="flex items-center gap-6">
+                    <div className="flex items-center gap-2">
+                        <label htmlFor="items-per-page-admin" className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Filas por página:</label>
+                        <select
+                            id="items-per-page-admin"
+                            value={itemsPerPage}
+                            onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                            className="bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md py-1 px-2 text-sm focus:ring-[var(--brand-secondary)] focus:border-[var(--brand-secondary)]"
+                            aria-label="Filas por página"
+                        >
+                            <option value={10}>10</option>
+                            <option value={25}>25</option>
+                            <option value={50}>50</option>
+                            <option value={100}>100</option>
+                        </select>
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                        <span className="text-sm text-[var(--text-secondary)] font-medium whitespace-nowrap">
                             {Math.min((currentPage - 1) * itemsPerPage + 1, totalPackages)}-{Math.min(currentPage * itemsPerPage, totalPackages)} de {totalPackages}
                         </span>
-                        <div className="flex items-center">
-                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-2 disabled:opacity-50" aria-label="Página anterior">
-                                <IconChevronLeft className="w-5 h-5" />
+                        <div className="flex items-center border border-[var(--border-secondary)] rounded-md overflow-hidden bg-[var(--background-secondary)]">
+                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1.5 hover:bg-[var(--background-hover)] disabled:opacity-30 transition-colors border-r border-[var(--border-secondary)]" aria-label="Página anterior">
+                                <IconChevronLeft className="w-4 h-4" />
                             </button>
-                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-2 disabled:opacity-50" aria-label="Página siguiente">
-                                <IconChevronRight className="w-5 h-5" />
+                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-1.5 hover:bg-[var(--background-hover)] disabled:opacity-30 transition-colors" aria-label="Página siguiente">
+                                <IconChevronRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                 </div>
-            )}
+
+                <div className="flex-1 text-right">
+                    <span className="text-xs font-bold text-[var(--brand-primary)] uppercase tracking-tight">Total de paquetes en sistema: {totalPackages}</span>
+                </div>
+            </div>
         </div>
 
         <PackageList 

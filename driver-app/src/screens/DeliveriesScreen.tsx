@@ -1,0 +1,353 @@
+import React, { useState, useEffect, useContext, useMemo } from 'react';
+import { 
+  StyleSheet, 
+  View, 
+  Text, 
+  FlatList, 
+  TouchableOpacity, 
+  RefreshControl,
+  SafeAreaView,
+  StatusBar,
+  Share,
+  Alert,
+  Platform
+} from 'react-native';
+import * as FileSystem from 'expo-file-system';
+import * as Sharing from 'expo-sharing';
+import { AuthContext } from '../contexts/AuthContext';
+import { api } from '../services/api';
+import { COLORS } from '../constants';
+import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+
+export default function DeliveriesScreen({ navigation }: any) {
+  const [packages, setPackages] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [activeTab, setActiveTab] = useState<'pending' | 'closed'>('pending');
+  const [settings, setSettings] = useState<any>(null);
+  const { user } = useContext(AuthContext);
+
+  const fetchPackages = async () => {
+    try {
+      const data = await api.getDriverPackages(user.id);
+      setPackages(data);
+    } catch (error) {
+      console.error("Error fetching packages", error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPackages();
+    const fetchSettings = async () => {
+      try {
+        const data = await api.getSystemSettings();
+        setSettings(data);
+      } catch (e) {}
+    };
+    fetchSettings();
+    // Poll every 30 seconds
+    const interval = setInterval(fetchPackages, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const onRefresh = () => {
+    setRefreshing(true);
+    fetchPackages();
+  };
+
+  const filteredPackages = useMemo(() => {
+    if (activeTab === 'pending') {
+      return packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA');
+    } else {
+      return packages.filter(p => p.status === 'ENTREGADO' || p.status === 'PROBLEMA');
+    }
+  }, [packages, activeTab]);
+
+  const handleExportCircuit = async () => {
+    const pending = packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA');
+    const csvContent = "Address\n" + pending
+      .map(p => `"${p.recipientAddress}, ${p.recipientCommune}"`)
+      .join('\n');
+
+    try {
+      const filename = `Ruta_Circuit_${new Date().getTime()}.csv`;
+      const fileUri = `${FileSystem.cacheDirectory}${filename}`;
+      
+      await FileSystem.writeAsStringAsync(fileUri, "\uFEFF" + csvContent, {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+
+      if (await Sharing.isAvailableAsync()) {
+        await Sharing.shareAsync(fileUri, {
+          mimeType: 'text/csv',
+          dialogTitle: 'Enviar a Circuit',
+          UTI: 'public.comma-separated-values-text',
+        });
+      } else {
+        // Fallback to text sharing if file sharing not available
+        await Share.share({
+          message: pending.map(p => `${p.recipientAddress}, ${p.recipientCommune}`).join('\n'),
+          title: 'Ruta Circuit'
+        });
+      }
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    }
+  };
+
+  const renderItem = ({ item }: { item: any }) => (
+    <TouchableOpacity 
+      style={styles.card}
+      onPress={() => navigation.navigate('DeliveryDetail', { pkg: item })}
+    >
+      <View style={styles.cardHeader}>
+        <View style={[styles.statusBadge, { backgroundColor: item.status === 'ENTREGADO' ? '#dcfce7' : '#f1f5f9' }]}>
+          <Text style={[styles.statusText, { color: item.status === 'ENTREGADO' ? '#166534' : '#475569' }]}>
+            {item.status}
+          </Text>
+        </View>
+        <Text style={styles.idText}>#{item.id.slice(-6)}</Text>
+      </View>
+      
+      <Text style={styles.recipientName}>{item.recipientName}</Text>
+      <View style={styles.addressContainer}>
+        <Icon name="map-marker" size={16} color="#ef4444" />
+        <Text style={styles.addressText} numberOfLines={2}>{item.recipientAddress}, {item.recipientCommune}</Text>
+      </View>
+
+      <View style={styles.cardFooter}>
+         <View style={styles.metaInfo}>
+            <Icon name="clock-outline" size={14} color="#94a3b8" />
+            <Text style={styles.metaText}>Prioridad: Estándar</Text>
+         </View>
+         <Icon name="chevron-right" size={20} color="#cbd5e1" />
+      </View>
+    </TouchableOpacity>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Icon name="chevron-left" size={28} color="#0f172a" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Entregas</Text>
+        {settings?.circuitExportEnabled && (
+          <TouchableOpacity onPress={handleExportCircuit} style={styles.circuitBtn}>
+            <Icon name="share-variant" size={20} color="#2563eb" />
+            <Text style={styles.circuitBtnText}>Circuit</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+
+      <View style={styles.tabBar}>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'pending' && styles.activeTab]}
+          onPress={() => setActiveTab('pending')}
+        >
+          <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
+            Pendientes ({packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA').length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.tab, activeTab === 'closed' && styles.activeTab]}
+          onPress={() => setActiveTab('closed')}
+        >
+          <Text style={[styles.tabText, activeTab === 'closed' && styles.activeTabText]}>
+            Cerrados ({packages.filter(p => p.status === 'ENTREGADO' || p.status === 'PROBLEMA').length})
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      <FlatList
+        data={filteredPackages}
+        renderItem={renderItem}
+        keyExtractor={item => item.id}
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />
+        }
+        ListEmptyComponent={
+          <View style={styles.emptyContainer}>
+            <Icon name="package-variant" size={64} color="#e2e8f0" />
+            <Text style={styles.emptyText}>No hay paquetes en esta sección</Text>
+          </View>
+        }
+      />
+
+      {activeTab === 'pending' && (
+        <TouchableOpacity 
+          style={styles.fab}
+          onPress={() => navigation.navigate('Scanner')}
+        >
+          <Icon name="qrcode-scan" size={28} color="#fff" />
+        </TouchableOpacity>
+      )}
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#f8fafc',
+    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  backBtn: {
+    padding: 4,
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0f172a',
+  },
+  circuitBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#eff6ff',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  circuitBtnText: {
+    color: '#2563eb',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#fff',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    gap: 8,
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 12,
+    backgroundColor: '#f1f5f9',
+  },
+  activeTab: {
+    backgroundColor: '#2563eb',
+  },
+  tabText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#64748b',
+  },
+  activeTabText: {
+    color: '#fff',
+  },
+  listContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  card: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  cardHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 12,
+  },
+  statusBadge: {
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+  },
+  statusText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+  },
+  idText: {
+    color: '#94a3b8',
+    fontSize: 12,
+    fontFamily: 'monospace',
+  },
+  recipientName: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1e293b',
+    marginBottom: 6,
+  },
+  addressContainer: {
+    flexDirection: 'row',
+    gap: 6,
+    marginBottom: 16,
+  },
+  addressText: {
+    flex: 1,
+    color: '#64748b',
+    fontSize: 14,
+    lineHeight: 18,
+  },
+  cardFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#f1f5f9',
+  },
+  metaInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+  },
+  metaText: {
+    fontSize: 12,
+    color: '#94a3b8',
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    marginTop: 80,
+  },
+  emptyText: {
+    color: '#94a3b8',
+    fontSize: 15,
+    marginTop: 12,
+  },
+  fab: {
+    position: 'absolute',
+    bottom: 24,
+    right: 24,
+    backgroundColor: '#2563eb',
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#2563eb',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
+  }
+});

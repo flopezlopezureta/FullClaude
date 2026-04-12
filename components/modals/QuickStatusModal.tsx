@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { api } from '../../services/api';
 import { Package } from '../../types';
-import { IconX, IconSearch, IconPackage, IconCheckCircle, IconClock, IconAlertTriangle, IconTruck, IconCornerUpLeft, IconXCircle, IconRefresh } from '../Icon';
+import { IconX, IconSearch, IconPackage, IconCheckCircle, IconClock, IconAlertTriangle, IconTruck, IconCornerUpLeft, IconXCircle, IconRefresh, IconMercadoLibre } from '../Icon';
 import { PackageStatus } from '../../constants';
 
 interface QuickStatusModalProps {
@@ -157,16 +157,44 @@ const QuickStatusModal: React.FC<QuickStatusModalProps> = ({ onClose, onViewDeta
           )}
 
           {result && !isLoading && (
-            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] rounded-xl p-6 text-center">
+            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] rounded-xl p-6 text-center animate-fade-in">
               <div className="flex justify-center mb-4">
                 {getStatusIcon(result.status)}
               </div>
               <h4 className="text-xl font-bold text-[var(--text-primary)] mb-1">
                 {getStatusLabel(result.status)}
               </h4>
-              <p className="text-sm text-[var(--text-muted)] mb-4">
+              <p className="text-sm text-[var(--text-muted)] mb-4 font-mono">
                 ID: {result.id}
               </p>
+
+              {result.meliOrderId && (
+                <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-left">
+                    <div className="flex items-center gap-2 mb-2">
+                        <IconMercadoLibre className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm font-bold text-blue-800">Estado Mercado Libre</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div>
+                            <span className="text-blue-600 block">Status:</span>
+                            <span className="font-bold text-blue-900 uppercase">
+                                {result.status === PackageStatus.Pending && (result.source as any) === 'MELI' ? 'READY_TO_SHIP' : result.status}
+                            </span>
+                        </div>
+                        {result.meliOrderId && (
+                            <button
+                                onClick={handleSyncMeli}
+                                disabled={isSyncing}
+                                className="ml-auto text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                            >
+                                <IconRefresh className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
+                                <span className="underline">Sincronizar</span>
+                            </button>
+                        )}
+                    </div>
+                    <p className="mt-2 text-[10px] text-blue-500 italic">ID de Venta: {result.meliOrderId}</p>
+                </div>
+              )}
               
               <div className="space-y-3 text-left border-t border-[var(--border-primary)] pt-4">
                 <div className="flex justify-between text-sm">
@@ -187,7 +215,7 @@ const QuickStatusModal: React.FC<QuickStatusModalProps> = ({ onClose, onViewDeta
 
               <button
                 onClick={() => onViewDetails(result)}
-                className="mt-6 w-full py-2 bg-[var(--background-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--background-hover)] transition-colors font-medium"
+                className="mt-6 w-full py-2 bg-[var(--background-primary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-lg hover:bg-[var(--background-hover)] transition-colors font-medium shadow-sm"
               >
                 Ver Detalle Completo
               </button>
