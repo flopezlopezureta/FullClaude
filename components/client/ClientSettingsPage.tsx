@@ -205,13 +205,15 @@ const ClientSettingsPage: React.FC = () => {
                                 </label>
                             </div>
 
-                            <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500 rounded-r-md shadow-sm">
+                            <div className="p-4 bg-[var(--brand-muted)] border border-[var(--brand-secondary)] rounded-lg shadow-sm">
                                 <div className="flex gap-3">
-                                    <IconAlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div className="bg-[var(--brand-primary)] p-1.5 rounded-full flex-shrink-0 h-fit mt-0.5">
+                                        <IconAlertTriangle className="w-4 h-4 text-white" />
+                                    </div>
                                     <div>
-                                        <p className="text-xs font-bold text-amber-900 dark:text-amber-100 mb-1 uppercase tracking-wider">Restricción Geográfica</p>
-                                        <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
-                                            Solo se importarán automáticamente los pedidos con destino en la <strong>Región Metropolitana</strong> (Santiago). Los destinos a otras regiones deben gestionarse de forma manual.
+                                        <p className="text-sm font-bold text-[var(--brand-text)] mb-1 uppercase tracking-wider">Restricción de Importación</p>
+                                        <p className="text-xs text-[var(--brand-text)] opacity-90 leading-relaxed font-medium">
+                                            La sincronización automática está <strong>limitada exclusivamente</strong> a la <strong>Región Metropolitana</strong> (Santiago). Los pedidos a otras regiones deben ingresarse de forma manual.
                                         </p>
                                     </div>
                                 </div>
@@ -227,21 +229,21 @@ const ClientSettingsPage: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-[var(--border-primary)] flex justify-between items-center">
+                    <div className="p-4 bg-[var(--background-muted)] border-t border-[var(--border-primary)] flex justify-between items-center bg-opacity-50">
                         <button
                             onClick={handleTestShopify}
                             disabled={isTestingShopify || !settings.shopifyShopUrl || !settings.shopifyAccessToken}
-                            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)] disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-sm font-bold rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
                         >
-                            {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4" />}
-                            Probar
+                            {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-[var(--brand-primary)]" />}
+                            Probar Conexión
                         </button>
                         <button
                             onClick={() => handleSave('shopify')}
                             disabled={isSaving}
-                            className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
+                            className="px-6 py-2 bg-[var(--success-text)] hover:opacity-90 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
                         >
-                            {isSaving ? 'Guardando...' : 'Guardar Shopify'}
+                            {isSaving ? 'Guardando...' : 'Guardar Configuración'}
                         </button>
                     </div>
                 </div>
