@@ -89,15 +89,46 @@ router.post('/', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // PUT /api/users/:id - Update a user
-router.put('/:id', authMiddleware, adminOnly, async (req, res) => {
+router.put('/:id', authMiddleware, async (req, res) => {
     const { id } = req.params;
-    const { password, ...updateData } = req.body;
+    const { password, ...incomingData } = req.body;
+
+    // Authorization check: Admin can update anyone. Others can only update themselves.
+    if (req.user.role !== 'ADMIN' && req.user.id !== id) {
+        return res.status(403).json({ message: 'Acceso denegado. No tienes permiso para editar este perfil.' });
+    }
 
     try {
+        let updateData = {};
+
+        if (req.user.role === 'ADMIN') {
+            // Admins can update everything
+            updateData = { ...incomingData };
+        } else {
+            // Non-admins (Clients/Drivers) can only update specific safe fields
+            const safeFields = ['name', 'phone', 'address', 'pickupAddress', 'integrations', 'rut'];
+            safeFields.forEach(field => {
+                if (incomingData[field] !== undefined) {
+                    updateData[field] = incomingData[field];
+                }
+            });
+            
+            // Log attempt to change protected fields if any
+            const protectedFields = ['role', 'status', 'pricing', 'clientIdentifier', 'billingName', 'billingRut'];
+            const attemptedProtected = protectedFields.filter(f => incomingData[f] !== undefined);
+            if (attemptedProtected.length > 0) {
+                console.warn(`User ${req.user.id} attempted to update protected fields: ${attemptedProtected.join(', ')}`);
+            }
+        }
+
         if (password) {
             const salt = await bcrypt.genSalt(10);
             updateData.password = await bcrypt.hash(password, salt);
             updateData.plainPassword = password; // Update plain password
+        }
+
+        if (Object.keys(updateData).length === 0) {
+            return res.status(400).json({ message: 'No se enviaron campos válidos para actualizar.' });
         }
 
         const fields = Object.keys(updateData);
