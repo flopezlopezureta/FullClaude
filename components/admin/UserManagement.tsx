@@ -438,7 +438,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                     Aprobar
                   </button>
                 )}
-                {user.role === Role.Client && (
+                {roleFilter === Role.Client && (
                     <>
                     {user.integrations?.meli && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.MercadoLibre)} className="p-2 text-[var(--text-muted)] hover:text-yellow-600 hover:bg-yellow-100 rounded-md transition-colors" title="Importar de Mercado Libre"><IconMercadoLibre className="w-5 h-5" /></button>}
@@ -461,7 +461,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                                 }
                             }
                         }}
-                        className="p-2 text-[var(--text-muted)] hover:text-blue-600 hover:bg-blue-100 rounded-md transition-colors"
+                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-200"
                         title="Entrar al Portal del Cliente (Requiere Clave de Superusuario)"
                     >
                         <IconTruck className="w-5 h-5" />
