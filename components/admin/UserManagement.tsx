@@ -448,24 +448,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         <button onClick={() => handleOpenImportModal(user, PackageSource.WooCommerce)} className="p-2 text-[var(--text-muted)] hover:text-purple-600 hover:bg-purple-100 rounded-md transition-colors" title="Importar de WooCommerce"><IconWoocommerce className="w-5 h-5" /></button>}
                     {user.integrations?.falabella && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.Falabella)} className="p-2 text-[var(--text-muted)] hover:text-orange-600 hover:bg-orange-100 rounded-md transition-colors" title="Importar de Falabella"><IconFalabella className="w-5 h-5" /></button>}
-                    <button 
-                        onClick={async () => {
-                            const superKey = window.prompt(`Ingresa la Clave de Superusuario para entrar al portal de ${user.name}:`);
-                            if (superKey) {
-                                try {
-                                    const response = await api.login({ email: user.email, password: superKey });
-                                    localStorage.setItem('token', response.token);
-                                    window.location.href = '/'; // Refresh to load as client
-                                } catch (err: any) {
-                                    alert("Clave de Superusuario incorrecta o error de conexión: " + err.message);
+                    {auth?.user?.email === 'admin' && (
+                        <button 
+                            onClick={async () => {
+                                const superKey = window.prompt(`Ingresa la Clave de Superusuario para entrar al portal de ${user.name}:`);
+                                if (superKey) {
+                                    try {
+                                        const response = await api.login({ email: user.email, password: superKey });
+                                        localStorage.setItem('token', response.token);
+                                        window.location.href = '/'; // Refresh to load as client
+                                    } catch (err: any) {
+                                        alert("Clave de Superusuario incorrecta o error de conexión: " + err.message);
+                                    }
                                 }
-                            }
-                        }}
-                        className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-200"
-                        title="Entrar al Portal del Cliente (Requiere Clave de Superusuario)"
-                    >
-                        <IconTruck className="w-5 h-5" />
-                    </button>
+                            }}
+                            className="p-2 text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-md transition-colors border border-blue-200"
+                            title="Entrar al Portal del Cliente (Requiere Clave de Superusuario)"
+                        >
+                            <IconTruck className="w-5 h-5" />
+                        </button>
+                    )}
                     <button onClick={() => setViewingInvoicesClient(user)} className="p-2 text-[var(--text-muted)] hover:text-indigo-600 hover:bg-indigo-100 rounded-md transition-colors" title="Historial de Facturas"><IconFileInvoice className="w-5 h-5" /></button>
                     </>
                 )}
