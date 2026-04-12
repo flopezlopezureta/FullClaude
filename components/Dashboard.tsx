@@ -579,8 +579,11 @@ const Dashboard: React.FC = () => {
                                                 }
                                             });
                                         }}
-                                        style={{ backgroundColor: statusFilter.includes(value as PackageStatus) ? '#1a1f2e' : 'transparent', color: 'white' }}
-                                        className="cursor-pointer select-none relative py-2.5 pl-3 pr-4 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                                        className={`cursor-pointer select-none relative py-2.5 pl-3 pr-4 transition-colors flex items-center gap-3 ${
+                                            statusFilter.includes(value as PackageStatus) 
+                                            ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]' 
+                                            : 'hover:bg-[var(--background-hover)] text-[var(--text-primary)]'
+                                        }`}
                                     >
                                         <input 
                                             type="checkbox" 
@@ -588,7 +591,7 @@ const Dashboard: React.FC = () => {
                                             readOnly 
                                             className={customCheckboxClass}
                                         />
-                                        <span className="text-white font-bold text-[11px] uppercase tracking-wider">
+                                        <span className="font-bold text-[11px] uppercase tracking-wider">
                                             {label}
                                         </span>
                                     </li>

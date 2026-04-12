@@ -105,10 +105,14 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
                 </span>
             </button>
             {isStatusDropdownOpen && (
-                <ul className="absolute z-20 mt-1 w-full bg-[#0f172a] shadow-xl rounded-md py-1 ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm max-h-60 overflow-auto border border-gray-700">
+                <ul className="absolute z-20 mt-1 w-full bg-[var(--background-secondary)] shadow-xl rounded-md py-1 ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm max-h-60 overflow-auto border border-[var(--border-primary)]">
                     <li
                         onClick={() => onStatusChange([])}
-                        className={`cursor-pointer select-none relative py-2.5 pl-3 pr-4 hover:bg-gray-700 transition-colors flex items-center gap-3 ${statusFilter.length === 0 ? 'bg-gray-800 font-bold' : ''}`}
+                        className={`cursor-pointer select-none relative py-2.5 pl-3 pr-4 transition-colors flex items-center gap-3 ${
+                            statusFilter.length === 0 
+                            ? 'bg-[var(--brand-muted)] text-[var(--brand-text)] font-bold' 
+                            : 'hover:bg-[var(--background-hover)] text-[var(--text-primary)]'
+                        }`}
                     >
                         <input 
                             type="checkbox" 
@@ -116,7 +120,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
                             readOnly 
                             className={customCheckboxClass}
                         />
-                        <span className="text-white font-bold text-[11px] uppercase tracking-wider">Todos</span>
+                        <span className="font-bold text-[11px] uppercase tracking-wider">Todos</span>
                     </li>
                     {statusOptions.map(({ label, value }) => (
                         <li
@@ -129,8 +133,11 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
                                     : [...statusFilter, value];
                                 onStatusChange(newFilter);
                             }}
-                            style={{ backgroundColor: value && statusFilter.includes(value) ? '#1a1f2e' : 'transparent', color: 'white' }}
-                            className="cursor-pointer select-none relative py-2.5 pl-3 pr-4 hover:bg-gray-700 transition-colors flex items-center gap-3"
+                            className={`cursor-pointer select-none relative py-2.5 pl-3 pr-4 transition-colors flex items-center gap-3 ${
+                                value && statusFilter.includes(value) 
+                                ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]' 
+                                : 'hover:bg-[var(--background-hover)] text-[var(--text-primary)]'
+                            }`}
                         >
                             <input 
                                 type="checkbox" 
@@ -138,7 +145,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
                                 readOnly 
                                 className={customCheckboxClass}
                             />
-                            <span className="text-white font-bold text-[11px] uppercase tracking-wider">
+                            <span className="font-bold text-[11px] uppercase tracking-wider">
                                 {label}
                             </span>
                         </li>
