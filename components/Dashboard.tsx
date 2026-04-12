@@ -492,21 +492,29 @@ const Dashboard: React.FC = () => {
                         disabled={packages.length === 0}
                     />
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
-                    {/* ML Polling Status (Repositioned to top left of list) */}
-                    {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-400 rounded-full text-blue-700 text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter">
-                            <IconMercadoLibre className="w-4 h-4 text-blue-600" />
-                            <span className="whitespace-nowrap">ML: {timeLeft}s</span>
-                            {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
-                             <div className="ml-1 w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
+                    {/* ML Polling Status */}
+                    {auth?.user?.role === Role.Admin && pollingStatus && (
+                        <div className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter`}>
+                            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${auth?.systemSettings?.meliAutoImport ? 'text-blue-600' : 'text-gray-400'}`}>
+                                <IconMercadoLibre className="w-full h-full" />
+                            </div>
+                            <span className="whitespace-nowrap">
+                                {auth?.systemSettings?.meliAutoImport ? `ML: ${timeLeft}s` : 'ML: Inactivo'}
+                            </span>
+                            {auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                             <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.meliAutoImport ? 'bg-blue-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
                     )}
-                    {auth?.user?.role === Role.Admin && auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-emerald-400 rounded-full text-emerald-700 text-[10px] font-black shadow-sm cursor-pointer hover:bg-emerald-50 transition-all uppercase tracking-tighter">
-                            <IconShopify className="w-4 h-4 text-emerald-600" />
-                            <span className="whitespace-nowrap">Shopify: {shopifyTimeLeft}s</span>
-                            {shopifyPollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
-                             <div className="ml-1 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
+
+                    {/* Shopify Polling Status */}
+                    {auth?.user?.role === Role.Admin && shopifyPollingStatus && (
+                        <div className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter`}>
+                            <IconShopify className={`w-4 h-4 ${auth?.systemSettings?.shopifyAutoImport ? 'text-emerald-600' : 'text-gray-400'}`} />
+                            <span className="whitespace-nowrap">
+                                {auth?.systemSettings?.shopifyAutoImport ? `Shopify: ${shopifyTimeLeft}s` : 'Shopify: Inactivo'}
+                            </span>
+                            {auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                             <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.shopifyAutoImport ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
                     )}
                     <div className="h-6 w-px bg-[var(--border-primary)] opacity-50"></div>
