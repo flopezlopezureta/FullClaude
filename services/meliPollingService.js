@@ -1,6 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+const { triggerBackgroundGeocoding } = require('./geocodingService');
 
 // --- MELI API HELPERS (Duplicated from integrations.js for independence) ---
 const makeMeliRequest = (options, postData = null) => {
@@ -528,6 +529,9 @@ async function autoImportMeliPackages() {
                 }
             }
         }
+        
+        // Trigger background geocoding after import
+        setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
     }

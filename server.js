@@ -295,7 +295,8 @@ async function initializeDatabase() {
                 "meliAutoImport" BOOLEAN DEFAULT false,
                 "publicTrackingEnabled" BOOLEAN DEFAULT true,
                 "isRutRequired" BOOLEAN DEFAULT true,
-                "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true
+                "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
+                "circuitExportEnabled" BOOLEAN DEFAULT false
             );
         `);
         
@@ -396,10 +397,10 @@ async function initializeDatabase() {
             console.error('Error during notifications migration (userId nullable):', err);
         }
         try {
-            await db.query('ALTER TABLE system_settings ADD COLUMN "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true');
-            console.log('MIGRATION APPLIED: Column "flexDiscrepancyReportEnabled" was added to "system_settings".');
+            await db.query('ALTER TABLE system_settings ADD COLUMN "circuitExportEnabled" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "circuitExportEnabled" was added to "system_settings".');
         } catch (err) {
-            if (err.code !== '42701') { console.error('Error during settings migration (flexDiscrepancyReportEnabled):', err); }
+            if (err.code !== '42701') { console.error('Error during settings migration (circuitExportEnabled):', err); }
         }
         // --- END MIGRATION SCRIPT ---
 
@@ -431,8 +432,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, TRUE, TRUE, TRUE)
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE)
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`
@@ -496,7 +497,8 @@ async function initializeDatabase() {
                 woo_consumer_key TEXT,
                 woo_consumer_secret TEXT,
                 falabella_api_key TEXT,
-                falabella_seller_id TEXT
+                falabella_seller_id TEXT,
+                shopify_webhook_secret TEXT
             );
         `);
         console.log('Table "integration_settings" is ready.');
@@ -513,6 +515,12 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "shopify_access_token" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_access_token):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_webhook_secret TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_webhook_secret" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_webhook_secret):', err); }
         }
 
         // --- MIGRATIONS: Add GitHub fields ---

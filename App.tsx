@@ -1,4 +1,3 @@
-
 import React, { useContext, useEffect } from 'react';
 import { AuthContext, AuthProvider } from './contexts/AuthContext';
 import AuthPage from './pages/AuthPage';
@@ -6,9 +5,11 @@ import TrackingPage from './pages/TrackingPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import LandingPage from './pages/LandingPage';
 
 const AppContent: React.FC = () => {
   const auth = useContext(AuthContext);
+  const [isLoginView, setIsLoginView] = React.useState(window.location.pathname === '/login');
 
   useEffect(() => {
     // Aggressively unregister any service workers to prevent caching issues.
@@ -25,6 +26,14 @@ const AppContent: React.FC = () => {
       });
     }
   }, []); // Run only once on component mount
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setIsLoginView(window.location.pathname === '/login');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     if (auth?.systemSettings.companyName) {
@@ -46,7 +55,16 @@ const AppContent: React.FC = () => {
   }
 
   if (!auth.user) {
-    return <AuthPage />;
+    if (isLoginView) {
+      return <AuthPage onBack={() => {
+        window.history.pushState({}, '', '/');
+        setIsLoginView(false);
+      }} />;
+    }
+    return <LandingPage onLogin={() => {
+      window.history.pushState({}, '', '/login');
+      setIsLoginView(true);
+    }} />;
   }
 
   return <DashboardLayout />;

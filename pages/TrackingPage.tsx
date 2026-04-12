@@ -44,10 +44,10 @@ const TrackingPage: React.FC = () => {
     }
   }, []);
 
-  // Polling for driver location if in transit
+  // Polling for driver location if assigned or in transit
   useEffect(() => {
     let interval: any;
-    if (pkg && pkg.status === 'EN_TRANSITO') {
+    if (pkg && (pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO')) {
       interval = setInterval(() => {
         handleTrack(pkg.id);
       }, 30000); // Poll every 30 seconds
@@ -161,15 +161,15 @@ const TrackingPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Map Section */}
-            {(pkg.destLatitude || (pkg.status === 'EN_TRANSITO' && pkg.driverLatitude)) ? (
+            {/* Map Section - Only show if assigned or in transit and we have coordinates */}
+            {pkg.status !== 'PENDIENTE' && (pkg.destLatitude || pkg.driverLatitude) ? (
               <div className="bg-white shadow overflow-hidden sm:rounded-lg">
                 <div className="px-4 py-5 sm:px-6">
                   <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2">
-                    <span className="flex h-2 w-2 rounded-full bg-indigo-500"></span>
+                    <span className={`flex h-2 w-2 rounded-full ${(pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO') ? 'bg-green-500 animate-pulse' : 'bg-indigo-500'}`}></span>
                     Ubicación en Tiempo Real
                   </h3>
-                  {pkg.status === 'EN_TRANSITO' && pkg.driverLastUpdate && (
+                  {(pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO') && pkg.driverLastUpdate && (
                     <p className="mt-1 text-xs text-gray-500">
                       Última actualización: {new Date(pkg.driverLastUpdate).toLocaleTimeString('es-CL')}
                     </p>
@@ -185,7 +185,7 @@ const TrackingPage: React.FC = () => {
                   />
                 </div>
               </div>
-            ) : pkg.status === 'EN_TRANSITO' && (
+            ) : (pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO') && (
               <div className="bg-white shadow sm:rounded-lg p-6 text-center">
                 <p className="text-gray-500 italic">La ubicación en tiempo real no está disponible en este momento.</p>
               </div>

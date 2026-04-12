@@ -148,15 +148,20 @@ const QRCodeModal: React.FC<QRCodeModalProps> = ({ pkg: initialPkg, onClose, cre
 
                         <div className="w-full space-y-3">
                             {/* Botón Etiqueta Oficial */}
-                            <a 
-                                href={api.getMeliLabelUrl(pkg.id)}
-                                target="_blank"
-                                rel="noopener noreferrer"
+                            <button 
+                                onClick={() => {
+                                    const labelUrl = `${window.location.origin}${api.getMeliLabelUrl(pkg.id)}`;
+                                    if ((window as any).AndroidApp?.openUrl) {
+                                        (window as any).AndroidApp.openUrl(labelUrl);
+                                    } else {
+                                        window.open(labelUrl, '_blank');
+                                    }
+                                }}
                                 className="flex items-center justify-center w-full bg-slate-900 hover:bg-black text-white p-4 rounded-xl shadow-lg transition-all transform hover:scale-[1.02] active:scale-[0.98] group"
                             >
                                 <IconDownload className="w-6 h-6 mr-3 group-hover:animate-bounce" />
                                 <span className="text-lg font-black uppercase tracking-tight">Etiqueta Oficial ML (PDF)</span>
-                            </a>
+                            </button>
 
                             {/* Botón WhatsApp (Fallback) */}
                             {creator?.phone && systemSettings.messagingPlan === MessagingPlan.WhatsApp && (

@@ -113,10 +113,10 @@ class MainActivity : ComponentActivity() {
             }
         }
 
-        webView.webViewClient = object : WebViewClient() {
-            override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
-                return false
-            }
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
+            val intent = Intent(Intent.ACTION_VIEW)
+            intent.data = Uri.parse(url)
+            startActivity(intent)
         }
 
         webView.loadUrl("https://fullenvios.selcom.cl")
@@ -143,6 +143,15 @@ class MainActivity : ComponentActivity() {
 }
 
 class WebAppInterface(private val mContext: android.content.Context) {
+    @JavascriptInterface
+    fun openUrl(url: String) {
+        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW).apply {
+            setData(android.net.Uri.parse(url))
+            addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        mContext.startActivity(intent)
+    }
+
     @JavascriptInterface
     fun shareText(text: String, title: String) {
         val sendIntent: android.content.Intent = android.content.Intent().apply {

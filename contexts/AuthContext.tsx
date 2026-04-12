@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     publicTrackingEnabled: true,
     isRutRequired: true,
     labelFormat: LabelFormat.CompactThermal,
+    circuitExportEnabled: false,
   });
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);

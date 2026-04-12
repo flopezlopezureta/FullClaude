@@ -36,7 +36,7 @@ const formatRut = (value: string): string => {
   return `${bodyFormatted}-${dv}`;
 };
 
-const AuthPage: React.FC = () => {
+const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [mode, setMode] = useState<FormMode>('login');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -175,9 +175,20 @@ const AuthPage: React.FC = () => {
             </h1>
         </div>
         <div className="bg-[var(--background-secondary)] p-8 rounded-xl shadow-md">
-          <h2 className="text-2xl font-bold text-center text-[var(--text-primary)] mb-6">
-            {getTitle()}
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-[var(--text-primary)]">
+              {getTitle()}
+            </h2>
+            {onBack && (
+              <button 
+                onClick={onBack}
+                className="text-sm font-semibold text-[var(--text-muted)] hover:text-[var(--brand-primary)] flex items-center gap-1 group transition-colors"
+                type="button"
+              >
+                <span className="group-hover:-translate-x-1 transition-transform">←</span> Volver
+              </button>
+            )}
+          </div>
 
           {error && <div className="bg-[var(--error-bg)] border border-[var(--error-border)] text-[var(--error-text)] px-4 py-3 rounded relative mb-4" role="alert">{error}</div>}
           {success && <div className="bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success-text)] px-4 py-3 rounded relative mb-4" role="alert">{success}</div>}

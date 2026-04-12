@@ -33,6 +33,7 @@ interface SettingsState {
     isRutRequired: boolean;
     flexDiscrepancyReportEnabled: boolean;
     labelFormat: LabelFormat;
+    circuitExportEnabled: boolean;
 }
 
 const SettingsPage: React.FC = () => {
@@ -49,6 +50,7 @@ const SettingsPage: React.FC = () => {
         isRutRequired: true,
         flexDiscrepancyReportEnabled: true,
         labelFormat: LabelFormat.CompactThermal,
+        circuitExportEnabled: false,
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -77,6 +79,7 @@ const SettingsPage: React.FC = () => {
                 isRutRequired: auth.systemSettings.isRutRequired ?? true,
                 flexDiscrepancyReportEnabled: auth.systemSettings.flexDiscrepancyReportEnabled ?? true,
                 labelFormat: auth.systemSettings.labelFormat || LabelFormat.CompactThermal,
+                circuitExportEnabled: auth.systemSettings.circuitExportEnabled ?? false,
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -129,6 +132,7 @@ const SettingsPage: React.FC = () => {
                 isRutRequired: settings.isRutRequired,
                 flexDiscrepancyReportEnabled: settings.flexDiscrepancyReportEnabled,
                 labelFormat: settings.labelFormat,
+                circuitExportEnabled: settings.circuitExportEnabled,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -233,7 +237,8 @@ const SettingsPage: React.FC = () => {
             settings.publicTrackingEnabled !== originalSettings.publicTrackingEnabled ||
             settings.isRutRequired !== originalSettings.isRutRequired ||
             settings.flexDiscrepancyReportEnabled !== originalSettings.flexDiscrepancyReportEnabled ||
-            settings.labelFormat !== originalSettings.labelFormat
+            settings.labelFormat !== originalSettings.labelFormat ||
+            settings.circuitExportEnabled !== originalSettings.circuitExportEnabled
         );
     }, [settings, originalSettings]);
 
@@ -507,24 +512,56 @@ const SettingsPage: React.FC = () => {
 
             {auth?.user?.email === 'admin' && (
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
-                    <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación</h2>
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="font-medium text-[var(--text-primary)]">Mantenimiento de la Aplicación</p>
-                            <p className="text-sm text-[var(--text-muted)]">
-                                {settings.isAppEnabled
-                                    ? 'La aplicación está actualmente en línea y operativa.'
-                                    : 'La aplicación está en modo mantenimiento. Solo el superusuario puede iniciar sesión.'}
-                            </p>
+                    <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación y Funciones</h2>
+                    
+                    <div className="space-y-6">
+                        <div className="flex items-center justify-between pb-4 border-b border-[var(--border-primary)] border-dashed">
+                            <div className="pr-4">
+                                <p className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <IconAlertTriangle className="w-5 h-5 text-amber-500" />
+                                    Mantenimiento de la Aplicación
+                                </p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    {settings.isAppEnabled
+                                        ? 'La aplicación está actualmente en línea y operativa para todos los usuarios.'
+                                        : 'La aplicación está en modo mantenimiento. Solo el administrador puede iniciar sesión.'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={handleAppStatusToggle}
+                                className={`px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg shadow-sm text-white transition-all ${
+                                    settings.isAppEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-600 hover:bg-emerald-700'
+                                }`}
+                            >
+                                {settings.isAppEnabled ? 'DESHABILITAR APP' : 'HABILITAR APP'}
+                            </button>
                         </div>
-                        <button
-                            onClick={handleAppStatusToggle}
-                            className={`px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white ${
-                                settings.isAppEnabled ? 'bg-red-600 hover:bg-red-700' : 'bg-green-600 hover:bg-green-700'
-                            }`}
-                        >
-                            {settings.isAppEnabled ? 'Deshabilitar Aplicación' : 'Habilitar Aplicación'}
-                        </button>
+
+                        <div className="flex items-center justify-between">
+                            <div className="pr-4">
+                                <p className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <IconTruck className="w-5 h-5 text-indigo-500" />
+                                    Exportación a Circuit Route Planner
+                                </p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    Habilita el botón de exportación de rutas para conductores. Esto genera un archivo CSV compatible con Circuit.
+                                </p>
+                            </div>
+                            <div className="relative inline-block w-16 align-middle select-none transition duration-200 ease-in">
+                                <input
+                                    type="checkbox"
+                                    name="circuitExportEnabled"
+                                    id="circuitExportEnabled"
+                                    checked={settings.circuitExportEnabled}
+                                    onChange={handleSettingsChange}
+                                    className="sr-only peer"
+                                />
+                                <label
+                                    htmlFor="circuitExportEnabled"
+                                    className="block h-8 bg-gray-300 rounded-full cursor-pointer peer-checked:bg-emerald-500 transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-8"
+                                ></label>
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}

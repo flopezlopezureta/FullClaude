@@ -1057,6 +1057,89 @@ router.get('/:clientId/shopify/orders', authMiddleware, async (req, res) => {
     }
 });
 
+// POST /api/integrations/shopify/webhook
+// Receiver for Shopify 'orders/create' webhooks
+router.post('/shopify/webhook', async (req, res) => {
+    const shopDomain = req.headers['x-shopify-shop-domain'];
+    const hmacHeader = req.headers['x-shopify-hmac-sha256'];
+    const topic = req.headers['x-shopify-topic'];
+
+    console.log(`[ShopifyWebhook] Received ${topic} from ${shopDomain}`);
+
+    if (topic !== 'orders/create' && topic !== 'orders/updated') {
+        // We only care about new orders or significant updates for now
+        return res.status(200).send('OK');
+    }
+
+    try {
+        const order = req.body;
+        const orderId = order.id.toString();
+
+        // 1. Find the client/user associated with this shop domain
+        const { rows: userRows } = await db.query(
+            "SELECT id, name, \"clientIdentifier\", \"pickupAddress\", address FROM users WHERE integrations->'shopify'->>'shopUrl' ILIKE $1 OR integrations->'shopify'->>'shopUrl' ILIKE $2",
+            [shopDomain, shopDomain.replace('.myshopify.com', '')]
+        );
+
+        if (userRows.length === 0) {
+            console.error(`[ShopifyWebhook] No client found for shop domain: ${shopDomain}`);
+            return res.status(404).send('Shop not found in our system');
+        }
+
+        const client = userRows[0];
+        console.log(`[ShopifyWebhook] Mapping order ${orderId} to client ${client.name} (${client.id})`);
+
+        // 2. Check if already imported
+        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1', [orderId]);
+        if (existing.length > 0) {
+            console.log(`[ShopifyWebhook] Order ${orderId} already exists (ID: ${existing[0].id}), ignoring.`);
+            return res.status(200).send('Already imported');
+        }
+
+        // 3. Map Shopify Order to Full Envios Package
+        const now = new Date();
+        const origin = client.pickupAddress || client.address || 'Shopify Webhook';
+
+        // Extract address data
+        const shipping = order.shipping_address || {};
+        const customer = order.customer || {};
+
+        const newPackage = {
+            id: `${client.clientIdentifier}-${uuidv4().split('-')[0]}`,
+            recipientName: `${shipping.first_name || ''} ${shipping.last_name || ''}`.trim() || `${customer.first_name || ''} ${customer.last_name || ''}`.trim() || 'N/A',
+            recipientPhone: shipping.phone || customer.phone || 'N/A',
+            status: 'PENDIENTE',
+            shippingType: 'SAME_DAY',
+            origin: origin,
+            recipientAddress: `${shipping.address1 || ''} ${shipping.address2 || ''}`.trim() || 'N/A',
+            recipientCommune: shipping.city || 'N/A',
+            recipientCity: shipping.province || 'N/A',
+            notes: `Shopify Order: ${order.name || order.id}`,
+            estimatedDelivery: now,
+            createdAt: now,
+            updatedAt: now,
+            creatorId: client.id,
+            source: 'SHOPIFY',
+            shopifyOrderId: orderId
+        };
+
+        const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+        const values = Object.values(newPackage).map(v => v === undefined ? null : v);
+        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+            [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía Webhook de Shopify.', now]);
+
+        console.log(`[ShopifyWebhook] Order ${orderId} imported successfully as package ${newPackage.id}`);
+        res.status(201).send('Order Imported');
+
+    } catch (err) {
+        console.error("[ShopifyWebhook] Error processing webhook:", err);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 // GET /api/integrations/:clientId/woocommerce/orders
 router.get('/:clientId/woocommerce/orders', authMiddleware, async (req, res) => {
     const { clientId } = req.params;

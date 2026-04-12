@@ -16,6 +16,7 @@ import ConfirmationModal from '../modals/ConfirmationModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
 import ExportFormatModal from '../modals/ExportFormatModal';
 import { exportToExcel, exportToCSV } from '../../services/exportService';
+import ClientSettingsPage from './ClientSettingsPage';
 
 const getISODate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -33,6 +34,8 @@ const ClientDashboard: React.FC = () => {
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
+
+  const [activeTab, setActiveTab] = useState<'packages' | 'settings'>('packages');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -80,8 +83,10 @@ const ClientDashboard: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData();
-  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate]);
+    if (activeTab === 'packages') {
+        fetchData();
+    }
+  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate, activeTab]);
 
   const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>) => {
     if (!auth?.user) return;
@@ -92,7 +97,6 @@ const ClientDashboard: React.FC = () => {
             origin: auth.user.pickupAddress || auth.user.address || 'Sin Origen',
         };
         const newPkg = await api.createPackage(fullData);
-        // Add to printing queue immediately for convenience
         setPrintingPackages([newPkg]);
         fetchData();
         setIsCreateModalOpen(false);
@@ -125,7 +129,6 @@ const ClientDashboard: React.FC = () => {
       try {
           const result = await api.createMultiplePackages(fullPackagesData);
           fetchData();
-          // We don't close the modal here anymore, we let the modal handle the result
           return result;
       } catch (error: any) {
           console.error("Failed to import packages", error);
@@ -196,10 +199,6 @@ const ClientDashboard: React.FC = () => {
   };
 
   const uniqueCommunes = useMemo(() => {
-      // In a real app with pagination, we might want to fetch all communes from the API
-      // For now, we collect from current page + maybe a separate API endpoint for filter options
-      // Simplification: just use what's loaded or a static list if possible
-      // Let's assume we extract from loaded packages for now, but ideally this comes from backend stats
       const communes = new Set(packages.map(p => p.recipientCommune));
       return Array.from(communes).sort();
   }, [packages]);
@@ -222,113 +221,137 @@ const ClientDashboard: React.FC = () => {
                 <h1 className="text-2xl font-bold text-[var(--text-primary)]">¡Bienvenido, {auth?.user?.name}!</h1>
                 <p className="text-sm text-[var(--text-muted)]">Gestiona tus envíos y seguimiento.</p>
             </div>
-            <div className="flex gap-2">
-                <button 
-                    onClick={() => setIsExportModalOpen(true)} 
-                    disabled={totalPackages === 0 || isExporting}
-                    className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
-                >
-                    <IconFileSpreadsheet className={`w-5 h-5 ${isExporting ? 'animate-spin' : ''}`}/>
-                    {isExporting ? 'Exportando...' : 'Exportar'}
-                </button>
-                <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-primary)] text-white rounded-md shadow hover:bg-[var(--brand-secondary)] transition-colors">
-                    <IconPlus className="w-5 h-5"/> Crear Paquete
-                </button>
-                <div className="relative">
-                    <button onClick={() => setIsImportMenuOpen(!isImportMenuOpen)} className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors">
-                        <IconDownload className="w-5 h-5"/> Importar <IconChevronDown className="w-4 h-4"/>
+            
+            {activeTab === 'packages' && (
+                <div className="flex gap-2">
+                    <button 
+                        onClick={() => setIsExportModalOpen(true)} 
+                        disabled={totalPackages === 0 || isExporting}
+                        className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
+                    >
+                        <IconFileSpreadsheet className={`w-5 h-5 ${isExporting ? 'animate-spin' : ''}`}/>
+                        {isExporting ? 'Exportando...' : 'Exportar'}
                     </button>
-                    {isImportMenuOpen && (
-                        <div className="absolute right-0 mt-2 w-56 bg-[var(--background-secondary)] rounded-md shadow-lg z-20 border border-[var(--border-primary)] animate-fade-in-up">
-                            <div className="py-1">
-                                <button onClick={() => { setIsImportMenuOpen(false); setIsImportModalOpen(true); }} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                    <IconFileText className="w-4 h-4 text-green-600"/> Excel / CSV
+                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-primary)] text-white rounded-md shadow hover:bg-[var(--brand-secondary)] transition-colors">
+                        <IconPlus className="w-5 h-5"/> Crear Paquete
+                    </button>
+                    <div className="relative">
+                        <button onClick={() => setIsImportMenuOpen(!isImportMenuOpen)} className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors">
+                            <IconDownload className="w-5 h-5"/> Importar <IconChevronDown className="w-4 h-4"/>
+                        </button>
+                        {isImportMenuOpen && (
+                            <div className="absolute right-0 mt-2 w-56 bg-[var(--background-secondary)] rounded-md shadow-lg z-20 border border-[var(--border-primary)] animate-fade-in-up">
+                                <div className="py-1">
+                                    <button onClick={() => { setIsImportMenuOpen(false); setIsImportModalOpen(true); }} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
+                                        <IconFileText className="w-4 h-4 text-green-600"/> Excel / CSV
+                                    </button>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.MercadoLibre)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2 border-t border-[var(--border-primary)]">
+                                        <IconMercadoLibre className="w-4 h-4 text-yellow-500"/> Mercado Libre
+                                    </button>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.Shopify)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
+                                        <IconShopify className="w-4 h-4 text-green-500"/> Shopify
+                                    </button>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.WooCommerce)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
+                                        <IconWoocommerce className="w-4 h-4 text-purple-500"/> WooCommerce
+                                    </button>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.Falabella)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
+                                        <IconFalabella className="w-4 h-4 text-green-700"/> Falabella
+                                    </button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex border-b border-[var(--border-primary)]">
+            <button
+                onClick={() => setActiveTab('packages')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'packages' ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+            >
+                Mis Envíos
+            </button>
+            <button
+                onClick={() => setActiveTab('settings')}
+                className={`px-4 py-2 text-sm font-medium transition-colors border-b-2 ${activeTab === 'settings' ? 'border-[var(--brand-primary)] text-[var(--brand-primary)]' : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+            >
+                Configuración
+            </button>
+        </div>
+
+        {activeTab === 'settings' ? (
+            <ClientSettingsPage />
+        ) : (
+            <>
+                <ClientPackageFilters 
+                    searchQuery={searchQuery}
+                    onSearchChange={setSearchQuery}
+                    startDate={startDate}
+                    onStartDateChange={setStartDate}
+                    endDate={endDate}
+                    onEndDateChange={setEndDate}
+                    communeFilter={communeFilter}
+                    onCommuneChange={setCommuneFilter}
+                    statusFilter={statusFilter}
+                    onStatusChange={setStatusFilter}
+                    flexFilter={flexFilter}
+                    onFlexFilterChange={setFlexFilter}
+                    communes={uniqueCommunes}
+                />
+
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">
+                    {selectedPackages.size > 0 && (
+                        <div className="p-3 bg-[var(--brand-muted)] border-b border-[var(--brand-secondary)] flex items-center justify-between">
+                            <span className="text-sm font-semibold text-[var(--brand-primary)]">{selectedPackages.size} seleccionados</span>
+                            <div className="flex gap-2">
+                                <button onClick={() => setPrintingPackages(selectedPackageObjects)} className="p-2 text-gray-600 hover:bg-white/50 rounded-full" title="Imprimir Etiquetas">
+                                    <IconPrinter className="w-5 h-5"/>
                                 </button>
-                                <button onClick={() => handleOpenExternalImport(PackageSource.MercadoLibre)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2 border-t border-[var(--border-primary)]">
-                                    <IconMercadoLibre className="w-4 h-4 text-yellow-500"/> Mercado Libre
+                            </div>
+                        </div>
+                    )}
+                    
+                    <PackageList 
+                        packages={packages} 
+                        users={[]} 
+                        isLoading={isLoading}
+                        onSelectPackage={setSelectedPackage}
+                        onEditPackage={setEditingPackage}
+                        onDeletePackage={setDeletingPackage}
+                        onPrintLabel={(pkg) => setPrintingPackages([pkg])}
+                        hideDriverName={true}
+                        selectedPackages={selectedPackages}
+                        onSelectionChange={handleSelectionChange}
+                    />
+                    
+                    {totalPackages > 0 && (
+                        <div className="p-4 border-t border-[var(--border-primary)] flex items-center justify-between">
+                            <div className="text-sm text-[var(--text-muted)]">
+                                Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, totalPackages)} - {Math.min(currentPage * itemsPerPage, totalPackages)} de {totalPackages}
+                            </div>
+                            <div className="flex gap-2">
+                                <button 
+                                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                                    disabled={currentPage === 1}
+                                    className="p-2 rounded-md border border-[var(--border-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50"
+                                >
+                                    <IconChevronLeft className="w-4 h-4"/>
                                 </button>
-                                <button onClick={() => handleOpenExternalImport(PackageSource.Shopify)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                    <IconShopify className="w-4 h-4 text-green-500"/> Shopify
-                                </button>
-                                <button onClick={() => handleOpenExternalImport(PackageSource.WooCommerce)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                    <IconWoocommerce className="w-4 h-4 text-purple-500"/> WooCommerce
-                                </button>
-                                <button onClick={() => handleOpenExternalImport(PackageSource.Falabella)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                    <IconFalabella className="w-4 h-4 text-green-700"/> Falabella
+                                <button 
+                                    onClick={() => setCurrentPage(prev => prev + 1)}
+                                    disabled={currentPage * itemsPerPage >= totalPackages}
+                                    className="p-2 rounded-md border border-[var(--border-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50"
+                                >
+                                    <IconChevronRight className="w-4 h-4"/>
                                 </button>
                             </div>
                         </div>
                     )}
                 </div>
-            </div>
-        </div>
-
-        <ClientPackageFilters 
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            startDate={startDate}
-            onStartDateChange={setStartDate}
-            endDate={endDate}
-            onEndDateChange={setEndDate}
-            communeFilter={communeFilter}
-            onCommuneChange={setCommuneFilter}
-            statusFilter={statusFilter}
-            onStatusChange={setStatusFilter}
-            flexFilter={flexFilter}
-            onFlexFilterChange={setFlexFilter}
-            communes={uniqueCommunes}
-        />
-
-        <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">
-            {selectedPackages.size > 0 && (
-                <div className="p-3 bg-[var(--brand-muted)] border-b border-[var(--brand-secondary)] flex items-center justify-between">
-                    <span className="text-sm font-semibold text-[var(--brand-primary)]">{selectedPackages.size} seleccionados</span>
-                    <div className="flex gap-2">
-                        <button onClick={() => setPrintingPackages(selectedPackageObjects)} className="p-2 text-gray-600 hover:bg-white/50 rounded-full" title="Imprimir Etiquetas">
-                            <IconPrinter className="w-5 h-5"/>
-                        </button>
-                    </div>
-                </div>
-            )}
-            
-            <PackageList 
-                packages={packages} 
-                users={[]} 
-                isLoading={isLoading}
-                onSelectPackage={setSelectedPackage}
-                onEditPackage={setEditingPackage}
-                onDeletePackage={setDeletingPackage}
-                onPrintLabel={(pkg) => setPrintingPackages([pkg])}
-                hideDriverName={true}
-                selectedPackages={selectedPackages}
-                onSelectionChange={handleSelectionChange}
-            />
-            
-            {/* Pagination Controls */}
-            {totalPackages > 0 && (
-                <div className="p-4 border-t border-[var(--border-primary)] flex items-center justify-between">
-                    <div className="text-sm text-[var(--text-muted)]">
-                        Mostrando {Math.min((currentPage - 1) * itemsPerPage + 1, totalPackages)} - {Math.min(currentPage * itemsPerPage, totalPackages)} de {totalPackages}
-                    </div>
-                    <div className="flex gap-2">
-                        <button 
-                            onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                            disabled={currentPage === 1}
-                            className="p-2 rounded-md border border-[var(--border-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50"
-                        >
-                            <IconChevronLeft className="w-4 h-4"/>
-                        </button>
-                        <button 
-                            onClick={() => setCurrentPage(prev => prev + 1)}
-                            disabled={currentPage * itemsPerPage >= totalPackages}
-                            className="p-2 rounded-md border border-[var(--border-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50"
-                        >
-                            <IconChevronRight className="w-4 h-4"/>
-                        </button>
-                    </div>
-                </div>
-            )}
-        </div>
+            </>
+        )}
 
         {/* Modals */}
         {isCreateModalOpen && (

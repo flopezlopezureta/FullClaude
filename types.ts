@@ -40,6 +40,7 @@ export interface SystemSettings {
     isRutRequired?: boolean;
     flexDiscrepancyReportEnabled?: boolean;
     labelFormat?: LabelFormat;
+    circuitExportEnabled?: boolean;
 }
 
 export interface ZonePricing {
@@ -85,14 +86,18 @@ export interface MeliIntegration {
 }
 
 export interface WooCommerceIntegration {
-  consumerKey: string;
-  consumerSecret: string;
-  storeUrl: string;
+  consumerKey?: string;
+  consumerSecret?: string;
+  storeUrl?: string;
+  wooUrl?: string;
+  wooConsumerKey?: string;
+  wooConsumerSecret?: string;
 }
 
 export interface ShopifyIntegration {
   shopUrl: string;
   accessToken: string;
+  webhookSecret?: string;
 }
 
 export interface FalabellaIntegration {
@@ -115,6 +120,7 @@ export interface IntegrationSettings {
     meliClientSecret?: string;
     shopifyShopUrl?: string;
     shopifyAccessToken?: string;
+    shopifyWebhookSecret?: string;
     githubToken?: string;
     githubRepo?: string;
     githubOwner?: string;

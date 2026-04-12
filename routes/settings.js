@@ -32,7 +32,7 @@ router.get('/meli-polling-status', authMiddleware, (req, res) => {
 // GET /api/settings/system
 router.get('/system', async (req, res) => {
     try {
-        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat" FROM system_settings WHERE id = 1');
+        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled" FROM system_settings WHERE id = 1');
         const fallbackSettings = {
             companyName: 'FULL ENVIOS',
             isAppEnabled: true,
@@ -46,6 +46,7 @@ router.get('/system', async (req, res) => {
             isRutRequired: true,
             flexDiscrepancyReportEnabled: true,
             labelFormat: 'compact_thermal',
+            circuitExportEnabled: false,
         };
         if (settings.length === 0) {
             return res.json(fallbackSettings);
@@ -60,7 +61,7 @@ router.get('/system', async (req, res) => {
 
 // PUT /api/settings/system
 router.put('/system', authMiddleware, adminOnly, async (req, res) => {
-    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, publicTrackingEnabled, isRutRequired, flexDiscrepancyReportEnabled, labelFormat } = req.body;
+    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, publicTrackingEnabled, isRutRequired, flexDiscrepancyReportEnabled, labelFormat, circuitExportEnabled } = req.body;
 
     try {
         const { rows: currentSettingsRows } = await db.query('SELECT * FROM system_settings WHERE id = 1');
@@ -80,11 +81,12 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 isRutRequired: isRutRequired !== undefined ? isRutRequired : currentSettings.isRutRequired,
                 flexDiscrepancyReportEnabled: flexDiscrepancyReportEnabled !== undefined ? flexDiscrepancyReportEnabled : currentSettings.flexDiscrepancyReportEnabled,
                 labelFormat: labelFormat !== undefined ? labelFormat : currentSettings.labelFormat,
+                circuitExportEnabled: circuitExportEnabled !== undefined ? circuitExportEnabled : currentSettings.circuitExportEnabled,
             };
             
             await db.query(
-                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "publicTrackingEnabled" = $9, "isRutRequired" = $10, "flexDiscrepancyReportEnabled" = $11, "labelFormat" = $12 WHERE id = 1',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat]
+                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "publicTrackingEnabled" = $9, "isRutRequired" = $10, "flexDiscrepancyReportEnabled" = $11, "labelFormat" = $12, "circuitExportEnabled" = $13 WHERE id = 1',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled]
             );
             
             await logAction(req.user.id, req.user.name, 'UPDATE_SYSTEM_SETTINGS', { updatedSettings });
@@ -105,11 +107,12 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 isRutRequired: isRutRequired !== undefined ? isRutRequired : true,
                 flexDiscrepancyReportEnabled: flexDiscrepancyReportEnabled !== undefined ? flexDiscrepancyReportEnabled : true,
                 labelFormat: labelFormat !== undefined ? labelFormat : 'compact_thermal',
+                circuitExportEnabled: circuitExportEnabled !== undefined ? circuitExportEnabled : false,
             };
 
             await db.query(
-                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat]
+                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled]
             );
 
             await logAction(req.user.id, req.user.name, 'CREATE_SYSTEM_SETTINGS', { updatedSettings });

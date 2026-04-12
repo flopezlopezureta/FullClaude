@@ -12,6 +12,7 @@ const IntegrationSettingsPage: React.FC = () => {
         meliClientSecret: '',
         shopifyShopUrl: '',
         shopifyAccessToken: '',
+        shopifyWebhookSecret: '',
         githubToken: '',
         githubRepo: '',
         githubOwner: '',
@@ -24,6 +25,7 @@ const IntegrationSettingsPage: React.FC = () => {
     const [passwordVisibility, setPasswordVisibility] = useState({
         meliClientSecret: false,
         shopifyAccessToken: false,
+        shopifyWebhookSecret: false,
         githubToken: false,
         wooConsumerSecret: false,
         falabellaApiKey: false,
@@ -107,7 +109,8 @@ const IntegrationSettingsPage: React.FC = () => {
         try {
             await api.updateIntegrationSettings({
                 shopifyShopUrl: settings.shopifyShopUrl,
-                shopifyAccessToken: settings.shopifyAccessToken
+                shopifyAccessToken: settings.shopifyAccessToken,
+                shopifyWebhookSecret: settings.shopifyWebhookSecret
             });
             alert('Configuración de Shopify guardada con éxito.');
         } catch (err: any) {
@@ -431,6 +434,52 @@ const IntegrationSettingsPage: React.FC = () => {
                                 </button>
                             </div>
                             <p className="text-xs text-[var(--text-muted)] mt-1">Este token comienza usualmente con 'shpat_'.</p>
+                        </div>
+
+                        <div>
+                            <label htmlFor="shopifyWebhookSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
+                            <div className="relative">
+                                <input
+                                    type={passwordVisibility.shopifyWebhookSecret ? 'text' : 'password'}
+                                    id="shopifyWebhookSecret"
+                                    name="shopifyWebhookSecret"
+                                    value={settings.shopifyWebhookSecret || ''}
+                                    onChange={handleChange}
+                                    className={`${inputClasses} pr-10`}
+                                    placeholder="Clave para validar webhooks"
+                                />
+                                <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                    {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                </button>
+                            </div>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">Si configuras un Webhook en Shopify, pega aquí la clave secreta generada.</p>
+                        </div>
+
+                        <div className="p-4 bg-[var(--background-muted)] rounded-md border border-dashed border-[var(--border-secondary)]">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">Configuración de Importación Automática</h4>
+                            <p className="text-xs text-[var(--text-secondary)] mb-2">Para recibir pedidos automáticamente, configura un Webhook en tu panel de Shopify (Notifications y luego Create Webhook) con los siguientes datos:</p>
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-xs font-bold text-[var(--text-muted)] block uppercase font-mono">Evento:</span>
+                                    <code className="text-xs bg-[var(--background-secondary)] px-1 rounded text-[var(--brand-primary)]">Order creation (Pedido creado)</code>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-bold text-[var(--text-muted)] block uppercase font-mono">URL de Webhook:</span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <code className="flex-1 text-xs bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)] break-all select-all">https://fullenvios.selcom.cl/api/integrations/shopify/webhook</code>
+                                        <button 
+                                            onClick={(e) => {
+                                                e.preventDefault();
+                                                navigator.clipboard.writeText('https://fullenvios.selcom.cl/api/integrations/shopify/webhook');
+                                                alert('Copiado al portapapeles');
+                                            }}
+                                            className="text-xs text-[var(--brand-primary)] font-bold hover:underline"
+                                        >
+                                            COPIAR
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">

@@ -406,14 +406,16 @@ const DriverDashboard: React.FC = () => {
                     Optimizar Ruta
                 </button>
             )}
-            <button
-                onClick={handleExportRoute}
-                disabled={pendingPackages.length === 0 || isExporting}
-                className={`flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[var(--text-on-brand)] bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] disabled:bg-slate-400 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse' : ''}`}
-            >
-                <IconRoute className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
-                {isExporting ? 'Enviando...' : 'Enviar a Circuit'}
-            </button>
+            {auth?.systemSettings.circuitExportEnabled && (
+                <button
+                    onClick={handleExportRoute}
+                    disabled={pendingPackages.length === 0 || isExporting}
+                    className={`flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[var(--text-on-brand)] bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] disabled:bg-slate-400 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse' : ''}`}
+                >
+                    <IconRoute className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
+                    {isExporting ? 'Enviando...' : 'Enviar a Circuit'}
+                </button>
+            )}
         </div>
         <span className="ml-auto bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
             Asignados Hoy: {totalAssignedForDay}
