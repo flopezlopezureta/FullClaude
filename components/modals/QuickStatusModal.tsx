@@ -16,6 +16,16 @@ const QuickStatusModal: React.FC<QuickStatusModalProps> = ({ onClose, onViewDeta
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [meliExternalStatus, setMeliExternalStatus] = useState<{status: string, substatus: string} | null>(null);
+
+  const fetchMeliExternalStatus = async (shipmentId: string) => {
+    try {
+      const statusData = await api.checkMeliShipmentStatus(shipmentId);
+      setMeliExternalStatus(statusData);
+    } catch (err) {
+      console.error("Error fetching external ML status:", err);
+    }
+  };
 
   const handleSearch = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -24,12 +34,16 @@ const QuickStatusModal: React.FC<QuickStatusModalProps> = ({ onClose, onViewDeta
     setIsLoading(true);
     setError(null);
     setResult(null);
+    setMeliExternalStatus(null);
 
     try {
-      // We use the existing packages search but with a specific limit of 1
       const response = await api.getPackages({ searchQuery: searchId.trim(), limit: 1 });
       if (response.packages && response.packages.length > 0) {
-        setResult(response.packages[0]);
+        const pkg = response.packages[0];
+        setResult(pkg);
+        if (pkg.meliOrderId) {
+            fetchMeliExternalStatus(pkg.meliOrderId);
+        }
       } else {
         setError('No se encontró ningún paquete con ese ID en nuestro sistema.');
       }
@@ -46,11 +60,12 @@ const QuickStatusModal: React.FC<QuickStatusModalProps> = ({ onClose, onViewDeta
     setIsSyncing(true);
     setError(null);
     try {
-      // Try to sync this specific ID from Mercado Libre
       const syncResult = await api.syncMeliPackage(searchId.trim());
       if (syncResult && syncResult.id) {
-        // If sync successful, it returns the package
         setResult(syncResult);
+        if (syncResult.meliOrderId) {
+            fetchMeliExternalStatus(syncResult.meliOrderId);
+        }
       } else {
         setError('No se pudo sincronizar desde Mercado Libre. Verifique que el ID sea correcto y corresponda a una venta Flex.');
       }
@@ -169,30 +184,44 @@ const QuickStatusModal: React.FC<QuickStatusModalProps> = ({ onClose, onViewDeta
               </p>
 
               {result.meliOrderId && (
-                <div className="mb-4 p-3 bg-blue-50 border border-blue-100 rounded-lg text-left">
-                    <div className="flex items-center gap-2 mb-2">
-                        <IconMercadoLibre className="w-5 h-5 text-blue-600" />
-                        <span className="text-sm font-bold text-blue-800">Estado Mercado Libre</span>
+                <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-xl text-left shadow-inner">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                            <IconMercadoLibre className="w-6 h-6 text-blue-600" />
+                            <span className="text-xs font-black text-blue-800 uppercase tracking-widest">En Mercado Libre</span>
+                        </div>
+                        <button
+                            onClick={handleSyncMeli}
+                            disabled={isSyncing}
+                            className="p-1.5 bg-white border border-blue-200 rounded-full text-blue-600 hover:bg-blue-100 transition-colors shadow-sm"
+                            title="Sincronizar ahora"
+                        >
+                            <IconRefresh className={`w-4 h-4 ${isSyncing ? 'animate-spin' : ''}`} />
+                        </button>
                     </div>
-                    <div className="grid grid-cols-2 gap-2 text-xs">
-                        <div>
-                            <span className="text-blue-600 block">Status:</span>
-                            <span className="font-bold text-blue-900 uppercase">
-                                {result.status === PackageStatus.Pending && (result.source as any) === 'MELI' ? 'READY_TO_SHIP' : result.status}
+                    
+                    <div className="space-y-2">
+                        <div className="flex items-center justify-between px-2 py-1.5 bg-white bg-opacity-60 rounded-lg border border-blue-100">
+                            <span className="text-[10px] text-blue-500 font-bold uppercase">Status</span>
+                            <span className="text-xs font-black text-blue-900 uppercase">
+                                {meliExternalStatus ? meliExternalStatus.status : 'Consultando...'}
                             </span>
                         </div>
-                        {result.meliOrderId && (
-                            <button
-                                onClick={handleSyncMeli}
-                                disabled={isSyncing}
-                                className="ml-auto text-blue-600 hover:text-blue-800 flex items-center gap-1"
-                            >
-                                <IconRefresh className={`w-3 h-3 ${isSyncing ? 'animate-spin' : ''}`} />
-                                <span className="underline">Sincronizar</span>
-                            </button>
+                        
+                        {meliExternalStatus?.substatus && (
+                            <div className="flex items-center justify-between px-2 py-1.5 bg-white bg-opacity-60 rounded-lg border border-blue-100">
+                                <span className="text-[10px] text-blue-500 font-bold uppercase">Substatus</span>
+                                <span className="text-xs font-black text-blue-700 uppercase">
+                                    {meliExternalStatus.substatus}
+                                </span>
+                            </div>
                         )}
                     </div>
-                    <p className="mt-2 text-[10px] text-blue-500 italic">ID de Venta: {result.meliOrderId}</p>
+                    
+                    <div className="mt-3 pt-2 border-t border-blue-100 flex items-center justify-between text-[10px]">
+                        <span className="text-blue-400 font-medium">ID de Orden:</span>
+                        <span className="font-mono text-blue-600 font-bold">{result.meliOrderId}</span>
+                    </div>
                 </div>
               )}
               
