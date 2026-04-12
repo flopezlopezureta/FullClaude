@@ -187,9 +187,9 @@ const ClientSettingsPage: React.FC = () => {
                             <div className="pt-4 border-t border-[var(--border-primary)]">
                                 <label className="flex items-center justify-between cursor-pointer">
                                     <div>
-                                        <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Importación Automática</h4>
-                                        <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-[200px]">
-                                            Sincroniza tus pedidos pagados automáticamente cada 5 minutos.
+                                        <h4 className="text-sm font-bold text-[var(--text-primary)]">Sincronización Automática</h4>
+                                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                            Importa tus pedidos pagados cada 5 minutos.
                                         </p>
                                     </div>
                                     <div className="relative">
@@ -200,17 +200,20 @@ const ClientSettingsPage: React.FC = () => {
                                             onChange={handleChange}
                                             className="sr-only peer"
                                         />
-                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                                        <div className="w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-green-500 transition-all duration-300 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-6"></div>
                                     </div>
                                 </label>
                             </div>
 
-                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
-                                <div className="flex gap-2">
-                                    <IconAlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                                    <p className="text-[10px] text-amber-800 dark:text-amber-300">
-                                        <strong>Nota:</strong> Solo se importarán automáticamente los paquetes con destino en la <strong>Región Metropolitana</strong> (Santiago). Los pedidos a otras regiones deben ingresarse manualmente.
-                                    </p>
+                            <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500 rounded-r-md shadow-sm">
+                                <div className="flex gap-3">
+                                    <IconAlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <div>
+                                        <p className="text-xs font-bold text-amber-900 dark:text-amber-100 mb-1 uppercase tracking-wider">Restricción Geográfica</p>
+                                        <p className="text-xs text-amber-800 dark:text-amber-200 leading-relaxed">
+                                            Solo se importarán automáticamente los pedidos con destino en la <strong>Región Metropolitana</strong> (Santiago). Los destinos a otras regiones deben gestionarse de forma manual.
+                                        </p>
+                                    </div>
                                 </div>
                             </div>
                         </div>
