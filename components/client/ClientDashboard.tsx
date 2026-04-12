@@ -51,7 +51,7 @@ const ClientDashboard: React.FC = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
 
   const auth = useContext(AuthContext);
   const [isExporting, setIsExporting] = useState(false);
@@ -83,10 +83,18 @@ const ClientDashboard: React.FC = () => {
   };
 
   useEffect(() => {
+    setSelectedPackages(new Set()); // Reset selection on page or filter change
     if (activeTab === 'packages') {
         fetchData();
     }
   }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate, activeTab]);
+
+  const handleSelectAll = () => {
+      setSelectedPackages(prev => {
+          if (prev.size === packages.length) return new Set();
+          return new Set(packages.map(p => p.id));
+      });
+  };
 
   const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>) => {
     if (!auth?.user) return;
@@ -285,21 +293,26 @@ const ClientDashboard: React.FC = () => {
             <ClientSettingsPage />
         ) : (
             <>
-                <ClientPackageFilters 
-                    searchQuery={searchQuery}
-                    onSearchChange={setSearchQuery}
-                    startDate={startDate}
-                    onStartDateChange={setStartDate}
-                    endDate={endDate}
-                    onEndDateChange={setEndDate}
-                    communeFilter={communeFilter}
-                    onCommuneChange={setCommuneFilter}
-                    statusFilter={statusFilter}
-                    onStatusChange={setStatusFilter}
-                    flexFilter={flexFilter}
-                    onFlexFilterChange={setFlexFilter}
-                    communes={uniqueCommunes}
-                />
+                    <ClientPackageFilters 
+                        searchQuery={searchQuery}
+                        onSearchChange={setSearchQuery}
+                        startDate={startDate}
+                        onStartDateChange={setStartDate}
+                        endDate={endDate}
+                        onEndDateChange={setEndDate}
+                        communeFilter={communeFilter}
+                        onCommuneChange={setCommuneFilter}
+                        statusFilter={statusFilter}
+                        onStatusChange={setStatusFilter}
+                        flexFilter={flexFilter}
+                        onFlexFilterChange={setFlexFilter}
+                        communes={uniqueCommunes}
+                        itemsPerPage={itemsPerPage}
+                        onItemsPerPageChange={(val) => {
+                            setItemsPerPage(val);
+                            setCurrentPage(1);
+                        }}
+                    />
 
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">
                     {selectedPackages.size > 0 && (
@@ -324,6 +337,7 @@ const ClientDashboard: React.FC = () => {
                         hideDriverName={true}
                         selectedPackages={selectedPackages}
                         onSelectionChange={handleSelectionChange}
+                        onSelectAll={handleSelectAll}
                     />
                     
                     {totalPackages > 0 && (

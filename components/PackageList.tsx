@@ -20,6 +20,7 @@ interface PackageListProps {
   hideDriverName?: boolean;
   selectedPackages?: Set<string>;
   onSelectionChange?: (pkg: Package) => void;
+  onSelectAll?: () => void;
 }
 
 const statusPriority: { [key in PackageStatus]: number } = {
@@ -35,7 +36,7 @@ const statusPriority: { [key in PackageStatus]: number } = {
   [PackageStatus.Rescheduled]: 10,
 };
 
-const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange }) => {
+const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange, onSelectAll }) => {
   const userMap = React.useMemo(() => {
     const map: Record<string, User> = {};
     users.forEach(u => {
@@ -83,8 +84,29 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
     return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
   });
 
+  const allSelected = packages.length > 0 && selectedPackages?.size === packages.length;
+
   return (
-    <div className="divide-y divide-[var(--border-primary)]">
+    <div className="flex flex-col">
+      {onSelectAll && (
+          <div className="px-3 py-2 bg-[var(--background-muted)] border-b border-[var(--border-primary)] flex items-center sticky top-0 z-10">
+              <div className="mr-3 flex items-center">
+                  <input
+                      type="checkbox"
+                      className="h-4 w-4 border border-[var(--border-secondary)] rounded bg-[var(--background-secondary)] text-[var(--brand-primary)] focus:ring-[var(--brand-secondary)]"
+                      checked={allSelected}
+                      onChange={onSelectAll}
+                  />
+                  <span className="ml-2 text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Seleccionar Todo</span>
+              </div>
+              <div className="flex-grow grid grid-cols-4 gap-4 text-[10px] font-bold text-[var(--text-muted)] uppercase tracking-wider hidden sm:grid pl-8">
+                  <div className="col-span-2 pl-4">Destinatario / Dirección</div>
+                  <div className="text-right pr-4">Estado</div>
+                  <div className="text-right pr-8">Acciones</div>
+              </div>
+          </div>
+      )}
+      <div className="divide-y divide-[var(--border-primary)]">
       {sortedPackages.filter(p => p && p.id).map((pkg, index) => {
         const driver = userMap[pkg.driverId || ''];
         const creator = userMap[pkg.creatorId || ''];
@@ -107,6 +129,7 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
             />
         );
       })}
+      </div>
     </div>
   );
 };

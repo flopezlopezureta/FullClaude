@@ -17,6 +17,8 @@ interface ClientPackageFiltersProps {
   flexFilter: 'all' | 'flexed' | 'not_flexed';
   onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed') => void;
   communes: string[];
+  itemsPerPage: number;
+  onItemsPerPageChange: (limit: number) => void;
 }
 
 const statusOptions: { label: string; value: string | null }[] = [
@@ -46,6 +48,8 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
   flexFilter,
   onFlexFilterChange,
   communes,
+  itemsPerPage,
+  onItemsPerPageChange,
 }) => {
   const inputClasses = "w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] sm:text-sm";
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
@@ -59,7 +63,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
           </div>
           <input
             type="text"
-            placeholder="Buscar ID, destinatario, dirección o FLEX..."
+            placeholder="Buscar por nombre, dirección o ID..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
             className={`${inputClasses} pl-10`}
@@ -141,6 +145,20 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
                     aria-label="Seleccionar fecha de fin"
                 />
             </div>
+        </div>
+
+        <div>
+            <label className="text-xs text-[var(--text-muted)]">Ver por pantalla</label>
+            <select
+                value={itemsPerPage}
+                onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
+                className={selectClasses}
+            >
+                <option value={10}>10 registros</option>
+                <option value={25}>25 registros</option>
+                <option value={50}>50 registros</option>
+                <option value={100}>100 registros</option>
+            </select>
         </div>
       </div>
     </div>
