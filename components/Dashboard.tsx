@@ -39,11 +39,6 @@ const statusOptions: { label: string; value: string | null }[] = [
     { label: 'Reprogramado', value: PackageStatus.Rescheduled },
 ];
 
-const getStatusSelectStyles = (status: PackageStatus | null | undefined): string => {
-    if (!status) return 'bg-[var(--background-secondary)] border-[var(--border-secondary)] text-[var(--text-primary)]';
-    const slug = (status || '').toLowerCase().replace('_', '');
-    return `bg-[var(--status-${slug}-bg)] border-[var(--status-${slug}-border)] text-[var(--status-${slug}-text)] font-medium`;
-}
 
 const Dashboard: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -584,7 +579,7 @@ const Dashboard: React.FC = () => {
                                                 }
                                             });
                                         }}
-                                        className={`cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-[var(--background-hover)] transition-colors flex items-center gap-2 ${statusFilter.includes(value as PackageStatus) ? 'bg-[var(--background-hover)] font-bold' : ''}`}
+                                        className={`cursor-pointer select-none relative py-2 pl-3 pr-4 hover:bg-gray-700 transition-colors flex items-center gap-2 ${statusFilter.includes(value as PackageStatus) ? 'bg-gray-800 font-bold' : ''}`}
                                     >
                                         <input 
                                             type="checkbox" 
@@ -592,7 +587,7 @@ const Dashboard: React.FC = () => {
                                             readOnly 
                                             className={customCheckboxClass}
                                         />
-                                        <span className={`px-2 py-0.5 rounded-full text-xs ${getStatusSelectStyles(value as PackageStatus)}`}>
+                                        <span className="text-white">
                                             {label}
                                         </span>
                                     </li>
