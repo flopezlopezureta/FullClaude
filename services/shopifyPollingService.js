@@ -101,6 +101,14 @@ async function autoImportShopifyPackages() {
 
             if (!shopify.shopUrl || !shopify.accessToken) continue;
 
+            // Check if the individual client has auto-import disabled
+            // If it's undefined, we can default to true for backward compatibility or false if we want strictly opt-in.
+            // According to user request "seleccionar si será manual o automatica", we'll check if it's explicitly true.
+            if (shopify.autoImport !== true) {
+                console.log(`[ShopifyPolling] Skipping client ${clientId} - Auto-import is currently set to MANUAL.`);
+                continue;
+            }
+
             try {
                 // 2. Fetch recent paid orders
                 // status=open & financial_status=paid

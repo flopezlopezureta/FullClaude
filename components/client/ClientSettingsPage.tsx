@@ -9,6 +9,7 @@ const ClientSettingsPage: React.FC = () => {
     const [settings, setSettings] = useState({
         shopifyShopUrl: '',
         shopifyAccessToken: '',
+        shopifyAutoImport: false,
         wooUrl: '',
         wooConsumerKey: '',
         wooConsumerSecret: '',
@@ -37,6 +38,7 @@ const ClientSettingsPage: React.FC = () => {
                 setSettings({
                     shopifyShopUrl: integrations.shopify?.shopUrl || '',
                     shopifyAccessToken: integrations.shopify?.accessToken || '',
+                    shopifyAutoImport: integrations.shopify?.autoImport || false,
                     wooUrl: integrations.woocommerce?.storeUrl || integrations.woocommerce?.wooUrl || '',
                     wooConsumerKey: integrations.woocommerce?.consumerKey || '',
                     wooConsumerSecret: integrations.woocommerce?.consumerSecret || '',
@@ -50,9 +52,10 @@ const ClientSettingsPage: React.FC = () => {
         fetchSettings();
     }, [auth?.user]);
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const { name, value } = e.target;
-        setSettings(prev => ({ ...prev, [name]: value }));
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+        const { name, value, type } = e.target as HTMLInputElement;
+        const finalValue = type === 'checkbox' ? (e.target as HTMLInputElement).checked : value;
+        setSettings(prev => ({ ...prev, [name]: finalValue }));
     };
 
     const togglePasswordVisibility = (key: keyof typeof passwordVisibility) => {
@@ -72,6 +75,7 @@ const ClientSettingsPage: React.FC = () => {
                 updatedIntegrations.shopify = {
                     shopUrl: settings.shopifyShopUrl,
                     accessToken: settings.shopifyAccessToken,
+                    autoImport: settings.shopifyAutoImport,
                 };
             } else {
                 updatedIntegrations.woocommerce = {
@@ -177,6 +181,36 @@ const ClientSettingsPage: React.FC = () => {
                                     <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                                         {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
                                     </button>
+                                </div>
+                            </div>
+
+                            <div className="pt-4 border-t border-[var(--border-primary)]">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div>
+                                        <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Importación Automática</h4>
+                                        <p className="text-[10px] text-[var(--text-muted)] mt-1 max-w-[200px]">
+                                            Sincroniza tus pedidos pagados automáticamente cada 5 minutos.
+                                        </p>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            name="shopifyAutoImport"
+                                            checked={settings.shopifyAutoImport}
+                                            onChange={handleChange}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:left-0.5 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                                <div className="flex gap-2">
+                                    <IconAlertTriangle className="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                                    <p className="text-[10px] text-amber-800 dark:text-amber-300">
+                                        <strong>Nota:</strong> Solo se importarán automáticamente los paquetes con destino en la <strong>Región Metropolitana</strong> (Santiago). Los pedidos a otras regiones deben ingresarse manualmente.
+                                    </p>
                                 </div>
                             </div>
                         </div>

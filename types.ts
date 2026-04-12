@@ -98,6 +98,7 @@ export interface WooCommerceIntegration {
 export interface ShopifyIntegration {
   shopUrl: string;
   accessToken: string;
+  autoImport?: boolean;
   webhookSecret?: string;
 }
 
