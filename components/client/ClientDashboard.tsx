@@ -3,17 +3,17 @@ import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { api, PackageCreationData } from '../../services/api';
 import type { Package } from '../../types';
-import { PackageSource } from '../../constants';
+import { PackageSource, PackageStatus } from '../../constants';
 import PackageList from '../PackageList';
 import PackageDetailModal from '../PackageDetailModal';
 import CreatePackageModal from '../modals/CreatePackageModal';
 import ClientPackageFilters from './ClientPackageFilters';
 import ShippingLabelModal from './ShippingLabelModal';
 import BatchShippingLabelModal from './BatchShippingLabelModal';
-import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconMercadoLibre, IconDownload, IconWoocommerce, IconFalabella, IconFileText, IconShopify } from '../Icon';
+import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconTrash, IconDownload, IconFileText, IconShopify, IconMercadoLibre } from '../Icon';
 import ImportPackagesModal from './ImportPackagesModal';
-import ConfirmationModal from '../modals/ConfirmationModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
+import DeletePasswordModal from '../modals/DeletePasswordModal';
 import ExportFormatModal from '../modals/ExportFormatModal';
 import { exportToExcel, exportToCSV } from '../../services/exportService';
 import ClientSettingsPage from './ClientSettingsPage';
@@ -34,12 +34,13 @@ const ClientDashboard: React.FC = () => {
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
+  const [isDeletePasswordModalOpen, setIsDeletePasswordModalOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'packages' | 'settings'>('packages');
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<PackageStatus[]>([]);
   const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
   const [communeFilter, setCommuneFilter] = useState('');
   
@@ -149,15 +150,21 @@ const ClientDashboard: React.FC = () => {
       setIsImportMenuOpen(false);
   };
 
-  const handleDeletePackage = async () => {
-      if (!deletingPackage) return;
+  const handleDeletePackages = async () => {
       try {
-          await api.deletePackage(deletingPackage.id);
+          if (deletingPackage) {
+              await api.deletePackage(deletingPackage.id);
+          } else {
+              const idsToDelete = Array.from(selectedPackages);
+              await Promise.all(idsToDelete.map(id => api.deletePackage(id)));
+              setSelectedPackages(new Set());
+          }
           setDeletingPackage(null);
+          setIsDeletePasswordModalOpen(false);
           fetchData();
-      } catch (error) {
-          console.error("Failed to delete package", error);
-          alert("Error al eliminar el paquete.");
+      } catch (error: any) {
+          console.error("Failed to delete package(s)", error);
+          alert("Error al eliminar: " + (error.message || "Error desconocido"));
       }
   };
 
@@ -231,44 +238,50 @@ const ClientDashboard: React.FC = () => {
             </div>
             
             {activeTab === 'packages' && (
-                <div className="flex gap-2">
+                <div className="flex gap-3">
                     <button 
                         onClick={() => setIsExportModalOpen(true)} 
                         disabled={totalPackages === 0 || isExporting}
-                        className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
+                        className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-emerald-600 text-emerald-700 font-bold rounded-lg shadow-sm hover:bg-emerald-50 transition-all disabled:opacity-50 uppercase text-xs tracking-widest"
                     >
                         <IconFileSpreadsheet className={`w-5 h-5 ${isExporting ? 'animate-spin' : ''}`}/>
-                        {isExporting ? 'Exportando...' : 'Exportar'}
+                        {isExporting ? 'Exportando...' : 'Exportar Excel'}
                     </button>
-                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-[var(--brand-primary)] text-white rounded-md shadow hover:bg-[var(--brand-secondary)] transition-colors">
-                        <IconPlus className="w-5 h-5"/> Crear Paquete
-                    </button>
+                    
                     <div className="relative">
-                        <button onClick={() => setIsImportMenuOpen(!isImportMenuOpen)} className="flex items-center gap-2 px-4 py-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md shadow hover:bg-[var(--background-hover)] transition-colors">
+                        <button onClick={() => setIsImportMenuOpen(!isImportMenuOpen)} className="flex items-center gap-2 px-5 py-2.5 bg-white border-2 border-indigo-600 text-indigo-700 font-bold rounded-lg shadow-sm hover:bg-indigo-50 transition-all uppercase text-xs tracking-widest">
                             <IconDownload className="w-5 h-5"/> Importar <IconChevronDown className="w-4 h-4"/>
                         </button>
                         {isImportMenuOpen && (
-                            <div className="absolute right-0 mt-2 w-56 bg-[var(--background-secondary)] rounded-md shadow-lg z-20 border border-[var(--border-primary)] animate-fade-in-up">
+                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-xl shadow-xl z-30 border border-gray-100 overflow-hidden animate-fade-in-up">
                                 <div className="py-1">
-                                    <button onClick={() => { setIsImportMenuOpen(false); setIsImportModalOpen(true); }} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                        <IconFileText className="w-4 h-4 text-green-600"/> Excel / CSV
+                                    <button onClick={() => { setIsImportMenuOpen(false); setIsImportModalOpen(true); }} className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                        <div className="p-1.5 bg-green-100 rounded-lg">
+                                            <IconFileText className="w-4 h-4 text-green-600"/>
+                                        </div>
+                                        Excel / CSV
                                     </button>
-                                    <button onClick={() => handleOpenExternalImport(PackageSource.MercadoLibre)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2 border-t border-[var(--border-primary)]">
-                                        <IconMercadoLibre className="w-4 h-4 text-yellow-500"/> Mercado Libre
+                                    <div className="h-px bg-gray-100 mx-2 my-1"></div>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.MercadoLibre)} className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                        <div className="p-1.5 bg-yellow-100 rounded-lg">
+                                            <IconMercadoLibre className="w-4 h-4 text-yellow-600"/>
+                                        </div>
+                                        Mercado Libre
                                     </button>
-                                    <button onClick={() => handleOpenExternalImport(PackageSource.Shopify)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                        <IconShopify className="w-4 h-4 text-green-500"/> Shopify
-                                    </button>
-                                    <button onClick={() => handleOpenExternalImport(PackageSource.WooCommerce)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                        <IconWoocommerce className="w-4 h-4 text-purple-500"/> WooCommerce
-                                    </button>
-                                    <button onClick={() => handleOpenExternalImport(PackageSource.Falabella)} className="w-full text-left px-4 py-3 text-sm text-[var(--text-primary)] hover:bg-[var(--background-hover)] flex items-center gap-2">
-                                        <IconFalabella className="w-4 h-4 text-green-700"/> Falabella
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.Shopify)} className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                        <div className="p-1.5 bg-green-100 rounded-lg">
+                                            <IconShopify className="w-4 h-4 text-green-600"/>
+                                        </div>
+                                        Shopify
                                     </button>
                                 </div>
                             </div>
                         )}
                     </div>
+
+                    <button onClick={() => setIsCreateModalOpen(true)} className="flex items-center gap-2 px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg shadow-lg hover:bg-blue-700 transition-all uppercase text-xs tracking-widest">
+                        <IconPlus className="w-5 h-5"/> Crear Paquete
+                    </button>
                 </div>
             )}
         </div>
@@ -314,13 +327,35 @@ const ClientDashboard: React.FC = () => {
                         }}
                     />
 
-                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">
+                <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                     {selectedPackages.size > 0 && (
-                        <div className="p-3 bg-[var(--brand-muted)] border-b border-[var(--brand-secondary)] flex items-center justify-between">
-                            <span className="text-sm font-semibold text-[var(--brand-primary)]">{selectedPackages.size} seleccionados</span>
+                        <div className="p-3 bg-blue-50 border-b border-blue-100 flex items-center justify-between animate-fade-in-up">
+                            <div className="flex items-center">
+                                <span className="px-3 py-1 bg-blue-600 text-white text-[10px] font-black uppercase tracking-widest rounded-full shadow-sm">
+                                    {selectedPackages.size} seleccionados
+                                </span>
+                            </div>
                             <div className="flex gap-2">
-                                <button onClick={() => setPrintingPackages(selectedPackageObjects)} className="p-2 text-gray-600 hover:bg-white/50 rounded-full" title="Imprimir Etiquetas">
-                                    <IconPrinter className="w-5 h-5"/>
+                                <button 
+                                    onClick={() => setPrintingPackages(selectedPackageObjects)} 
+                                    className="p-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-all shadow-md" 
+                                    title="Imprimir Etiquetas"
+                                >
+                                    <IconPrinter className="w-6 h-6"/>
+                                </button>
+                                <button 
+                                    onClick={() => { setDeletingPackage(null); setIsDeletePasswordModalOpen(true); }} 
+                                    className="p-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all shadow-md" 
+                                    title="Eliminar Seleccionados"
+                                >
+                                    <IconTrash className="w-6 h-6"/>
+                                </button>
+                                <button 
+                                    onClick={() => setIsExportModalOpen(true)} 
+                                    className="p-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-all shadow-md" 
+                                    title="Exportar Seleccionados"
+                                >
+                                    <IconFileSpreadsheet className="w-6 h-6"/>
                                 </button>
                             </div>
                         </div>
@@ -332,7 +367,7 @@ const ClientDashboard: React.FC = () => {
                         isLoading={isLoading}
                         onSelectPackage={setSelectedPackage}
                         onEditPackage={setEditingPackage}
-                        onDeletePackage={setDeletingPackage}
+                        onDeletePackage={(pkg) => { setDeletingPackage(pkg); setIsDeletePasswordModalOpen(true); }}
                         onPrintLabel={(pkg) => setPrintingPackages([pkg])}
                         hideDriverName={true}
                         selectedPackages={selectedPackages}
@@ -401,20 +436,19 @@ const ClientDashboard: React.FC = () => {
             <PackageDetailModal 
                 pkg={selectedPackage} 
                 onClose={() => setSelectedPackage(null)} 
-                isFullScreen={true}
-                companyName={auth?.systemSettings.companyName}
-                onEdit={setEditingPackage}
             />
         )}
-        {deletingPackage && (
-            <ConfirmationModal
-                title="Eliminar Paquete"
-                message={`¿Estás seguro que deseas eliminar el paquete para ${deletingPackage.recipientName}? Esta acción no se puede deshacer.`}
-                confirmText="Sí, eliminar"
-                onClose={() => setDeletingPackage(null)}
-                onConfirm={handleDeletePackage}
+        
+        {isDeletePasswordModalOpen && (
+            <DeletePasswordModal
+                onConfirm={handleDeletePackages}
+                onClose={() => {
+                    setIsDeletePasswordModalOpen(false);
+                    setDeletingPackage(null);
+                }}
             />
         )}
+        
         {isExportModalOpen && (
             <ExportFormatModal
                 onClose={() => setIsExportModalOpen(false)}
