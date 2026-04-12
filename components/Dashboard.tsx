@@ -485,64 +485,64 @@ const Dashboard: React.FC = () => {
                         disabled={packages.length === 0}
                     />
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
+                    {/* ML Polling Status (Repositioned to top left of list) */}
+                    {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-400 rounded-full text-blue-700 text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter">
+                            <IconMercadoLibre className="w-4 h-4 text-blue-600" />
+                            <span className="whitespace-nowrap">Próxima revisión ML: {timeLeft}s</span>
+                            {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                             <div className="ml-1 w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
+                        </div>
+                    )}
+                    <div className="h-6 w-px bg-[var(--border-primary)] opacity-50"></div>
                     <div className="flex items-center gap-2">
                         {selectedPackages.size > 0 && (
-                            <span className="text-sm font-semibold text-[var(--brand-primary)] mr-2">{selectedPackages.size} seleccionados</span>
+                            <span className="text-xs font-bold text-blue-600 mr-2 tracking-tight uppercase">{selectedPackages.size} seleccionados</span>
                         )}
                         <button 
                             onClick={() => setIsBulkAssignModalOpen(true)}
                             disabled={selectedPackages.size === 0}
                             title="Asignar Conductor" 
-                            className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2.5 rounded-full hover:bg-blue-50 transition-all disabled:opacity-30"
                         >
-                            <IconUserPlus className="w-5 h-5 text-[var(--text-secondary)]" />
+                            <IconUserPlus className="w-5 h-5 text-blue-600" />
                         </button>
                         <button 
                             onClick={() => setPrintingPackages(selectedPackageObjects)} 
                             title="Imprimir Etiquetas" 
-                            className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            className="p-2.5 rounded-full hover:bg-indigo-50 transition-all disabled:opacity-30"
                             disabled={selectedPackages.size === 0}>
-                            <IconPrinter className="w-5 h-5 text-[var(--text-secondary)]" />
+                            <IconPrinter className="w-5 h-5 text-indigo-700" />
                         </button>
                         <button 
                             onClick={() => setIsDeletePasswordModalOpen(true)} 
                             disabled={!canDeleteSelected} 
                             title="Eliminar Seleccionados" 
-                            className="p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
-                            <IconTrash className="w-5 h-5 text-[var(--text-secondary)]" />
+                            className="p-2.5 rounded-full hover:bg-red-50 transition-all disabled:opacity-30">
+                            <IconTrash className="w-5 h-5 text-red-600" />
                         </button>
                         <button 
                             onClick={() => setIsExportModalOpen(true)} 
                             title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
-                            className={`p-2 rounded-full hover:bg-[var(--background-hover)] transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
+                            className={`p-2.5 rounded-full hover:bg-emerald-50 transition-all disabled:opacity-30 ${isExporting ? 'animate-pulse bg-blue-50' : ''}`}
                             disabled={totalPackages === 0 || isExporting}>
                             {isExporting ? (
                                 <IconLoader className="w-5 h-5 text-blue-600 animate-spin" />
                             ) : (
-                                <IconFileSpreadsheet className="w-5 h-5 text-[var(--text-secondary)]" />
+                                <IconFileSpreadsheet className="w-5 h-5 text-emerald-800" />
                             )}
                         </button>
                     </div>
-
-                    {/* ML Polling Status */}
-                    {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
-                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-400 rounded-md text-blue-700 text-xs font-bold shadow-sm cursor-pointer hover:bg-blue-50 transition-colors">
-                            <IconMercadoLibre className="w-4 h-4 text-blue-600" />
-                            <span className="whitespace-nowrap uppercase tracking-tighter">Próxima revisión ML: {timeLeft}s</span>
-                            {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
-                             <div className="ml-1 w-2 h-2 rounded-full bg-blue-400 animate-pulse"></div>
-                        </div>
-                    )}
                 </div>
 
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4">
                     <div className="flex items-center gap-2">
-                        <label className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Ver:</label>
-                        <div className="relative w-48" ref={statusDropdownRef}>
+                        <label className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Ver:</label>
+                        <div className="relative w-44" ref={statusDropdownRef}>
                         <button
                             type="button"
                             onClick={() => setIsStatusDropdownOpen(prev => !prev)}
-                            className="w-full border rounded-md py-1.5 pl-3 pr-8 text-sm text-left focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] transition-colors bg-[var(--background-secondary)] border-[var(--border-secondary)] text-[var(--text-primary)]"
+                            className="w-full border border-gray-300 rounded-lg py-1.5 pl-3 pr-8 text-xs font-bold text-left focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white shadow-sm"
                             aria-haspopup="listbox"
                             aria-expanded={isStatusDropdownOpen}
                         >
@@ -602,12 +602,12 @@ const Dashboard: React.FC = () => {
                     </div>
                 </div>
                  <div className="flex items-center gap-2">
-                    <label htmlFor="client-filter-select" className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Cliente:</label>
+                    <label htmlFor="client-filter-select" className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Cliente:</label>
                     <select
                         id="client-filter-select"
                         value={clientFilter}
                         onChange={(e) => setClientFilter(e.target.value)}
-                        className="w-48 border rounded-md py-1.5 pl-3 pr-8 text-sm focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] transition-colors bg-[var(--background-secondary)] border-[var(--border-secondary)] text-[var(--text-primary)]"
+                        className="w-44 border border-gray-300 rounded-lg py-1.5 pl-3 pr-8 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white shadow-sm"
                         aria-label="Filtrar por cliente"
                     >
                         <option value="">Todos los Clientes</option>
@@ -619,16 +619,23 @@ const Dashboard: React.FC = () => {
             </div>
 
             </div>
+        </div>
 
-            <div className="flex flex-wrap items-center justify-between w-full mt-2">
-                <div className="flex items-center gap-6">
-                    <div className="flex items-center gap-2">
-                        <label htmlFor="items-per-page-admin" className="text-sm font-medium text-[var(--text-secondary)] whitespace-nowrap">Filas por página:</label>
+        {/* Separator / Decoration Line */}
+        <div className="px-3">
+             <div className="h-px w-full bg-gray-100"></div>
+        </div>
+
+        <div className="p-3 bg-gray-50 bg-opacity-30">
+            <div className="flex flex-wrap items-center justify-between w-full">
+                <div className="flex items-center gap-10">
+                    <div className="flex items-center gap-3">
+                        <label htmlFor="items-per-page-admin" className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filas por página</label>
                         <select
                             id="items-per-page-admin"
                             value={itemsPerPage}
                             onChange={(e) => setItemsPerPage(Number(e.target.value))}
-                            className="bg-[var(--background-secondary)] border border-[var(--border-secondary)] text-[var(--text-primary)] rounded-md py-1 px-2 text-sm focus:ring-[var(--brand-secondary)] focus:border-[var(--brand-secondary)]"
+                            className="bg-white border border-gray-300 text-gray-900 rounded-md py-1 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
                             aria-label="Filas por página"
                         >
                             <option value={10}>10</option>
@@ -638,23 +645,25 @@ const Dashboard: React.FC = () => {
                         </select>
                     </div>
                     
-                    <div className="flex items-center gap-2">
-                        <span className="text-sm text-[var(--text-secondary)] font-medium whitespace-nowrap">
+                    <div className="flex items-center gap-3">
+                        <span className="text-sm text-gray-600 font-bold whitespace-nowrap">
                             {Math.min((currentPage - 1) * itemsPerPage + 1, totalPackages)}-{Math.min(currentPage * itemsPerPage, totalPackages)} de {totalPackages}
                         </span>
-                        <div className="flex items-center border border-[var(--border-secondary)] rounded-md overflow-hidden bg-[var(--background-secondary)]">
-                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1.5 hover:bg-[var(--background-hover)] disabled:opacity-30 transition-colors border-r border-[var(--border-secondary)]" aria-label="Página anterior">
+                        <div className="flex items-center bg-gray-100 rounded-md p-1 border border-gray-200">
+                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all" aria-label="Página anterior">
                                 <IconChevronLeft className="w-4 h-4" />
                             </button>
-                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-1.5 hover:bg-[var(--background-hover)] disabled:opacity-30 transition-colors" aria-label="Página siguiente">
+                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all" aria-label="Página siguiente">
                                 <IconChevronRight className="w-4 h-4" />
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex-1 text-right">
-                    <span className="text-xs font-bold text-[var(--brand-primary)] uppercase tracking-tight">Total de paquetes en sistema: {totalPackages}</span>
+                <div className="flex items-center">
+                    <span className="text-[10px] font-black text-blue-700 uppercase tracking-[0.2em] bg-blue-50 px-4 py-2 rounded-lg border border-blue-100 shadow-sm">
+                        TOTAL DE PAQUETES EN SISTEMA: {totalPackages}
+                    </span>
                 </div>
             </div>
         </div>

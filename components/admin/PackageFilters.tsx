@@ -80,13 +80,13 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
           </div>
         </div>
         <div className="flex-shrink-0">
-            <label className="text-xs text-[var(--text-muted)]">Desde</label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Desde</label>
             <div className="relative">
-                <div className="flex items-center justify-between w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm bg-[var(--background-secondary)] text-left cursor-pointer sm:text-sm">
-                    <span className={startDate ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
-                        {startDate ? new Date(startDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'dd/mm/aaaa'}
+                <div className="flex items-center justify-between w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-white text-left cursor-pointer text-xs font-bold">
+                    <span className={startDate ? "text-gray-900" : "text-gray-400"}>
+                        {startDate ? new Date(startDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'DD/MM/AAAA'}
                     </span>
-                    <IconCalendar className="h-5 w-5 text-[var(--text-muted)]" />
+                    <IconCalendar className="h-4 w-4 text-gray-400" />
                 </div>
                 <input 
                     type="date" 
@@ -98,13 +98,13 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             </div>
         </div>
         <div className="flex-shrink-0">
-            <label className="text-xs text-[var(--text-muted)]">Hasta</label>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Hasta</label>
             <div className="relative">
-                <div className="flex items-center justify-between w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm bg-[var(--background-secondary)] text-left cursor-pointer sm:text-sm">
-                    <span className={endDate ? "text-[var(--text-primary)]" : "text-[var(--text-muted)]"}>
-                        {endDate ? new Date(endDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'dd/mm/aaaa'}
+                <div className="flex items-center justify-between w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm bg-white text-left cursor-pointer text-xs font-bold">
+                    <span className={endDate ? "text-gray-900" : "text-gray-400"}>
+                        {endDate ? new Date(endDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'DD/MM/AAAA'}
                     </span>
-                    <IconCalendar className="h-5 w-5 text-[var(--text-muted)]" />
+                    <IconCalendar className="h-4 w-4 text-gray-400" />
                 </div>
                 <input 
                     type="date" 
@@ -116,80 +116,84 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             </div>
         </div>
         <div className="flex-shrink-0">
-          <select id="driver-filter" value={driverFilter} onChange={(e) => onDriverChange(e.target.value)} className={selectClasses} aria-label="Filtrar por conductor">
-            <option value="">Todos los Conductores</option>
-            {drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name}</option>)}
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Conductor</label>
+          <select id="driver-filter" value={driverFilter} onChange={(e) => onDriverChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por conductor">
+            <option value="">TODOS LOS CONDUCTORES</option>
+            {drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name.toUpperCase()}</option>)}
           </select>
         </div>
         <div className="flex-shrink-0">
-          <select id="client-filter" value={clientFilter} onChange={(e) => onClientChange(e.target.value)} className={selectClasses} aria-label="Filtrar por cliente">
-            <option value="">Todos los Clientes</option>
-            {clients.map(client => <option key={client.id} value={client.id}>{client.name}</option>)}
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Cliente</label>
+          <select id="client-filter" value={clientFilter} onChange={(e) => onClientChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por cliente">
+            <option value="">TODOS LOS CLIENTES</option>
+            {clients.map(client => <option key={client.id} value={client.id}>{client.name.toUpperCase()}</option>)}
           </select>
         </div>
         <div className="flex-shrink-0 w-32">
-          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Flex</label>
-          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtrar por Flex">
-            <option value="all">Todos</option>
-            <option value="flexed">Flexeados</option>
-            <option value="not_flexed">No Flexeados</option>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Flex</label>
+          <select id="flex-filter" value={flexFilter} onChange={(e) => onFlexFilterChange(e.target.value as any)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por Flex">
+            <option value="all">TODOS</option>
+            <option value="flexed">FLEXEADOS</option>
+            <option value="not_flexed">NO FLEXEADOS</option>
           </select>
         </div>
         <div className="flex-shrink-0 w-40">
-          <label className="block text-xs font-medium text-[var(--text-muted)] mb-1">Filtro Rápido</label>
-          <select id="quick-filter" value={quickFilter} onChange={(e) => onQuickFilterChange(e.target.value as any)} className={selectClasses} aria-label="Filtro rápido">
-            <option value="all">Todos</option>
-            <option value="closed">Cerrados</option>
-            <option value="cancelled">Cancelados</option>
-            <option value="rescheduled">Reprogramados</option>
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Filtro Rápido</label>
+          <select id="quick-filter" value={quickFilter} onChange={(e) => onQuickFilterChange(e.target.value as any)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtro rápido">
+            <option value="all">TODOS</option>
+            <option value="closed">CERRADOS</option>
+            <option value="cancelled">CANCELADOS</option>
+            <option value="rescheduled">REPROGRAMADOS</option>
           </select>
         </div>
         <div className="flex-shrink-0">
-          <select id="city-filter" value={cityFilter} onChange={(e) => onCityChange(e.target.value)} className={selectClasses} aria-label="Filtrar por ciudad">
-            <option value="">Todas las Regiones</option>
-            {!cities.includes('Región Metropolitana') && <option value="Región Metropolitana">Región Metropolitana</option>}
-            {!cities.includes('Metropolitana') && <option value="Metropolitana">Metropolitana</option>}
-            {!cities.includes('Santiago') && <option value="Santiago">Santiago</option>}
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Región</label>
+          <select id="city-filter" value={cityFilter} onChange={(e) => onCityChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por ciudad">
+            <option value="">TODAS LAS REGIONES</option>
+            {!cities.includes('Región Metropolitana') && <option value="Región Metropolitana">REGIÓN METROPOLITANA</option>}
+            {!cities.includes('Metropolitana') && <option value="Metropolitana">METROPOLITANA</option>}
+            {!cities.includes('Santiago') && <option value="Santiago">SANTIAGO</option>}
             {cities.map(city => {
               if (['Región Metropolitana', 'Metropolitana', 'Santiago'].includes(city)) return null;
-              return <option key={city} value={city}>{city}</option>;
+              return <option key={city} value={city}>{city.toUpperCase()}</option>;
             })}
           </select>
         </div>
         <div className="flex-shrink-0">
-          <select id="commune-filter" value={communeFilter} onChange={(e) => onCommuneChange(e.target.value)} className={selectClasses} aria-label="Filtrar por comuna">
-            <option value="">Todas las Comunas</option>
-            {communes.map(commune => <option key={commune} value={commune}>{commune}</option>)}
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Comuna</label>
+          <select id="commune-filter" value={communeFilter} onChange={(e) => onCommuneChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por comuna">
+            <option value="">TODAS LAS COMUNAS</option>
+            {communes.map(commune => <option key={commune} value={commune}>{commune.toUpperCase()}</option>)}
           </select>
         </div>
-        <div className="flex items-center gap-2 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
             <button
                 onClick={onRefresh}
                 disabled={isSyncing}
-                className={`flex-shrink-0 inline-flex items-center justify-center p-2 border border-blue-200 text-blue-600 bg-blue-50 rounded-md hover:bg-blue-100 transition-colors shadow-sm ${isSyncing ? 'animate-pulse' : ''}`}
-                title="Refrescar Datos y Sincronizar Flex"
+                className={`flex-shrink-0 inline-flex items-center justify-center p-2.5 border border-blue-200 text-blue-600 bg-white rounded-lg hover:bg-blue-50 transition-all shadow-sm ${isSyncing ? 'animate-pulse' : ''}`}
+                title="Refrescar Datos"
             >
                 <IconRefresh className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
             <button
                 onClick={onOpenQuickStatus}
-                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-blue-500 text-sm font-bold rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 transition-all"
+                className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border border-blue-600 text-sm font-black rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 hover:shadow-md transition-all uppercase tracking-wider"
             >
-                <IconSearch className="w-5 h-5 mr-2 -ml-1"/>
+                <IconSearch className="w-5 h-5 mr-3 -ml-1"/>
                 Consultar ID
             </button>
             <button
                 onClick={onOpenImportModal}
-                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md shadow-sm text-[var(--text-primary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] transition-all"
+                className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 text-sm font-bold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all uppercase tracking-tight"
             >
-                <IconFileSpreadsheet className="w-5 h-5 mr-2 -ml-1"/>
+                <IconFileSpreadsheet className="w-5 h-5 mr-3 -ml-1 text-emerald-600"/>
                 Importar Excel
             </button>
             <button
                 onClick={onOpenCreateModal}
-                className="flex-shrink-0 inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-bold rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] transition-all"
+                className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border-2 border-transparent text-sm font-black rounded-lg shadow-sm text-white bg-[#005fb8] hover:bg-[#004a8f] hover:shadow-lg focus:outline-none transition-all uppercase tracking-widest"
             >
-                <IconPackage className="w-5 h-5 mr-2 -ml-1"/>
+                <IconPackage className="w-5 h-5 mr-3 -ml-1"/>
                 Crear Paquete
             </button>
         </div>
