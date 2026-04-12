@@ -29,6 +29,7 @@ interface SettingsState {
     meliFlexValidation: boolean;
     saveFlexLabelPhoto: boolean;
     meliAutoImport: boolean;
+    shopifyAutoImport: boolean;
     publicTrackingEnabled: boolean;
     isRutRequired: boolean;
     flexDiscrepancyReportEnabled: boolean;
@@ -46,6 +47,7 @@ const SettingsPage: React.FC = () => {
         meliFlexValidation: true,
         saveFlexLabelPhoto: false,
         meliAutoImport: false,
+        shopifyAutoImport: false,
         publicTrackingEnabled: true,
         isRutRequired: true,
         flexDiscrepancyReportEnabled: true,
@@ -75,6 +77,7 @@ const SettingsPage: React.FC = () => {
                 meliFlexValidation: auth.systemSettings.meliFlexValidation ?? true,
                 saveFlexLabelPhoto: auth.systemSettings.saveFlexLabelPhoto ?? false,
                 meliAutoImport: auth.systemSettings.meliAutoImport ?? false,
+                shopifyAutoImport: auth.systemSettings.shopifyAutoImport ?? false,
                 publicTrackingEnabled: auth.systemSettings.publicTrackingEnabled ?? true,
                 isRutRequired: auth.systemSettings.isRutRequired ?? true,
                 flexDiscrepancyReportEnabled: auth.systemSettings.flexDiscrepancyReportEnabled ?? true,
@@ -128,6 +131,7 @@ const SettingsPage: React.FC = () => {
                 meliFlexValidation: settings.meliFlexValidation,
                 saveFlexLabelPhoto: settings.saveFlexLabelPhoto,
                 meliAutoImport: settings.meliAutoImport,
+                shopifyAutoImport: settings.shopifyAutoImport,
                 publicTrackingEnabled: settings.publicTrackingEnabled,
                 isRutRequired: settings.isRutRequired,
                 flexDiscrepancyReportEnabled: settings.flexDiscrepancyReportEnabled,
@@ -234,6 +238,7 @@ const SettingsPage: React.FC = () => {
             settings.meliFlexValidation !== originalSettings.meliFlexValidation ||
             settings.saveFlexLabelPhoto !== originalSettings.saveFlexLabelPhoto ||
             settings.meliAutoImport !== originalSettings.meliAutoImport ||
+            settings.shopifyAutoImport !== originalSettings.shopifyAutoImport ||
             settings.publicTrackingEnabled !== originalSettings.publicTrackingEnabled ||
             settings.isRutRequired !== originalSettings.isRutRequired ||
             settings.flexDiscrepancyReportEnabled !== originalSettings.flexDiscrepancyReportEnabled ||
@@ -378,6 +383,25 @@ const SettingsPage: React.FC = () => {
                                     type="checkbox"
                                     name="meliAutoImport"
                                     checked={settings.meliAutoImport}
+                                    onChange={handleSettingsChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className="pt-4 border-t border-[var(--border-primary)]">
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <div>
+                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Importación Automática Shopify</h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, el sistema importará automáticamente los pedidos pagados de Shopify para todos los clientes configurados (Solo Santiago/RM).</p>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    name="shopifyAutoImport"
+                                    checked={settings.shopifyAutoImport}
                                     onChange={handleSettingsChange}
                                     className="sr-only peer"
                                 />

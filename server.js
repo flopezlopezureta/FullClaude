@@ -93,6 +93,12 @@ async function startServer() {
             meliPollingService.start();
             console.log('Background Service: Mercado Libre Polling started.');
         }
+
+        const shopifyPollingService = tryRequireRoute('./services/shopifyPollingService.js');
+        if (shopifyPollingService && typeof shopifyPollingService.start === 'function') {
+            shopifyPollingService.start();
+            console.log('Background Service: Shopify Polling started.');
+        }
       } catch (initErr) {
         console.error('Failed to initialize database during startup:', initErr);
       }
@@ -293,6 +299,7 @@ async function initializeDatabase() {
                 "recipientNotificationsEnabled" BOOLEAN DEFAULT false,
                 "saveFlexLabelPhoto" BOOLEAN DEFAULT false,
                 "meliAutoImport" BOOLEAN DEFAULT false,
+                "shopifyAutoImport" BOOLEAN DEFAULT false,
                 "publicTrackingEnabled" BOOLEAN DEFAULT true,
                 "isRutRequired" BOOLEAN DEFAULT true,
                 "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
@@ -402,6 +409,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (circuitExportEnabled):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "shopifyAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "shopifyAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (shopifyAutoImport):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -432,8 +445,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE)
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE)
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`

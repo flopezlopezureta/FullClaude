@@ -12,7 +12,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import PackageFilters from './admin/PackageFilters';
 import ShippingLabelModal from './client/ShippingLabelModal';
 import BatchShippingLabelModal from './client/BatchShippingLabelModal';
-import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre } from './Icon';
+import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre, IconShopify } from './Icon';
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
@@ -60,7 +60,9 @@ const Dashboard: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
   const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
+  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
+  const [shopifyTimeLeft, setShopifyTimeLeft] = useState<number>(0);
 
   // Selection and Pagination states
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
@@ -86,8 +88,12 @@ const Dashboard: React.FC = () => {
     const fetchPollingStatus = async () => {
       if (auth?.user?.role !== Role.Admin) return;
       try {
-        const status = await api.getMeliPollingStatus();
-        setPollingStatus(status);
+        const [meliStatus, shopifyStatus] = await Promise.all([
+            api.getMeliPollingStatus(),
+            api.getShopifyPollingStatus()
+        ]);
+        setPollingStatus(meliStatus);
+        setShopifyPollingStatus(shopifyStatus);
       } catch (err) {
         console.error('Error fetching polling status:', err);
       }
@@ -99,15 +105,21 @@ const Dashboard: React.FC = () => {
   }, [auth?.user?.role]);
 
   useEffect(() => {
-    if (!pollingStatus) return;
+    if (!pollingStatus && !shopifyPollingStatus) return;
 
     const timer = setInterval(() => {
-      const remaining = Math.max(0, Math.ceil((pollingStatus.nextPollTime - Date.now()) / 1000));
-      setTimeLeft(remaining);
+      if (pollingStatus) {
+        const remaining = Math.max(0, Math.ceil((pollingStatus.nextPollTime - Date.now()) / 1000));
+        setTimeLeft(remaining);
+      }
+      if (shopifyPollingStatus) {
+        const remainingShopify = Math.max(0, Math.ceil((shopifyPollingStatus.nextPollTime - Date.now()) / 1000));
+        setShopifyTimeLeft(remainingShopify);
+      }
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [pollingStatus]);
+  }, [pollingStatus, shopifyPollingStatus]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -484,9 +496,17 @@ const Dashboard: React.FC = () => {
                     {auth?.user?.role === Role.Admin && auth?.systemSettings?.meliAutoImport && pollingStatus && (
                         <div className="flex items-center gap-2 px-3 py-1 bg-white border border-blue-400 rounded-full text-blue-700 text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter">
                             <IconMercadoLibre className="w-4 h-4 text-blue-600" />
-                            <span className="whitespace-nowrap">Próxima revisión ML: {timeLeft}s</span>
+                            <span className="whitespace-nowrap">ML: {timeLeft}s</span>
                             {pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
                              <div className="ml-1 w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse"></div>
+                        </div>
+                    )}
+                    {auth?.user?.role === Role.Admin && auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus && (
+                        <div className="flex items-center gap-2 px-3 py-1 bg-white border border-emerald-400 rounded-full text-emerald-700 text-[10px] font-black shadow-sm cursor-pointer hover:bg-emerald-50 transition-all uppercase tracking-tighter">
+                            <IconShopify className="w-4 h-4 text-emerald-600" />
+                            <span className="whitespace-nowrap">Shopify: {shopifyTimeLeft}s</span>
+                            {shopifyPollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                             <div className="ml-1 w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></div>
                         </div>
                     )}
                     <div className="h-6 w-px bg-[var(--border-primary)] opacity-50"></div>

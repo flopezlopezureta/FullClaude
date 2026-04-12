@@ -55,6 +55,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     meliFlexValidation: true,
     saveFlexLabelPhoto: false,
     meliAutoImport: false,
+    shopifyAutoImport: false,
     publicTrackingEnabled: true,
     isRutRequired: true,
     labelFormat: LabelFormat.CompactThermal,

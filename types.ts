@@ -36,6 +36,7 @@ export interface SystemSettings {
     meliFlexValidation?: boolean;
     saveFlexLabelPhoto?: boolean;
     meliAutoImport?: boolean;
+    shopifyAutoImport?: boolean;
     publicTrackingEnabled?: boolean;
     isRutRequired?: boolean;
     flexDiscrepancyReportEnabled?: boolean;
