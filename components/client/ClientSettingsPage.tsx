@@ -9,14 +9,12 @@ const ClientSettingsPage: React.FC = () => {
     const [settings, setSettings] = useState({
         shopifyShopUrl: '',
         shopifyAccessToken: '',
-        shopifyWebhookSecret: '',
         wooUrl: '',
         wooConsumerKey: '',
         wooConsumerSecret: '',
     });
     const [passwordVisibility, setPasswordVisibility] = useState({
         shopifyAccessToken: false,
-        shopifyWebhookSecret: false,
         wooConsumerSecret: false,
     });
     const [isLoading, setIsLoading] = useState(true);
@@ -39,7 +37,6 @@ const ClientSettingsPage: React.FC = () => {
                 setSettings({
                     shopifyShopUrl: integrations.shopify?.shopUrl || '',
                     shopifyAccessToken: integrations.shopify?.accessToken || '',
-                    shopifyWebhookSecret: integrations.shopify?.webhookSecret || '',
                     wooUrl: integrations.woocommerce?.storeUrl || integrations.woocommerce?.wooUrl || '',
                     wooConsumerKey: integrations.woocommerce?.consumerKey || '',
                     wooConsumerSecret: integrations.woocommerce?.consumerSecret || '',
@@ -75,7 +72,6 @@ const ClientSettingsPage: React.FC = () => {
                 updatedIntegrations.shopify = {
                     shopUrl: settings.shopifyShopUrl,
                     accessToken: settings.shopifyAccessToken,
-                    webhookSecret: settings.shopifyWebhookSecret,
                 };
             } else {
                 updatedIntegrations.woocommerce = {
@@ -180,22 +176,6 @@ const ClientSettingsPage: React.FC = () => {
                                     />
                                     <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
                                         {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
-                                    </button>
-                                </div>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
-                                <div className="relative">
-                                    <input
-                                        type={passwordVisibility.shopifyWebhookSecret ? 'text' : 'password'}
-                                        name="shopifyWebhookSecret"
-                                        value={settings.shopifyWebhookSecret}
-                                        onChange={handleChange}
-                                        className={inputClasses}
-                                        autoComplete="new-password"
-                                    />
-                                    <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
                                     </button>
                                 </div>
                             </div>
@@ -310,26 +290,6 @@ const ClientSettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Webhook Info Card */}
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6">
-                <h4 className="text-blue-800 dark:text-blue-300 font-bold mb-2 flex items-center gap-2">
-                    <IconAlertTriangle className="w-5 h-5" />
-                    Importación Automática (Shopify)
-                </h4>
-                <p className="text-sm text-blue-700 dark:text-blue-400 mb-4">
-                    Para recibir pedidos de Shopify automáticamente, configura un Webhook en tu panel de Shopify (Configuración {'>'} Notificaciones {'>'} Crear Webhook):
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="bg-white dark:bg-gray-900 p-3 rounded border border-blue-100 dark:border-blue-900">
-                        <span className="text-xs font-bold text-gray-500 block">EVENTO</span>
-                        <code className="text-xs">Order creation</code>
-                    </div>
-                    <div className="bg-white dark:bg-gray-900 p-3 rounded border border-blue-100 dark:border-blue-900">
-                        <span className="text-xs font-bold text-gray-500 block">URL</span>
-                        <code className="text-xs break-all">https://fullenvios.selcom.cl/api/integrations/shopify/webhook</code>
-                    </div>
-                </div>
-            </div>
         </div>
     );
 };
