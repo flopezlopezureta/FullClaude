@@ -1,6 +1,6 @@
 {
   "name": "full-envios-app",
-  "version": "2.4.2",
+  "version": "2.4.5",
   "versionComment": "Versión 2.4.2: Impresión multi-etiqueta (grilla A4), nitidez QR y solución de pérdida de datos en sync-meli.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
