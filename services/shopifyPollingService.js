@@ -194,12 +194,17 @@ async function autoImportShopifyPackages() {
 
 let intervalId = null;
 
-function start(intervalMs = 5 * 60 * 1000) { 
+function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { 
     if (intervalId) return;
     currentIntervalMs = intervalMs;
-    pollShopifyPackages(); // Run immediately
-    intervalId = setInterval(pollShopifyPackages, intervalMs);
-    console.log(`[ShopifyPolling] Service started (Interval: ${intervalMs/1000/60} min)`);
+    
+    console.log(`[ShopifyPolling] Service starting (Interval: ${intervalMs/1000/60} min, Initial Delay: ${delayMs/1000}s)`);
+    
+    // Schedule first run and then the interval
+    setTimeout(() => {
+        pollShopifyPackages();
+        intervalId = setInterval(pollShopifyPackages, intervalMs);
+    }, delayMs);
 }
 
 function stop() {

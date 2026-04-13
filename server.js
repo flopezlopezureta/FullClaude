@@ -87,18 +87,25 @@ async function startServer() {
         await ensureAdminUser();
         await seedDatabase();
         
-        // Start background services
+        // Start background services with coordinated offsets to prevent overlap
+        // Default interval is 5 minutes (300,000ms)
+        const POLL_INTERVAL = 5 * 60 * 1000;
+        
         const meliPollingService = tryRequireRoute('./services/meliPollingService.js');
         if (meliPollingService && typeof meliPollingService.start === 'function') {
-            meliPollingService.start();
-            console.log('Background Service: Mercado Libre Polling started.');
+            // Start Meli immediately
+            meliPollingService.start(POLL_INTERVAL, 0);
+            console.log('Background Service: Mercado Libre Polling scheduled (0s delay).');
         }
-
+    
         const shopifyPollingService = tryRequireRoute('./services/shopifyPollingService.js');
         if (shopifyPollingService && typeof shopifyPollingService.start === 'function') {
-            shopifyPollingService.start();
-            console.log('Background Service: Shopify Polling started.');
+            // Offset Shopify by 2.5 minutes (half the interval)
+            const shopifyDelay = POLL_INTERVAL / 2;
+            shopifyPollingService.start(POLL_INTERVAL, shopifyDelay);
+            console.log(`Background Service: Shopify Polling scheduled (${shopifyDelay/1000}s delay).`);
         }
+
       } catch (initErr) {
         console.error('Failed to initialize database during startup:', initErr);
       }

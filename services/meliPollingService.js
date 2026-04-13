@@ -690,17 +690,20 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
 
 let intervalId = null;
 
-function start(intervalMs = 5 * 60 * 1000) { // Default 5 minutes
+function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { // Default 5 minutes
     if (intervalId) return;
     currentIntervalMs = intervalMs;
     
     // Run cleanup once on start
     cleanupDuplicates();
     
-    // Run immediately on start
-    pollMeliPackages();
+    console.log(`[MeliPolling] Service starting (Interval: ${intervalMs/1000/60} min, Initial Delay: ${delayMs/1000}s)`);
     
-    intervalId = setInterval(pollMeliPackages, intervalMs);
+    // Schedule first run and then the interval
+    setTimeout(() => {
+        pollMeliPackages();
+        intervalId = setInterval(pollMeliPackages, intervalMs);
+    }, delayMs);
 }
 
 function stop() {

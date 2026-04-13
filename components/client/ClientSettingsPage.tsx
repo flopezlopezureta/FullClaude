@@ -309,24 +309,25 @@ const ClientSettingsPage: React.FC = () => {
                             </div>
                         )}
                     </div>
-                    <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border-t border-[var(--border-primary)] flex justify-between items-center">
+                    <div className="p-4 bg-[var(--background-muted)] border-t border-[var(--border-primary)] flex justify-between items-center bg-opacity-50">
                         <button
                             onClick={handleTestWoo}
                             disabled={isTestingWoo || !settings.wooUrl || !settings.wooConsumerKey || !settings.wooConsumerSecret}
-                            className="text-sm font-medium text-[var(--text-secondary)] hover:text-[var(--brand-primary)] disabled:opacity-50 flex items-center gap-2"
+                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-sm font-bold rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
                         >
-                            {isTestingWoo ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4" />}
-                            Probar
+                            {isTestingWoo ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-purple-600" />}
+                            Probar Conexión
                         </button>
                         <button
                             onClick={() => handleSave('woocommerce')}
                             disabled={isSaving}
-                            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded-md shadow-sm disabled:opacity-50"
+                            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
                         >
-                            {isSaving ? 'Guardando...' : 'Guardar WooCommerce'}
+                            {isSaving ? 'Guardando...' : 'Guardar Configuración'}
                         </button>
                     </div>
                 </div>
+
             </div>
 
         </div>
