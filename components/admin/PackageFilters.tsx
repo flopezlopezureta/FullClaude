@@ -65,11 +65,18 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   const [isClientSearchOpen, setIsClientSearchOpen] = React.useState(false);
   const [clientSearchTerm, setClientSearchTerm] = React.useState('');
   const clientRef = React.useRef<HTMLDivElement>(null);
+  
+  const [isCommuneSearchOpen, setIsCommuneSearchOpen] = React.useState(false);
+  const [communeSearchTerm, setCommuneSearchTerm] = React.useState('');
+  const communeRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (clientRef.current && !clientRef.current.contains(event.target as Node)) {
             setIsClientSearchOpen(false);
+        }
+        if (communeRef.current && !communeRef.current.contains(event.target as Node)) {
+            setIsCommuneSearchOpen(false);
         }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -78,6 +85,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
 
   const filteredClients = clients.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
   const selectedClient = clients.find(c => c.id === clientFilter);
+  
+  const filteredCommunes = communes.filter(c => c.toLowerCase().includes(communeSearchTerm.toLowerCase()));
 
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
@@ -222,12 +231,58 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             })}
           </select>
         </div>
-        <div className="flex-shrink-0">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Comuna</label>
-          <select id="commune-filter" value={communeFilter} onChange={(e) => onCommuneChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por comuna">
-            <option value="">TODAS LAS COMUNAS</option>
-            {communes.map(commune => <option key={commune} value={commune}>{commune.toUpperCase()}</option>)}
-          </select>
+        <div className="flex-shrink-0 relative" ref={communeRef}>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Buscador Comuna</label>
+            <div 
+                className={`${selectClasses} font-bold text-xs !py-1.5 cursor-pointer flex justify-between items-center bg-white`}
+                onClick={() => setIsCommuneSearchOpen(!isCommuneSearchOpen)}
+            >
+                <span className="truncate max-w-[150px]">
+                    {communeFilter ? communeFilter.toUpperCase() : 'TODAS LAS COMUNAS'}
+                </span>
+                <span className="text-gray-400 ml-2 text-[10px]">▼</span>
+            </div>
+            
+            {isCommuneSearchOpen && (
+                <div className="absolute z-50 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-2xl right-0 sm:right-auto">
+                    <div className="p-2 border-b border-gray-100 bg-gray-50 rounded-t-md">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Escribe para buscar..."
+                                className="w-full pl-8 pr-2 py-1.5 text-xs font-bold border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                value={communeSearchTerm}
+                                onChange={(e) => setCommuneSearchTerm(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                <IconSearch className="w-4 h-4 text-gray-400" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                        <div 
+                            className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${!communeFilter ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700'}`}
+                            onClick={() => { onCommuneChange(''); setIsCommuneSearchOpen(false); setCommuneSearchTerm(''); }}
+                        >
+                            TODAS LAS COMUNAS
+                        </div>
+                        {filteredCommunes.map(commune => (
+                            <div 
+                                key={commune}
+                                className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${communeFilter === commune ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700 border-t border-gray-50'}`}
+                                onClick={() => { onCommuneChange(commune); setIsCommuneSearchOpen(false); setCommuneSearchTerm(''); }}
+                            >
+                                {commune.toUpperCase()}
+                            </div>
+                        ))}
+                        {filteredCommunes.length === 0 && (
+                            <div className="px-3 py-4 text-xs font-bold text-gray-400 text-center">No se encontraron comunas</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
             <button

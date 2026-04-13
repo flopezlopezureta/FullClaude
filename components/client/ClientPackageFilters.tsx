@@ -51,16 +51,25 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
+  const [isCommuneSearchOpen, setIsCommuneSearchOpen] = useState(false);
+  const [communeSearchTerm, setCommuneSearchTerm] = useState('');
+  const communeRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
             setIsStatusDropdownOpen(false);
         }
+        if (communeRef.current && !communeRef.current.contains(event.target as Node)) {
+            setIsCommuneSearchOpen(false);
+        }
     };
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
+
+  const filteredCommunes = communes.filter(c => c.toLowerCase().includes(communeSearchTerm.toLowerCase()));
 
   const customCheckboxClass = "w-4 h-4 text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500 focus:ring-offset-gray-800 focus:ring-2 cursor-pointer";
 
@@ -170,16 +179,58 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
         </div>
 
         {/* Comuna */}
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 relative" ref={communeRef}>
             <label className={labelClasses}>Comuna</label>
-             <select
-                value={communeFilter}
-                onChange={(e) => onCommuneChange(e.target.value)}
-                className={selectClasses}
+            <div 
+                className={`${selectClasses} cursor-pointer flex justify-between items-center`}
+                onClick={() => setIsCommuneSearchOpen(!isCommuneSearchOpen)}
             >
-                <option value="">Todas</option>
-                {communes.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
+                <span className="truncate pr-2">
+                    {communeFilter ? communeFilter.toUpperCase() : 'Todas'}
+                </span>
+                <IconChevronDown className="w-5 h-5 text-gray-400 flex-shrink-0" />
+            </div>
+            
+            {isCommuneSearchOpen && (
+                <div className="absolute z-50 mt-1 w-full sm:w-64 bg-white border border-[var(--border-primary)] rounded-md shadow-2xl right-0 sm:right-auto sm:left-0">
+                    <div className="p-2 border-b border-gray-100 bg-gray-50 rounded-t-md">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Buscar comuna..."
+                                className="w-full pl-8 pr-2 py-2 text-xs font-bold border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                value={communeSearchTerm}
+                                onChange={(e) => setCommuneSearchTerm(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                <IconSearch className="w-4 h-4 text-gray-400" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                        <div 
+                            className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${!communeFilter ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]' : 'hover:bg-gray-100 text-gray-700'}`}
+                            onClick={() => { onCommuneChange(''); setIsCommuneSearchOpen(false); setCommuneSearchTerm(''); }}
+                        >
+                            TODAS
+                        </div>
+                        {filteredCommunes.map(commune => (
+                            <div 
+                                key={commune}
+                                className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${communeFilter === commune ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]' : 'hover:bg-gray-100 text-gray-700 border-t border-gray-50'}`}
+                                onClick={() => { onCommuneChange(commune); setIsCommuneSearchOpen(false); setCommuneSearchTerm(''); }}
+                            >
+                                {commune.toUpperCase()}
+                            </div>
+                        ))}
+                        {filteredCommunes.length === 0 && (
+                            <div className="px-3 py-4 text-xs font-bold text-gray-400 text-center">No se encontraron comunas</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
 
         {/* Fechas */}
