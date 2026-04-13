@@ -85,6 +85,7 @@ async function getValidMeliToken(clientId) {
 let isPolling = false;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
+let nextScheduledTime = lastPollTime + currentIntervalMs;
 
 async function pollMeliPackages() {
     if (isPolling) {
@@ -252,6 +253,7 @@ async function pollMeliPackages() {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+        nextScheduledTime = Date.now() + currentIntervalMs;
     }
 }
 
@@ -693,6 +695,7 @@ let intervalId = null;
 function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { // Default 5 minutes
     if (intervalId) return;
     currentIntervalMs = intervalMs;
+    nextScheduledTime = Date.now() + delayMs;
     
     // Run cleanup once on start
     cleanupDuplicates();
@@ -715,7 +718,7 @@ function stop() {
 
 function getStatus() {
     return {
-        nextPollTime: lastPollTime + currentIntervalMs,
+        nextPollTime: nextScheduledTime,
         isPolling,
         intervalMs: currentIntervalMs
     };

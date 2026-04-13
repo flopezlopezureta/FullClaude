@@ -55,6 +55,7 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
 let isPolling = false;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
+let nextScheduledTime = lastPollTime + currentIntervalMs;
 
 async function pollShopifyPackages() {
     if (isPolling) {
@@ -85,6 +86,7 @@ async function pollShopifyPackages() {
         console.error('[ShopifyPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+        nextScheduledTime = Date.now() + currentIntervalMs;
     }
 }
 
@@ -197,6 +199,7 @@ let intervalId = null;
 function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { 
     if (intervalId) return;
     currentIntervalMs = intervalMs;
+    nextScheduledTime = Date.now() + delayMs;
     
     console.log(`[ShopifyPolling] Service starting (Interval: ${intervalMs/1000/60} min, Initial Delay: ${delayMs/1000}s)`);
     
@@ -218,7 +221,7 @@ function getStatus() {
     return {
         isPolling,
         lastPollTime,
-        nextPollTime: lastPollTime + currentIntervalMs
+        nextPollTime: nextScheduledTime
     };
 }
 
