@@ -70,6 +70,10 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   const [communeSearchTerm, setCommuneSearchTerm] = React.useState('');
   const communeRef = React.useRef<HTMLDivElement>(null);
 
+  const [isDriverSearchOpen, setIsDriverSearchOpen] = React.useState(false);
+  const [driverSearchTerm, setDriverSearchTerm] = React.useState('');
+  const driverRef = React.useRef<HTMLDivElement>(null);
+
   React.useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
         if (clientRef.current && !clientRef.current.contains(event.target as Node)) {
@@ -77,6 +81,9 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
         }
         if (communeRef.current && !communeRef.current.contains(event.target as Node)) {
             setIsCommuneSearchOpen(false);
+        }
+        if (driverRef.current && !driverRef.current.contains(event.target as Node)) {
+            setIsDriverSearchOpen(false);
         }
     };
     document.addEventListener('mousedown', handleClickOutside);
@@ -87,6 +94,9 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   const selectedClient = clients.find(c => c.id === clientFilter);
   
   const filteredCommunes = communes.filter(c => c.toLowerCase().includes(communeSearchTerm.toLowerCase()));
+
+  const filteredDrivers = drivers.filter(d => d.name.toLowerCase().includes(driverSearchTerm.toLowerCase()));
+  const selectedDriver = drivers.find(d => d.id === driverFilter);
 
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
@@ -141,12 +151,58 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                 />
             </div>
         </div>
-        <div className="flex-shrink-0">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Conductor</label>
-          <select id="driver-filter" value={driverFilter} onChange={(e) => onDriverChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por conductor">
-            <option value="">TODOS LOS CONDUCTORES</option>
-            {drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name.toUpperCase()}</option>)}
-          </select>
+        <div className="flex-shrink-0 relative" ref={driverRef}>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Buscador Conductor</label>
+            <div 
+                className={`${selectClasses} font-bold text-xs !py-1.5 cursor-pointer flex justify-between items-center bg-white`}
+                onClick={() => setIsDriverSearchOpen(!isDriverSearchOpen)}
+            >
+                <span className="truncate max-w-[150px]">
+                    {selectedDriver ? selectedDriver.name.toUpperCase() : 'TODOS LOS CONDUCTORES'}
+                </span>
+                <span className="text-gray-400 ml-2 text-[10px]">▼</span>
+            </div>
+            
+            {isDriverSearchOpen && (
+                <div className="absolute z-50 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-2xl">
+                    <div className="p-2 border-b border-gray-100 bg-gray-50 rounded-t-md">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Escribe para buscar..."
+                                className="w-full pl-8 pr-2 py-1.5 text-xs font-bold border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                value={driverSearchTerm}
+                                onChange={(e) => setDriverSearchTerm(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                <IconSearch className="w-4 h-4 text-gray-400" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                        <div 
+                            className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${!driverFilter ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700'}`}
+                            onClick={() => { onDriverChange(''); setIsDriverSearchOpen(false); setDriverSearchTerm(''); }}
+                        >
+                            TODOS LOS CONDUCTORES
+                        </div>
+                        {filteredDrivers.map(driver => (
+                            <div 
+                                key={driver.id}
+                                className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${driverFilter === driver.id ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700 border-t border-gray-50'}`}
+                                onClick={() => { onDriverChange(driver.id); setIsDriverSearchOpen(false); setDriverSearchTerm(''); }}
+                            >
+                                {driver.name.toUpperCase()}
+                            </div>
+                        ))}
+                        {filteredDrivers.length === 0 && (
+                            <div className="px-3 py-4 text-xs font-bold text-gray-400 text-center">No se encontraron conductores</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
         <div className="flex-shrink-0 relative" ref={clientRef}>
             <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Buscador Cliente</label>
