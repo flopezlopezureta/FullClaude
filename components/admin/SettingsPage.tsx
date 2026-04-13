@@ -448,8 +448,6 @@ const SettingsPage: React.FC = () => {
                         </label>
                     </div>
 
-                    {auth?.user?.email === 'admin' && (
-                        <>
                             <div className="pt-4 border-t border-[var(--border-primary)]">
                                 <label className="flex items-center justify-between cursor-pointer">
                                     <div>
@@ -487,8 +485,6 @@ const SettingsPage: React.FC = () => {
                                     </div>
                                 </label>
                             </div>
-                        </>
-                    )}
 
 
 
