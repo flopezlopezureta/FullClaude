@@ -62,6 +62,23 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onClientChange,
   onOpenQuickStatus,
 }) => {
+  const [isClientSearchOpen, setIsClientSearchOpen] = React.useState(false);
+  const [clientSearchTerm, setClientSearchTerm] = React.useState('');
+  const clientRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+        if (clientRef.current && !clientRef.current.contains(event.target as Node)) {
+            setIsClientSearchOpen(false);
+        }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const filteredClients = clients.filter(c => c.name.toLowerCase().includes(clientSearchTerm.toLowerCase()));
+  const selectedClient = clients.find(c => c.id === clientFilter);
+
   const selectClasses = "block w-full pl-3 pr-10 py-2 border border-[var(--border-secondary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm";
   
   return (
@@ -122,12 +139,58 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             {drivers.map(driver => <option key={driver.id} value={driver.id}>{driver.name.toUpperCase()}</option>)}
           </select>
         </div>
-        <div className="flex-shrink-0">
-            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Cliente</label>
-          <select id="client-filter" value={clientFilter} onChange={(e) => onClientChange(e.target.value)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por cliente">
-            <option value="">TODOS LOS CLIENTES</option>
-            {clients.map(client => <option key={client.id} value={client.id}>{client.name.toUpperCase()}</option>)}
-          </select>
+        <div className="flex-shrink-0 relative" ref={clientRef}>
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Buscador Cliente</label>
+            <div 
+                className={`${selectClasses} font-bold text-xs !py-1.5 cursor-pointer flex justify-between items-center bg-white`}
+                onClick={() => setIsClientSearchOpen(!isClientSearchOpen)}
+            >
+                <span className="truncate max-w-[150px]">
+                    {selectedClient ? selectedClient.name.toUpperCase() : 'TODOS LOS CLIENTES'}
+                </span>
+                <span className="text-gray-400 ml-2 text-[10px]">▼</span>
+            </div>
+            
+            {isClientSearchOpen && (
+                <div className="absolute z-50 mt-1 w-64 bg-white border border-gray-200 rounded-md shadow-2xl">
+                    <div className="p-2 border-b border-gray-100 bg-gray-50 rounded-t-md">
+                        <div className="relative">
+                            <input
+                                type="text"
+                                placeholder="Escribe para buscar..."
+                                className="w-full pl-8 pr-2 py-1.5 text-xs font-bold border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 shadow-inner"
+                                value={clientSearchTerm}
+                                onChange={(e) => setClientSearchTerm(e.target.value)}
+                                onClick={(e) => e.stopPropagation()}
+                                autoFocus
+                            />
+                            <div className="absolute inset-y-0 left-0 flex items-center pl-2 pointer-events-none">
+                                <IconSearch className="w-4 h-4 text-gray-400" />
+                            </div>
+                        </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto">
+                        <div 
+                            className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${!clientFilter ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700'}`}
+                            onClick={() => { onClientChange(''); setIsClientSearchOpen(false); setClientSearchTerm(''); }}
+                        >
+                            TODOS LOS CLIENTES
+                        </div>
+                        {filteredClients.map(client => (
+                            <div 
+                                key={client.id}
+                                className={`px-3 py-2.5 text-xs font-bold cursor-pointer transition-colors ${clientFilter === client.id ? 'bg-blue-100 text-blue-800' : 'hover:bg-gray-100 text-gray-700 border-t border-gray-50'}`}
+                                onClick={() => { onClientChange(client.id); setIsClientSearchOpen(false); setClientSearchTerm(''); }}
+                            >
+                                {client.name.toUpperCase()}
+                            </div>
+                        ))}
+                        {filteredClients.length === 0 && (
+                            <div className="px-3 py-4 text-xs font-bold text-gray-400 text-center">No se encontraron clientes</div>
+                        )}
+                    </div>
+                </div>
+            )}
         </div>
         <div className="flex-shrink-0 w-32">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Flex</label>
@@ -180,7 +243,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                 className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border border-blue-600 text-sm font-black rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 hover:shadow-md transition-all uppercase tracking-wider"
             >
                 <IconSearch className="w-5 h-5 mr-3 -ml-1"/>
-                Consultar ID
+                Consultar ID Flex
             </button>
             <button
                 onClick={onOpenImportModal}
