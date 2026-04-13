@@ -628,21 +628,7 @@ const Dashboard: React.FC = () => {
                         )}
                     </div>
                 </div>
-                 <div className="flex items-center gap-2">
-                    <label htmlFor="client-filter-select" className="text-[10px] font-black text-gray-500 uppercase tracking-widest whitespace-nowrap">Cliente:</label>
-                    <select
-                        id="client-filter-select"
-                        value={clientFilter}
-                        onChange={(e) => setClientFilter(e.target.value)}
-                        className="w-44 border border-gray-300 rounded-lg py-1.5 pl-3 pr-8 text-xs font-bold focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all bg-white shadow-sm"
-                        aria-label="Filtrar por cliente"
-                    >
-                        <option value="">Todos los Clientes</option>
-                        {clients.map(client => (
-                            <option key={client.id} value={client.id}>{client.name}</option>
-                        ))}
-                    </select>
-                </div>
+
             </div>
 
             </div>
