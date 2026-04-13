@@ -72,7 +72,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
     <div className="bg-[var(--background-secondary)] shadow-sm rounded-lg p-5 mb-6 border border-[var(--border-primary)]">
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-5 items-end">
         {/* Search */}
-        <div className="relative lg:col-span-3">
+        <div className="relative lg:col-span-2">
           <label className={labelClasses}>Búsqueda</label>
           <div className="relative">
             <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
@@ -156,16 +156,16 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
         </div>
 
         {/* Flex */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-2">
           <label className={labelClasses}>Flex</label>
           <select
             value={flexFilter}
             onChange={(e) => onFlexFilterChange(e.target.value as any)}
-            className={selectClasses}
+            className={`${selectClasses} text-xs uppercase tracking-wide`}
           >
-            <option value="all">Todos</option>
-            <option value="flexed">Flex</option>
-            <option value="not_flexed">No</option>
+            <option value="all">TODOS</option>
+            <option value="flexed">FLEXEADOS</option>
+            <option value="not_flexed">NO FLEXEADOS</option>
           </select>
         </div>
 
