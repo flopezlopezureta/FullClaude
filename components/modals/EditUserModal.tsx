@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify, IconWoocommerce, IconFalabella } from '../Icon';
+import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify, IconWoocommerce, IconFalabella, IconPlugConnected, IconAlertTriangle } from '../Icon';
 import type { User, Vehicle, UserPricing, IntegrationSettings } from '../../types';
 import { Role } from '../../constants';
 import { UserUpdateData, api } from '../../services/api';
@@ -108,6 +108,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
+    
+    // Test States for Admin Editing
+    const [isTestingShopify, setIsTestingShopify] = useState(false);
+    const [shopifyTestResult, setShopifyTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [isTestingWoo, setIsTestingWoo] = useState(false);
+    const [wooTestResult, setWooTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
 
     const passwordRequirements = [
         { label: "Mínimo 8 caracteres", test: (p: string) => p.length >= 8 },
@@ -241,6 +248,43 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
             alert(`La conexión con ${type} aún no está implementada.`);
         }
     };
+
+    const handleTestShopify = async () => {
+        setIsTestingShopify(true);
+        setShopifyTestResult(null);
+        try {
+            const result = await api.testShopifyConnection({
+                shopifyShopUrl: clientShopifyUrl,
+                shopifyAccessToken: clientShopifyToken
+            });
+            setShopifyTestResult({ 
+                type: 'success', 
+                message: result.shopName ? `${result.message} (Tienda: ${result.shopName})` : result.message 
+            });
+        } catch (err: any) {
+            setShopifyTestResult({ type: 'error', message: err.message || 'Error de conexión' });
+        } finally {
+            setIsTestingShopify(false);
+        }
+    };
+
+    const handleTestWoo = async () => {
+        setIsTestingWoo(true);
+        setWooTestResult(null);
+        try {
+            const result = await api.testWooCommerceConnection({
+                wooUrl: clientWooUrl,
+                wooConsumerKey: clientWooKey,
+                wooConsumerSecret: clientWooSecret
+            });
+            setWooTestResult({ type: 'success', message: result.message });
+        } catch (err: any) {
+            setWooTestResult({ type: 'error', message: err.message || 'Error de conexión' });
+        } finally {
+            setIsTestingWoo(false);
+        }
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -494,8 +538,29 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                             <div className="text-xs text-[var(--text-muted)] italic">
                                                 Estos datos se guardarán al hacer clic en "Guardar Cambios" abajo.
                                             </div>
+
+                                            {/* Shopify Test Results */}
+                                            {shopifyTestResult && (
+                                                <div className={`p-3 rounded-md text-sm ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
+                                                        {shopifyTestResult.message}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={handleTestShopify}
+                                                disabled={isTestingShopify || !clientShopifyUrl || !clientShopifyToken}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-xs font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors"
+                                            >
+                                                {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-[var(--brand-primary)]" />}
+                                                Probar Conexión Shopify
+                                            </button>
                                         </div>
                                     </div>
+
 
                                     {/* --- WooCommerce --- */}
                                     <div className="pt-4 border-t border-[var(--border-secondary)]">
@@ -542,7 +607,28 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                                 </div>
                                             </div>
                                         </div>
+                                        
+                                        {/* WooCommerce Test Results */}
+                                        {wooTestResult && (
+                                            <div className={`mt-3 p-3 rounded-md text-sm ${wooTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                                <div className="flex items-center gap-2">
+                                                    {wooTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
+                                                    {wooTestResult.message}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        <button
+                                            type="button"
+                                            onClick={handleTestWoo}
+                                            disabled={isTestingWoo || !clientWooUrl || !clientWooKey || !clientWooSecret}
+                                            className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-xs font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors"
+                                        >
+                                            {isTestingWoo ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-purple-600" />}
+                                            Probar Conexión WooCommerce
+                                        </button>
                                     </div>
+
 
                                     {/* --- Falabella --- */}
                                     <div className="pt-4 border-t border-[var(--border-secondary)]">
