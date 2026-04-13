@@ -449,24 +449,45 @@ const SettingsPage: React.FC = () => {
                     </div>
 
                     {auth?.user?.email === 'admin' && (
-                        <div className="pt-4 border-t border-[var(--border-primary)]">
-                            <label className="flex items-center justify-between cursor-pointer">
-                                <div>
-                                    <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Reporte de Discrepancias Flex</h3>
-                                    <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, los administradores y operadores podrán ver el reporte de paquetes asignados pero no escaneados en bodega.</p>
-                                </div>
-                                <div className="relative">
-                                    <input
-                                        type="checkbox"
-                                        name="flexDiscrepancyReportEnabled"
-                                        checked={settings.flexDiscrepancyReportEnabled}
-                                        onChange={handleSettingsChange}
-                                        className="sr-only peer"
-                                    />
-                                    <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
-                                </div>
-                            </label>
-                        </div>
+                        <>
+                            <div className="pt-4 border-t border-[var(--border-primary)]">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Reporte de Discrepancias Flex</h3>
+                                        <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, los administradores y operadores podrán ver el reporte de paquetes asignados pero no escaneados en bodega.</p>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            name="flexDiscrepancyReportEnabled"
+                                            checked={settings.flexDiscrepancyReportEnabled}
+                                            onChange={handleSettingsChange}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                                    </div>
+                                </label>
+                            </div>
+
+                            <div className="pt-4 border-t border-[var(--border-primary)]">
+                                <label className="flex items-center justify-between cursor-pointer">
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Exportación a Circuit Route Planner</h3>
+                                        <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Habilita el botón de exportación de rutas para conductores. Esto genera un archivo CSV compatible con Circuit.</p>
+                                    </div>
+                                    <div className="relative">
+                                        <input
+                                            type="checkbox"
+                                            name="circuitExportEnabled"
+                                            checked={settings.circuitExportEnabled}
+                                            onChange={handleSettingsChange}
+                                            className="sr-only peer"
+                                        />
+                                        <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                                    </div>
+                                </label>
+                            </div>
+                        </>
                     )}
 
 
@@ -539,7 +560,7 @@ const SettingsPage: React.FC = () => {
                     <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación y Funciones</h2>
                     
                     <div className="space-y-6">
-                        <div className="flex items-center justify-between pb-4 border-b border-[var(--border-primary)] border-dashed">
+                        <div className="flex items-center justify-between">
                             <div className="pr-4">
                                 <p className="font-bold text-[var(--text-primary)] flex items-center gap-2">
                                     <IconAlertTriangle className="w-5 h-5 text-amber-500" />
@@ -559,32 +580,6 @@ const SettingsPage: React.FC = () => {
                             >
                                 {settings.isAppEnabled ? 'DESHABILITAR APP' : 'HABILITAR APP'}
                             </button>
-                        </div>
-
-                        <div className="flex items-center justify-between">
-                            <div className="pr-4">
-                                <p className="font-bold text-[var(--text-primary)] flex items-center gap-2">
-                                    <IconTruck className="w-5 h-5 text-indigo-500" />
-                                    Exportación a Circuit Route Planner
-                                </p>
-                                <p className="text-xs text-[var(--text-muted)] mt-1">
-                                    Habilita el botón de exportación de rutas para conductores. Esto genera un archivo CSV compatible con Circuit.
-                                </p>
-                            </div>
-                            <div className="relative inline-block w-16 align-middle select-none transition duration-200 ease-in">
-                                <input
-                                    type="checkbox"
-                                    name="circuitExportEnabled"
-                                    id="circuitExportEnabled"
-                                    checked={settings.circuitExportEnabled}
-                                    onChange={handleSettingsChange}
-                                    className="sr-only peer"
-                                />
-                                <label
-                                    htmlFor="circuitExportEnabled"
-                                    className="block h-8 bg-gray-300 rounded-full cursor-pointer peer-checked:bg-emerald-500 transition-colors after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-6 after:w-6 after:transition-all peer-checked:after:translate-x-8"
-                                ></label>
-                            </div>
                         </div>
                     </div>
                 </div>
