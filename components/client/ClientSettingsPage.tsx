@@ -189,7 +189,6 @@ const ClientSettingsPage: React.FC = () => {
                                     autoComplete="off"
                                 />
                             </div>
-                            </div>
                             
                             {settings.shopifyAccessToken ? (
                                 <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex flex-col gap-2">
