@@ -212,10 +212,32 @@ const ClientSettingsPage: React.FC = () => {
                                         className="w-full py-2 bg-[#95bf47] hover:bg-[#86ac40] text-white text-sm font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                                     >
                                         <IconShopify className="w-5 h-5 text-white" />
-                                        Conectar con Shopify
+                                        Conectar automáticamente
                                     </button>
                                 </div>
                             )}
+
+                            <div className="pt-4 border-t border-[var(--border-primary)]">
+                                <label className="block text-sm font-bold text-[var(--text-primary)] mb-1">💡 Conexión Manual / Token Avanzado</label>
+                                <p className="text-xs text-[var(--text-secondary)] mb-2">
+                                    Si el botón verde falla, o si tu tienda usa una App Privada, puedes pegar tu token (shpat_) aquí. Borra este cuadro si quieres desconectar la tienda.
+                                </p>
+                                <div className="relative">
+                                    <input
+                                        type={passwordVisibility.shopifyAccessToken ? 'text' : 'password'}
+                                        name="shopifyAccessToken"
+                                        value={settings.shopifyAccessToken || ''}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="shpat_xxxxxxxxxxxxxxxx"
+                                        autoComplete="new-password"
+                                    />
+                                    <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
+                                    </button>
+                                </div>
+                            </div>
+
 
                             <div className="pt-4 border-t border-[var(--border-primary)]">
                                 <label className="flex items-center justify-between cursor-pointer">
