@@ -1450,8 +1450,9 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
         const scopes = 'read_orders,write_orders,read_customers,read_fulfillments,write_fulfillments';
         const host = req.get('host');
         
-        // Force https as the app might run behind a proxy
-        const redirectUri = encodeURIComponent(`https://${host}/api/integrations/shopify/callback`);
+        // Determinar el protocolo dinámicamente: localhost permite http, servidores reales exigen https
+        const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+        const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/shopify/callback`);
         const formattedShop = shop.replace(/^https?:\/\//, '').split('/')[0].trim();
 
         // Security: include userId securely in the state to assign the final token strictly to them
