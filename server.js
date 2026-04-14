@@ -525,6 +525,18 @@ async function initializeDatabase() {
 
         // --- MIGRATIONS: Add Shopify fields ---
         try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_client_id TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_client_id" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_client_id):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_client_secret TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_client_secret" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_client_secret):', err); }
+        }
+        try {
             await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_shop_url TEXT');
             console.log('MIGRATION APPLIED: Column "shopify_shop_url" added to "integration_settings".');
         } catch (err) {

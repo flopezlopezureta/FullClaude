@@ -108,6 +108,8 @@ const IntegrationSettingsPage: React.FC = () => {
         setShopifyTestResult(null);
         try {
             await api.updateIntegrationSettings({
+                shopifyClientId: settings.shopifyClientId,
+                shopifyClientSecret: settings.shopifyClientSecret,
                 shopifyShopUrl: settings.shopifyShopUrl,
                 shopifyAccessToken: settings.shopifyAccessToken,
                 shopifyWebhookSecret: settings.shopifyWebhookSecret
@@ -405,7 +407,32 @@ const IntegrationSettingsPage: React.FC = () => {
                     <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para Custom App en Shopify.</p>
                     <div className="space-y-4">
                         <div>
-                            <label htmlFor="shopifyShopUrl" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda</label>
+                            <label htmlFor="shopifyClientId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client ID (OAuth 2026)</label>
+                            <input
+                                type="text"
+                                id="shopifyClientId"
+                                name="shopifyClientId"
+                                value={settings.shopifyClientId || ''}
+                                onChange={handleChange}
+                                className={inputClasses}
+                                placeholder="Ingresa el Client ID de tu App Pública de Shopify"
+                            />
+                        </div>
+                        <div>
+                            <label htmlFor="shopifyClientSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client Secret (OAuth 2026)</label>
+                            <input
+                                type="text"
+                                id="shopifyClientSecret"
+                                name="shopifyClientSecret"
+                                value={settings.shopifyClientSecret || ''}
+                                onChange={handleChange}
+                                className={inputClasses}
+                                placeholder="Ingresa el Client Secret"
+                            />
+                        </div>
+                        <hr className="border-[var(--border-secondary)] my-4" />
+                        <div>
+                            <label htmlFor="shopifyShopUrl" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda Principal (Legacy)</label>
                             <input
                                 type="text"
                                 id="shopifyShopUrl"

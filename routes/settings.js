@@ -280,11 +280,13 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
             meliClientSecret: rows[0].meli_client_secret,
+            shopifyClientId: rows[0].shopify_client_id,
+            shopifyClientSecret: rows[0].shopify_client_secret,
             shopifyShopUrl: rows[0].shopify_shop_url,
             shopifyAccessToken: rows[0].shopify_access_token,
             githubToken: rows[0].github_token,
@@ -306,6 +308,7 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
 router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
     const { 
         meliAppId, meliClientSecret, 
+        shopifyClientId, shopifyClientSecret,
         shopifyShopUrl, shopifyAccessToken, 
         githubToken, githubRepo, githubOwner,
         wooUrl, wooConsumerKey, wooConsumerSecret,
@@ -327,6 +330,14 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
         if (meliClientSecret !== undefined) {
             updates.push(`meli_client_secret = $${idx++}`);
             values.push(meliClientSecret);
+        }
+        if (shopifyClientId !== undefined) {
+            updates.push(`shopify_client_id = $${idx++}`);
+            values.push(shopifyClientId);
+        }
+        if (shopifyClientSecret !== undefined) {
+            updates.push(`shopify_client_secret = $${idx++}`);
+            values.push(shopifyClientSecret);
         }
         if (shopifyShopUrl !== undefined) {
             updates.push(`shopify_shop_url = $${idx++}`);
@@ -375,11 +386,12 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             
             await logAction(req.user.id, req.user.name, 'UPDATE_INTEGRATIONS', { updatedFields: updates });
 
-            // Return updated settings
             const saved = rows[0];
             res.status(200).json({
                 meliAppId: saved.meli_app_id,
                 meliClientSecret: saved.meli_client_secret,
+                shopifyClientId: saved.shopify_client_id,
+                shopifyClientSecret: saved.shopify_client_secret,
                 shopifyShopUrl: saved.shopify_shop_url,
                 shopifyAccessToken: saved.shopify_access_token,
                 githubToken: saved.github_token,
