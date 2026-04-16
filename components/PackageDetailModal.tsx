@@ -273,6 +273,9 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                   <p className="text-[var(--text-secondary)] text-lg">{recipientNameForDisplay}</p>
                   <div className="mt-2 space-y-0.5 text-sm text-[var(--text-secondary)]">
                       <p><span className="font-medium text-[var(--text-primary)]">Teléfono:</span> {recipientPhoneForDisplay || 'N/A'}</p>
+                      {pkg.recipientEmail && (
+                          <p><span className="font-medium text-[var(--text-primary)]">Email:</span> {pkg.recipientEmail}</p>
+                      )}
                       <p><span className="font-medium text-[var(--text-primary)]">Comuna:</span> {recipientCommuneForDisplay || 'N/A'}</p>
                       <p><span className="font-medium text-[var(--text-primary)]">Ciudad:</span> {pkg.recipientCity || 'N/A'}</p>
                       {pkg.meliFlexCode && (

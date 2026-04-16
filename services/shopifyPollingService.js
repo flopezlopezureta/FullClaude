@@ -46,6 +46,13 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
                 }
             });
         });
+
+        // Set 15s timeout
+        req.setTimeout(15000, () => {
+           req.destroy();
+           reject(new Error('Shopify API request timed out after 15s'));
+        });
+
         req.on('error', (e) => reject(e));
         if (postData) req.write(typeof postData === 'string' ? postData : JSON.stringify(postData));
         req.end();
@@ -53,6 +60,7 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
 };
 
 let isPolling = false;
+let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
@@ -63,6 +71,7 @@ async function pollShopifyPackages() {
         return;
     }
     isPolling = true;
+    pollingStartTime = Date.now();
     lastPollTime = Date.now();
     console.log('[ShopifyPolling] Starting poll cycle...');
     try {
@@ -86,6 +95,7 @@ async function pollShopifyPackages() {
         console.error('[ShopifyPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+        pollingStartTime = null;
         nextScheduledTime = Date.now() + currentIntervalMs;
     }
 }
@@ -153,6 +163,7 @@ async function autoImportShopifyPackages() {
                             id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
                             recipientName: `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'N/A',
                             recipientPhone: address.phone || 'N/A',
+                            recipientEmail: order.email || '',
                             status: 'PENDIENTE',
                             shippingType: 'SAME_DAY',
                             origin: 'Centro de Distribución',
@@ -218,8 +229,16 @@ function stop() {
 }
 
 function getStatus() {
+    // Dead Man's Switch: if polling for > 10 mins, force reset
+    if (isPolling && pollingStartTime && (Date.now() - pollingStartTime > 10 * 60 * 1000)) {
+        console.warn('[ShopifyPolling] Polling cycle took too long (>10m), triggering emergency reset.');
+        isPolling = false;
+        pollingStartTime = null;
+    }
+
     return {
         isPolling,
+        pollingStartTime,
         lastPollTime,
         nextPollTime: nextScheduledTime
     };

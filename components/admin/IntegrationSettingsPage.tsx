@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { api } from '../../services/api';
 import type { IntegrationSettings } from '../../types';
-import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload, IconWoocommerce, IconFalabella } from '../Icon';
+import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload, IconWoocommerce, IconFalabella, IconMail } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const IntegrationSettingsPage: React.FC = () => {
@@ -21,6 +21,11 @@ const IntegrationSettingsPage: React.FC = () => {
         wooConsumerSecret: '',
         falabellaApiKey: '',
         falabellaSellerId: '',
+        smtpHost: '',
+        smtpPort: '',
+        smtpUser: '',
+        smtpPassword: '',
+        smtpFrom: '',
     });
     const [passwordVisibility, setPasswordVisibility] = useState({
         meliClientSecret: false,
@@ -29,6 +34,7 @@ const IntegrationSettingsPage: React.FC = () => {
         githubToken: false,
         wooConsumerSecret: false,
         falabellaApiKey: false,
+        smtpPassword: false,
     });
     const [isLoading, setIsLoading] = useState(true);
     
@@ -38,6 +44,7 @@ const IntegrationSettingsPage: React.FC = () => {
     const [isSavingGithub, setIsSavingGithub] = useState(false);
     const [isSavingWoo, setIsSavingWoo] = useState(false);
     const [isSavingFalabella, setIsSavingFalabella] = useState(false);
+    const [isSavingSmtp, setIsSavingSmtp] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
     
     // Meli Test State
@@ -59,6 +66,10 @@ const IntegrationSettingsPage: React.FC = () => {
 
     // GitHub Backup State
     const [backupResult, setBackupResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+    // SMTP Test State
+    const [isTestingSmtp, setIsTestingSmtp] = useState(false);
+    const [smtpTestResult, setSmtpTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -169,6 +180,48 @@ const IntegrationSettingsPage: React.FC = () => {
             alert('Error al guardar configuración de Falabella.');
         } finally {
             setIsSavingFalabella(false);
+        }
+    };
+    
+    const handleSaveSmtp = async () => {
+        setIsSavingSmtp(true);
+        setSmtpTestResult(null);
+        try {
+            await api.updateIntegrationSettings({
+                smtpHost: settings.smtpHost,
+                smtpPort: settings.smtpPort,
+                smtpUser: settings.smtpUser,
+                smtpPassword: settings.smtpPassword,
+                smtpFrom: settings.smtpFrom
+            });
+            alert('Configuración SMTP guardada con éxito.');
+        } catch (err: any) {
+            alert('Error al guardar configuración SMTP.');
+        } finally {
+            setIsSavingSmtp(false);
+        }
+    };
+
+    const handleTestSmtpConnection = async () => {
+        if (!settings.smtpHost || !settings.smtpPort || !settings.smtpUser || !settings.smtpPassword) {
+            setSmtpTestResult({ type: 'error', message: 'Por favor completa todos los campos SMTP para realizar la prueba.' });
+            return;
+        }
+
+        setIsTestingSmtp(true);
+        setSmtpTestResult(null);
+        try {
+            const result = await api.testSmtpConnection({
+                smtpHost: settings.smtpHost,
+                smtpPort: settings.smtpPort,
+                smtpUser: settings.smtpUser,
+                smtpPassword: settings.smtpPassword
+            });
+            setSmtpTestResult({ type: 'success', message: result.message });
+        } catch (err: any) {
+            setSmtpTestResult({ type: 'error', message: err.message || 'Error en la prueba de conexión SMTP.' });
+        } finally {
+            setIsTestingSmtp(false);
         }
     };
 
@@ -688,7 +741,124 @@ const IntegrationSettingsPage: React.FC = () => {
                             </div>
                         )}
                     </div>
+                    </div>
                 </div>
+            </div>
+
+            {/* SMTP Card - Restricted to Super Admin */}
+            {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl') && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8">
+                    <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <IconMail className="w-6 h-6 text-blue-500" />
+                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Servidor de Correo (SMTP)</h3>
+                            </div>
+                            <button
+                                onClick={handleSaveSmtp}
+                                disabled={isSavingSmtp}
+                                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 transition-colors"
+                            >
+                                {isSavingSmtp ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
+                                Guardar SMTP
+                            </button>
+                        </div>
+
+                        <p className="text-sm text-[var(--text-muted)] mb-4">Configura tu servidor SMTP para el envío de notificaciones automáticas a clientes finales.</p>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                <div className="md:col-span-2">
+                                    <label htmlFor="smtpHost" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Host SMTP</label>
+                                    <input
+                                        type="text"
+                                        id="smtpHost"
+                                        name="smtpHost"
+                                        value={settings.smtpHost || ''}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="smtp.ejemplo.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="smtpPort" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Puerto</label>
+                                    <input
+                                        type="text"
+                                        id="smtpPort"
+                                        name="smtpPort"
+                                        value={settings.smtpPort || ''}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="465 o 587"
+                                    />
+                                </div>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="smtpUser" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nombre de Usuario / Email</label>
+                                    <input
+                                        type="text"
+                                        id="smtpUser"
+                                        name="smtpUser"
+                                        value={settings.smtpUser || ''}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="usuario@dominio.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="smtpPassword" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Contraseña</label>
+                                    <div className="relative">
+                                        <input
+                                            type={passwordVisibility.smtpPassword ? 'text' : 'password'}
+                                            id="smtpPassword"
+                                            name="smtpPassword"
+                                            value={settings.smtpPassword || ''}
+                                            onChange={handleChange}
+                                            className={`${inputClasses} pr-10`}
+                                            placeholder="************************"
+                                        />
+                                        <button type="button" onClick={() => togglePasswordVisibility('smtpPassword')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            {passwordVisibility.smtpPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div>
+                                <label htmlFor="smtpFrom" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Email Remitente (De:)</label>
+                                <input
+                                    type="text"
+                                    id="smtpFrom"
+                                    name="smtpFrom"
+                                    value={settings.smtpFrom || ''}
+                                    onChange={handleChange}
+                                    className={inputClasses}
+                                    placeholder="Notificaciones Full Envíos <noreply@dominio.com>"
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">
+                                <button
+                                    type="button"
+                                    onClick={handleTestSmtpConnection}
+                                    disabled={isTestingSmtp}
+                                    className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
+                                >
+                                    {isTestingSmtp ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2"/>}
+                                    Probar Conexión SMTP
+                                </button>
+                            </div>
+
+                            {smtpTestResult && (
+                                <div className={`p-3 rounded-md flex items-center text-sm font-medium ${smtpTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {smtpTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                    {smtpTestResult.message}
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* GitHub Backup Section */}
             {auth?.user?.email === 'admin' && (
                 <div className="bg-[var(--background-paper)] rounded-xl shadow-sm border border-[var(--border-color)] overflow-hidden">

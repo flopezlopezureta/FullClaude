@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy, IconMail } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageListItemProps {
@@ -221,6 +221,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                     )}
                     <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
                         {pkg.source && sourceIcons[pkg.source]}
+                        {pkg.recipientEmail && <IconMail title={`Email: ${pkg.recipientEmail}`} className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
                         {pkg.source === 'MERCADO_LIBRE' && (
                             pkg.isFlexed ? (
                                 <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-green-100 text-green-800 border border-green-200">

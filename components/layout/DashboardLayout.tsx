@@ -1,6 +1,5 @@
-
-import React, { useState, useContext, useEffect } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
+import { useToast } from '../../contexts/ToastContext';
 import Sidebar from './Sidebar';
 import Dashboard from '../Dashboard';
 import UserManagement from '../admin/UserManagement';
@@ -26,7 +25,7 @@ import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
-  const [notification, setNotification] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const { notification, showToast, clearNotification } = useToast();
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -34,22 +33,22 @@ const DashboardLayout: React.FC = () => {
     const source = params.get('source');
     if (status === 'success') {
       const sourceName = source === 'meli' ? 'Mercado Libre' : source;
-      setNotification({ type: 'success', message: `¡Integración con ${sourceName} conectada con éxito!` });
+      showToast(`¡Integración con ${sourceName} conectada con éxito!`, 'success');
       // Clean URL
       window.history.replaceState({}, document.title, window.location.pathname);
     } else if (status === 'error') {
       const message = params.get('message') || 'Ocurrió un error desconocido durante la integración.';
-      setNotification({ type: 'error', message: `Error: ${decodeURIComponent(message)}` });
+      showToast(`Error: ${decodeURIComponent(message)}`, 'error');
        window.history.replaceState({}, document.title, window.location.pathname);
     }
   }, []);
 
   useEffect(() => {
     if (notification) {
-      const timer = setTimeout(() => setNotification(null), 5000);
+      const timer = setTimeout(() => clearNotification(), 5000);
       return () => clearTimeout(timer);
     }
-  }, [notification]);
+  }, [notification, clearNotification]);
   
   const isSuperUser = user?.email === 'admin';
 

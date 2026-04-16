@@ -22,6 +22,13 @@ const makeMeliRequest = (options, postData = null) => {
                 }
             });
         });
+
+        // Set 15s timeout
+        req.setTimeout(15000, () => {
+           req.destroy();
+           reject(new Error('Meli API request timed out after 15s'));
+        });
+
         req.on('error', (e) => reject(e));
         if (postData) req.write(postData);
         req.end();
@@ -83,6 +90,7 @@ async function getValidMeliToken(clientId) {
 }
 
 let isPolling = false;
+let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
@@ -93,6 +101,7 @@ async function pollMeliPackages() {
         return;
     }
     isPolling = true;
+    pollingStartTime = Date.now();
     lastPollTime = Date.now();
     console.log('[MeliPolling] Starting poll cycle...');
     try {
@@ -250,6 +259,7 @@ async function pollMeliPackages() {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+        pollingStartTime = null;
         nextScheduledTime = Date.now() + currentIntervalMs;
     }
 }
@@ -652,6 +662,7 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
             id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
             recipientName: shipment.receiver_address?.receiver_name || 'N/A',
             recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
+            recipientEmail: shipment.buyer?.email || null,
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
             origin: 'Centro de Distribución',
@@ -714,9 +725,17 @@ function stop() {
 }
 
 function getStatus() {
+    // Dead Man's Switch: if polling for > 10 mins, force reset
+    if (isPolling && pollingStartTime && (Date.now() - pollingStartTime > 10 * 60 * 1000)) {
+        console.warn('[MeliPolling] Polling cycle took too long (>10m), triggering emergency reset.');
+        isPolling = false;
+        pollingStartTime = null;
+    }
+
     return {
         nextPollTime: nextScheduledTime,
         isPolling,
+        pollingStartTime,
         intervalMs: currentIntervalMs
     };
 }

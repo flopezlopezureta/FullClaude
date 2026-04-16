@@ -256,7 +256,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
     }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
     
     // Validation
     const requiredFields = {
@@ -317,6 +317,7 @@ router.post('/', authMiddleware, async (req, res) => {
             shopifyOrderId,
             wooOrderId,
             trackingId,
+            recipientEmail,
             destLatitude: coords.lat,
             destLongitude: coords.lng
         };
@@ -376,6 +377,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     creatorId, 
                     recipientName, 
                     recipientPhone, 
+                    recipientEmail,
                     recipientAddress, 
                     recipientCommune, 
                     recipientCity, 
@@ -456,6 +458,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     shopifyOrderId, 
                     wooOrderId, 
                     trackingId,
+                    recipientEmail,
                     destLatitude: coords.lat,
                     destLongitude: coords.lng
                 };
@@ -1218,11 +1221,15 @@ router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
                 billed = true, 
                 "driverId" = NULL,
                 "updatedAt" = NOW() 
-            WHERE status != 'ENTREGADO' OR billed = false
+            WHERE (status != 'ENTREGADO' AND status != 'CANCELADO' AND status != 'DEVUELTO') OR billed = false
         `;
         const result = await db.query(query);
         
-        await logAction(req.user.id, req.user.name, 'SYS_BULK_RESET', { count: result.rowCount });
+        // Log action if logAction helper is available, otherwise console
+        try {
+            await db.query('INSERT INTO audit_logs (userId, userName, action, details) VALUES ($1, $2, $3, $4)', 
+                [req.user.id, req.user.name, 'SYS_BULK_RESET', JSON.stringify({ count: result.rowCount })]);
+        } catch (e) { console.warn('Audit log failed', e); }
         
         res.json({ 
             message: 'Punto de inicio establecido correctamente.', 
@@ -1231,6 +1238,38 @@ router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error('Error in /api/packages/sys/bulk-mark-processed:', err);
         res.status(500).json({ message: 'Error al establecer el punto de inicio.' });
+    }
+});
+
+// POST /api/packages/bulk-update-status
+router.post('/bulk-update-status', authMiddleware, async (req, res) => {
+    const { packageIds, status } = req.body;
+    if (!packageIds || !Array.isArray(packageIds) || !status) {
+        return res.status(400).json({ message: 'Se requiere un array de IDs y el nuevo estado.' });
+    }
+
+    try {
+        const billed = status === 'ENTREGADO' || status === 'CANCELADO' || status === 'DEVUELTO';
+        const placeholders = packageIds.map((_, i) => `$${i + 2}`).join(', ');
+        
+        await db.query(`
+            UPDATE packages 
+            SET status = $1, 
+                billed = $2, 
+                "updatedAt" = NOW() 
+            WHERE id IN (${placeholders})
+        `, [status, billed, ...packageIds]);
+
+        // Add tracking events
+        for (const pkgId of packageIds) {
+            await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, NOW())', 
+                [pkgId, status, 'Operaciones', `Estado actualizado masivamente por el administrador a ${status}.`, new Date()]);
+        }
+
+        res.json({ message: `Se actualizaron ${packageIds.length} paquetes a ${status}.` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al actualizar paquetes masivamente.' });
     }
 });
 

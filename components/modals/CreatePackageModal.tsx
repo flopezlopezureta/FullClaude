@@ -24,6 +24,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   const [selectedClientId, setSelectedClientId] = useState(initialData?.creatorId || '');
   const [recipientName, setRecipientName] = useState(initialData?.recipientName || '');
   const [recipientPhone, setRecipientPhone] = useState(initialData?.recipientPhone || '');
+  const [recipientEmail, setRecipientEmail] = useState(initialData?.recipientEmail || '');
   const [recipientAddress, setRecipientAddress] = useState(initialData?.recipientAddress || '');
   const [recipientCommune, setRecipientCommune] = useState(initialData?.recipientCommune || '');
   const [recipientCity, setRecipientCity] = useState(initialData?.recipientCity || 'Santiago');
@@ -58,6 +59,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
       recipientAddress,
       recipientCommune,
       recipientCity,
+      recipientEmail,
       notes,
       trackingId,
       estimatedDelivery: new Date(estimatedDelivery),
@@ -139,6 +141,10 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                 <label htmlFor="recipientPhone" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Teléfono de Contacto</label>
                 <input type="tel" id="recipientPhone" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} onBlur={handlePhoneBlur} required className={`${inputClasses} font-bold`} placeholder="Ej: +56912345678" />
               </div>
+            </div>
+            <div>
+              <label htmlFor="recipientEmail" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Correo Electrónico (Para Notificaciones)</label>
+              <input type="email" id="recipientEmail" value={recipientEmail} onChange={(e) => setRecipientEmail(e.target.value.toLowerCase())} className={inputClasses} placeholder="Ej: cliente@correo.com" />
             </div>
              <div>
               <label htmlFor="recipientAddress" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Dirección</label>

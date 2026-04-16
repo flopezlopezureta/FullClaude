@@ -12,7 +12,7 @@ import { AuthContext } from '../contexts/AuthContext';
 import PackageFilters from './admin/PackageFilters';
 import ShippingLabelModal from './client/ShippingLabelModal';
 import BatchShippingLabelModal from './client/BatchShippingLabelModal';
-import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre, IconShopify } from './Icon';
+import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre, IconShopify, IconArchive, IconCheckCircle, IconRefresh } from './Icon';
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
@@ -61,8 +61,8 @@ const Dashboard: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isProcessingStartPoint, setIsProcessingStartPoint] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
-  const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
-  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
+  const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number; pollingStartTime?: number | null } | null>(null);
+  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number; pollingStartTime?: number | null } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [shopifyTimeLeft, setShopifyTimeLeft] = useState<number>(0);
 
@@ -88,13 +88,28 @@ const Dashboard: React.FC = () => {
       setIsProcessingStartPoint(true);
       try {
           const res = await api.bulkMarkAllProcessed();
-          alert(`${res.message} (${res.updatedCount} paquetes afectados)`);
+          alert(`Punto de inicio establecido con éxito. (${res.updatedCount} paquetes afectados)`);
           setIsStartPointModalOpen(false);
-          handleRefreshAll();
+          fetchData();
       } catch (err: any) {
           alert(err.message || 'Error al establecer el punto de inicio.');
       } finally {
           setIsProcessingStartPoint(false);
+      }
+  };
+
+  const handleBulkMarkDelivered = async () => {
+      if (selectedPackages.size === 0) return;
+      if (!window.confirm(`¿Estás seguro de marcar ${selectedPackages.size} paquetes como ENTREGADOS? Esto también los marcará como facturados.`)) return;
+      
+      try {
+          const packageIds = Array.from(selectedPackages);
+          await api.bulkUpdatePackageStatus(packageIds, PackageStatus.Delivered);
+          alert('Paquetes actualizados con éxito.');
+          setSelectedPackages(new Set());
+          fetchData();
+      } catch (err: any) {
+          alert(err.message || 'Error al actualizar paquetes masivamente.');
       }
   };
 
@@ -513,7 +528,10 @@ const Dashboard: React.FC = () => {
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
                     {/* ML Polling Status */}
                     {auth?.user?.role === Role.Admin && pollingStatus && (
-                        <div className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}>
+                        <div 
+                            title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status"}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
+                        >
                             <div className={`w-4 h-4 rounded-full flex items-center justify-center ${auth?.systemSettings?.meliAutoImport ? 'text-blue-600' : 'text-gray-400'}`}>
                                 <IconMercadoLibre className="w-full h-full" />
                             </div>
@@ -529,7 +547,10 @@ const Dashboard: React.FC = () => {
 
                     {/* Shopify Polling Status */}
                     {auth?.user?.role === Role.Admin && shopifyPollingStatus && (
-                        <div className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter ${auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling ? 'animate-pulse-glow-emerald' : ''}`}>
+                        <div 
+                            title={shopifyPollingStatus.isPolling && shopifyPollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - shopifyPollingStatus.pollingStartTime)/1000)}s` : "Shopify Status"}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter ${auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling ? 'animate-pulse-glow-emerald' : ''}`}
+                        >
                             <IconShopify className={`w-4 h-4 ${auth?.systemSettings?.shopifyAutoImport ? 'text-emerald-600' : 'text-gray-400'}`} />
                             <span className="whitespace-nowrap">
                                 {auth?.systemSettings?.shopifyAutoImport 
@@ -579,13 +600,25 @@ const Dashboard: React.FC = () => {
                             )}
                         </button>
 
+                        {/* Nueva acción masiva: Marcar como Entregado */}
+                        {auth?.user?.role === Role.Admin && (
+                            <button 
+                                onClick={handleBulkMarkDelivered}
+                                disabled={selectedPackages.size === 0}
+                                title="Entrega Masiva (Marcar Seleccionados)"
+                                className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} shadow-sm border border-cyan-700/20`}
+                            >
+                                <IconCheckCircle className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-400'}`} />
+                            </button>
+                        )}
+
                         {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@selcom.cl') && (
                             <button 
                                 onClick={() => setIsStartPointModalOpen(true)} 
-                                title="Fijar Punto de Inicio (Limpieza)" 
-                                className="p-2.5 rounded-lg transition-all bg-amber-500 hover:bg-amber-600 shadow-sm"
+                                title="Fijar Punto de Inicio (Mass Reset)" 
+                                className="p-2.5 rounded-lg transition-all bg-amber-500 hover:bg-amber-600 shadow-sm border border-amber-600/20"
                             >
-                                <IconChevronDown className="w-6 h-6 text-white rotate-180" />
+                                <IconArchive className="w-6 h-6 text-white" />
                             </button>
                         )}
                     </div>

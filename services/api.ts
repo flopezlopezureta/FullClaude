@@ -81,6 +81,7 @@ export interface PackageCreationData {
   shopifyOrderId?: string;
   wooOrderId?: string;
   trackingId?: string;
+  recipientEmail?: string;
 }
 
 export interface PackageUpdateData {
@@ -96,6 +97,7 @@ export interface PackageUpdateData {
   estimatedDelivery?: Date;
   destLatitude?: number;
   destLongitude?: number;
+  recipientEmail?: string;
 }
 
 export interface UserCreationData extends RegisterData {
@@ -274,6 +276,7 @@ export const api = {
   testShopifyConnection: (creds: { shopifyShopUrl: string, shopifyAccessToken: string }) => post<{message: string, shopName?: string}>('/integrations/test/shopify', creds),
   testWooCommerceConnection: (creds: { wooUrl: string, wooConsumerKey: string, wooConsumerSecret: string }) => post<{message: string}>('/integrations/test/woocommerce', creds),
   testFalabellaConnection: (creds: { falabellaApiKey: string, falabellaSellerId: string }) => post<{message: string}>('/integrations/test/falabella', creds),
+  testSmtpConnection: (creds: { smtpHost: string, smtpPort: string, smtpUser: string, smtpPassword: string }) => post<{message: string}>('/settings/test-smtp', creds),
   
   fetchMeliOrders: (clientId: string) => get<MeliOrder[]>(`/integrations/${clientId}/meli/orders`),
   importMeliOrders: (clientId: string, orderIds: string[]) => post<void>(`/integrations/${clientId}/meli/import`, { orderIds }),
@@ -346,4 +349,5 @@ export const api = {
     return `/api/integrations/meli-label/${packageId}${token ? `?token=${token}` : ''}`;
   },
   bulkMarkAllProcessed: () => post<{message: string, updatedCount: number}>('/packages/sys/bulk-mark-processed', {}),
+  bulkUpdatePackageStatus: (packageIds: string[], status: string) => post<{message: string}>('/packages/bulk-update-status', { packageIds, status }),
 };

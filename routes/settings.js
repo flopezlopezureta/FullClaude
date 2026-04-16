@@ -296,7 +296,12 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             wooConsumerKey: rows[0].woo_consumer_key,
             wooConsumerSecret: rows[0].woo_consumer_secret,
             falabellaApiKey: rows[0].falabella_api_key,
-            falabellaSellerId: rows[0].falabella_seller_id
+            falabellaSellerId: rows[0].falabella_seller_id,
+            smtpHost: rows[0].smtp_host,
+            smtpPort: rows[0].smtp_port,
+            smtpUser: rows[0].smtp_user,
+            smtpPassword: rows[0].smtp_password,
+            smtpFrom: rows[0].smtp_from
         });
     } catch (err) {
         console.error(err);
@@ -312,7 +317,8 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
         shopifyShopUrl, shopifyAccessToken, 
         githubToken, githubRepo, githubOwner,
         wooUrl, wooConsumerKey, wooConsumerSecret,
-        falabellaApiKey, falabellaSellerId
+        falabellaApiKey, falabellaSellerId,
+        smtpHost, smtpPort, smtpUser, smtpPassword, smtpFrom
     } = req.body;
 
     try {
@@ -379,6 +385,26 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`falabella_seller_id = $${idx++}`);
             values.push(falabellaSellerId);
         }
+        if (smtpHost !== undefined) {
+            updates.push(`smtp_host = $${idx++}`);
+            values.push(smtpHost);
+        }
+        if (smtpPort !== undefined) {
+            updates.push(`smtp_port = $${idx++}`);
+            values.push(smtpPort);
+        }
+        if (smtpUser !== undefined) {
+            updates.push(`smtp_user = $${idx++}`);
+            values.push(smtpUser);
+        }
+        if (smtpPassword !== undefined) {
+            updates.push(`smtp_password = $${idx++}`);
+            values.push(smtpPassword);
+        }
+        if (smtpFrom !== undefined) {
+            updates.push(`smtp_from = $${idx++}`);
+            values.push(smtpFrom);
+        }
 
         if (updates.length > 0) {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
@@ -401,7 +427,12 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 wooConsumerKey: saved.woo_consumer_key,
                 wooConsumerSecret: saved.woo_consumer_secret,
                 falabellaApiKey: saved.falabella_api_key,
-                falabellaSellerId: saved.falabella_seller_id
+                falabellaSellerId: saved.falabella_seller_id,
+                smtpHost: saved.smtp_host,
+                smtpPort: saved.smtp_port,
+                smtpUser: saved.smtp_user,
+                smtpPassword: saved.smtp_password,
+                smtpFrom: saved.smtp_from
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });
@@ -425,17 +456,6 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
         client_id: meliAppId,
         client_secret: meliClientSecret
     }).toString();
-
-    const options = {
-        hostname: 'api.mercadolibre.com',
-        path: '/oauth/token',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-        }
-    };
 
     const reqApi = https.request(options, (resApi) => {
         let data = '';
@@ -463,6 +483,39 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
 
     reqApi.write(postData);
     reqApi.end();
+});
+
+// POST /api/settings/test-smtp
+router.post('/test-smtp', authMiddleware, adminOnly, async (req, res) => {
+    const { smtpHost, smtpPort, smtpUser, smtpPassword } = req.body;
+
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
+        return res.status(400).json({ message: 'Todos los campos SMTP (Host, Puerto, Usuario, Contraseña) son requeridos.' });
+    }
+
+    try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+            host: smtpHost,
+            port: parseInt(smtpPort),
+            secure: parseInt(smtpPort) === 465,
+            auth: {
+                user: smtpUser,
+                pass: smtpPassword
+            },
+            connectTimeout: 10000 // 10s timeout
+        });
+
+        // Verify connection configuration
+        await transporter.verify();
+
+        res.json({ message: 'Conexión SMTP exitosa. El servidor está configurado correctamente.' });
+    } catch (err) {
+        console.error('SMTP Test Error:', err);
+        res.status(500).json({ 
+            message: `Error al conectar con el servidor SMTP: ${err.message}`
+        });
+    }
 });
 
 // POST /api/settings/github-backup

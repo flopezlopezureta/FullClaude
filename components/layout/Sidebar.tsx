@@ -27,7 +27,7 @@ const getRoleInSpanish = (role?: Role): string => {
 
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClose }) => {
   const { user, logout, systemSettings } = useContext(AuthContext)!;
-  const isSuperUser = user?.email === 'admin';
+  const isSuperUser = user?.email === 'admin' || user?.email === 'admin@admin.cl';
 
   const [openMenus, setOpenMenus] = useState<Set<string>>(() => {
     const menus = new Set<string>();

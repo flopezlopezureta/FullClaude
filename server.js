@@ -259,7 +259,8 @@ async function initializeDatabase() {
                 'destLatitude REAL',
                 'destLongitude REAL',
                 'flexLabelPhotoBase64 TEXT',
-                'recipientRut TEXT'
+                'recipientRut TEXT',
+                'recipientEmail TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
@@ -553,6 +554,24 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "shopify_webhook_secret" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_webhook_secret):', err); }
+        }
+
+        // --- SMTP MIGRATIONS ---
+        const smtpCols = [
+            'smtp_host TEXT',
+            'smtp_port TEXT',
+            'smtp_user TEXT',
+            'smtp_password TEXT',
+            'smtp_from TEXT'
+        ];
+        for (const spec of smtpCols) {
+            const col = spec.split(' ')[0];
+            try {
+                await db.query(`ALTER TABLE integration_settings ADD COLUMN "${col}" ${spec.split(' ').slice(1).join(' ')}`);
+                console.log(`MIGRATION APPLIED: Column "${col}" added to "integration_settings".`);
+            } catch (err) {
+                if (err.code !== '42701') { console.error(`Error during integration_settings migration (${col}):`, err); }
+            }
         }
 
         // --- MIGRATIONS: Add GitHub fields ---

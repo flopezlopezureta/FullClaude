@@ -20,6 +20,7 @@ const EXPECTED_HEADERS = [
     'Comuna', 
     'Ciudad', 
     'Tipo Envío', // EN EL DÍA, EXPRESS, NEXT DAY
+    'Email',
     'Notas'
 ];
 
@@ -30,6 +31,8 @@ const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipie
     'comuna': 'recipientCommune',
     'ciudad': 'recipientCity',
     'tipo envío': 'shippingType',
+    'email': 'recipientEmail',
+    'correo': 'recipientEmail',
     'notas': 'notes',
 };
 
@@ -130,6 +133,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             recipientCity: String(rowData.recipientCity || 'Santiago'),
             shippingType: validShippingType,
             estimatedDelivery: new Date(),
+            recipientEmail: rowData.recipientEmail ? String(rowData.recipientEmail).toLowerCase().trim() : '',
             notes: rowData.notes || '',
             source: 'MANUAL',
         };
@@ -184,6 +188,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             'Providencia',
             'Santiago',
             'EN EL DÍA',
+            'cliente@correo.com',
             'Dejar en conserjería'
         ]]);
         const workbook = XLSX.utils.book_new();
