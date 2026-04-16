@@ -56,8 +56,10 @@ const Dashboard: React.FC = () => {
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isQuickStatusModalOpen, setIsQuickStatusModalOpen] = useState(false);
+  const [isStartPointModalOpen, setIsStartPointModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
+  const [isProcessingStartPoint, setIsProcessingStartPoint] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
   const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
   const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
@@ -81,6 +83,21 @@ const Dashboard: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  
+  const handleSetStartPoint = async () => {
+      setIsProcessingStartPoint(true);
+      try {
+          const res = await api.bulkMarkAllProcessed();
+          alert(`${res.message} (${res.updatedCount} paquetes afectados)`);
+          setIsStartPointModalOpen(false);
+          handleRefreshAll();
+      } catch (err: any) {
+          alert(err.message || 'Error al establecer el punto de inicio.');
+      } finally {
+          setIsProcessingStartPoint(false);
+      }
+  };
+
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const auth = useContext(AuthContext);
 
@@ -528,7 +545,7 @@ const Dashboard: React.FC = () => {
                         )}
                         <button 
                             onClick={() => setIsBulkAssignModalOpen(true)}
-                            disabled={selectedPackages.size === 0}
+                            disabled={selectedPackages.size > 0 ? false : true}
                             title="Asignar Conductor" 
                             className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
                         >
@@ -538,7 +555,7 @@ const Dashboard: React.FC = () => {
                             onClick={() => setPrintingPackages(selectedPackageObjects)} 
                             title="Imprimir Etiquetas" 
                             className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
-                            disabled={selectedPackages.size === 0}>
+                            disabled={selectedPackages.size > 0 ? false : true}>
                             <IconPrinter className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
                         </button>
                         <button 
@@ -559,6 +576,16 @@ const Dashboard: React.FC = () => {
                                 <IconFileSpreadsheet className={`w-6 h-6 ${totalPackages > 0 ? 'text-white' : 'text-gray-500'}`} />
                             )}
                         </button>
+
+                        {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@selcom.cl') && (
+                            <button 
+                                onClick={() => setIsStartPointModalOpen(true)} 
+                                title="Fijar Punto de Inicio (Limpieza)" 
+                                className="p-2.5 rounded-lg transition-all bg-amber-500 hover:bg-amber-600 shadow-sm"
+                            >
+                                <IconChevronDown className="w-6 h-6 text-white rotate-180" />
+                            </button>
+                        )}
                     </div>
                 </div>
 
@@ -794,6 +821,52 @@ const Dashboard: React.FC = () => {
               />
           )
       )}
+
+        {isStartPointModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black bg-opacity-50 backdrop-blur-sm">
+                <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl animate-fade-in-up">
+                    <div className="flex items-center gap-4 mb-6 text-amber-600">
+                        <div className="p-3 bg-amber-100 rounded-full">
+                            <IconChevronDown className="w-8 h-8 rotate-180" />
+                        </div>
+                        <h2 className="text-2xl font-black tracking-tight">Punto de Inicio</h2>
+                    </div>
+                    
+                    <p className="text-gray-600 mb-8 leading-relaxed">
+                        ¿Estás seguro que deseas fijar un <b>Punto de Inicio</b>? 
+                        <br/><br/>
+                        Esta acción marcará <b>TODOS</b> los paquetes actuales como <b>ENTREGADOS y FACTURADOS</b>. 
+                        Esto los moverá a la sección de "Cerrados" y los excluirá de cobros futuros. 
+                        <br/><br/>
+                        <span className="text-red-600 font-bold uppercase text-xs">⚠️ Esta acción es irreversible.</span>
+                    </p>
+
+                    <div className="flex gap-4">
+                        <button 
+                            onClick={() => setIsStartPointModalOpen(false)}
+                            disabled={isProcessingStartPoint}
+                            className="flex-1 py-3 px-4 border border-gray-200 rounded-xl font-bold text-gray-600 hover:bg-gray-50 transition-all"
+                        >
+                            Cancelar
+                        </button>
+                        <button 
+                            onClick={handleSetStartPoint}
+                            disabled={isProcessingStartPoint}
+                            className={`flex-1 py-3 px-4 bg-amber-600 text-white rounded-xl font-bold hover:bg-amber-700 transition-all flex items-center justify-center gap-2 ${isProcessingStartPoint ? 'opacity-70 cursor-not-allowed' : ''}`}
+                        >
+                            {isProcessingStartPoint ? (
+                                <>
+                                    <IconLoader className="w-5 h-5 animate-spin" />
+                                    <span>Procesando...</span>
+                                </>
+                            ) : (
+                                'Confirmar'
+                            )}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        )}
     </div>
   );
 };

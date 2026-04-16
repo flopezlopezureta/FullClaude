@@ -1204,4 +1204,33 @@ router.get('/public/track/:id', async (req, res) => {
     }
 });
 
+// POST /api/packages/sys/bulk-mark-processed - Super Admin only reset
+router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
+    // Only 'admin' account can perform this global reset
+    if (req.user.email !== 'admin' && req.user.email !== 'admin@selcom.cl') {
+        return res.status(403).json({ message: 'Solo el Super Administrador puede fijar un punto de inicio.' });
+    }
+
+    try {
+        const query = `
+            UPDATE packages 
+            SET status = 'ENTREGADO', 
+                billed = true, 
+                "updatedAt" = NOW() 
+            WHERE status != 'ENTREGADO' OR billed = false
+        `;
+        const result = await db.query(query);
+        
+        await logAction(req.user.id, req.user.name, 'SYS_BULK_RESET', { count: result.rowCount });
+        
+        res.json({ 
+            message: 'Punto de inicio establecido correctamente.', 
+            updatedCount: result.rowCount 
+        });
+    } catch (err) {
+        console.error('Error in /api/packages/sys/bulk-mark-processed:', err);
+        res.status(500).json({ message: 'Error al establecer el punto de inicio.' });
+    }
+});
+
 module.exports = router;

@@ -345,4 +345,5 @@ export const api = {
     const token = localStorage.getItem('token');
     return `/api/integrations/meli-label/${packageId}${token ? `?token=${token}` : ''}`;
   },
+  bulkMarkAllProcessed: () => post<{message: string, updatedCount: number}>('/packages/sys/bulk-mark-processed', {}),
 };
