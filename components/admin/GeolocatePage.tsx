@@ -32,6 +32,10 @@ const GeolocatePage: React.FC = () => {
     const [manualSearchQuery, setManualSearchQuery] = useState('');
     const [isSearching, setIsSearching] = useState(false);
     
+    // New Filters
+    const [dateMode, setDateMode] = useState<'today' | 'all'>('today');
+    const [deliveredMode, setDeliveredMode] = useState<'hide' | 'show'>('hide');
+    
     const [isGeocoding, setIsGeocoding] = useState(false);
     const [geocodingProgress, setGeocodingProgress] = useState(0);
     const [totalToGeocode, setTotalToGeocode] = useState(0);
@@ -39,6 +43,7 @@ const GeolocatePage: React.FC = () => {
     const mapRef = useRef<any>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const layerGroupRef = useRef<any>(null);
+    const clusterGroupRef = useRef<any>(null);
 
     // Derive start location: Use custom dragged location if available, otherwise fallback to commune center
     const startLocation = useMemo(() => {
@@ -49,8 +54,24 @@ const GeolocatePage: React.FC = () => {
 
     const fetchPackages = async () => {
         try {
-            const { packages: allPkgs } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Pending });
-            setPackages(allPkgs);
+            let fetchedPackages: Package[] = [];
+            const today = new Date();
+            const todayStr = today.toISOString().split('T')[0];
+
+            if (dateMode === 'today') {
+                const { packages: pending } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Pending, startDate: todayStr, endDate: todayStr });
+                fetchedPackages = pending;
+            } else {
+                const { packages: pending } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Pending });
+                fetchedPackages = pending;
+            }
+
+            if (deliveredMode === 'show') {
+                 const { packages: delivered } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Delivered, startDate: todayStr, endDate: todayStr });
+                 fetchedPackages = [...fetchedPackages, ...delivered];
+            }
+            
+            setPackages(fetchedPackages);
             // Keep optimized routes if they exist, but they might be stale. 
             // For now, we clear them to force re-optimization if data changes significantly.
             // setOptimizedRoutes([]); 
@@ -61,7 +82,7 @@ const GeolocatePage: React.FC = () => {
 
     useEffect(() => {
         fetchPackages();
-    }, []);
+    }, [dateMode, deliveredMode]);
 
     useEffect(() => {
         if (mapContainerRef.current && !mapRef.current) {
@@ -70,6 +91,11 @@ const GeolocatePage: React.FC = () => {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(mapRef.current);
             layerGroupRef.current = L.layerGroup().addTo(mapRef.current);
+            clusterGroupRef.current = L.markerClusterGroup({
+                showCoverageOnHover: false,
+                spiderfyOnMaxZoom: true,
+                maxClusterRadius: 40
+            }).addTo(mapRef.current);
         }
         return () => { if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; } };
     }, []);
@@ -137,14 +163,16 @@ const GeolocatePage: React.FC = () => {
             handleStartLocationDragEnd(lat, lng);
         });
         
-        layerGroupRef.current.addLayer(startMarker);
-        
-        // --- Draw Packages ---
+        clusterGroupRef.current.clearLayers();
+        layerGroupRef.current.clearLayers();
+        layerGroupRef.current.addLayer(startMarker); // Add back the start marker
+
         const createIcon = (color: string, number?: number, isApprox: boolean = false) => {
-             const border = isApprox ? '2px dashed white' : '2px solid white';
+             const border = isApprox ? '2px dashed #ff9800' : '2px solid white';
+             const shadow = isApprox ? '0 0 8px rgba(255, 152, 0, 0.6)' : '0 2px 4px rgba(0,0,0,0.3)';
              return L.divIcon({
                 className: 'custom-marker',
-                html: `<div style="background-color: ${color}; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: ${border}; box-shadow: 0 2px 4px rgba(0,0,0,0.3); font-size: 12px; cursor: grab;">${number || ''}</div>`,
+                html: `<div style="background-color: ${color}; color: white; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: bold; border: ${border}; box-shadow: ${shadow}; font-size: 12px; cursor: grab;">${number || ''}</div>`,
                 iconSize: [24, 24],
                 iconAnchor: [12, 12]
             });
@@ -158,26 +186,50 @@ const GeolocatePage: React.FC = () => {
             // Fallback if no precise coords
             if ((!lat || !lng) && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
                     const base = cityCoordinates[pkg.recipientCity];
-                    lat = base[0] + (Math.random() - 0.5) * 0.02;
-                    lng = base[1] + (Math.random() - 0.5) * 0.02;
+                    const offset = (Math.random() - 0.5) * 0.02; 
+                    lat = base[0] + offset;
+                    lng = base[1] + offset;
                     isApprox = true;
             }
 
-            if (lat && lng) {
-                bounds.push([lat, lng]);
-                const marker = L.marker([lat, lng], { 
-                    icon: createIcon(color, number, isApprox),
-                    draggable: true // Enable dragging for packages
-                })
-                .bindPopup(`<b>${number ? `Parada #${number}` : 'Pendiente'}</b><br/>${pkg.recipientAddress}<br/><span style="color:gray;font-size:10px">Arrastra para corregir</span>`);
-                
-                marker.on('dragend', (e: any) => {
-                    const { lat: newLat, lng: newLng } = e.target.getLatLng();
-                    handlePackageDragEnd(pkg, newLat, newLng);
-                });
+            if (!lat || !lng) return;
 
-                layerGroupRef.current.addLayer(marker);
-            }
+            const marker = L.marker([lat, lng], { 
+                icon: createIcon(color, number, isApprox),
+                draggable: true 
+            });
+
+            // HOVER TOOLTIP (PREMIUM UI)
+            marker.bindTooltip(`
+                <div style="padding: 4px; font-family: Inter, sans-serif;">
+                    <div style="font-weight: 800; color: #1e293b; font-size: 11px;">${pkg.recipientName}</div>
+                    <div style="color: #64748b; font-size: 10px;">${pkg.recipientAddress}</div>
+                    ${isApprox ? '<div style="color: #f59e0b; font-size: 9px; font-weight: bold; margin-top: 2px;">⚠️ UBICACIÓN APROXIMADA</div>' : ''}
+                </div>
+            `, {
+                direction: 'top',
+                offset: [0, -12],
+                opacity: 0.9
+            });
+
+            marker.bindPopup(`
+                <div style="min-width: 180px; font-family: Inter, sans-serif; padding: 2px;">
+                    <div style="display: flex; justify-content: space-between; border-bottom: 1px solid #f1f5f9; padding-bottom: 6px; margin-bottom: 8px;">
+                        <span style="font-weight: 800; color: #2563eb; font-size: 12px;">ID: ${pkg.id.slice(-6)}</span>
+                        <span style="font-size: 10px; color: #94a3b8; font-weight: 600;">${pkg.status}</span>
+                    </div>
+                    <div style="margin-bottom: 4px;"><span style="color: #94a3b8; font-size: 10px;">Para:</span> <b style="color: #1e293b; font-size: 12px;">${pkg.recipientName}</b></div>
+                    <div style="margin-bottom: 12px;"><span style="color: #94a3b8; font-size: 10px;">Dir:</span> <span style="color: #64748b; font-size: 11px;">${pkg.recipientAddress}, ${pkg.recipientCommune}</span></div>
+                    ${isApprox ? '<div style="background: #fffbeb; color: #92400e; padding: 6px; border-radius: 4px; font-size: 10px; margin-bottom: 10px; border: 1px solid #fef3c7;">⚠️ El sistema no pudo encontrar la dirección exacta. Se muestra una ubicación estimada en la ciudad.</div>' : ''}
+                </div>
+            `);
+
+            marker.on('dragend', (e: any) => {
+                const { lat, lng } = e.target.getLatLng();
+                handlePackageDragEnd(pkg, lat, lng);
+            });
+
+            clusterGroupRef.current.addLayer(marker);
         };
 
         if (optimizedRoutes.length > 0) {
@@ -188,10 +240,17 @@ const GeolocatePage: React.FC = () => {
                     renderMarker(pkg, color, pkgIndex + 1);
                 });
             });
+            // Draw delivered packages in blue as well
+            packages.filter(p => p.status === PackageStatus.Delivered).forEach(pkg => {
+                renderMarker(pkg, '#3b82f6', undefined);
+            });
         } else {
              packages.forEach(pkg => {
-                // Default red for unoptimized
-                renderMarker(pkg, '#dc2626');
+                if (pkg.status === PackageStatus.Delivered) {
+                    renderMarker(pkg, '#3b82f6'); // Blue for delivered
+                } else {
+                    renderMarker(pkg, '#dc2626'); // Red for pending
+                }
             });
         }
 
@@ -208,11 +267,12 @@ const GeolocatePage: React.FC = () => {
     }, [packages, optimizedRoutes, startLocation, customStartLocation]); // Re-render when these change
 
     const handleOptimize = () => {
-        if (packages.length === 0) return;
+        const pendingPackages = packages.filter(p => p.status === PackageStatus.Pending);
+        if (pendingPackages.length === 0) return;
         setIsOptimizing(true);
         // Small delay to allow UI to update
         setTimeout(() => {
-            const routes = optimizeMultiDriverRoute(packages, driverCount, startLocation, endTime);
+            const routes = optimizeMultiDriverRoute(pendingPackages, driverCount, startLocation, endTime);
             setOptimizedRoutes(routes);
             setIsOptimizing(false);
         }, 500);
@@ -296,6 +356,23 @@ const GeolocatePage: React.FC = () => {
                     </div>
 
                     <div className="flex items-center gap-3 flex-wrap">
+                        <select 
+                            value={dateMode} 
+                            onChange={(e) => setDateMode(e.target.value as 'today' | 'all')}
+                            className="bg-white border border-[var(--border-secondary)] text-xs font-bold px-2 py-1.5 rounded-lg focus:outline-none"
+                        >
+                            <option value="today">Solo de Hoy</option>
+                            <option value="all">Atrasados + Hoy</option>
+                        </select>
+                        <select 
+                            value={deliveredMode} 
+                            onChange={(e) => setDeliveredMode(e.target.value as 'hide' | 'show')}
+                            className="bg-white border border-[var(--border-secondary)] text-xs font-bold px-2 py-1.5 rounded-lg focus:outline-none"
+                        >
+                            <option value="hide">Ocultar Entregados</option>
+                            <option value="show">Mostrar Entregados</option>
+                        </select>
+
                         {unmappedCount > 0 && !isGeocoding && (
                             <button onClick={handleAutoGeolocate} className="flex items-center gap-2 px-3 py-1.5 bg-orange-100 text-orange-700 rounded text-xs font-bold border border-orange-300">
                                 <IconMapPin className="w-3 h-3"/> Geolocalizar Faltantes ({unmappedCount})

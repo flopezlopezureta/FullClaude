@@ -10,7 +10,8 @@ import {
   StatusBar,
   Share,
   Alert,
-  Platform
+  Platform,
+  TextInput
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -24,6 +25,7 @@ export default function DeliveriesScreen({ navigation }: any) {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'closed'>('pending');
+  const [searchQuery, setSearchQuery] = useState('');
   const [settings, setSettings] = useState<any>(null);
   const { user } = useContext(AuthContext);
 
@@ -59,12 +61,24 @@ export default function DeliveriesScreen({ navigation }: any) {
   };
 
   const filteredPackages = useMemo(() => {
+    let result = packages;
     if (activeTab === 'pending') {
-      return packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA');
+      result = packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA');
     } else {
-      return packages.filter(p => p.status === 'ENTREGADO' || p.status === 'PROBLEMA');
+      result = packages.filter(p => p.status === 'ENTREGADO' || p.status === 'PROBLEMA');
     }
-  }, [packages, activeTab]);
+
+    if (searchQuery.trim() !== '') {
+        const query = searchQuery.toLowerCase().trim();
+        result = result.filter(p => 
+            (p.recipientName && p.recipientName.toLowerCase().includes(query)) ||
+            (p.recipientAddress && p.recipientAddress.toLowerCase().includes(query)) ||
+            (p.id && p.id.toLowerCase().includes(query)) ||
+            (p.recipientPhone && p.recipientPhone.includes(query))
+        );
+    }
+    return result;
+  }, [packages, activeTab, searchQuery]);
 
   const handleExportCircuit = async () => {
     const pending = packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA');
@@ -164,6 +178,23 @@ export default function DeliveriesScreen({ navigation }: any) {
         </TouchableOpacity>
       </View>
 
+      <View style={styles.searchContainer}>
+        <Icon name="magnify" size={20} color="#94a3b8" />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Buscar por nombre, calle o ID..."
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          placeholderTextColor="#94a3b8"
+          autoCorrect={false}
+        />
+        {searchQuery.length > 0 && (
+          <TouchableOpacity onPress={() => setSearchQuery('')} style={styles.clearBtn}>
+            <Icon name="close" size={16} color="#fff" />
+          </TouchableOpacity>
+        )}
+      </View>
+
       <FlatList
         data={filteredPackages}
         renderItem={renderItem}
@@ -254,6 +285,30 @@ const styles = StyleSheet.create({
   },
   activeTabText: {
     color: '#fff',
+  },
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    marginHorizontal: 16,
+    marginTop: 12,
+    marginBottom: 4,
+    paddingHorizontal: 12,
+    height: 44,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  searchInput: {
+    flex: 1,
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#0f172a',
+  },
+  clearBtn: {
+    backgroundColor: '#cbd5e1',
+    padding: 2,
+    borderRadius: 10,
   },
   listContent: {
     padding: 16,
