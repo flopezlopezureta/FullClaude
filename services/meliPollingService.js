@@ -106,9 +106,6 @@ async function pollMeliPackages() {
             autoImportEnabled = true; // Safety default
         }
 
-        // Emergency Override: If we are debugging, let's keep it true for now
-        autoImportEnabled = true;
-
         if (autoImportEnabled) {
             await autoImportMeliPackages();
         }

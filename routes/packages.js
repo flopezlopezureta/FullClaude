@@ -1216,6 +1216,7 @@ router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
             UPDATE packages 
             SET status = 'ENTREGADO', 
                 billed = true, 
+                "driverId" = NULL,
                 "updatedAt" = NOW() 
             WHERE status != 'ENTREGADO' OR billed = false
         `;

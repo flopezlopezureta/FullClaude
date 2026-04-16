@@ -122,16 +122,18 @@ const Dashboard: React.FC = () => {
   }, [auth?.user?.role]);
 
   useEffect(() => {
-    if (!pollingStatus && !shopifyPollingStatus) return;
-
     const timer = setInterval(() => {
       if (pollingStatus) {
         const remaining = Math.max(0, Math.ceil((pollingStatus.nextPollTime - Date.now()) / 1000));
         setTimeLeft(remaining);
+      } else {
+        setTimeLeft(0);
       }
       if (shopifyPollingStatus) {
         const remainingShopify = Math.max(0, Math.ceil((shopifyPollingStatus.nextPollTime - Date.now()) / 1000));
         setShopifyTimeLeft(remainingShopify);
+      } else {
+        setShopifyTimeLeft(0);
       }
     }, 1000);
 
