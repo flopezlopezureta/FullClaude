@@ -24,14 +24,14 @@ async function verifyAdminPassword(userId, password) {
     return await bcrypt.compare(password, rows[0].password);
 }
 
-const meliPollingService = require('../services/meliPollingService');
+
 
 // GET /api/settings/meli-polling-status
 router.get('/meli-polling-status', authMiddleware, (req, res) => {
     res.json(meliPollingService.getStatus());
 });
 
-const shopifyPollingService = require('../services/shopifyPollingService');
+
 
 // GET /api/settings/shopify-polling-status
 router.get('/shopify-polling-status', authMiddleware, (req, res) => {

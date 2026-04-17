@@ -15,6 +15,18 @@ import { PackageStatus, ShippingType, Role } from '../constants';
 
 const API_URL = '/api';
 
+export class ApiError extends Error {
+  status: number;
+  body: any;
+
+  constructor(message: string, status: number, body?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
   const getHeaders = () => {
     const token = localStorage.getItem('token');
@@ -34,20 +46,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers,
   });
 
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType && contentType.includes('application/json');
+
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    const errorMessage = errorBody.message || `Error ${response.status}: ${response.statusText}`;
-    const error = new Error(errorMessage);
-    (error as any).status = response.status;
-    throw error;
+    let errorMessage = `Error ${response.status}: ${response.statusText}`;
+    let errorBody = {};
+
+    if (isJson) {
+      try {
+        errorBody = await response.json();
+        errorMessage = (errorBody as any).message || errorMessage;
+      } catch (e) {
+        console.warn('[API] Could not parse error JSON body');
+      }
+    } else {
+      const text = await response.text();
+      console.warn(`[API] Received non-JSON error response (${response.status}):`, text.substring(0, 100));
+    }
+
+    throw new ApiError(errorMessage, response.status, errorBody);
   }
 
-  // Some endpoints might return 204 No Content
   if (response.status === 204) {
-      return {} as T;
+    return {} as T;
   }
 
-  return response.json();
+  if (!isJson) {
+    const text = await response.text();
+    console.error(`[API] Expected JSON but received ${contentType}:`, text.substring(0, 100));
+    throw new ApiError('El servidor devolvió un formato no válido (HTML)', response.status, { raw: text.substring(0, 200) });
+  }
+
+  try {
+    return await response.json();
+  } catch (e) {
+    console.error('[API] Failed to parse success response as JSON');
+    throw new ApiError('Error al procesar la respuesta del servidor', response.status);
+  }
 }
 
 const get = <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' });
