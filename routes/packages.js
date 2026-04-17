@@ -132,6 +132,8 @@ router.get('/', authMiddleware, async (req, res) => {
             } else if (quickFilter === 'rescheduled') {
                 whereClauses.push(`p.status = 'REPROGRAMADO'`);
             }
+        }
+
         if (isAssigned === 'true') {
             whereClauses.push(`p."driverId" IS NOT NULL`);
         } else if (isAssigned === 'false') {
