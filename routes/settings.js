@@ -209,18 +209,21 @@ router.post('/reset-packages', authMiddleware, adminOnly, async (req, res) => {
         return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
 
+    const client = await db.getClient();
     try {
-        await db.query('BEGIN');
-        await db.query('TRUNCATE TABLE tracking_events, packages RESTART IDENTITY CASCADE');
-        await db.query('COMMIT');
+        await client.query('BEGIN');
+        await client.query('TRUNCATE TABLE tracking_events, packages RESTART IDENTITY CASCADE');
+        await client.query('COMMIT');
 
         await logAction(req.user.id, req.user.name, 'RESET_PACKAGES', { details: 'All packages and tracking events deleted' });
 
         res.status(200).json({ message: 'Paquetes e historial eliminados con éxito.' });
     } catch (err) {
-        await db.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar paquetes.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -231,22 +234,25 @@ router.post('/reset-clients', authMiddleware, adminOnly, async (req, res) => {
         return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
 
+    const client = await db.getClient();
     try {
-        await db.query('BEGIN');
+        await client.query('BEGIN');
         // First remove assignments related to clients
-        await db.query("DELETE FROM assignment_events WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
-        await db.query("DELETE FROM pickup_assignments WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
+        await client.query("DELETE FROM assignment_events WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
+        await client.query("DELETE FROM pickup_assignments WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
         // Then delete clients
-        await db.query("DELETE FROM users WHERE role = 'CLIENT'");
-        await db.query('COMMIT');
+        await client.query("DELETE FROM users WHERE role = 'CLIENT'");
+        await client.query('COMMIT');
 
         await logAction(req.user.id, req.user.name, 'RESET_CLIENTS', { details: 'All clients deleted' });
 
         res.status(200).json({ message: 'Clientes eliminados con éxito.' });
     } catch (err) {
-        await db.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar clientes.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -257,23 +263,26 @@ router.post('/reset-drivers', authMiddleware, adminOnly, async (req, res) => {
         return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
 
+    const client = await db.getClient();
     try {
-        await db.query('BEGIN');
+        await client.query('BEGIN');
         // Unassign packages from drivers
-        await db.query('UPDATE packages SET "driverId" = NULL');
+        await client.query('UPDATE packages SET "driverId" = NULL');
         // Delete runs and assignments
-        await db.query('TRUNCATE TABLE assignment_events, pickup_assignments, pickup_runs RESTART IDENTITY CASCADE');
+        await client.query('TRUNCATE TABLE assignment_events, pickup_assignments, pickup_runs RESTART IDENTITY CASCADE');
         // Delete drivers
-        await db.query("DELETE FROM users WHERE role = 'DRIVER'");
-        await db.query('COMMIT');
+        await client.query("DELETE FROM users WHERE role = 'DRIVER'");
+        await client.query('COMMIT');
 
         await logAction(req.user.id, req.user.name, 'RESET_DRIVERS', { details: 'All drivers deleted' });
 
         res.status(200).json({ message: 'Conductores y auxiliares eliminados con éxito.' });
     } catch (err) {
-        await db.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar conductores.' });
+    } finally {
+        client.release();
     }
 });
 

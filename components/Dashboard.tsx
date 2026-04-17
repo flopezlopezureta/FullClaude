@@ -820,26 +820,6 @@ const Dashboard: React.FC = () => {
                         )}
                     </button>
 
-                    {/* Force Close Old Packages - Super Admin only */}
-                    {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@selcom.cl') && (
-                        <button
-                            id="force-close-old-btn"
-                            onClick={handleForceCloseOld}
-                            disabled={isForcingClose}
-                            title="Forzar cierre de envíos con más de 30 días sin actualización"
-                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${
-                                isForcingClose
-                                    ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
-                                    : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
-                            }`}
-                        >
-                            {isForcingClose ? (
-                                <><IconLoader className="w-3.5 h-3.5 animate-spin" /> Cerrando...</>
-                            ) : (
-                                <><IconArchive className="w-3.5 h-3.5" /> Cerrar Antiguos</>
-                            )}
-                        </button>
-                    )}
                 </div>
 
                 <div className="flex items-center">
