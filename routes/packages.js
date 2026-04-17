@@ -48,6 +48,7 @@ router.get('/', authMiddleware, async (req, res) => {
             endDate,
             flexFilter,
             quickFilter,
+            isAssigned,
             sortOrder = 'desc',
         } = req.query;
 
@@ -131,6 +132,10 @@ router.get('/', authMiddleware, async (req, res) => {
             } else if (quickFilter === 'rescheduled') {
                 whereClauses.push(`p.status = 'REPROGRAMADO'`);
             }
+        if (isAssigned === 'true') {
+            whereClauses.push(`p."driverId" IS NOT NULL`);
+        } else if (isAssigned === 'false') {
+            whereClauses.push(`p."driverId" IS NULL`);
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
