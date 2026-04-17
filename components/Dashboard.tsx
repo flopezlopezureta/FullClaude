@@ -13,6 +13,18 @@ import PackageFilters from './admin/PackageFilters';
 import ShippingLabelModal from './client/ShippingLabelModal';
 import BatchShippingLabelModal from './client/BatchShippingLabelModal';
 import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre, IconShopify, IconArchive, IconCheckCircle, IconRefresh } from './Icon';
+
+// Sort direction icon inline components
+const IconSortAsc = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10 4l-4-4m0 0l-4 4m4-4v12" />
+  </svg>
+);
+const IconSortDesc = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+);
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
@@ -70,6 +82,8 @@ const Dashboard: React.FC = () => {
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
+  const [isForcingClose, setIsForcingClose] = useState(false);
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -96,6 +110,21 @@ const Dashboard: React.FC = () => {
       } finally {
           setIsProcessingStartPoint(false);
       }
+  };
+
+  const handleForceCloseOld = async () => {
+    const cutoffDays = 30;
+    if (!window.confirm(`¿Estás seguro de cerrar forzosamente todos los envíos con más de ${cutoffDays} días sin actualización? Esta acción no se puede deshacer.`)) return;
+    setIsForcingClose(true);
+    try {
+        const res = await api.forceCloseOldPackages(cutoffDays);
+        alert(`Cierre forzoso completado. ${res.updatedCount ?? 0} envíos cerrados.`);
+        fetchData();
+    } catch (err: any) {
+        alert(err.message || 'Error al forzar el cierre de envíos antiguos.');
+    } finally {
+        setIsForcingClose(false);
+    }
   };
 
   const handleBulkMarkDelivered = async () => {
@@ -171,6 +200,7 @@ const Dashboard: React.FC = () => {
             endDate,
             flexFilter,
             quickFilter,
+            sortOrder,
         };
         const [packagesResult, allUsers] = await Promise.all([
             api.getPackages(params),
@@ -189,7 +219,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, sortOrder]);
 
   useEffect(() => {
     fetchData();
@@ -706,8 +736,8 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="p-3 bg-gray-50 bg-opacity-30">
-            <div className="flex flex-wrap items-center justify-between w-full">
-                <div className="flex items-center gap-10">
+            <div className="flex flex-wrap items-center justify-between w-full gap-2">
+                <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <label htmlFor="items-per-page-admin" className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filas por página</label>
                         <select
@@ -737,6 +767,45 @@ const Dashboard: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Sort Order Toggle */}
+                    <button
+                        id="sort-order-toggle"
+                        onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                        title={sortOrder === 'desc' ? 'Mostrando más nuevos primero. Click para ver más antiguos primero.' : 'Mostrando más antiguos primero. Click para ver más nuevos primero.'}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${
+                            sortOrder === 'asc'
+                                ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100'
+                                : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                    >
+                        {sortOrder === 'desc' ? (
+                            <><IconSortDesc className="w-3.5 h-3.5" /> Más nuevos</>  
+                        ) : (
+                            <><IconSortAsc className="w-3.5 h-3.5" /> Más antiguos</>
+                        )}
+                    </button>
+
+                    {/* Force Close Old Packages - Super Admin only */}
+                    {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@selcom.cl') && (
+                        <button
+                            id="force-close-old-btn"
+                            onClick={handleForceCloseOld}
+                            disabled={isForcingClose}
+                            title="Forzar cierre de envíos con más de 30 días sin actualización"
+                            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${
+                                isForcingClose
+                                    ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed'
+                                    : 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100'
+                            }`}
+                        >
+                            {isForcingClose ? (
+                                <><IconLoader className="w-3.5 h-3.5 animate-spin" /> Cerrando...</>
+                            ) : (
+                                <><IconArchive className="w-3.5 h-3.5" /> Cerrar Antiguos</>
+                            )}
+                        </button>
+                    )}
                 </div>
 
                 <div className="flex items-center">

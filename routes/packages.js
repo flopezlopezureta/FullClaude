@@ -48,6 +48,7 @@ router.get('/', authMiddleware, async (req, res) => {
             endDate,
             flexFilter,
             quickFilter,
+            sortOrder = 'desc',
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -144,14 +145,14 @@ router.get('/', authMiddleware, async (req, res) => {
         const { rows: countRows } = await db.query(countQuery, queryParams);
         const total = parseInt(countRows[0].count, 10);
         
-        // Query for paginated data
+        const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         const packageQuery = `
             SELECT p.*, u.name as "clientName" 
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
-            ORDER BY p."createdAt" DESC 
+            ORDER BY p."createdAt" ${orderDirection}
             ${limitClause}
         `;
         
@@ -1238,6 +1239,42 @@ router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error('Error in /api/packages/sys/bulk-mark-processed:', err);
         res.status(500).json({ message: 'Error al establecer el punto de inicio.' });
+    }
+});
+
+// POST /api/packages/sys/force-close-old - Super Admin only
+router.post('/sys/force-close-old', authMiddleware, async (req, res) => {
+    if (req.user.email !== 'admin' && req.user.email !== 'admin@selcom.cl') {
+        return res.status(403).json({ message: 'Solo el Super Administrador puede forzar el cierre de envíos.' });
+    }
+
+    const days = parseInt(req.body.days) || 30;
+
+    try {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+
+        const result = await db.query(`
+            UPDATE packages
+            SET status = 'CANCELADO',
+                billed = true,
+                "updatedAt" = NOW()
+            WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
+            AND "updatedAt" < $1
+        `, [cutoffDate.toISOString()]);
+
+        try {
+            await db.query('INSERT INTO audit_logs ("userId", "userName", action, details) VALUES ($1, $2, $3, $4)',
+                [req.user.id, req.user.name, 'FORCE_CLOSE_OLD', JSON.stringify({ days, count: result.rowCount, cutoffDate })]);
+        } catch (e) { console.warn('Audit log failed', e); }
+
+        res.json({
+            message: `Cierre forzoso completado. ${result.rowCount} envíos cerrados.`,
+            updatedCount: result.rowCount
+        });
+    } catch (err) {
+        console.error('Error in /api/packages/sys/force-close-old:', err);
+        res.status(500).json({ message: 'Error al forzar el cierre de envíos.' });
     }
 });
 
