@@ -66,24 +66,58 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
 
   useEffect(() => {
     const initializeAuth = async () => {
+      // If we literally just logged in (user and token set), we don't need to re-fetch yet.
+      // This prevents a redundant call that, if it fails due to transient network issues, kicks the user out.
+      if (user && token && isInitialized) {
+        console.log("[Auth] Already have user session, skipping re-initialization re-fetch.");
+        return;
+      }
+
+      console.log("[Auth] Initializing session...");
       try {
+        // 1. Core Profile fetch (needs token)
         if (token) {
-          const fetchedUser = await api.getUserByToken();
-          setUser(fetchedUser);
+          try {
+            const fetchedUser = await api.getUserByToken();
+            setUser(fetchedUser);
+          } catch (userErr: any) {
+            console.error("[Auth] Failed to fetch user profile:", userErr);
+            // ONLY logout if the error is an authentication error (401 or 403)
+            // or if the user is explicitly reported as not found/inactive.
+            const statusCode = userErr.status;
+            const errorMsg = String(userErr.message || "");
+            
+            if (statusCode === 401 || statusCode === 403 || errorMsg.includes("autorización denegada")) {
+              console.warn("[Auth] Invalid session detected. Clearing credentials.");
+              localStorage.removeItem('token');
+              setToken(null);
+              setUser(null);
+            }
+          }
         }
-        const settings = await api.getSystemSettings();
-        setSystemSettings(settings);
-      } catch (error) {
-        console.error("Failed to initialize auth:", error);
-        // If token is invalid, log out
-        localStorage.removeItem('token');
-        setToken(null);
-        setUser(null);
+
+        // 2. Systems Settings fetch (non-blocking for auth)
+        try {
+          const settings = await api.getSystemSettings();
+          setSystemSettings(settings);
+        } catch (settingsErr) {
+          console.error("[Auth] Failed to fetch system settings. Using fallbacks.", settingsErr);
+          // Don't log out here! The app can run with fallback settings.
+        }
+
+      } catch (globalErr) {
+        console.error("[Auth] Fatal initialization error:", globalErr);
       } finally {
         setIsInitialized(true);
       }
     };
-    initializeAuth();
+
+    // Avoid running if we are already initialized and have a user (prevents logout loops)
+    if (!isInitialized || (token && !user)) {
+      initializeAuth();
+    } else {
+      setIsInitialized(true);
+    }
   }, [token]);
 
   useEffect(() => {

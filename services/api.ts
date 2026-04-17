@@ -30,7 +30,10 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 
   if (!response.ok) {
     const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.message || `Error ${response.status}: ${response.statusText}`);
+    const errorMessage = errorBody.message || `Error ${response.status}: ${response.statusText}`;
+    const error = new Error(errorMessage);
+    (error as any).status = response.status;
+    throw error;
   }
 
   // Some endpoints might return 204 No Content
