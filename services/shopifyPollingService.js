@@ -97,6 +97,9 @@ async function pollShopifyPackages() {
         isPolling = false;
         pollingStartTime = null;
         nextScheduledTime = Date.now() + currentIntervalMs;
+        if (timeoutId !== null) {
+            timeoutId = setTimeout(pollShopifyPackages, currentIntervalMs);
+        }
     }
 }
 
@@ -205,35 +208,36 @@ async function autoImportShopifyPackages() {
     }
 }
 
-let intervalId = null;
+let timeoutId = null;
 
 function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { 
-    if (intervalId) return;
+    if (timeoutId !== null) return;
     currentIntervalMs = intervalMs;
     nextScheduledTime = Date.now() + delayMs;
     
     console.log(`[ShopifyPolling] Service starting (Interval: ${intervalMs/1000/60} min, Initial Delay: ${delayMs/1000}s)`);
     
-    // Schedule first run and then the interval
-    setTimeout(() => {
-        pollShopifyPackages();
-        intervalId = setInterval(pollShopifyPackages, intervalMs);
-    }, delayMs);
+    // Initial delay then start the recursive timeout chain
+    timeoutId = setTimeout(pollShopifyPackages, delayMs);
 }
 
 function stop() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+    if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
     }
 }
 
 function getStatus() {
-    // Dead Man's Switch: if polling for > 10 mins, force reset
-    if (isPolling && pollingStartTime && (Date.now() - pollingStartTime > 10 * 60 * 1000)) {
-        console.warn('[ShopifyPolling] Polling cycle took too long (>10m), triggering emergency reset.');
+    // Dead Man's Switch: if polling for > 15 mins, force reset
+    if (isPolling && pollingStartTime && (Date.now() - pollingStartTime > 15 * 60 * 1000)) {
+        console.warn('[ShopifyPolling] Polling cycle took too long (>15m), triggering emergency reset.');
         isPolling = false;
         pollingStartTime = null;
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(pollShopifyPackages, currentIntervalMs);
+        }
     }
 
     return {

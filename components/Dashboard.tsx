@@ -73,8 +73,20 @@ const Dashboard: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isProcessingStartPoint, setIsProcessingStartPoint] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
-  const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number; pollingStartTime?: number | null } | null>(null);
-  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number; pollingStartTime?: number | null } | null>(null);
+  const [pollingStatus, setPollingStatus] = useState<{ 
+    nextPollTime: number; 
+    isPolling: boolean; 
+    intervalMs: number; 
+    pollingStartTime?: number | null;
+    totalPackages?: number;
+    processedPackages?: number;
+  } | null>(null);
+  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ 
+    nextPollTime: number; 
+    isPolling: boolean; 
+    intervalMs: number; 
+    pollingStartTime?: number | null;
+  } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [shopifyTimeLeft, setShopifyTimeLeft] = useState<number>(0);
 
@@ -567,7 +579,11 @@ const Dashboard: React.FC = () => {
                             </div>
                             <span className="whitespace-nowrap">
                                 {auth?.systemSettings?.meliAutoImport 
-                                    ? (pollingStatus.isPolling ? 'ML: Sincronizando' : `ML: ${timeLeft}s`) 
+                                    ? (pollingStatus.isPolling 
+                                        ? (pollingStatus.totalPackages && pollingStatus.totalPackages > 0 
+                                            ? `ML: ${pollingStatus.processedPackages}/${pollingStatus.totalPackages}` 
+                                            : 'ML: Sincronizando...') 
+                                        : `ML: ${timeLeft}s`) 
                                     : 'ML: Inactivo'}
                             </span>
                             {auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
