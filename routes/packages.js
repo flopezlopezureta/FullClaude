@@ -1242,10 +1242,10 @@ router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
     }
 });
 
-// POST /api/packages/sys/force-close-old - Super Admin only
+// POST /api/packages/sys/force-close-old - Admin only
 router.post('/sys/force-close-old', authMiddleware, async (req, res) => {
-    if (req.user.email !== 'admin' && req.user.email !== 'admin@selcom.cl') {
-        return res.status(403).json({ message: 'Solo el Super Administrador puede forzar el cierre de envíos.' });
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Solo el Administrador puede forzar el cierre de envíos.' });
     }
 
     const days = parseInt(req.body.days) || 30;
