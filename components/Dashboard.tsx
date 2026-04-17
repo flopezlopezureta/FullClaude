@@ -73,6 +73,7 @@ const Dashboard: React.FC = () => {
   const [isExporting, setIsExporting] = useState(false);
   const [isProcessingStartPoint, setIsProcessingStartPoint] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
+  const [isSyncingShopify, setIsSyncingShopify] = useState(false);
   const [pollingStatus, setPollingStatus] = useState<{ 
     nextPollTime: number; 
     isPolling: boolean; 
@@ -354,27 +355,39 @@ const Dashboard: React.FC = () => {
   };
 
   const handleRefreshAll = async () => {
-    if (isLoading || isSyncingMeli) return;
-    
     try {
-        // If Admin, trigger Meli sync first
-        if (auth?.user?.role === Role.Admin) {
-          setIsSyncingMeli(true);
-          try {
-            await api.syncAllMeliPackages();
-          } catch (error) {
-            console.error("Failed to sync with ML during refresh", error);
-            // We don't alert here as it's a background sync, we still want to fetch data
-          } finally {
-            setIsSyncingMeli(false);
-          }
-        }
-        
-        // Always fetch data
         await fetchData();
     } catch (error: any) {
         console.error("Failed to refresh all data", error);
         alert("Error al refrescar los datos: " + (error.message || "Error desconocido"));
+    }
+  };
+
+  const handleTriggerMeliSync = async () => {
+    if (isSyncingMeli) return;
+    setIsSyncingMeli(true);
+    try {
+      await api.syncMeliPackages();
+      // Status will be updated via the interval polling
+    } catch (error: any) {
+      console.error("Failed to trigger ML sync", error);
+      alert("Error al iniciar sincronización ML: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsSyncingMeli(false);
+    }
+  };
+
+  const handleTriggerShopifySync = async () => {
+    if (isSyncingShopify) return;
+    setIsSyncingShopify(true);
+    try {
+      await api.syncShopifyPackages();
+      // Status will be updated via the interval polling
+    } catch (error: any) {
+      console.error("Failed to trigger Shopify sync", error);
+      alert("Error al iniciar sincronización Shopify: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsSyncingShopify(false);
     }
   };
 
@@ -548,7 +561,7 @@ const Dashboard: React.FC = () => {
             onFlexFilterChange={setFlexFilter}
             quickFilter={quickFilter}
             onQuickFilterChange={setQuickFilter}
-            isSyncing={isLoading || isSyncingMeli}
+            isSyncing={isLoading}
             clients={clients}
             clientFilter={clientFilter}
             onClientChange={setClientFilter}
@@ -568,11 +581,10 @@ const Dashboard: React.FC = () => {
                         disabled={packages.length === 0}
                     />
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
-                    {/* ML Polling Status */}
-                    {auth?.user?.role === Role.Admin && pollingStatus && (
                         <div 
-                            title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status"}
-                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
+                            title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status - Click para sincronizar ahora"}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleTriggerMeliSync(); }}
                         >
                             <div className={`w-4 h-4 rounded-full flex items-center justify-center ${auth?.systemSettings?.meliAutoImport ? 'text-blue-600' : 'text-gray-400'}`}>
                                 <IconMercadoLibre className="w-full h-full" />
@@ -586,16 +598,21 @@ const Dashboard: React.FC = () => {
                                         : `ML: ${timeLeft}s`) 
                                     : 'ML: Inactivo'}
                             </span>
-                            {auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                            {(pollingStatus.isPolling || isSyncingMeli) && <IconLoader className="w-3 h-3 animate-spin" />}
                              <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.meliAutoImport ? 'bg-blue-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
+                    )}
+
+                    {auth?.user?.role === Role.Admin && pollingStatus && shopifyPollingStatus && (
+                        <div className="h-6 w-px bg-[var(--border-primary)] opacity-30"></div>
                     )}
 
                     {/* Shopify Polling Status */}
                     {auth?.user?.role === Role.Admin && shopifyPollingStatus && (
                         <div 
-                            title={shopifyPollingStatus.isPolling && shopifyPollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - shopifyPollingStatus.pollingStartTime)/1000)}s` : "Shopify Status"}
-                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter ${auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling ? 'animate-pulse-glow-emerald' : ''}`}
+                            title={shopifyPollingStatus.isPolling && shopifyPollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - shopifyPollingStatus.pollingStartTime)/1000)}s` : "Shopify Status - Click para sincronizar ahora"}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-emerald-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling ? 'animate-pulse-glow-emerald' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleTriggerShopifySync(); }}
                         >
                             <IconShopify className={`w-4 h-4 ${auth?.systemSettings?.shopifyAutoImport ? 'text-emerald-600' : 'text-gray-400'}`} />
                             <span className="whitespace-nowrap">
@@ -603,7 +620,7 @@ const Dashboard: React.FC = () => {
                                     ? (shopifyPollingStatus.isPolling ? 'Shopify: Sincronizando' : `Shopify: ${shopifyTimeLeft}s`) 
                                     : 'Shopify: Inactivo'}
                             </span>
-                            {auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                            {(shopifyPollingStatus.isPolling || isSyncingShopify) && <IconLoader className="w-3 h-3 animate-spin" />}
                              <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.shopifyAutoImport ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
                     )}

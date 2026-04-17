@@ -36,6 +36,21 @@ router.get('/shopify-polling-status', authMiddleware, (req, res) => {
     res.json(shopifyPollingService.getStatus());
 });
 
+// POST /api/settings/sync-meli
+router.post('/sync-meli', authMiddleware, adminOnly, async (req, res) => {
+    console.log('[ManualSync] Triggering Mercado Libre poll...');
+    // We run it without awaiting to avoid blocking the response, but the service handles concurrency
+    meliPollingService.pollMeliPackages();
+    res.json({ message: 'Sincronización con Mercado Libre iniciada en segundo plano.' });
+});
+
+// POST /api/settings/sync-shopify
+router.post('/sync-shopify', authMiddleware, adminOnly, async (req, res) => {
+    console.log('[ManualSync] Triggering Shopify poll...');
+    shopifyPollingService.pollShopifyPackages();
+    res.json({ message: 'Sincronización con Shopify iniciada en segundo plano.' });
+});
+
 // GET /api/settings/system
 router.get('/system', async (req, res) => {
     try {
