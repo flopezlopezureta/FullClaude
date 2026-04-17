@@ -85,14 +85,14 @@ const DeleteDatabaseModal: React.FC<DeleteDatabaseModalProps> = ({ onClose, onCo
 
         <form onSubmit={handleSubmit}>
           <div className="p-6 space-y-4">
-            <div className="flex items-start p-4 bg-red-50 dark:bg-red-900/20 border-l-4 border-red-500 rounded-r-md">
-                <IconAlertTriangle className="h-6 w-6 text-red-600 mr-3 flex-shrink-0"/>
+            <div className="flex items-start p-5 bg-amber-50 dark:bg-amber-900/40 border-l-4 border-amber-500 rounded-r-xl shadow-sm">
+                <IconAlertTriangle className="h-7 w-7 text-amber-600 mr-4 flex-shrink-0 mt-0.5"/>
                 <div>
-                    <h4 className="font-bold text-red-800 dark:text-red-200">¡Acción Irreversible!</h4>
-                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">
+                    <h4 className="font-black text-amber-900 dark:text-amber-200 text-base uppercase tracking-tight">¡Acción Irreversible!</h4>
+                    <p className="text-base text-amber-800 dark:text-amber-100 mt-2 leading-relaxed">
                         {currentConfig.description}
                         <br/><br/>
-                        <strong>Advertencia:</strong> {currentConfig.warning}
+                        <strong className="text-amber-600 dark:text-amber-400 font-black">Advertencia:</strong> {currentConfig.warning}
                     </p>
                 </div>
             </div>
