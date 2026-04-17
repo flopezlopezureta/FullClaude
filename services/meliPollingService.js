@@ -762,4 +762,19 @@ function getStatus() {
     };
 }
 
-module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages, syncTrackingId, importSpecificMeliPackage };
+const triggerSync = async () => {
+    await pollMeliPackages();
+};
+
+module.exports = { 
+    start, 
+    stop, 
+    getStatus, 
+    pollMeliPackages, 
+    syncPackage, 
+    getValidMeliToken, 
+    autoImportMeliPackages, 
+    syncTrackingId, 
+    importSpecificMeliPackage,
+    triggerSync
+};

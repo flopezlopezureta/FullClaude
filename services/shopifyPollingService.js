@@ -248,4 +248,8 @@ function getStatus() {
     };
 }
 
-module.exports = { start, stop, pollShopifyPackages, getStatus };
+const triggerSync = async () => {
+    await pollShopifyPackages();
+};
+
+module.exports = { start, stop, pollShopifyPackages, getStatus, triggerSync };

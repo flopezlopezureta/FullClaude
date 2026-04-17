@@ -6,6 +6,8 @@ const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/logger');
+const meliPollingService = require('../services/meliPollingService');
+const shopifyPollingService = require('../services/shopifyPollingService');
 
 // Middleware to check for Admin role
 const adminOnly = (req, res, next) => {
@@ -147,6 +149,28 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
     } catch (err) {
         console.error('Error updating system settings:', err);
         res.status(500).json({ message: 'Error al actualizar la configuración del sistema.' });
+    }
+});
+
+// POST /api/settings/sync-meli
+router.post('/sync-meli', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        await meliPollingService.triggerSync();
+        res.json({ message: 'Sincronización de Mercado Libre iniciada en segundo plano.' });
+    } catch (err) {
+        console.error('Error triggering ML sync:', err);
+        res.status(500).json({ message: 'Error al iniciar sincronización de ML.' });
+    }
+});
+
+// POST /api/settings/sync-shopify
+router.post('/sync-shopify', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        await shopifyPollingService.triggerSync();
+        res.json({ message: 'Sincronización de Shopify iniciada en segundo plano.' });
+    } catch (err) {
+        console.error('Error triggering Shopify sync:', err);
+        res.status(500).json({ message: 'Error al iniciar sincronización de Shopify.' });
     }
 });
 

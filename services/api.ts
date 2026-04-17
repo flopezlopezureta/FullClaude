@@ -352,5 +352,7 @@ export const api = {
   },
   bulkMarkAllProcessed: () => post<{message: string, updatedCount: number}>('/packages/sys/bulk-mark-processed', {}),
   bulkUpdatePackageStatus: (packageIds: string[], status: string) => post<{message: string}>('/packages/bulk-update-status', { packageIds, status }),
+  syncMeliPackages: () => post<{message: string}>('/settings/sync-meli', {}),
+  syncShopifyPackages: () => post<{message: string}>('/settings/sync-shopify', {}),
   forceCloseOldPackages: (days: number) => post<{message: string, updatedCount: number}>('/packages/sys/force-close-old', { days }),
 };
