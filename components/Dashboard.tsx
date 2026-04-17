@@ -581,6 +581,7 @@ const Dashboard: React.FC = () => {
                         disabled={packages.length === 0}
                     />
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
+                    {auth?.user?.role === Role.Admin && pollingStatus && (
                         <div 
                             title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status - Click para sincronizar ahora"}
                             className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
