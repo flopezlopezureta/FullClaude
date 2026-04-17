@@ -48,6 +48,8 @@ router.get('/', authMiddleware, async (req, res) => {
             endDate,
             flexFilter,
             quickFilter,
+            isAssigned,
+            sortOrder = 'desc',
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -132,6 +134,12 @@ router.get('/', authMiddleware, async (req, res) => {
             }
         }
 
+        if (isAssigned === 'true') {
+            whereClauses.push(`p."driverId" IS NOT NULL`);
+        } else if (isAssigned === 'false') {
+            whereClauses.push(`p."driverId" IS NULL`);
+        }
+
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         // Query for total count
@@ -144,14 +152,14 @@ router.get('/', authMiddleware, async (req, res) => {
         const { rows: countRows } = await db.query(countQuery, queryParams);
         const total = parseInt(countRows[0].count, 10);
         
-        // Query for paginated data
+        const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         const packageQuery = `
             SELECT p.*, u.name as "clientName" 
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
-            ORDER BY p."createdAt" DESC 
+            ORDER BY p."createdAt" ${orderDirection}
             ${limitClause}
         `;
         
@@ -256,7 +264,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
     }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
     
     // Validation
     const requiredFields = {
@@ -317,6 +325,7 @@ router.post('/', authMiddleware, async (req, res) => {
             shopifyOrderId,
             wooOrderId,
             trackingId,
+            recipientEmail,
             destLatitude: coords.lat,
             destLongitude: coords.lng
         };
@@ -376,6 +385,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     creatorId, 
                     recipientName, 
                     recipientPhone, 
+                    recipientEmail,
                     recipientAddress, 
                     recipientCommune, 
                     recipientCity, 
@@ -456,6 +466,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     shopifyOrderId, 
                     wooOrderId, 
                     trackingId,
+                    recipientEmail,
                     destLatitude: coords.lat,
                     destLongitude: coords.lng
                 };
@@ -1201,6 +1212,108 @@ router.get('/public/track/:id', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al consultar el seguimiento.' });
+    }
+});
+
+// POST /api/packages/sys/bulk-mark-processed - Super Admin only reset
+router.post('/sys/bulk-mark-processed', authMiddleware, async (req, res) => {
+    // Only 'admin' account can perform this global reset
+    if (req.user.email !== 'admin' && req.user.email !== 'admin@selcom.cl') {
+        return res.status(403).json({ message: 'Solo el Super Administrador puede fijar un punto de inicio.' });
+    }
+
+    try {
+        const query = `
+            UPDATE packages 
+            SET status = 'ENTREGADO', 
+                billed = true, 
+                "driverId" = NULL,
+                "updatedAt" = NOW() 
+            WHERE (status != 'ENTREGADO' AND status != 'CANCELADO' AND status != 'DEVUELTO') OR billed = false
+        `;
+        const result = await db.query(query);
+        
+        // Log action if logAction helper is available, otherwise console
+        try {
+            await db.query('INSERT INTO audit_logs (userId, userName, action, details) VALUES ($1, $2, $3, $4)', 
+                [req.user.id, req.user.name, 'SYS_BULK_RESET', JSON.stringify({ count: result.rowCount })]);
+        } catch (e) { console.warn('Audit log failed', e); }
+        
+        res.json({ 
+            message: 'Punto de inicio establecido correctamente.', 
+            updatedCount: result.rowCount 
+        });
+    } catch (err) {
+        console.error('Error in /api/packages/sys/bulk-mark-processed:', err);
+        res.status(500).json({ message: 'Error al establecer el punto de inicio.' });
+    }
+});
+
+// POST /api/packages/sys/force-close-old - Admin only
+router.post('/sys/force-close-old', authMiddleware, async (req, res) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Solo el Administrador puede forzar el cierre de envíos.' });
+    }
+
+    const days = parseInt(req.body.days) || 30;
+
+    try {
+        const cutoffDate = new Date();
+        cutoffDate.setDate(cutoffDate.getDate() - days);
+
+        const result = await db.query(`
+            UPDATE packages
+            SET status = 'CANCELADO',
+                billed = true,
+                "updatedAt" = NOW()
+            WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
+            AND "updatedAt" < $1
+        `, [cutoffDate.toISOString()]);
+
+        try {
+            await db.query('INSERT INTO audit_logs ("userId", "userName", action, details) VALUES ($1, $2, $3, $4)',
+                [req.user.id, req.user.name, 'FORCE_CLOSE_OLD', JSON.stringify({ days, count: result.rowCount, cutoffDate })]);
+        } catch (e) { console.warn('Audit log failed', e); }
+
+        res.json({
+            message: `Cierre forzoso completado. ${result.rowCount} envíos cerrados.`,
+            updatedCount: result.rowCount
+        });
+    } catch (err) {
+        console.error('Error in /api/packages/sys/force-close-old:', err);
+        res.status(500).json({ message: 'Error al forzar el cierre de envíos.' });
+    }
+});
+
+// POST /api/packages/bulk-update-status
+router.post('/bulk-update-status', authMiddleware, async (req, res) => {
+    const { packageIds, status } = req.body;
+    if (!packageIds || !Array.isArray(packageIds) || !status) {
+        return res.status(400).json({ message: 'Se requiere un array de IDs y el nuevo estado.' });
+    }
+
+    try {
+        const billed = status === 'ENTREGADO' || status === 'CANCELADO' || status === 'DEVUELTO';
+        const placeholders = packageIds.map((_, i) => `$${i + 2}`).join(', ');
+        
+        await db.query(`
+            UPDATE packages 
+            SET status = $1, 
+                billed = $2, 
+                "updatedAt" = NOW() 
+            WHERE id IN (${placeholders})
+        `, [status, billed, ...packageIds]);
+
+        // Add tracking events
+        for (const pkgId of packageIds) {
+            await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, NOW())', 
+                [pkgId, status, 'Operaciones', `Estado actualizado masivamente por el administrador a ${status}.`, new Date()]);
+        }
+
+        res.json({ message: `Se actualizaron ${packageIds.length} paquetes a ${status}.` });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al actualizar paquetes masivamente.' });
     }
 });
 

@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy, IconMail } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageListItemProps {
@@ -179,6 +179,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                         />
                     </div>
                 )}
+                {/* Main Content Info */}
                 <div onClick={() => onSelect(pkg)} className="flex items-start flex-grow min-w-0 cursor-pointer gap-3">
                     <div className="flex-shrink-0 mt-1">
                         <div className={`p-2 rounded-full ${badgeClass}`}>
@@ -207,54 +208,66 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                         </div>
                         
                         {/* 2. Secondary Text: Address (Smaller, different color, new line) */}
-                <div className="flex items-start gap-1.5 text-xs text-[var(--text-secondary)] w-full">
-                    <IconMapPin className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
-                    <span className="leading-tight block break-words">{addressText}</span>
-                </div>
+                        <div className="flex items-start gap-1.5 text-xs text-[var(--text-secondary)] w-full">
+                            <IconMapPin className="w-3.5 h-3.5 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
+                            <span className="leading-tight block break-words">{addressText}</span>
+                        </div>
 
-                {/* 3. Third Line: Commune Badge + Icons */}
-                <div className="flex items-center gap-2 flex-wrap mt-1 w-full">
-                    {!isReturnFlow && (
-                        <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700 border border-slate-300">
-                            {pkg.recipientCommune || 'Sin Comuna'}
-                        </span>
-                    )}
-                    <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
-                        {pkg.source && sourceIcons[pkg.source]}
-                        {pkg.source === 'MERCADO_LIBRE' && (
-                            pkg.isFlexed ? (
-                                <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-green-100 text-green-800 border border-green-200">
-                                    FLEX OK
+                        {/* 3. Third Line: Commune Badge + Icons */}
+                        <div className="flex items-center gap-2 flex-wrap mt-1 w-full">
+                            {!isReturnFlow && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide bg-slate-200 text-slate-700 border border-slate-300">
+                                    {pkg.recipientCommune || 'Sin Comuna'}
                                 </span>
-                            ) : (
-                                pkg.status === PackageStatus.InTransit && (
-                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-red-100 text-red-800 border border-red-200 animate-pulse">
-                                        NO FLEX
-                                    </span>
-                                )
-                            )
+                            )}
+                            <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
+                                {pkg.source && sourceIcons[pkg.source]}
+                                {pkg.recipientEmail && <IconMail title={`Email: ${pkg.recipientEmail}`} className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
+                                {pkg.source === 'MERCADO_LIBRE' && (
+                                    pkg.isFlexed ? (
+                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-green-100 text-green-800 border border-green-200">
+                                            FLEX OK
+                                        </span>
+                                    ) : (
+                                        pkg.status === PackageStatus.InTransit && (
+                                            <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[8px] font-bold uppercase bg-red-100 text-red-800 border border-red-200 animate-pulse">
+                                                NO FLEX
+                                            </span>
+                                        )
+                                    )
+                                )}
+                                {pkg.shippingType && shippingTypeIcons[pkg.shippingType]}
+                            </div>
+                        </div>
+
+                        {/* Additional Info */}
+                        {creatorName && !isReturnFlow && (
+                            <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] pt-0.5">
+                                <IconUser className="w-3 h-3" />
+                                <span className="truncate">Cliente: {creatorName}</span>
+                            </div>
                         )}
-                        {pkg.shippingType && shippingTypeIcons[pkg.shippingType]}
+                         {(pkg.status === PackageStatus.Delivered || pkg.status === PackageStatus.Returned) && pkg.deliveryReceiverName && (
+                            <div className={`flex items-center gap-1 text-[10px] font-medium ${pkg.status === PackageStatus.Delivered ? 'text-green-600' : 'text-slate-600'}`}>
+                                <IconCheckCircle className="w-3 h-3" />
+                                <span className="truncate">Recibido por: {pkg.deliveryReceiverName}</span>
+                            </div>
+                        )}
+                    </div>
+
+                    {/* DATES SECTION (Simplified: Only Creation) */}
+                    <div className="hidden lg:flex flex-col justify-center px-4 border-l border-r border-gray-100 min-w-[140px]">
+                        <div className="flex flex-col">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Creación</span>
+                            <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">
+                                {new Date(pkg.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                <span className="text-gray-400 ml-1 font-medium">{new Date(pkg.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
+                            </span>
+                        </div>
                     </div>
                 </div>
-
-                {/* Additional Info */}
-                {creatorName && !isReturnFlow && (
-                    <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] pt-0.5">
-                        <IconUser className="w-3 h-3" />
-                        <span className="truncate">Cliente: {creatorName}</span>
-                    </div>
-                )}
-                 {(pkg.status === PackageStatus.Delivered || pkg.status === PackageStatus.Returned) && pkg.deliveryReceiverName && (
-                    <div className={`flex items-center gap-1 text-[10px] font-medium ${pkg.status === PackageStatus.Delivered ? 'text-green-600' : 'text-slate-600'}`}>
-                        <IconCheckCircle className="w-3 h-3" />
-                        <span className="truncate">Recibido por: {pkg.deliveryReceiverName}</span>
-                    </div>
-                )}
-            </div>
-        </div>
           
-        <div onClick={() => onSelect(pkg)} className="ml-3 flex-shrink-0 text-right hidden sm:block cursor-pointer">
+                <div onClick={() => onSelect(pkg)} className="ml-3 flex-shrink-0 text-right hidden sm:block cursor-pointer">
             <div className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${badgeClass}`}>
                 {(pkg.status || '').replace('_', ' ')}
             </div>

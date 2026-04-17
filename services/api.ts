@@ -15,11 +15,29 @@ import { PackageStatus, ShippingType, Role } from '../constants';
 
 const API_URL = '/api';
 
+export class ApiError extends Error {
+  status: number;
+  body: any;
+
+  constructor(message: string, status: number, body?: any) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.body = body;
+  }
+}
+
 async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
-  const token = localStorage.getItem('token');
+  const getHeaders = () => {
+    const token = localStorage.getItem('token');
+    return {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+    };
+  };
+
   const headers: HeadersInit = {
-    'Content-Type': 'application/json',
-    ...(token && { Authorization: `Bearer ${token}` }),
+    ...getHeaders(),
     ...options.headers,
   };
 
@@ -28,17 +46,44 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     headers,
   });
 
+  const contentType = response.headers.get('content-type');
+  const isJson = contentType && contentType.includes('application/json');
+
   if (!response.ok) {
-    const errorBody = await response.json().catch(() => ({}));
-    throw new Error(errorBody.message || `Error ${response.status}: ${response.statusText}`);
+    let errorMessage = `Error ${response.status}: ${response.statusText}`;
+    let errorBody = {};
+
+    if (isJson) {
+      try {
+        errorBody = await response.json();
+        errorMessage = (errorBody as any).message || errorMessage;
+      } catch (e) {
+        console.warn('[API] Could not parse error JSON body');
+      }
+    } else {
+      const text = await response.text();
+      console.warn(`[API] Received non-JSON error response (${response.status}):`, text.substring(0, 100));
+    }
+
+    throw new ApiError(errorMessage, response.status, errorBody);
   }
 
-  // Some endpoints might return 204 No Content
   if (response.status === 204) {
-      return {} as T;
+    return {} as T;
   }
 
-  return response.json();
+  if (!isJson) {
+    const text = await response.text();
+    console.error(`[API] Expected JSON but received ${contentType}:`, text.substring(0, 100));
+    throw new ApiError('El servidor devolvió un formato no válido (HTML)', response.status, { raw: text.substring(0, 200) });
+  }
+
+  try {
+    return await response.json();
+  } catch (e) {
+    console.error('[API] Failed to parse success response as JSON');
+    throw new ApiError('Error al procesar la respuesta del servidor', response.status);
+  }
 }
 
 const get = <T>(endpoint: string) => request<T>(endpoint, { method: 'GET' });
@@ -81,6 +126,7 @@ export interface PackageCreationData {
   shopifyOrderId?: string;
   wooOrderId?: string;
   trackingId?: string;
+  recipientEmail?: string;
 }
 
 export interface PackageUpdateData {
@@ -96,6 +142,7 @@ export interface PackageUpdateData {
   estimatedDelivery?: Date;
   destLatitude?: number;
   destLongitude?: number;
+  recipientEmail?: string;
 }
 
 export interface UserCreationData extends RegisterData {
@@ -255,8 +302,10 @@ export const api = {
   // Settings
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
   updateSystemSettings: (data: Partial<SystemSettings>) => put<SystemSettings>('/settings/system', data),
-  getMeliPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number }>('/settings/meli-polling-status'),
+  getMeliPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number; totalPackages?: number; processedPackages?: number }>('/settings/meli-polling-status'),
   getShopifyPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number }>('/settings/shopify-polling-status'),
+  syncMeliPackages: () => post<{ message: string }>('/settings/sync-meli', {}),
+  syncShopifyPackages: () => post<{ message: string }>('/settings/sync-shopify', {}),
   resetDatabase: (password: string) => post<{message: string}>('/settings/reset-database', { password }),
   resetPackages: (password: string) => post<{message: string}>('/settings/reset-packages', { password }),
   resetClients: (password: string) => post<{message: string}>('/settings/reset-clients', { password }),
@@ -274,6 +323,7 @@ export const api = {
   testShopifyConnection: (creds: { shopifyShopUrl: string, shopifyAccessToken: string }) => post<{message: string, shopName?: string}>('/integrations/test/shopify', creds),
   testWooCommerceConnection: (creds: { wooUrl: string, wooConsumerKey: string, wooConsumerSecret: string }) => post<{message: string}>('/integrations/test/woocommerce', creds),
   testFalabellaConnection: (creds: { falabellaApiKey: string, falabellaSellerId: string }) => post<{message: string}>('/integrations/test/falabella', creds),
+  testSmtpConnection: (creds: { smtpHost: string, smtpPort: string, smtpUser: string, smtpPassword: string }) => post<{message: string}>('/settings/test-smtp', creds),
   
   fetchMeliOrders: (clientId: string) => get<MeliOrder[]>(`/integrations/${clientId}/meli/orders`),
   importMeliOrders: (clientId: string, orderIds: string[]) => post<void>(`/integrations/${clientId}/meli/import`, { orderIds }),
@@ -345,4 +395,9 @@ export const api = {
     const token = localStorage.getItem('token');
     return `/api/integrations/meli-label/${packageId}${token ? `?token=${token}` : ''}`;
   },
+  bulkMarkAllProcessed: () => post<{message: string, updatedCount: number}>('/packages/sys/bulk-mark-processed', {}),
+  bulkUpdatePackageStatus: (packageIds: string[], status: string) => post<{message: string}>('/packages/bulk-update-status', { packageIds, status }),
+  syncMeliPackages: () => post<{message: string}>('/settings/sync-meli', {}),
+  syncShopifyPackages: () => post<{message: string}>('/settings/sync-shopify', {}),
+  forceCloseOldPackages: (days: number) => post<{message: string, updatedCount: number}>('/packages/sys/force-close-old', { days }),
 };

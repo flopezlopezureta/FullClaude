@@ -1,0 +1,42 @@
+# Stage 1: Build frontend
+FROM node:22-alpine AS builder
+
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install all dependencies (including devDeps needed for build)
+RUN npm install
+
+# Copy source
+COPY . .
+
+# Build the Vite frontend
+RUN npm run build
+
+# Stage 2: Production runtime
+FROM node:22-alpine AS runner
+
+WORKDIR /app
+
+# Copy package files and install only production deps
+COPY package*.json ./
+RUN npm install --omit=dev
+
+# Copy built frontend from builder stage
+COPY --from=builder /app/dist ./dist
+
+# Copy server and all backend files
+COPY server.js .
+COPY db.js .
+COPY routes ./routes
+COPY middleware ./middleware
+COPY services ./services
+COPY .env* ./
+
+# Expose port
+EXPOSE 3000
+
+# Start the server
+CMD ["node", "server.js"]

@@ -4,6 +4,7 @@ import AuthPage from './pages/AuthPage';
 import TrackingPage from './pages/TrackingPage';
 import DashboardLayout from './components/layout/DashboardLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
+import { ToastProvider } from './contexts/ToastContext';
 import ErrorBoundary from './components/ErrorBoundary';
 
 const AppContent: React.FC = () => {
@@ -66,7 +67,9 @@ const App: React.FC = () => {
     <ErrorBoundary>
       <AuthProvider>
         <ThemeProvider>
-          <AppContent />
+          <ToastProvider>
+            <AppContent />
+          </ToastProvider>
         </ThemeProvider>
       </AuthProvider>
     </ErrorBoundary>

@@ -22,6 +22,13 @@ const makeMeliRequest = (options, postData = null) => {
                 }
             });
         });
+
+        // Set 15s timeout
+        req.setTimeout(15000, () => {
+           req.destroy();
+           reject(new Error('Meli API request timed out after 15s'));
+        });
+
         req.on('error', (e) => reject(e));
         if (postData) req.write(postData);
         req.end();
@@ -83,9 +90,29 @@ async function getValidMeliToken(clientId) {
 }
 
 let isPolling = false;
+let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
+let totalPackagesCount = 0;
+let processedPackagesCount = 0;
+
+// Helper function for limited concurrency
+async function runWithLimit(concurrency, items, fn) {
+    const results = [];
+    const executing = new Set();
+    for (const item of items) {
+        const p = Promise.resolve().then(() => fn(item));
+        results.push(p);
+        executing.add(p);
+        const clean = () => executing.delete(p);
+        p.then(clean).catch(clean);
+        if (executing.size >= concurrency) {
+            await Promise.race(executing);
+        }
+    }
+    return Promise.all(results);
+}
 
 async function pollMeliPackages() {
     if (isPolling) {
@@ -93,7 +120,10 @@ async function pollMeliPackages() {
         return;
     }
     isPolling = true;
+    pollingStartTime = Date.now();
     lastPollTime = Date.now();
+    processedPackagesCount = 0;
+    totalPackagesCount = 0;
     console.log('[MeliPolling] Starting poll cycle...');
     try {
         // 0. Check if auto-import is enabled
@@ -105,9 +135,6 @@ async function pollMeliPackages() {
             console.warn('[MeliPolling] Could not fetch meliAutoImport from DB or column missing. Defaulting to true...', settingsErr.message);
             autoImportEnabled = true; // Safety default
         }
-
-        // Emergency Override: If we are debugging, let's keep it true for now
-        autoImportEnabled = true;
 
         if (autoImportEnabled) {
             await autoImportMeliPackages();
@@ -128,75 +155,71 @@ async function pollMeliPackages() {
         if (packages.length === 0) {
             console.log('[MeliPolling] No active ML packages to poll status.');
         } else {
-            // Group by creatorId to optimize token fetching
-            const packagesByClient = packages.reduce((acc, pkg) => {
-                if (!acc[pkg.creatorId]) acc[pkg.creatorId] = [];
-                acc[pkg.creatorId].push(pkg);
-                return acc;
-            }, {});
+            totalPackagesCount = packages.length;
+            console.log(`[MeliPolling] Polling status for ${totalPackagesCount} packages...`);
 
-            for (const clientId in packagesByClient) {
-                const accessToken = await getValidMeliToken(clientId);
-                if (!accessToken) continue;
+            // Use limited concurrency (e.g., 5 at a time) to avoid hitting ML rate limits or hanging
+            await runWithLimit(5, packages, async (pkg) => {
+                try {
+                    const accessToken = await getValidMeliToken(pkg.creatorId);
+                    if (!accessToken) {
+                        processedPackagesCount++;
+                        return;
+                    }
 
-                for (const pkg of packagesByClient[clientId]) {
-                    try {
-                        // Use meliFlexCode (Shipment ID) if available, otherwise meliOrderId
-                        const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
-                        if (!shipmentId) continue;
+                    const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+                    if (!shipmentId) {
+                        processedPackagesCount++;
+                        return;
+                    }
 
-                        // Check status in Mercado Libre
-                        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
-                        
-                        const mlStatus = shipment.status;
-                        const mlSubstatus = shipment.substatus;
-                        
-                        let newStatus = null;
-                        let eventDetails = '';
-                        let eventStatus = '';
+                    // Check status in Mercado Libre
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    
+                    const mlStatus = shipment.status;
+                    const mlSubstatus = shipment.substatus;
+                    
+                    let newStatus = null;
+                    let eventDetails = '';
+                    let eventStatus = '';
 
-                        // IMPORTANTE: Req. de Usuario -> Solo marcar entregado si estaba en ruta y tiene conductor.
-                        if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
-                            if ((pkg.status === 'EN_TRANSITO' || pkg.status === 'EN_RUTA' || pkg.isFlexed) && pkg.driverId) {
-                                newStatus = 'ENTREGADO';
-                                eventStatus = 'Entregado';
-                                eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
-                            } else {
-                                console.log(`[MeliPolling] Blocked false 'delivered' update for ${pkg.id} (status: ${pkg.status}, driver: ${pkg.driverId})`);
-                            }
-                        } else if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
-                            newStatus = 'EN_TRANSITO';
-                            eventStatus = 'En Tránsito';
-                            eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
-                            // Note: NotificationService should ideally be triggered, we will handle that separately.
-                        } else if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
-                            newStatus = 'CANCELADO';
-                            eventStatus = 'Cancelado';
-                            eventDetails = 'El envío ha sido CANCELADO en Mercado Libre.';
-                        } else if ((mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed') && pkg.status !== 'REPROGRAMADO') {
-                            newStatus = 'REPROGRAMADO';
-                            eventStatus = 'Reprogramado';
-                            eventDetails = 'El envío ha sido REPROGRAMADO por Mercado Libre.';
-                        } else if (mlStatus === 'not_delivered' && pkg.status !== 'PROBLEMA') {
-                            newStatus = 'PROBLEMA';
-                            eventStatus = 'Problema';
-                            eventDetails = 'El envío ha sido marcado como NO ENTREGADO en Mercado Libre.';
+                    // Logic matches original sequential code
+                    if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
+                        if ((pkg.status === 'EN_TRANSITO' || pkg.status === 'EN_RUTA' || pkg.isFlexed) && pkg.driverId) {
+                            newStatus = 'ENTREGADO';
+                            eventStatus = 'Entregado';
+                            eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
                         }
+                    } else if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
+                        newStatus = 'EN_TRANSITO';
+                        eventStatus = 'En Tránsito';
+                        eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
+                    } else if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
+                        newStatus = 'CANCELADO';
+                        eventStatus = 'Cancelado';
+                        eventDetails = 'El envío ha sido CANCELADO en Mercado Libre.';
+                    } else if ((mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed') && pkg.status !== 'REPROGRAMADO') {
+                        newStatus = 'REPROGRAMADO';
+                        eventStatus = 'Reprogramado';
+                        eventDetails = 'El envío ha sido REPROGRAMADO por Mercado Libre.';
+                    } else if (mlStatus === 'not_delivered' && pkg.status !== 'PROBLEMA') {
+                        newStatus = 'PROBLEMA';
+                        eventStatus = 'Problema';
+                        eventDetails = 'El envío ha sido marcado como NO ENTREGADO en Mercado Libre.';
+                    }
 
-                        // [NUEVO] Capturar el trackingId original (SCA) si está disponible
-                        const trackingId = shipment.tracking_id ? String(shipment.tracking_id) : null;
+                    const trackingId = shipment.tracking_id ? String(shipment.tracking_id) : null;
+                    
+                    if (newStatus || trackingId) {
+                        const now = new Date();
+                        const isFlexed = mlStatus === 'shipped' || mlStatus === 'delivered';
                         
-                        if (newStatus || trackingId) {
-                            console.log(`[MeliPolling] Syncing package ${pkg.id}: trackingId=${trackingId}, status=${newStatus || pkg.status}`);
-                            
-                            const now = new Date();
-                            const isFlexed = mlStatus === 'shipped' || mlStatus === 'delivered';
-                            
-                            await db.query(
-                                'UPDATE packages SET status = COALESCE($1, status), "trackingId" = COALESCE($2, "trackingId"), "updatedAt" = $3, "isFlexed" = $4, "flexedAt" = CASE WHEN $4 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END WHERE id = $5', 
-                                [newStatus, trackingId, now, isFlexed, pkg.id]
-                            );
-                            
+                        await db.query(
+                            'UPDATE packages SET status = COALESCE($1, status), "trackingId" = COALESCE($2, "trackingId"), "updatedAt" = $3, "isFlexed" = $4, "flexedAt" = CASE WHEN $4 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END WHERE id = $5', 
+                            [newStatus, trackingId, now, isFlexed, pkg.id]
+                        );
+                        
+                        if (newStatus) {
                             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                                 [pkg.id, eventStatus, 'Mercado Libre', eventDetails, now]);
                             
@@ -205,21 +228,16 @@ async function pollMeliPackages() {
                                 await db.query(`
                                     INSERT INTO notifications (id, "userId", title, message, type, "relatedId")
                                     VALUES ($1, $2, $3, $4, $5, $6)
-                                `, [
-                                    notificationId, 
-                                    pkg.driverId, 
-                                    `Envío ${eventStatus}`, 
-                                    `El paquete ${pkg.id} ha sido actualizado a ${eventStatus} por Mercado Libre.`, 
-                                    `PACKAGE_${newStatus}`,
-                                    pkg.id
-                                ]);
+                                `, [notificationId, pkg.driverId, `Envío ${eventStatus}`, `El paquete ${pkg.id} ha sido actualizado a ${eventStatus} por Mercado Libre.`, `PACKAGE_${newStatus}`, pkg.id]);
                             }
                         }
-                    } catch (err) {
-                        console.error(`[MeliPolling] Error polling shipment ${pkg.meliOrderId}:`, err.body || err);
                     }
+                } catch (err) {
+                    console.error(`[MeliPolling] Error polling shipment for package ${pkg.id}:`, err.message || err);
+                } finally {
+                    processedPackagesCount++;
                 }
-            }
+            });
         }
         
         // [NUEVO] Paso de Auto-Fix para paquetes sin tracking_id en las últimas 48 horas
@@ -253,7 +271,14 @@ async function pollMeliPackages() {
         console.error('[MeliPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+        pollingStartTime = null;
+        totalPackagesCount = 0;
+        processedPackagesCount = 0;
         nextScheduledTime = Date.now() + currentIntervalMs;
+        // Schedule next poll using setTimeout for better reliability
+        if (timeoutId !== null) {
+            timeoutId = setTimeout(pollMeliPackages, currentIntervalMs);
+        }
     }
 }
 
@@ -655,6 +680,7 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
             id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
             recipientName: shipment.receiver_address?.receiver_name || 'N/A',
             recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
+            recipientEmail: shipment.buyer?.email || null,
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
             origin: 'Centro de Distribución',
@@ -690,10 +716,10 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
     }
 }
 
-let intervalId = null;
+let timeoutId = null;
 
 function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { // Default 5 minutes
-    if (intervalId) return;
+    if (timeoutId !== null) return;
     currentIntervalMs = intervalMs;
     nextScheduledTime = Date.now() + delayMs;
     
@@ -702,26 +728,53 @@ function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { // Default 5 minutes
     
     console.log(`[MeliPolling] Service starting (Interval: ${intervalMs/1000/60} min, Initial Delay: ${delayMs/1000}s)`);
     
-    // Schedule first run and then the interval
-    setTimeout(() => {
-        pollMeliPackages();
-        intervalId = setInterval(pollMeliPackages, intervalMs);
-    }, delayMs);
+    // Initial delay then start the recursive timeout chain
+    timeoutId = setTimeout(pollMeliPackages, delayMs);
 }
 
 function stop() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+    if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
     }
 }
 
 function getStatus() {
+    // Dead Man's Switch: if polling for > 15 mins, force reset
+    if (isPolling && pollingStartTime && (Date.now() - pollingStartTime > 15 * 60 * 1000)) {
+        console.warn('[MeliPolling] Polling cycle took too long (>15m), triggering emergency reset.');
+        isPolling = false;
+        pollingStartTime = null;
+        // Ensure service continues
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(pollMeliPackages, currentIntervalMs);
+        }
+    }
+
     return {
         nextPollTime: nextScheduledTime,
         isPolling,
-        intervalMs: currentIntervalMs
+        pollingStartTime,
+        intervalMs: currentIntervalMs,
+        totalPackages: totalPackagesCount,
+        processedPackages: processedPackagesCount
     };
 }
 
-module.exports = { start, stop, getStatus, pollMeliPackages, syncPackage, getValidMeliToken, autoImportMeliPackages, syncTrackingId, importSpecificMeliPackage };
+const triggerSync = async () => {
+    await pollMeliPackages();
+};
+
+module.exports = { 
+    start, 
+    stop, 
+    getStatus, 
+    pollMeliPackages, 
+    syncPackage, 
+    getValidMeliToken, 
+    autoImportMeliPackages, 
+    syncTrackingId, 
+    importSpecificMeliPackage,
+    triggerSync
+};

@@ -12,7 +12,19 @@ import { AuthContext } from '../contexts/AuthContext';
 import PackageFilters from './admin/PackageFilters';
 import ShippingLabelModal from './client/ShippingLabelModal';
 import BatchShippingLabelModal from './client/BatchShippingLabelModal';
-import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre, IconShopify } from './Icon';
+import { IconPrinter, IconTrash, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconUserPlus, IconLoader, IconMercadoLibre, IconShopify, IconArchive, IconCheckCircle, IconRefresh } from './Icon';
+
+// Sort direction icon inline components
+const IconSortAsc = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10 4l-4-4m0 0l-4 4m4-4v12" />
+  </svg>
+);
+const IconSortDesc = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+);
 import DeletePasswordModal from './admin/DeletePasswordModal';
 import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
@@ -59,8 +71,21 @@ const Dashboard: React.FC = () => {
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
-  const [pollingStatus, setPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
-  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ nextPollTime: number; isPolling: boolean; intervalMs: number } | null>(null);
+  const [isSyncingShopify, setIsSyncingShopify] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState<{ 
+    nextPollTime: number; 
+    isPolling: boolean; 
+    intervalMs: number; 
+    pollingStartTime?: number | null;
+    totalPackages?: number;
+    processedPackages?: number;
+  } | null>(null);
+  const [shopifyPollingStatus, setShopifyPollingStatus] = useState<{ 
+    nextPollTime: number; 
+    isPolling: boolean; 
+    intervalMs: number; 
+    pollingStartTime?: number | null;
+  } | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [shopifyTimeLeft, setShopifyTimeLeft] = useState<number>(0);
 
@@ -68,6 +93,8 @@ const Dashboard: React.FC = () => {
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
+  const [isForcingClose, setIsForcingClose] = useState(false);
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -81,6 +108,38 @@ const Dashboard: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
+  
+
+  const handleForceCloseOld = async () => {
+    const cutoffDays = 30;
+    if (!window.confirm(`¿Estás seguro de cerrar forzosamente todos los envíos con más de ${cutoffDays} días sin actualización? Esta acción no se puede deshacer.`)) return;
+    setIsForcingClose(true);
+    try {
+        const res = await api.forceCloseOldPackages(cutoffDays);
+        alert(`Cierre forzoso completado. ${res.updatedCount ?? 0} envíos cerrados.`);
+        fetchData();
+    } catch (err: any) {
+        alert(err.message || 'Error al forzar el cierre de envíos antiguos.');
+    } finally {
+        setIsForcingClose(false);
+    }
+  };
+
+  const handleBulkMarkDelivered = async () => {
+      if (selectedPackages.size === 0) return;
+      if (!window.confirm(`¿Estás seguro de marcar ${selectedPackages.size} paquetes como ENTREGADOS? Esto también los marcará como facturados.`)) return;
+      
+      try {
+          const packageIds = Array.from(selectedPackages);
+          await api.bulkUpdatePackageStatus(packageIds, PackageStatus.Delivered);
+          alert('Paquetes actualizados con éxito.');
+          setSelectedPackages(new Set());
+          fetchData();
+      } catch (err: any) {
+          alert(err.message || 'Error al actualizar paquetes masivamente.');
+      }
+  };
+
   const statusDropdownRef = useRef<HTMLDivElement>(null);
   const auth = useContext(AuthContext);
 
@@ -105,16 +164,18 @@ const Dashboard: React.FC = () => {
   }, [auth?.user?.role]);
 
   useEffect(() => {
-    if (!pollingStatus && !shopifyPollingStatus) return;
-
     const timer = setInterval(() => {
       if (pollingStatus) {
         const remaining = Math.max(0, Math.ceil((pollingStatus.nextPollTime - Date.now()) / 1000));
         setTimeLeft(remaining);
+      } else {
+        setTimeLeft(0);
       }
       if (shopifyPollingStatus) {
         const remainingShopify = Math.max(0, Math.ceil((shopifyPollingStatus.nextPollTime - Date.now()) / 1000));
         setShopifyTimeLeft(remainingShopify);
+      } else {
+        setShopifyTimeLeft(0);
       }
     }, 1000);
 
@@ -137,6 +198,7 @@ const Dashboard: React.FC = () => {
             endDate,
             flexFilter,
             quickFilter,
+            sortOrder,
         };
         const [packagesResult, allUsers] = await Promise.all([
             api.getPackages(params),
@@ -155,7 +217,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, sortOrder]);
 
   useEffect(() => {
     fetchData();
@@ -278,27 +340,39 @@ const Dashboard: React.FC = () => {
   };
 
   const handleRefreshAll = async () => {
-    if (isLoading || isSyncingMeli) return;
-    
     try {
-        // If Admin, trigger Meli sync first
-        if (auth?.user?.role === Role.Admin) {
-          setIsSyncingMeli(true);
-          try {
-            await api.syncAllMeliPackages();
-          } catch (error) {
-            console.error("Failed to sync with ML during refresh", error);
-            // We don't alert here as it's a background sync, we still want to fetch data
-          } finally {
-            setIsSyncingMeli(false);
-          }
-        }
-        
-        // Always fetch data
         await fetchData();
     } catch (error: any) {
         console.error("Failed to refresh all data", error);
         alert("Error al refrescar los datos: " + (error.message || "Error desconocido"));
+    }
+  };
+
+  const handleTriggerMeliSync = async () => {
+    if (isSyncingMeli) return;
+    setIsSyncingMeli(true);
+    try {
+      await api.syncMeliPackages();
+      // Status will be updated via the interval polling
+    } catch (error: any) {
+      console.error("Failed to trigger ML sync", error);
+      alert("Error al iniciar sincronización ML: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsSyncingMeli(false);
+    }
+  };
+
+  const handleTriggerShopifySync = async () => {
+    if (isSyncingShopify) return;
+    setIsSyncingShopify(true);
+    try {
+      await api.syncShopifyPackages();
+      // Status will be updated via the interval polling
+    } catch (error: any) {
+      console.error("Failed to trigger Shopify sync", error);
+      alert("Error al iniciar sincronización Shopify: " + (error.message || "Error desconocido"));
+    } finally {
+      setIsSyncingShopify(false);
     }
   };
 
@@ -472,7 +546,7 @@ const Dashboard: React.FC = () => {
             onFlexFilterChange={setFlexFilter}
             quickFilter={quickFilter}
             onQuickFilterChange={setQuickFilter}
-            isSyncing={isLoading || isSyncingMeli}
+            isSyncing={isLoading}
             clients={clients}
             clientFilter={clientFilter}
             onClientChange={setClientFilter}
@@ -492,28 +566,47 @@ const Dashboard: React.FC = () => {
                         disabled={packages.length === 0}
                     />
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
-                    {/* ML Polling Status */}
                     {auth?.user?.role === Role.Admin && pollingStatus && (
-                        <div className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter`}>
+                        <div 
+                            title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status - Click para sincronizar ahora"}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleTriggerMeliSync(); }}
+                        >
                             <div className={`w-4 h-4 rounded-full flex items-center justify-center ${auth?.systemSettings?.meliAutoImport ? 'text-blue-600' : 'text-gray-400'}`}>
                                 <IconMercadoLibre className="w-full h-full" />
                             </div>
                             <span className="whitespace-nowrap">
-                                {auth?.systemSettings?.meliAutoImport ? `ML: ${timeLeft}s` : 'ML: Inactivo'}
+                                {auth?.systemSettings?.meliAutoImport 
+                                    ? (pollingStatus.isPolling 
+                                        ? (pollingStatus.totalPackages && pollingStatus.totalPackages > 0 
+                                            ? `ML: ${pollingStatus.processedPackages}/${pollingStatus.totalPackages}` 
+                                            : 'ML: Sincronizando...') 
+                                        : `ML: ${timeLeft}s`) 
+                                    : 'ML: Inactivo'}
                             </span>
-                            {auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                            {(pollingStatus.isPolling || isSyncingMeli) && <IconLoader className="w-3 h-3 animate-spin" />}
                              <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.meliAutoImport ? 'bg-blue-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
                     )}
 
+                    {auth?.user?.role === Role.Admin && pollingStatus && shopifyPollingStatus && (
+                        <div className="h-6 w-px bg-[var(--border-primary)] opacity-30"></div>
+                    )}
+
                     {/* Shopify Polling Status */}
                     {auth?.user?.role === Role.Admin && shopifyPollingStatus && (
-                        <div className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:opacity-80 transition-all uppercase tracking-tighter`}>
+                        <div 
+                            title={shopifyPollingStatus.isPolling && shopifyPollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - shopifyPollingStatus.pollingStartTime)/1000)}s` : "Shopify Status - Click para sincronizar ahora"}
+                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.shopifyAutoImport ? 'border-emerald-400 text-emerald-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-emerald-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling ? 'animate-pulse-glow-emerald' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); handleTriggerShopifySync(); }}
+                        >
                             <IconShopify className={`w-4 h-4 ${auth?.systemSettings?.shopifyAutoImport ? 'text-emerald-600' : 'text-gray-400'}`} />
                             <span className="whitespace-nowrap">
-                                {auth?.systemSettings?.shopifyAutoImport ? `Shopify: ${shopifyTimeLeft}s` : 'Shopify: Inactivo'}
+                                {auth?.systemSettings?.shopifyAutoImport 
+                                    ? (shopifyPollingStatus.isPolling ? 'Shopify: Sincronizando' : `Shopify: ${shopifyTimeLeft}s`) 
+                                    : 'Shopify: Inactivo'}
                             </span>
-                            {auth?.systemSettings?.shopifyAutoImport && shopifyPollingStatus.isPolling && <IconLoader className="w-3 h-3 animate-spin" />}
+                            {(shopifyPollingStatus.isPolling || isSyncingShopify) && <IconLoader className="w-3 h-3 animate-spin" />}
                              <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.shopifyAutoImport ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
                     )}
@@ -524,7 +617,7 @@ const Dashboard: React.FC = () => {
                         )}
                         <button 
                             onClick={() => setIsBulkAssignModalOpen(true)}
-                            disabled={selectedPackages.size === 0}
+                            disabled={selectedPackages.size > 0 ? false : true}
                             title="Asignar Conductor" 
                             className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
                         >
@@ -534,7 +627,7 @@ const Dashboard: React.FC = () => {
                             onClick={() => setPrintingPackages(selectedPackageObjects)} 
                             title="Imprimir Etiquetas" 
                             className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
-                            disabled={selectedPackages.size === 0}>
+                            disabled={selectedPackages.size > 0 ? false : true}>
                             <IconPrinter className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
                         </button>
                         <button 
@@ -555,6 +648,19 @@ const Dashboard: React.FC = () => {
                                 <IconFileSpreadsheet className={`w-6 h-6 ${totalPackages > 0 ? 'text-white' : 'text-gray-500'}`} />
                             )}
                         </button>
+
+                        {/* Nueva acción masiva: Marcar como Entregado */}
+                        {auth?.user?.role === Role.Admin && (
+                            <button 
+                                onClick={handleBulkMarkDelivered}
+                                disabled={selectedPackages.size === 0}
+                                title="Entrega Masiva (Marcar Seleccionados)"
+                                className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} shadow-sm border border-cyan-700/20`}
+                            >
+                                <IconCheckCircle className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-400'}`} />
+                            </button>
+                        )}
+
                     </div>
                 </div>
 
@@ -640,8 +746,8 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="p-3 bg-gray-50 bg-opacity-30">
-            <div className="flex flex-wrap items-center justify-between w-full">
-                <div className="flex items-center gap-10">
+            <div className="flex flex-wrap items-center justify-between w-full gap-2">
+                <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
                         <label htmlFor="items-per-page-admin" className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filas por página</label>
                         <select
@@ -671,6 +777,25 @@ const Dashboard: React.FC = () => {
                             </button>
                         </div>
                     </div>
+
+                    {/* Sort Order Toggle */}
+                    <button
+                        id="sort-order-toggle"
+                        onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                        title={sortOrder === 'desc' ? 'Mostrando más nuevos primero. Click para ver más antiguos primero.' : 'Mostrando más antiguos primero. Click para ver más nuevos primero.'}
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${
+                            sortOrder === 'asc'
+                                ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100'
+                                : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                        }`}
+                    >
+                        {sortOrder === 'desc' ? (
+                            <><IconSortDesc className="w-3.5 h-3.5" /> Más nuevos</>  
+                        ) : (
+                            <><IconSortAsc className="w-3.5 h-3.5" /> Más antiguos</>
+                        )}
+                    </button>
+
                 </div>
 
                 <div className="flex items-center">
@@ -790,6 +915,7 @@ const Dashboard: React.FC = () => {
               />
           )
       )}
+
     </div>
   );
 };

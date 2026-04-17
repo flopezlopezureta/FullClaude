@@ -1,0 +1,27 @@
+
+> full-envios-app@2.4.5 build
+> node node_modules/vite/bin/vite.js build
+
+[33mThe CJS build of Vite's Node API is deprecated. See https://vite.dev/guide/troubleshooting.html#vite-cjs-node-api-deprecated for more details.[39m
+[36mvite v5.4.21 [32mbuilding for production...[36m[39m
+transforming...
+[33m[vite:css] Replace color-adjust to print-color-adjust. The color-adjust shorthand is currently deprecated.
+263|      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+264|      -webkit-print-color-adjust: exact !important;
+265|      color-adjust: exact !important;
+   |      ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+266|      margin: 0;
+267|      padding: 0;[39m
+[32m✓[39m 197 modules transformed.
+rendering chunks...
+computing gzip size...
+[2mdist/[22m[32massets/manifest-CUmfo8OU.json  [39m[1m[2m    0.18 kB[22m[1m[22m[2m │ gzip:   0.14 kB[22m
+[2mdist/[22m[32mindex.html                     [39m[1m[2m    2.57 kB[22m[1m[22m[2m │ gzip:   1.05 kB[22m
+[2mdist/[22m[35massets/index-CqphyUHI.css      [39m[1m[2m   92.87 kB[22m[1m[22m[2m │ gzip:  15.33 kB[22m
+[2mdist/[22m[36massets/index-Bz37tQHx.js       [39m[1m[33m2,023.15 kB[39m[22m[2m │ gzip: 554.81 kB[22m
+[33m
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rollupOptions.output.manualChunks to improve chunking: https://rollupjs.org/configuration-options/#output-manualchunks
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.[39m
+[32m✓ built in 17.80s[39m

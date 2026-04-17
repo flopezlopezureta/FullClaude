@@ -1428,4 +1428,142 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
     }
 });
 
+// --- NUEVO FLUJO OAUTH SHOPIFY 2026 ---
+
+// GET /api/integrations/shopify/install
+// Inicia el flujo OAuth redirigiendo a la tienda Shopify con el Client ID global.
+router.get('/shopify/install', authMiddleware, async (req, res) => {
+    const userId = req.user.id;
+    const { shop } = req.query; // e.g. "mi-tienda.myshopify.com"
+
+    if (!shop) {
+        return res.status(400).json({ message: 'El parámetro "shop" es obligatorio. Debe ser el dominio de tu tienda Shopify.' });
+    }
+
+    try {
+        const { rows: settingsRows } = await db.query('SELECT shopify_client_id FROM integration_settings WHERE id = 1');
+        if (settingsRows.length === 0 || !settingsRows[0].shopify_client_id) {
+            return res.status(500).json({ message: 'Error: El administrador de Full Envios debe configurar el Client ID de Shopify primero.' });
+        }
+        
+        const clientId = settingsRows[0].shopify_client_id;
+        const scopes = 'read_orders,write_orders,read_customers,read_fulfillments,write_fulfillments';
+        const host = req.get('host');
+        
+        // Determinar el protocolo dinámicamente: localhost permite http, servidores reales exigen https
+        const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
+        const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/shopify/callback`);
+        const formattedShop = shop.replace(/^https?:\/\//, '').split('/')[0].trim();
+
+        // Security: include userId securely in the state to assign the final token strictly to them
+        const state = encodeURIComponent(userId);
+        
+        const installUrl = `https://${formattedShop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
+        res.json({ redirectUrl: installUrl });
+    } catch (err) {
+        console.error("Shopify Install Error:", err);
+        res.status(500).json({ message: 'Error interno del servidor al iniciar la instalación de Shopify.' });
+    }
+});
+
+// GET /api/integrations/shopify/callback
+// Endpoit que recibe el 'code' de Shopify, lo intercambia por el shpat_ token offline y lo guarda en la base de datos del usuario.
+router.get('/shopify/callback', async (req, res) => {
+    const { code, shop, state: userId, hmac } = req.query;
+
+    if (!code || !shop || !userId) {
+        return res.status(400).send('Faltan parámetros obligatorios en la respuesta de Shopify.');
+    }
+
+    try {
+        const { rows: settingsRows } = await db.query('SELECT shopify_client_id, shopify_client_secret FROM integration_settings WHERE id = 1');
+        if (settingsRows.length === 0 || !settingsRows[0].shopify_client_id || !settingsRows[0].shopify_client_secret) {
+            return res.status(500).send('Configuración global de Shopify faltante.');
+        }
+
+        const clientId = settingsRows[0].shopify_client_id;
+        const clientSecret = settingsRows[0].shopify_client_secret;
+
+        const postData = JSON.stringify({
+            client_id: clientId,
+            client_secret: clientSecret,
+            code: code
+        });
+
+        const options = {
+            hostname: shop,
+            path: '/admin/oauth/access_token',
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Content-Length': Buffer.byteLength(postData)
+            }
+        };
+
+        const reqApi = require('https').request(options, (resApi) => {
+            let data = '';
+            resApi.on('data', (chunk) => { data += chunk; });
+            resApi.on('end', async () => {
+                try {
+                    const response = JSON.parse(data);
+                    
+                    if (resApi.statusCode >= 200 && resApi.statusCode < 300 && response.access_token) {
+                        const accessToken = response.access_token;
+                        
+                        // Guardar en la base de datos del usuario específico (userId = state)
+                        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
+                        if (userRows.length === 0) {
+                            return res.status(404).send('Usuario propietario no encontrado.');
+                        }
+                        
+                        const currentIntegrations = userRows[0].integrations || {};
+                        const shopifyIntegration = {
+                            shopUrl: shop,
+                            accessToken: accessToken, // El famoso código shpat_
+                            autoImport: false, // Por defecto apagado por precaución
+                            connectedAt: new Date().toISOString()
+                        };
+
+                        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [
+                            JSON.stringify({ ...currentIntegrations, shopify: shopifyIntegration }),
+                            userId
+                        ]);
+
+                        // Redirect back to frontend
+                        return res.send(`
+                            <html>
+                                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6;">
+                                    <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); text-align: center;">
+                                        <h2 style="color: #059669;">¡Tienda Conectada Correctamente!</h2>
+                                        <p>Se ha configurado la aplicación Full Envios en <strong>${shop}</strong> y obtenido el token seguro.</p>
+                                        <p>Ya puedes cerrar esta ventana y regresar a tu panel.</p>
+                                        <button onclick="window.close()" style="margin-top: 15px; padding: 10px 20px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">Cerrar Ventana</button>
+                                    </div>
+                                    <script>setTimeout(() => window.close(), 5000);</script>
+                                </body>
+                            </html>
+                        `);
+                    } else {
+                        return res.status(400).send(`Error de Autenticación con Shopify: ${JSON.stringify(response)}`);
+                    }
+                } catch (e) {
+                    return res.status(500).send('Respuesta inválida de Shopify durante el intercambio de token.');
+                }
+            });
+        });
+
+        reqApi.on('error', (e) => {
+            console.error("Shopify OAuth Connection Error:", e);
+            return res.status(500).send(`Error de red al conectar con Shopify: ${e.message}`);
+        });
+
+        reqApi.write(postData);
+        reqApi.end();
+
+    } catch (err) {
+        console.error("Shopify Callback Root Error:", err);
+        res.status(500).send('Error interno guardando las credenciales de Shopify.');
+    }
+});
+
 module.exports = router;

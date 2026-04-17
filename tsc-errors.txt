@@ -1,0 +1,36 @@
+components/admin/IntegrationSettingsPage.tsx(111,17): error TS2353: Object literal may only specify known properties, and 'shopifyClientId' does not exist in type 'Partial<IntegrationSettings>'.
+components/admin/IntegrationSettingsPage.tsx(111,43): error TS2339: Property 'shopifyClientId' does not exist on type 'Partial<IntegrationSettings>'.
+components/admin/IntegrationSettingsPage.tsx(112,47): error TS2339: Property 'shopifyClientSecret' does not exist on type 'Partial<IntegrationSettings>'.
+components/admin/IntegrationSettingsPage.tsx(415,49): error TS2339: Property 'shopifyClientId' does not exist on type 'Partial<IntegrationSettings>'.
+components/admin/IntegrationSettingsPage.tsx(427,49): error TS2339: Property 'shopifyClientSecret' does not exist on type 'Partial<IntegrationSettings>'.
+driver-app/App.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/DeliveriesScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/DeliveriesScreen.tsx(19,1): error TS6133: 'COLORS' is declared but its value is never read.
+driver-app/src/screens/DeliveriesScreen.tsx(24,10): error TS6133: 'loading' is declared but its value is never read.
+driver-app/src/screens/DeliveryDetailScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/DeliveryDetailScreen.tsx(1,27): error TS6133: 'useContext' is declared but its value is never read.
+driver-app/src/screens/DeliveryDetailScreen.tsx(18,1): error TS6133: 'COLORS' is declared but its value is never read.
+driver-app/src/screens/DispatchScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/DispatchScreen.tsx(14,1): error TS6133: 'COLORS' is declared but its value is never read.
+driver-app/src/screens/DispatchScreen.tsx(18,1): error TS6133: 'ImagePicker' is declared but its value is never read.
+driver-app/src/screens/DispatchScreen.tsx(33,41): error TS6133: 'type' is declared but its value is never read.
+driver-app/src/screens/HistoryScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/HistoryScreen.tsx(19,10): error TS6133: 'loading' is declared but its value is never read.
+driver-app/src/screens/HomeScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/HomeScreen.tsx(15,1): error TS6133: 'COLORS' is declared but its value is never read.
+driver-app/src/screens/LoginScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/LoginScreen.tsx(8,3): error TS6133: 'Image' is declared but its value is never read.
+driver-app/src/screens/PickupsScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/PickupsScreen.tsx(23,10): error TS6133: 'loading' is declared but its value is never read.
+driver-app/src/screens/PickupsScreen.tsx(28,9): error TS6133: 'user' is declared but its value is never read.
+driver-app/src/screens/ReturnsScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/ReturnsScreen.tsx(19,10): error TS6133: 'loading' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(8,3): error TS6133: 'Platform' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(9,3): error TS6133: 'StatusBar' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(20,31): error TS6133: 'clientId' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(54,47): error TS6133: 'barType' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(71,13): error TS6133: 'flexLabelPhoto' is declared but its value is never read.
+driver-app/src/screens/ScannerScreen.tsx(117,69): error TS6133: 'photo' is declared but its value is never read.
+driver-app/src/screens/TestMLScreen.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+driver-app/src/screens/TestMLScreen.tsx(1,27): error TS6133: 'useEffect' is declared but its value is never read.

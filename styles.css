@@ -257,6 +257,47 @@ body {
     animation: progress-indeterminate 1.5s infinite linear;
 }
 
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(79, 70, 229, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(79, 70, 229, 0); }
+}
+
+@keyframes pulse-glow-emerald {
+    0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+}
+
+.animate-pulse-glow-blue {
+    animation: pulse-glow 2s infinite;
+}
+
+.animate-pulse-glow-emerald {
+    animation: pulse-glow-emerald 2s infinite;
+}
+
+/* Marker Cluster Customization */
+.marker-cluster-small { background-color: rgba(181, 226, 140, 0.6); }
+.marker-cluster-small div { background-color: rgba(110, 204, 57, 0.6); }
+.marker-cluster-medium { background-color: rgba(241, 211, 87, 0.6); }
+.marker-cluster-medium div { background-color: rgba(240, 194, 12, 0.6); }
+.marker-cluster-large { background-color: rgba(253, 156, 115, 0.6); }
+.marker-cluster-large div { background-color: rgba(241, 128, 23, 0.6); }
+
+.marker-cluster div {
+    width: 30px;
+    height: 30px;
+    margin-left: 5px;
+    margin-top: 5px;
+    text-align: center;
+    border-radius: 15px;
+    font: 12px "Helvetica Neue", Arial, Helvetica, sans-serif;
+    font-weight: bold;
+    color: white;
+}
+.marker-cluster span { line-height: 30px; }
+
 @media print {
   body {
     background-color: white !important;

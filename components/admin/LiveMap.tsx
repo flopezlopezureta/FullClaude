@@ -39,9 +39,10 @@ const LiveMap: React.FC = () => {
 
     const fetchData = useCallback(async () => {
         try {
+            const today = new Date().toISOString().split('T')[0];
             const [fetchedActiveDrivers, packagesResponse, allUsersData] = await Promise.all([
                 api.getActiveDriversLocations(),
-                api.getPackages({ limit: 0 }),
+                api.getPackages({ limit: 0, startDate: today, isAssigned: 'true' }),
                 api.getUsers()
             ]);
             setActiveDrivers(fetchedActiveDrivers);

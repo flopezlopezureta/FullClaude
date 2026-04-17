@@ -6,6 +6,8 @@ const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/logger');
+const meliPollingService = require('../services/meliPollingService');
+const shopifyPollingService = require('../services/shopifyPollingService');
 
 // Middleware to check for Admin role
 const adminOnly = (req, res, next) => {
@@ -22,18 +24,33 @@ async function verifyAdminPassword(userId, password) {
     return await bcrypt.compare(password, rows[0].password);
 }
 
-const meliPollingService = require('../services/meliPollingService');
+
 
 // GET /api/settings/meli-polling-status
 router.get('/meli-polling-status', authMiddleware, (req, res) => {
     res.json(meliPollingService.getStatus());
 });
 
-const shopifyPollingService = require('../services/shopifyPollingService');
+
 
 // GET /api/settings/shopify-polling-status
 router.get('/shopify-polling-status', authMiddleware, (req, res) => {
     res.json(shopifyPollingService.getStatus());
+});
+
+// POST /api/settings/sync-meli
+router.post('/sync-meli', authMiddleware, adminOnly, async (req, res) => {
+    console.log('[ManualSync] Triggering Mercado Libre poll...');
+    // We run it without awaiting to avoid blocking the response, but the service handles concurrency
+    meliPollingService.pollMeliPackages();
+    res.json({ message: 'Sincronización con Mercado Libre iniciada en segundo plano.' });
+});
+
+// POST /api/settings/sync-shopify
+router.post('/sync-shopify', authMiddleware, adminOnly, async (req, res) => {
+    console.log('[ManualSync] Triggering Shopify poll...');
+    shopifyPollingService.pollShopifyPackages();
+    res.json({ message: 'Sincronización con Shopify iniciada en segundo plano.' });
 });
 
 // GET /api/settings/system
@@ -135,6 +152,28 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
+// POST /api/settings/sync-meli
+router.post('/sync-meli', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        await meliPollingService.triggerSync();
+        res.json({ message: 'Sincronización de Mercado Libre iniciada en segundo plano.' });
+    } catch (err) {
+        console.error('Error triggering ML sync:', err);
+        res.status(500).json({ message: 'Error al iniciar sincronización de ML.' });
+    }
+});
+
+// POST /api/settings/sync-shopify
+router.post('/sync-shopify', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        await shopifyPollingService.triggerSync();
+        res.json({ message: 'Sincronización de Shopify iniciada en segundo plano.' });
+    } catch (err) {
+        console.error('Error triggering Shopify sync:', err);
+        res.status(500).json({ message: 'Error al iniciar sincronización de Shopify.' });
+    }
+});
+
 // POST /api/settings/reset-database
 router.post('/reset-database', authMiddleware, adminOnly, async (req, res) => {
     const { password } = req.body;
@@ -170,18 +209,21 @@ router.post('/reset-packages', authMiddleware, adminOnly, async (req, res) => {
         return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
 
+    const client = await db.getClient();
     try {
-        await db.query('BEGIN');
-        await db.query('TRUNCATE TABLE tracking_events, packages RESTART IDENTITY CASCADE');
-        await db.query('COMMIT');
+        await client.query('BEGIN');
+        await client.query('TRUNCATE TABLE tracking_events, packages RESTART IDENTITY CASCADE');
+        await client.query('COMMIT');
 
         await logAction(req.user.id, req.user.name, 'RESET_PACKAGES', { details: 'All packages and tracking events deleted' });
 
         res.status(200).json({ message: 'Paquetes e historial eliminados con éxito.' });
     } catch (err) {
-        await db.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar paquetes.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -192,22 +234,25 @@ router.post('/reset-clients', authMiddleware, adminOnly, async (req, res) => {
         return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
 
+    const client = await db.getClient();
     try {
-        await db.query('BEGIN');
+        await client.query('BEGIN');
         // First remove assignments related to clients
-        await db.query("DELETE FROM assignment_events WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
-        await db.query("DELETE FROM pickup_assignments WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
+        await client.query("DELETE FROM assignment_events WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
+        await client.query("DELETE FROM pickup_assignments WHERE \"clientId\" IN (SELECT id FROM users WHERE role = 'CLIENT')");
         // Then delete clients
-        await db.query("DELETE FROM users WHERE role = 'CLIENT'");
-        await db.query('COMMIT');
+        await client.query("DELETE FROM users WHERE role = 'CLIENT'");
+        await client.query('COMMIT');
 
         await logAction(req.user.id, req.user.name, 'RESET_CLIENTS', { details: 'All clients deleted' });
 
         res.status(200).json({ message: 'Clientes eliminados con éxito.' });
     } catch (err) {
-        await db.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar clientes.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -218,23 +263,26 @@ router.post('/reset-drivers', authMiddleware, adminOnly, async (req, res) => {
         return res.status(403).json({ message: 'Contraseña de administrador incorrecta.' });
     }
 
+    const client = await db.getClient();
     try {
-        await db.query('BEGIN');
+        await client.query('BEGIN');
         // Unassign packages from drivers
-        await db.query('UPDATE packages SET "driverId" = NULL');
+        await client.query('UPDATE packages SET "driverId" = NULL');
         // Delete runs and assignments
-        await db.query('TRUNCATE TABLE assignment_events, pickup_assignments, pickup_runs RESTART IDENTITY CASCADE');
+        await client.query('TRUNCATE TABLE assignment_events, pickup_assignments, pickup_runs RESTART IDENTITY CASCADE');
         // Delete drivers
-        await db.query("DELETE FROM users WHERE role = 'DRIVER'");
-        await db.query('COMMIT');
+        await client.query("DELETE FROM users WHERE role = 'DRIVER'");
+        await client.query('COMMIT');
 
         await logAction(req.user.id, req.user.name, 'RESET_DRIVERS', { details: 'All drivers deleted' });
 
         res.status(200).json({ message: 'Conductores y auxiliares eliminados con éxito.' });
     } catch (err) {
-        await db.query('ROLLBACK');
+        await client.query('ROLLBACK');
         console.error(err);
         res.status(500).json({ message: 'Error al eliminar conductores.' });
+    } finally {
+        client.release();
     }
 });
 
@@ -280,11 +328,13 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
             meliClientSecret: rows[0].meli_client_secret,
+            shopifyClientId: rows[0].shopify_client_id,
+            shopifyClientSecret: rows[0].shopify_client_secret,
             shopifyShopUrl: rows[0].shopify_shop_url,
             shopifyAccessToken: rows[0].shopify_access_token,
             githubToken: rows[0].github_token,
@@ -294,7 +344,12 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             wooConsumerKey: rows[0].woo_consumer_key,
             wooConsumerSecret: rows[0].woo_consumer_secret,
             falabellaApiKey: rows[0].falabella_api_key,
-            falabellaSellerId: rows[0].falabella_seller_id
+            falabellaSellerId: rows[0].falabella_seller_id,
+            smtpHost: rows[0].smtp_host,
+            smtpPort: rows[0].smtp_port,
+            smtpUser: rows[0].smtp_user,
+            smtpPassword: rows[0].smtp_password,
+            smtpFrom: rows[0].smtp_from
         });
     } catch (err) {
         console.error(err);
@@ -306,10 +361,12 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
 router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
     const { 
         meliAppId, meliClientSecret, 
+        shopifyClientId, shopifyClientSecret,
         shopifyShopUrl, shopifyAccessToken, 
         githubToken, githubRepo, githubOwner,
         wooUrl, wooConsumerKey, wooConsumerSecret,
-        falabellaApiKey, falabellaSellerId
+        falabellaApiKey, falabellaSellerId,
+        smtpHost, smtpPort, smtpUser, smtpPassword, smtpFrom
     } = req.body;
 
     try {
@@ -327,6 +384,14 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
         if (meliClientSecret !== undefined) {
             updates.push(`meli_client_secret = $${idx++}`);
             values.push(meliClientSecret);
+        }
+        if (shopifyClientId !== undefined) {
+            updates.push(`shopify_client_id = $${idx++}`);
+            values.push(shopifyClientId);
+        }
+        if (shopifyClientSecret !== undefined) {
+            updates.push(`shopify_client_secret = $${idx++}`);
+            values.push(shopifyClientSecret);
         }
         if (shopifyShopUrl !== undefined) {
             updates.push(`shopify_shop_url = $${idx++}`);
@@ -368,6 +433,26 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`falabella_seller_id = $${idx++}`);
             values.push(falabellaSellerId);
         }
+        if (smtpHost !== undefined) {
+            updates.push(`smtp_host = $${idx++}`);
+            values.push(smtpHost);
+        }
+        if (smtpPort !== undefined) {
+            updates.push(`smtp_port = $${idx++}`);
+            values.push(smtpPort);
+        }
+        if (smtpUser !== undefined) {
+            updates.push(`smtp_user = $${idx++}`);
+            values.push(smtpUser);
+        }
+        if (smtpPassword !== undefined) {
+            updates.push(`smtp_password = $${idx++}`);
+            values.push(smtpPassword);
+        }
+        if (smtpFrom !== undefined) {
+            updates.push(`smtp_from = $${idx++}`);
+            values.push(smtpFrom);
+        }
 
         if (updates.length > 0) {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
@@ -375,11 +460,12 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             
             await logAction(req.user.id, req.user.name, 'UPDATE_INTEGRATIONS', { updatedFields: updates });
 
-            // Return updated settings
             const saved = rows[0];
             res.status(200).json({
                 meliAppId: saved.meli_app_id,
                 meliClientSecret: saved.meli_client_secret,
+                shopifyClientId: saved.shopify_client_id,
+                shopifyClientSecret: saved.shopify_client_secret,
                 shopifyShopUrl: saved.shopify_shop_url,
                 shopifyAccessToken: saved.shopify_access_token,
                 githubToken: saved.github_token,
@@ -389,7 +475,12 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 wooConsumerKey: saved.woo_consumer_key,
                 wooConsumerSecret: saved.woo_consumer_secret,
                 falabellaApiKey: saved.falabella_api_key,
-                falabellaSellerId: saved.falabella_seller_id
+                falabellaSellerId: saved.falabella_seller_id,
+                smtpHost: saved.smtp_host,
+                smtpPort: saved.smtp_port,
+                smtpUser: saved.smtp_user,
+                smtpPassword: saved.smtp_password,
+                smtpFrom: saved.smtp_from
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });
@@ -413,17 +504,6 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
         client_id: meliAppId,
         client_secret: meliClientSecret
     }).toString();
-
-    const options = {
-        hostname: 'api.mercadolibre.com',
-        path: '/oauth/token',
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'Accept': 'application/json',
-            'Content-Length': Buffer.byteLength(postData)
-        }
-    };
 
     const reqApi = https.request(options, (resApi) => {
         let data = '';
@@ -451,6 +531,39 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
 
     reqApi.write(postData);
     reqApi.end();
+});
+
+// POST /api/settings/test-smtp
+router.post('/test-smtp', authMiddleware, adminOnly, async (req, res) => {
+    const { smtpHost, smtpPort, smtpUser, smtpPassword } = req.body;
+
+    if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
+        return res.status(400).json({ message: 'Todos los campos SMTP (Host, Puerto, Usuario, Contraseña) son requeridos.' });
+    }
+
+    try {
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport({
+            host: smtpHost,
+            port: parseInt(smtpPort),
+            secure: parseInt(smtpPort) === 465,
+            auth: {
+                user: smtpUser,
+                pass: smtpPassword
+            },
+            connectTimeout: 10000 // 10s timeout
+        });
+
+        // Verify connection configuration
+        await transporter.verify();
+
+        res.json({ message: 'Conexión SMTP exitosa. El servidor está configurado correctamente.' });
+    } catch (err) {
+        console.error('SMTP Test Error:', err);
+        res.status(500).json({ 
+            message: `Error al conectar con el servidor SMTP: ${err.message}`
+        });
+    }
 });
 
 // POST /api/settings/github-backup

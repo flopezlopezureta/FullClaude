@@ -46,6 +46,13 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
                 }
             });
         });
+
+        // Set 15s timeout
+        req.setTimeout(15000, () => {
+           req.destroy();
+           reject(new Error('Shopify API request timed out after 15s'));
+        });
+
         req.on('error', (e) => reject(e));
         if (postData) req.write(typeof postData === 'string' ? postData : JSON.stringify(postData));
         req.end();
@@ -53,6 +60,7 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
 };
 
 let isPolling = false;
+let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
@@ -63,6 +71,7 @@ async function pollShopifyPackages() {
         return;
     }
     isPolling = true;
+    pollingStartTime = Date.now();
     lastPollTime = Date.now();
     console.log('[ShopifyPolling] Starting poll cycle...');
     try {
@@ -86,7 +95,11 @@ async function pollShopifyPackages() {
         console.error('[ShopifyPolling] Fatal error in poll cycle:', err);
     } finally {
         isPolling = false;
+        pollingStartTime = null;
         nextScheduledTime = Date.now() + currentIntervalMs;
+        if (timeoutId !== null) {
+            timeoutId = setTimeout(pollShopifyPackages, currentIntervalMs);
+        }
     }
 }
 
@@ -153,6 +166,7 @@ async function autoImportShopifyPackages() {
                             id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
                             recipientName: `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'N/A',
                             recipientPhone: address.phone || 'N/A',
+                            recipientEmail: order.email || '',
                             status: 'PENDIENTE',
                             shippingType: 'SAME_DAY',
                             origin: 'Centro de Distribución',
@@ -194,35 +208,48 @@ async function autoImportShopifyPackages() {
     }
 }
 
-let intervalId = null;
+let timeoutId = null;
 
 function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { 
-    if (intervalId) return;
+    if (timeoutId !== null) return;
     currentIntervalMs = intervalMs;
     nextScheduledTime = Date.now() + delayMs;
     
     console.log(`[ShopifyPolling] Service starting (Interval: ${intervalMs/1000/60} min, Initial Delay: ${delayMs/1000}s)`);
     
-    // Schedule first run and then the interval
-    setTimeout(() => {
-        pollShopifyPackages();
-        intervalId = setInterval(pollShopifyPackages, intervalMs);
-    }, delayMs);
+    // Initial delay then start the recursive timeout chain
+    timeoutId = setTimeout(pollShopifyPackages, delayMs);
 }
 
 function stop() {
-    if (intervalId) {
-        clearInterval(intervalId);
-        intervalId = null;
+    if (timeoutId !== null) {
+        clearTimeout(timeoutId);
+        timeoutId = null;
     }
 }
 
 function getStatus() {
+    // Dead Man's Switch: if polling for > 15 mins, force reset
+    if (isPolling && pollingStartTime && (Date.now() - pollingStartTime > 15 * 60 * 1000)) {
+        console.warn('[ShopifyPolling] Polling cycle took too long (>15m), triggering emergency reset.');
+        isPolling = false;
+        pollingStartTime = null;
+        if (timeoutId !== null) {
+            clearTimeout(timeoutId);
+            timeoutId = setTimeout(pollShopifyPackages, currentIntervalMs);
+        }
+    }
+
     return {
         isPolling,
+        pollingStartTime,
         lastPollTime,
         nextPollTime: nextScheduledTime
     };
 }
 
-module.exports = { start, stop, pollShopifyPackages, getStatus };
+const triggerSync = async () => {
+    await pollShopifyPackages();
+};
+
+module.exports = { start, stop, pollShopifyPackages, getStatus, triggerSync };

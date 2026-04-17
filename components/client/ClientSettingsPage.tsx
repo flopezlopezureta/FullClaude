@@ -114,6 +114,29 @@ const ClientSettingsPage: React.FC = () => {
         }
     };
 
+    const handleConnectShopify = async () => {
+        if (!settings.shopifyShopUrl) {
+            alert('Por favor, ingresa la URL de tu tienda primero.');
+            return;
+        }
+        try {
+            const response = await fetch(`/api/integrations/shopify/install?shop=${encodeURIComponent(settings.shopifyShopUrl)}`, {
+                headers: {
+                    'Authorization': `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+            const data = await response.json();
+            if (response.ok && data.redirectUrl) {
+                // Redirigir al cliente a Shopify para aprobar los permisos
+                window.location.href = data.redirectUrl;
+            } else {
+                alert(data.message || 'Error al iniciar la conexión con Shopify.');
+            }
+        } catch (err) {
+            alert('Error de red al intentar conectar con Shopify.');
+        }
+    };
+
     const handleTestWoo = async () => {
         setIsTestingWoo(true);
         setWooTestResult(null);
@@ -166,13 +189,44 @@ const ClientSettingsPage: React.FC = () => {
                                     autoComplete="off"
                                 />
                             </div>
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Admin API Access Token</label>
+                            
+                            {settings.shopifyAccessToken ? (
+                                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex flex-col gap-2">
+                                    <div className="flex items-center gap-2 text-green-700">
+                                        <IconCheckCircle className="w-5 h-5"/>
+                                        <span className="font-semibold">Tienda Conectada Correctamente</span>
+                                    </div>
+                                    <p className="text-xs text-green-600">
+                                        Tu tienda está autorizada. Puedes probar la conexión o activar la sincronización automática.
+                                    </p>
+                                </div>
+                            ) : (
+                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-3">
+                                    <p className="text-sm text-blue-800">
+                                        Para importar tus pedidos, necesitas darle permiso a nuestra aplicación en tu tienda Shopify.
+                                    </p>
+                                    <button
+                                        type="button"
+                                        onClick={handleConnectShopify}
+                                        disabled={!settings.shopifyShopUrl}
+                                        className="w-full py-2 bg-[#95bf47] hover:bg-[#86ac40] text-white text-sm font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                                    >
+                                        <IconShopify className="w-5 h-5 text-white" />
+                                        Conectar automáticamente
+                                    </button>
+                                </div>
+                            )}
+
+                            <div className="pt-4 border-t border-[var(--border-primary)]">
+                                <label className="block text-sm font-bold text-[var(--text-primary)] mb-1">💡 Conexión Manual / Token Avanzado</label>
+                                <p className="text-xs text-[var(--text-secondary)] mb-2">
+                                    Si el botón verde falla, o si tu tienda usa una App Privada, puedes pegar tu token (shpat_) aquí. Borra este cuadro si quieres desconectar la tienda.
+                                </p>
                                 <div className="relative">
                                     <input
                                         type={passwordVisibility.shopifyAccessToken ? 'text' : 'password'}
                                         name="shopifyAccessToken"
-                                        value={settings.shopifyAccessToken}
+                                        value={settings.shopifyAccessToken || ''}
                                         onChange={handleChange}
                                         className={inputClasses}
                                         placeholder="shpat_xxxxxxxxxxxxxxxx"
@@ -183,6 +237,7 @@ const ClientSettingsPage: React.FC = () => {
                                     </button>
                                 </div>
                             </div>
+
 
                             <div className="pt-4 border-t border-[var(--border-primary)]">
                                 <label className="flex items-center justify-between cursor-pointer">

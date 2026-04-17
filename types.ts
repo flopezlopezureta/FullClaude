@@ -131,6 +131,11 @@ export interface IntegrationSettings {
     wooConsumerSecret?: string;
     falabellaApiKey?: string;
     falabellaSellerId?: string;
+    smtpHost?: string;
+    smtpPort?: string;
+    smtpUser?: string;
+    smtpPassword?: string;
+    smtpFrom?: string;
 }
 
 export interface MeliOrder {
@@ -230,6 +235,7 @@ export interface Package {
   flexedAt?: Date;
   flexLabelPhotoBase64?: string;
   recipientRut?: string;
+  recipientEmail?: string;
 }
 
 export interface Notification {
