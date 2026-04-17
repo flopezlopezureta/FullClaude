@@ -68,10 +68,8 @@ const Dashboard: React.FC = () => {
   const [isBulkAssignModalOpen, setIsBulkAssignModalOpen] = useState(false);
   const [isExportModalOpen, setIsExportModalOpen] = useState(false);
   const [isQuickStatusModalOpen, setIsQuickStatusModalOpen] = useState(false);
-  const [isQuickStatusModalOpen, setIsQuickStatusModalOpen] = useState(false);
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [isExporting, setIsExporting] = useState(false);
-  const [isSyncingMeli, setIsSyncingMeli] = useState(false);
   const [isSyncingMeli, setIsSyncingMeli] = useState(false);
   const [isSyncingShopify, setIsSyncingShopify] = useState(false);
   const [pollingStatus, setPollingStatus] = useState<{ 
