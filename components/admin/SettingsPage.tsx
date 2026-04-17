@@ -682,11 +682,11 @@ const SettingsPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="bg-amber-50 border-l-4 border-amber-500 p-5 rounded-r-xl mb-6 shadow-sm dark:bg-amber-900/30">
+                        <div className="bg-blue-50 border-l-4 border-blue-500 p-5 rounded-r-xl mb-6 shadow-sm dark:bg-blue-900/30">
                             <div className="flex items-start">
-                                <IconAlertTriangle className="w-6 h-6 text-amber-600 mr-3 flex-shrink-0 mt-0.5" />
-                                <p className="text-base text-amber-900 dark:text-amber-200 leading-relaxed">
-                                    <strong className="text-amber-600 dark:text-amber-400">Borrado Total:</strong> Restablecerá la aplicación a su estado inicial, eliminando <span className="font-extrabold underline">TODOS</span> los datos transaccionales y usuarios (excepto el administrador).
+                                <IconAlertTriangle className="w-6 h-6 text-blue-600 mr-3 flex-shrink-0 mt-0.5" />
+                                <p className="text-base text-blue-900 dark:text-blue-100 leading-relaxed font-bold">
+                                    <strong className="text-blue-700 dark:text-blue-400 font-black">Borrado Total:</strong> Restablecerá la aplicación a su estado inicial, eliminando <span className="underline">TODOS</span> los datos transaccionales y usuarios (excepto el administrador).
                                 </p>
                             </div>
                         </div>
