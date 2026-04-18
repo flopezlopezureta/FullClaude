@@ -407,9 +407,10 @@ const DriverDashboard: React.FC = () => {
             {searchTerm && (
                 <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)] z-10"
+                    type="button"
                 >
-                    <IconX className="h-4 w-4" />
+                    <IconX className="h-5 w-5" />
                 </button>
             )}
         </div>
