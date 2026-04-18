@@ -9,7 +9,7 @@ import PackageDetailModal from '../PackageDetailModal';
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 import UndeliveredModal from './UndeliveredModal';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconArchive, IconTruck, IconRoute, IconAlertTriangle, IconSearch, IconX } from '../Icon';
+import { IconArchive, IconTruck, IconRoute, IconAlertTriangle, IconSearch, IconX, IconMapPin } from '../Icon';
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
 
 
@@ -392,42 +392,49 @@ const DriverDashboard: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="flex justify-between items-center mb-4 px-4 flex-nowrap gap-2">
-        <div className="flex items-center gap-2 flex-1">
-            <div className="relative flex-1">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <IconSearch className="h-4 w-4 text-[var(--text-muted)]" />
-                </div>
-                <input
-                    type="text"
-                    className="block w-full pl-10 pr-10 py-2 border border-[var(--border-primary)] rounded-xl bg-[var(--background-secondary)] text-sm placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] focus:border-transparent transition-all"
-                    placeholder="Buscar cliente, dirección o ID..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                />
-                {searchTerm && (
-                    <button
-                        onClick={() => setSearchTerm('')}
-                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                    >
-                        <IconX className="h-4 w-4" />
-                    </button>
-                )}
+      <div className="flex items-center mb-4 px-4 gap-2">
+        <div className="relative flex-1 min-w-0">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <IconSearch className="h-4 w-4 text-[var(--text-muted)]" />
             </div>
+            <input
+                type="text"
+                className="block w-full pl-10 pr-10 py-2 border border-[var(--border-primary)] rounded-xl bg-[var(--background-secondary)] text-sm placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] focus:border-transparent transition-all"
+                placeholder="Buscar cliente, dirección..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+            />
+            {searchTerm && (
+                <button
+                    onClick={() => setSearchTerm('')}
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                >
+                    <IconX className="h-4 w-4" />
+                </button>
+            )}
+        </div>
+        
+        <div className="flex items-center gap-2 flex-shrink-0">
             {auth?.systemSettings.circuitExportEnabled && (
                 <button
                     onClick={handleExportRoute}
                     disabled={pendingPackages.length === 0 || isExporting}
-                    className={`flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-[var(--text-on-brand)] bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] disabled:bg-slate-400 disabled:cursor-not-allowed ${isExporting ? 'animate-pulse' : ''}`}
+                    title={isExporting ? 'Enviando...' : 'Enviar a Circuit'}
+                    className={`inline-flex items-center justify-center p-2 border border-transparent rounded-xl shadow-sm text-white bg-[#007bff] hover:bg-[#0056b3] disabled:bg-slate-400 disabled:cursor-not-allowed transition-all ${isExporting ? 'animate-pulse' : ''}`}
                 >
-                    <IconRoute className={`w-5 h-5 mr-2 -ml-1 ${isExporting ? 'animate-spin' : ''}`}/>
-                    {isExporting ? 'Enviando...' : 'Enviar a Circuit'}
+                    {isExporting ? (
+                        <IconRoute className="w-6 h-6 animate-spin" />
+                    ) : (
+                        <IconMapPin className="w-6 h-6" />
+                    )}
                 </button>
             )}
+            
+            <div className="bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-[10px] font-bold px-2 py-2 rounded-xl whitespace-nowrap flex flex-col items-center justify-center leading-tight shadow-sm min-w-[65px]">
+                <span className="opacity-80 text-[8px] uppercase tracking-tighter">Asignados</span>
+                <span className="text-sm">{totalAssignedForDay}</span>
+            </div>
         </div>
-        <span className="ml-auto bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-xs font-bold px-3 py-1.5 rounded-full whitespace-nowrap">
-            Asignados Hoy: {totalAssignedForDay}
-        </span>
       </div>
 
       <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
