@@ -72,7 +72,8 @@ const DashboardLayout: React.FC = () => {
   };
 
   const [activeView, setActiveView] = useState(getDefaultView());
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
 
   // Helper to ensure role comparisons are case-insensitive and robust
   const hasRole = (role: string | undefined, ...requiredRoles: Role[]) => {
