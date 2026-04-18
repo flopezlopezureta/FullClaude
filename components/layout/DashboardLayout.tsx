@@ -24,6 +24,7 @@ import LiveMap from '../admin/LiveMap';
 import GeolocatePage from '../admin/GeolocatePage';
 import DriverMobileLayout from '../driver/DriverMobileLayout';
 import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
+import ClientSettingsPage from '../client/ClientSettingsPage';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
@@ -195,6 +196,7 @@ const DashboardLayout: React.FC = () => {
       // Settings
       case 'settings':
         if (isAdmin) return { title: 'Ajustes del Sistema', content: <SettingsPage /> };
+        if (isClient) return { title: 'Configuración de Mi Cuenta', content: <ClientSettingsPage /> };
         break;
 
       case 'integrations':

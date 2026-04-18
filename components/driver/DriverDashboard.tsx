@@ -9,9 +9,8 @@ import PackageDetailModal from '../PackageDetailModal';
 import DeliveryConfirmationModal from './DeliveryConfirmationModal';
 import UndeliveredModal from './UndeliveredModal';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconArchive, IconTruck, IconRoute, IconAlertTriangle } from '../Icon';
+import { IconArchive, IconTruck, IconRoute, IconAlertTriangle, IconSearch, IconX } from '../Icon';
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
-import RouteOptimizerModal from '../modals/RouteOptimizerModal';
 
 
 const DriverDashboard: React.FC = () => {
@@ -23,13 +22,12 @@ const DriverDashboard: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+  const [searchTerm, setSearchTerm] = useState('');
   const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
-  const [isOptimizerOpen, setIsOptimizerOpen] = useState(false);
   
   const auth = useContext(AuthContext);
   const isInitialLoad = useRef(true);
   const prevPackagesRef = useRef<Package[] | undefined>(undefined);
-  const [currentLocation, setCurrentLocation] = useState<{lat: number, lng: number} | undefined>(undefined);
 
   // Load from cache on mount
   useEffect(() => {
@@ -110,13 +108,6 @@ const DriverDashboard: React.FC = () => {
     fetchData(true); // Initial background fetch
     const intervalId = setInterval(() => fetchData(true), 15000); // Poll every 15 seconds instead of 10
     
-    // Get current location for optimizer
-    if (navigator.geolocation) {
-        navigator.geolocation.getCurrentPosition(pos => {
-            setCurrentLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        });
-    }
-
     return () => clearInterval(intervalId);
   }, [auth?.user, deliveringPackage, reportingProblemPackage]);
 
@@ -145,22 +136,36 @@ const DriverDashboard: React.FC = () => {
   const { pendingPackages, dailyHistoryPackages, unflexedCount } = useMemo(() => {
     const todayStr = new Date().toDateString();
     
-    const pending = myPackages.filter(p => 
+    // Base collections
+    const allPending = myPackages.filter(p => 
         p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem && p.status !== PackageStatus.Returned
     );
 
-    const history = myPackages.filter(p => {
+    const allHistory = myPackages.filter(p => {
         if (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem) return false;
-        
-        const closureEvent = p.history?.[0]; // Most recent event determines the date
+        const closureEvent = p.history?.[0];
         if (!closureEvent) return false; 
-        
         return new Date(closureEvent.timestamp).toDateString() === todayStr;
     });
 
-    const unflexed = pending.filter(p => !p.isFlexed).length;
+    // Apply search filter
+    const filterFn = (p: Package) => {
+        if (!searchTerm) return true;
+        const term = searchTerm.toLowerCase();
+        return (
+            p.id.toLowerCase().includes(term) ||
+            p.recipientName.toLowerCase().includes(term) ||
+            p.recipientAddress.toLowerCase().includes(term) ||
+            (p.recipientCommune && p.recipientCommune.toLowerCase().includes(term))
+        );
+    };
+
+    const pending = allPending.filter(filterFn);
+    const history = allHistory.filter(filterFn);
+
+    const unflexed = allPending.filter(p => !p.isFlexed).length; // Note: unflexed count remains based on total pending
     return { pendingPackages: pending, dailyHistoryPackages: history, unflexedCount: unflexed };
-  }, [myPackages]);
+  }, [myPackages, searchTerm]);
 
   const totalAssignedForDay = myPackages.length;
 
@@ -356,15 +361,8 @@ const DriverDashboard: React.FC = () => {
   };
 
   const handleApplyOptimizedRoute = (sortedPackages: Package[]) => {
-      // Create a new array for all packages, preserving non-pending ones in their original place (roughly)
-      // and replacing the pending ones with the sorted version.
-      
-      // For simplicity in UI, we just update the local state `myPackages` to reflect the order
-      // of the sorted pending packages at the top or replacing the current pending segment.
-      
       const otherPackages = myPackages.filter(p => !sortedPackages.find(sp => sp.id === p.id));
       setMyPackages([...sortedPackages, ...otherPackages]);
-      setIsOptimizerOpen(false);
   };
 
 
@@ -394,18 +392,28 @@ const DriverDashboard: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="flex justify-end items-center mb-4 px-4 flex-wrap gap-2">
-        <div className="flex items-center gap-2 w-full sm:w-auto">
-            {activeTab === 'pending' && (
-                <button
-                    onClick={() => setIsOptimizerOpen(true)}
-                    disabled={pendingPackages.length < 2}
-                    className="flex-1 sm:flex-none inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 disabled:bg-slate-400 disabled:cursor-not-allowed"
-                >
-                    <IconRoute className="w-5 h-5 mr-2 -ml-1"/>
-                    Optimizar Ruta
-                </button>
-            )}
+      <div className="flex justify-between items-center mb-4 px-4 flex-nowrap gap-2">
+        <div className="flex items-center gap-2 flex-1">
+            <div className="relative flex-1">
+                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <IconSearch className="h-4 w-4 text-[var(--text-muted)]" />
+                </div>
+                <input
+                    type="text"
+                    className="block w-full pl-10 pr-10 py-2 border border-[var(--border-primary)] rounded-xl bg-[var(--background-secondary)] text-sm placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] focus:border-transparent transition-all"
+                    placeholder="Buscar cliente, dirección o ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                    <button
+                        onClick={() => setSearchTerm('')}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    >
+                        <IconX className="h-4 w-4" />
+                    </button>
+                )}
+            </div>
             {auth?.systemSettings.circuitExportEnabled && (
                 <button
                     onClick={handleExportRoute}
@@ -502,15 +510,6 @@ const DriverDashboard: React.FC = () => {
             driverName={auth.user.name}
             users={users}
         />
-      )}
-      
-      {isOptimizerOpen && (
-          <RouteOptimizerModal
-            packages={pendingPackages}
-            onClose={() => setIsOptimizerOpen(false)}
-            onApplyRoute={handleApplyOptimizedRoute}
-            userLocation={currentLocation}
-          />
       )}
     </div>
   );

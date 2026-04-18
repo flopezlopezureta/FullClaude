@@ -111,9 +111,9 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" /> }
   ];
   
-  const clientNavItems = [
     { id: 'my-creations', label: 'Mis Paquetes Creados', icon: <IconPackage className="h-6 w-6" /> },
     { id: 'my-performance', label: 'Rendimiento de Envíos', icon: <IconChartBar className="h-6 w-6" /> },
+    { id: 'settings', label: 'Configuración', icon: <IconSettings className="h-6 w-6" /> },
   ];
 
   const facturacionNavItems = [
