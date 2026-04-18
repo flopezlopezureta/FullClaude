@@ -518,25 +518,30 @@ router.post('/batch', authMiddleware, async (req, res) => {
 // POST /api/packages/batch-assign-driver
 router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
     const { packageIds, driverId, newDeliveryDate } = req.body;
-    if (!packageIds || !Array.isArray(packageIds) || packageIds.length === 0 || !driverId || !newDeliveryDate) {
-        return res.status(400).json({ message: 'IDs de paquetes, ID de conductor y fecha son requeridos.' });
+    if (!packageIds || !Array.isArray(packageIds) || packageIds.length === 0 || !newDeliveryDate) {
+        return res.status(400).json({ message: 'IDs de paquetes y fecha son requeridos.' });
     }
 
     const client = await db.getClient();
     try {
         await client.query('BEGIN');
 
-        const { rows: driverRows } = await client.query('SELECT name FROM users WHERE id = $1', [driverId]);
-        if (driverRows.length === 0) {
-            throw new Error('Conductor no encontrado.');
+        let driverName = 'Disponible';
+        const isUnassigning = !driverId || driverId === 'none';
+
+        if (!isUnassigning) {
+            const { rows: driverRows } = await client.query('SELECT name FROM users WHERE id = $1', [driverId]);
+            if (driverRows.length === 0) {
+                throw new Error('Conductor no encontrado.');
+            }
+            driverName = driverRows[0].name;
         }
-        const driverName = driverRows[0].name;
         
         const placeholders = packageIds.map((_, i) => `$${i + 5}`).join(', ');
 
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
-        const targetStatus = driverId && driverId !== 'none' ? 'ASIGNADO' : 'RETIRADO';
-        const finalDriverId = driverId === 'none' ? null : driverId;
+        const targetStatus = isUnassigning ? 'RETIRADO' : 'ASIGNADO';
+        const finalDriverId = isUnassigning ? null : driverId;
 
         const updateQuery = `
             UPDATE packages 
@@ -551,7 +556,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
             const details = `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
             return client.query(
                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [packageId, 'Asignado', 'Centro de Distribución', details, new Date()]
+                [packageId, isUnassigning ? 'Creado' : 'Asignado', 'Centro de Distribución', isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`, new Date()]
             );
         });
         
@@ -654,8 +659,11 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
-        const driverName = driverId ? (await db.query('SELECT name FROM users WHERE id = $1', [driverId])).rows[0]?.name : 'Nadie';
-        await addTrackingEvent(id, 'Asignado', 'Centro de Distribución', `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`);
+        const isUnassigning = !driverId || driverId === 'none';
+        const driverName = !isUnassigning ? (await db.query('SELECT name FROM users WHERE id = $1', [driverId])).rows[0]?.name : 'Nadie';
+        const statusForEvent = isUnassigning ? 'Creado' : 'Asignado';
+        const detailsForEvent = isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        await addTrackingEvent(id, statusForEvent, 'Centro de Distribución', detailsForEvent);
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
