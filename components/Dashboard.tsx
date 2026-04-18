@@ -314,7 +314,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleBulkAssignDriver = async (driverId: string, newDeliveryDate: Date) => {
+  const handleBulkAssignDriver = async (driverId: string | null, newDeliveryDate: Date) => {
     const idsToAssign: string[] = Array.from(selectedPackages);
     if (idsToAssign.length === 0) return;
 

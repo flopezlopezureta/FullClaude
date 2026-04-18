@@ -7,7 +7,7 @@ interface BulkAssignDriverModalProps {
   packageCount: number;
   drivers: User[];
   onClose: () => void;
-  onAssign: (driverId: string, newDeliveryDate: Date) => void;
+  onAssign: (driverId: string | null, newDeliveryDate: Date) => void;
 }
 
 const formatDateForInput = (date: Date): string => {
@@ -25,7 +25,7 @@ const BulkAssignDriverModal: React.FC<BulkAssignDriverModalProps> = ({ packageCo
     if (!selectedDriverId) return;
     const [year, month, day] = deliveryDate.split('-').map(Number);
     const localDate = new Date(year, month - 1, day);
-    onAssign(selectedDriverId, localDate);
+    onAssign(selectedDriverId === 'none' ? null : selectedDriverId, localDate);
   };
 
   const today = formatDateForInput(new Date());
