@@ -395,11 +395,11 @@ const DriverDashboard: React.FC = () => {
       <div className="flex items-center mb-4 px-4 gap-2">
         <div className="relative flex-1 min-w-0">
             <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <IconSearch className="h-4 w-4 text-[var(--text-muted)]" />
+                <IconSearch className="h-4 w-4 text-[#007bff]" />
             </div>
             <input
                 type="text"
-                className="block w-full pl-10 pr-10 py-2 border border-[var(--border-primary)] rounded-xl bg-[var(--background-secondary)] text-sm placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] focus:border-transparent transition-all"
+                className="block w-full pl-10 pr-10 py-2 border border-[var(--border-primary)] rounded-xl bg-[var(--background-secondary)] text-sm placeholder-[var(--text-muted)] focus:outline-none focus:ring-2 focus:ring-[#007bff]/50 focus:border-[#007bff] transition-all"
                 placeholder="Buscar cliente, dirección..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -407,7 +407,7 @@ const DriverDashboard: React.FC = () => {
             {searchTerm && (
                 <button
                     onClick={() => setSearchTerm('')}
-                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)] hover:text-[var(--text-primary)] z-10"
+                    className="absolute inset-y-0 right-0 pr-3 flex items-center text-[#007bff] hover:text-[#0056b3] z-10"
                     type="button"
                 >
                     <IconX className="h-5 w-5" />
