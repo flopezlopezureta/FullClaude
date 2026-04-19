@@ -18,7 +18,12 @@
         }
         @page {
             size: letter;
-            margin: 2.5cm !important;
+            margin: 25mm !important; /* Forces 2.5cm margin on all sides */
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -27,6 +32,7 @@
             margin: 0;
             padding: 0;
             background-color: var(--bg-light);
+            -webkit-font-smoothing: antialiased;
         }
         /* Web View - Normal Size */
         .container {
@@ -37,7 +43,7 @@
             border: 1px solid var(--border);
             border-radius: 12px;
             background-color: white;
-            box-sizing: border-box;
+            position: relative;
         }
         header {
             border-bottom: 3px solid var(--primary);
@@ -57,8 +63,8 @@
         h2 { font-size: 22px; color: var(--primary); border-left: 5px solid var(--primary); padding-left: 15px; margin-top: 40px; margin-bottom: 15px; }
         p { margin-bottom: 15px; color: var(--text-light); font-size: 16px; }
         .alert {
-            background-color: #ebf8ff;
-            border-left: 5px solid #3182ce;
+            background-color: #ebf8ff !important;
+            border-left: 5px solid #3182ce !important;
             padding: 20px;
             margin: 25px 0;
             border-radius: 8px;
@@ -66,8 +72,8 @@
             break-inside: avoid;
         }
         .alert-important {
-            background-color: #fffaf0;
-            border-left: 5px solid #dd6b20;
+            background-color: #fffaf0 !important;
+            border-left: 5px solid #dd6b20 !important;
         }
         .step {
             display: flex;
@@ -76,8 +82,8 @@
             break-inside: avoid;
         }
         .step-number {
-            background: var(--primary);
-            color: white;
+            background: var(--primary) !important;
+            color: white !important;
             width: 32px;
             height: 32px;
             border-radius: 50%;
@@ -109,33 +115,37 @@
             color: var(--text-light);
             break-inside: avoid;
         }
-        /* Print/PDF View - CRITICAL: Standard Margins */
+        /* Bulletproof Print View */
         @media print {
-            body { 
-                background-color: white !important;
-                -webkit-print-color-adjust: exact !important;
-                print-color-adjust: exact !important;
-            }
-            .container { 
-                max-width: 100% !important;
+            html, body {
                 width: 100% !important;
+                height: auto !important;
                 margin: 0 !important;
+                padding: 0 !important;
+                background-color: white !important;
+                overflow: visible !important;
+            }
+            .container {
+                max-width: none !important;
+                width: 165mm !important; /* Total width minus 50mm margins */
+                margin: 0 auto !important;
                 padding: 0 !important;
                 box-shadow: none !important;
                 border: none !important;
                 display: block !important;
+                position: static !important;
             }
             .no-print { display: none !important; }
-            h1 { font-size: 24pt !important; line-height: 1.2 !important; }
-            h2 { font-size: 16pt !important; margin-top: 25pt !important; break-after: avoid !important; }
-            p, ul, li, .step-content, .alert { font-size: 11pt !important; }
+            h1 { font-size: 24pt !important; }
+            h2 { font-size: 18pt !important; margin-top: 30pt !important; break-after: avoid !important; }
+            p, ul, li, .step-content, .alert { font-size: 12pt !important; }
             .alert { 
                 padding: 15pt !important; 
                 margin: 15pt 0 !important; 
-                border: 1px solid var(--border) !important;
+                border: 1pt solid #e2e8f0 !important;
             }
-            .step { margin-bottom: 12pt !important; }
-            footer { margin-top: 30pt !important; }
+            header { margin-bottom: 30pt !important; }
+            footer { margin-top: 40pt !important; font-size: 10pt !important; }
         }
         .btn-print {
             background: var(--primary);
