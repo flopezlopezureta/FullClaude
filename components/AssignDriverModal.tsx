@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { Package, User } from '../types';
 import { IconX, IconCalendar } from './Icon';
+import SearchableDriverSelect from './SearchableDriverSelect';
 
 interface AssignDriverModalProps {
   pkg: Package;
@@ -54,20 +55,12 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({ pkg, drivers, onC
               <label htmlFor="driver-select" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                 Conductor
               </label>
-              <select
-                id="driver-select"
-                value={selectedDriverId}
-                onChange={(e) => setSelectedDriverId(e.target.value)}
-                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-[var(--border-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] sm:text-sm rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)]"
-              >
-                <option value="">-- Sin Asignar --</option>
-                {drivers.map(driver => (
-                  <option key={driver.id} value={driver.id}>
-                    {driver.name}
-                  </option>
-                ))}
-              </select>
-            </div>
+              <SearchableDriverSelect
+                drivers={drivers}
+                selectedDriverId={selectedDriverId || 'none'}
+                onSelect={(id) => setSelectedDriverId(id === 'none' ? '' : id)}
+                placeholder="-- Sin Asignar --"
+              />
             <div>
               <label htmlFor="delivery-date" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                 Nueva Fecha de Entrega

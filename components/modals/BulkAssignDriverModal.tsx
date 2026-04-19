@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../../types';
 import { IconX, IconCalendar, IconUserPlus } from '../Icon';
+import SearchableDriverSelect from '../SearchableDriverSelect';
 
 interface BulkAssignDriverModalProps {
   packageCount: number;
@@ -46,13 +47,12 @@ const BulkAssignDriverModal: React.FC<BulkAssignDriverModalProps> = ({ packageCo
             </p>
             <div>
               <label htmlFor="bulk-driver-select" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Conductor</label>
-              <select id="bulk-driver-select" value={selectedDriverId} onChange={(e) => setSelectedDriverId(e.target.value)} className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-[var(--border-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] sm:text-sm rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)]">
-                <option value="" disabled>-- Seleccionar Conductor --</option>
-                <option value="none">-- Sin Asignar (Disponible) --</option>
-                {drivers.map(driver => (
-                  <option key={driver.id} value={driver.id}>{driver.name}</option>
-                ))}
-              </select>
+              <SearchableDriverSelect
+                drivers={drivers}
+                selectedDriverId={selectedDriverId || 'none'}
+                onSelect={(id) => setSelectedDriverId(id)}
+                placeholder="-- Seleccionar Conductor --"
+              />
             </div>
             <div>
               <label htmlFor="bulk-delivery-date" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Fecha de Entrega</label>
