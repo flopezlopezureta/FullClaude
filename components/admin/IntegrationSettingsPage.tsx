@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { api } from '../../services/api';
 import type { IntegrationSettings } from '../../types';
-import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload, IconWoocommerce, IconFalabella, IconMail } from '../Icon';
+import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload, IconWoocommerce, IconFalabella, IconMail, IconJumpseller } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const IntegrationSettingsPage: React.FC = () => {
@@ -26,6 +26,8 @@ const IntegrationSettingsPage: React.FC = () => {
         smtpUser: '',
         smtpPassword: '',
         smtpFrom: '',
+        jumpsellerLogin: '',
+        jumpsellerToken: '',
     });
     const [passwordVisibility, setPasswordVisibility] = useState({
         meliClientSecret: false,
@@ -35,6 +37,7 @@ const IntegrationSettingsPage: React.FC = () => {
         wooConsumerSecret: false,
         falabellaApiKey: false,
         smtpPassword: false,
+        jumpsellerToken: false,
     });
     const [isLoading, setIsLoading] = useState(true);
     
@@ -44,6 +47,7 @@ const IntegrationSettingsPage: React.FC = () => {
     const [isSavingGithub, setIsSavingGithub] = useState(false);
     const [isSavingWoo, setIsSavingWoo] = useState(false);
     const [isSavingFalabella, setIsSavingFalabella] = useState(false);
+    const [isSavingJumpseller, setIsSavingJumpseller] = useState(false);
     const [isSavingSmtp, setIsSavingSmtp] = useState(false);
     const [isBackingUp, setIsBackingUp] = useState(false);
     
@@ -70,6 +74,10 @@ const IntegrationSettingsPage: React.FC = () => {
     // SMTP Test State
     const [isTestingSmtp, setIsTestingSmtp] = useState(false);
     const [smtpTestResult, setSmtpTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+
+    // Jumpseller Test State
+    const [isTestingJumpseller, setIsTestingJumpseller] = useState(false);
+    const [jumpsellerTestResult, setJumpsellerTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -180,6 +188,22 @@ const IntegrationSettingsPage: React.FC = () => {
             alert('Error al guardar configuración de Falabella.');
         } finally {
             setIsSavingFalabella(false);
+        }
+    };
+
+    const handleSaveJumpseller = async () => {
+        setIsSavingJumpseller(true);
+        setJumpsellerTestResult(null);
+        try {
+            await api.updateIntegrationSettings({
+                jumpsellerLogin: settings.jumpsellerLogin,
+                jumpsellerToken: settings.jumpsellerToken
+            });
+            alert('Configuración de Jumpseller guardada con éxito.');
+        } catch (err: any) {
+            alert('Error al guardar configuración de Jumpseller.');
+        } finally {
+            setIsSavingJumpseller(false);
         }
     };
     
@@ -324,7 +348,6 @@ const IntegrationSettingsPage: React.FC = () => {
             setWooTestResult({ type: 'success', message: result.message });
         } catch (err: any) {
             setWooTestResult({ type: 'error', message: err.message || 'Error de conexión' });
-        } finally {
             setIsTestingWoo(false);
         }
     };
@@ -343,6 +366,23 @@ const IntegrationSettingsPage: React.FC = () => {
             setFalabellaTestResult({ type: 'error', message: err.message || 'Error de conexión' });
         } finally {
             setIsTestingFalabella(false);
+        }
+    };
+
+    const handleTestJumpsellerConnection = async () => {
+        setIsTestingJumpseller(true);
+        setJumpsellerTestResult(null);
+
+        try {
+            const result = await api.testJumpsellerConnection({
+                jumpsellerLogin: settings.jumpsellerLogin || '',
+                jumpsellerToken: settings.jumpsellerToken || ''
+            });
+            setJumpsellerTestResult({ type: 'success', message: result.message });
+        } catch (err: any) {
+            setJumpsellerTestResult({ type: 'error', message: err.message || 'Error de conexión' });
+        } finally {
+            setIsTestingJumpseller(false);
         }
     };
     
@@ -761,6 +801,98 @@ const IntegrationSettingsPage: React.FC = () => {
                             <div className={`p-3 rounded-md flex items-center text-sm font-medium ${falabellaTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
                                 {falabellaTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
                                 {falabellaTestResult.message}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
+
+            {/* Jumpseller Card */}
+            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)]">
+                <div className="p-6">
+                    <div className="flex items-center justify-between mb-4">
+                        <div className="flex items-center gap-2">
+                            <IconJumpseller className="w-6 h-6 text-sky-600" />
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Jumpseller</h3>
+                        </div>
+                        <button
+                            onClick={handleSaveJumpseller}
+                            disabled={isSavingJumpseller}
+                            className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-sky-600 hover:bg-sky-700 disabled:bg-slate-400 transition-colors"
+                        >
+                            {isSavingJumpseller ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
+                            Guardar Jumpseller
+                        </button>
+                    </div>
+
+                    <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Jumpseller.</p>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label htmlFor="jumpsellerLogin" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Login (API User)</label>
+                                <input
+                                    type="text"
+                                    id="jumpsellerLogin"
+                                    name="jumpsellerLogin"
+                                    value={settings.jumpsellerLogin || ''}
+                                    onChange={handleChange}
+                                    className={inputClasses}
+                                    placeholder="Ingresa tu Login de API"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="jumpsellerToken" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Auth Token</label>
+                                <div className="relative">
+                                    <input
+                                        type={passwordVisibility.jumpsellerToken ? 'text' : 'password'}
+                                        id="jumpsellerToken"
+                                        name="jumpsellerToken"
+                                        value={settings.jumpsellerToken || ''}
+                                        onChange={handleChange}
+                                        className={`${inputClasses} pr-10`}
+                                        placeholder="************************"
+                                    />
+                                    <button type="button" onClick={() => togglePasswordVisibility('jumpsellerToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        {passwordVisibility.jumpsellerToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="p-4 bg-[var(--background-muted)] rounded-md border border-dashed border-[var(--border-secondary)]">
+                            <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">Configuración de Webhook Automático</h4>
+                            <p className="text-xs text-[var(--text-secondary)] mb-2">Para recibir pedidos automáticamente, configura un Webhook en tu panel de Jumpseller (**Configuración > Checkout > API**):</p>
+                            <div className="space-y-2">
+                                <div>
+                                    <span className="text-xs font-bold text-[var(--text-muted)] block uppercase font-mono">Evento:</span>
+                                    <code className="text-xs bg-[var(--background-secondary)] px-1 rounded text-[var(--brand-primary)]">Order Created / Order Paid</code>
+                                </div>
+                                <div>
+                                    <span className="text-xs font-bold text-[var(--text-muted)] block uppercase font-mono">URL de Callback:</span>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <code className="flex-1 text-xs bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)] break-all select-all">https://fullenvios.selcom.cl/api/integrations/jumpseller/webhook</code>
+                                    </div>
+                                    <p className="text-[10px] text-[var(--text-muted)] mt-1 ml-1 font-italic">* Recomendamos añadir `?clientId=[ID_DEL_CLIENTE]` al final si usas cuentas separadas.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">
+                             <button
+                                type="button"
+                                onClick={handleTestJumpsellerConnection}
+                                disabled={isTestingJumpseller}
+                                className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
+                            >
+                                {isTestingJumpseller ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2"/>}
+                                Probar Conexión Jumpseller
+                            </button>
+                        </div>
+
+                        {jumpsellerTestResult && (
+                            <div className={`p-3 rounded-md flex items-center text-sm font-medium ${jumpsellerTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {jumpsellerTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                {jumpsellerTestResult.message}
                             </div>
                         )}
                     </div>

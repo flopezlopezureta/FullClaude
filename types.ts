@@ -136,6 +136,8 @@ export interface IntegrationSettings {
     wooConsumerSecret?: string;
     falabellaApiKey?: string;
     falabellaSellerId?: string;
+    jumpsellerLogin?: string;
+    jumpsellerToken?: string;
     smtpHost?: string;
     smtpPort?: string;
     smtpUser?: string;
@@ -205,6 +207,8 @@ export interface User {
     falabella?: FalabellaIntegration;
     jumpseller?: JumpsellerIntegration;
   };
+  createdAt?: string;
+  packageCount?: number;
 }
 
 export interface Package {

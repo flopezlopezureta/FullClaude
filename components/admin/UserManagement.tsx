@@ -54,6 +54,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
   const [importingClient, setImportingClient] = useState<User | null>(null);
   const [importingSource, setImportingSource] = useState<PackageSource | null>(null);
+  const [sortBy, setSortBy] = useState<'name' | 'newest' | 'oldest' | 'packages'>('newest');
   const auth = useContext(AuthContext);
 
   const fetchUsers = async () => {
@@ -230,15 +231,28 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     setTimeout(() => setCopiedUserId(null), 2000);
   };
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.phone && user.phone.includes(searchTerm)) ||
-      (user.rut && user.rut.toLowerCase().includes(searchTerm.toLowerCase()));
-    
     if (showDeleted) return matchesSearch;
     return matchesSearch && user.status !== UserStatus.Deleted;
+  }).sort((a, b) => {
+    // Always keep Pending status at the top
+    if (a.status === UserStatus.Pending && b.status !== UserStatus.Pending) return -1;
+    if (a.status !== UserStatus.Pending && b.status === UserStatus.Pending) return 1;
+
+    // Then apply the selected sort
+    if (sortBy === 'name') {
+        return a.name.localeCompare(b.name);
+    } else if (sortBy === 'newest') {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateB - dateA;
+    } else if (sortBy === 'oldest') {
+        const dateA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const dateB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        return dateA - dateB;
+    } else if (sortBy === 'packages') {
+        return (b.packageCount || 0) - (a.packageCount || 0);
+    }
+    return 0;
   });
 
   return (
@@ -255,6 +269,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
             onChange={(e) => setSearchTerm(e.target.value)}
             className="block w-full pl-10 pr-3 py-2 border border-[var(--border-primary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm transition-colors"
           />
+        </div>
+        <div className="flex items-center gap-2 flex-1 w-full sm:w-auto">
+            <span className="text-sm text-[var(--text-muted)] whitespace-nowrap">Ordenar por:</span>
+            <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as any)}
+                className="block w-full sm:w-48 pl-3 pr-10 py-2 border border-[var(--border-primary)] rounded-md leading-5 bg-[var(--background-secondary)] text-[var(--text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)] focus:border-[var(--brand-primary)] sm:text-sm transition-colors"
+            >
+                <option value="newest">Más nuevos</option>
+                <option value="oldest">Más antiguos</option>
+                <option value="name">Nombre</option>
+                <option value="packages">Más paquetes</option>
+            </select>
         </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
@@ -295,6 +322,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                     <p className={`font-semibold ${hasNoCustomPricing ? 'text-red-600' : 'text-[var(--text-primary)]'}`}>{user.name}</p>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[user.status].badge}`}>
                         {statusStyles[user.status].text}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200">
+                        <IconPackage className="w-3.5 h-3.5" />
+                        {user.packageCount || 0} paquetes
                     </span>
                     {user.integrations?.meli && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">

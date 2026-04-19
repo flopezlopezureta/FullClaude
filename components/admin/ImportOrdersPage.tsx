@@ -38,6 +38,9 @@ const ImportOrdersPage: React.FC = () => {
         if (source === PackageSource.MercadoLibre) {
             return allClients.filter(u => u.integrations?.meli);
         }
+        if (source === PackageSource.Jumpseller) {
+            return allClients.filter(u => u.integrations?.jumpseller);
+        }
         // For Shopify (Global Integration), any client is eligible to have orders assigned to them
         return allClients;
     }, [allClients, source]);

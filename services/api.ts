@@ -125,6 +125,7 @@ export interface PackageCreationData {
   meliOrderId?: string;
   shopifyOrderId?: string;
   wooOrderId?: string;
+  jumpsellerOrderId?: string;
   trackingId?: string;
   recipientEmail?: string;
 }

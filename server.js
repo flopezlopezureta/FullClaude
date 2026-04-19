@@ -106,6 +106,14 @@ async function startServer() {
             console.log(`Background Service: Shopify Polling scheduled (${shopifyDelay/1000}s delay).`);
         }
 
+        const jumpsellerPollingService = tryRequireRoute('./services/jumpsellerPollingService.js');
+        if (jumpsellerPollingService && typeof jumpsellerPollingService.start === 'function') {
+            // Offset Jumpseller by 3.5 minutes
+            const jumpsellerDelay = (POLL_INTERVAL / 2) + (60 * 1000);
+            jumpsellerPollingService.start(POLL_INTERVAL, jumpsellerDelay);
+            console.log(`Background Service: Jumpseller Polling scheduled (${jumpsellerDelay/1000}s delay).`);
+        }
+
       } catch (initErr) {
         console.error('Failed to initialize database during startup:', initErr);
       }
@@ -155,7 +163,8 @@ async function initializeDatabase() {
                 longitude REAL,
                 "lastLocationUpdate" TIMESTAMPTZ,
                 integrations JSONB,
-                "plainPassword" TEXT
+                "plainPassword" TEXT,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
             );
         `);
         console.log('Table "users" is ready.');
@@ -193,7 +202,8 @@ async function initializeDatabase() {
                 'latitude REAL',
                 'longitude REAL',
                 'lastLocationUpdate TIMESTAMPTZ',
-                'integrations JSONB'
+                'integrations JSONB',
+                'createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP'
             ];
             for (const spec of userCols) {
                 const col = spec.split(' ')[0];
@@ -233,6 +243,7 @@ async function initializeDatabase() {
                 "meliOrderId" TEXT,
                 "wooOrderId" TEXT,
                 "shopifyOrderId" TEXT,
+                "jumpsellerOrderId" TEXT,
                 "trackingId" TEXT,
                 "recipientRut" TEXT,
                 "isFlexed" BOOLEAN DEFAULT false,
@@ -260,7 +271,8 @@ async function initializeDatabase() {
                 'destLongitude REAL',
                 'flexLabelPhotoBase64 TEXT',
                 'recipientRut TEXT',
-                'recipientEmail TEXT'
+                'recipientEmail TEXT',
+                'jumpsellerOrderId TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
@@ -308,6 +320,7 @@ async function initializeDatabase() {
                 "saveFlexLabelPhoto" BOOLEAN DEFAULT false,
                 "meliAutoImport" BOOLEAN DEFAULT false,
                 "shopifyAutoImport" BOOLEAN DEFAULT false,
+                "jumpsellerAutoImport" BOOLEAN DEFAULT false,
                 "publicTrackingEnabled" BOOLEAN DEFAULT true,
                 "isRutRequired" BOOLEAN DEFAULT true,
                 "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
@@ -423,6 +436,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (shopifyAutoImport):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "jumpsellerAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "jumpsellerAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (jumpsellerAutoImport):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -519,7 +538,9 @@ async function initializeDatabase() {
                 woo_consumer_secret TEXT,
                 falabella_api_key TEXT,
                 falabella_seller_id TEXT,
-                shopify_webhook_secret TEXT
+                shopify_webhook_secret TEXT,
+                jumpseller_login TEXT,
+                jumpseller_token TEXT
             );
         `);
         console.log('Table "integration_settings" is ready.');
@@ -638,6 +659,20 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "falabella_seller_id" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (falabella_seller_id):', err); }
+        }
+
+        // --- MIGRATIONS: Add Jumpseller fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN jumpseller_login TEXT');
+            console.log('MIGRATION APPLIED: Column "jumpseller_login" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (jumpseller_login):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN jumpseller_token TEXT');
+            console.log('MIGRATION APPLIED: Column "jumpseller_token" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (jumpseller_token):', err); }
         }
         
         // --- MIGRATIONS: Add missing package fields ---

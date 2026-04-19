@@ -1667,4 +1667,97 @@ router.get('/:clientId/jumpseller/orders', authMiddleware, async (req, res) => {
     }
 });
 
+// POST /api/integrations/jumpseller/webhook - Handle Jumpseller webhooks (e.g., order_paid)
+router.post('/jumpseller/webhook', async (req, res) => {
+    // Jumpseller doesn't sign webhooks with a secret in the same way Shopify does by default, 
+    // unless configured. For now, we'll process it and recommend IP or token validation in production.
+    const orderData = req.body;
+    
+    // Webhook structure: { "id": 123, "status": "Paid", ... } or { "order": { ... } }
+    const order = orderData.order || orderData;
+    
+    if (!order || !order.id) {
+        return res.status(400).send('Invalid webhook data');
+    }
+
+    console.log(`[JumpsellerWebhook] Received webhook for order ${order.id} (Status: ${order.status})`);
+
+    // We only import if status is Paid or Ready
+    if (order.status !== 'Paid' && order.status !== 'Ready') {
+        return res.status(200).send('Order status not eligible for import');
+    }
+
+    try {
+        // Find the client associated with this store
+        // Since Jumpseller webhooks don't send the store identifier in a standard header, 
+        // we might need a custom parameter in the webhook URL: /webhook?clientId=XYZ
+        const { clientId } = req.query;
+        if (!clientId) {
+            console.error('[JumpsellerWebhook] No clientId provided in webhook URL');
+            return res.status(400).send('Missing clientId');
+        }
+
+        const { rows: userRows } = await db.query('SELECT id, "clientIdentifier", address, "pickupAddress" FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).send('Client not found');
+        
+        const client = userRows[0];
+        
+        // Check if already exists
+        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "jumpsellerOrderId" = $1', [order.id.toString()]);
+        if (existing.length > 0) {
+            return res.status(200).send('Order already imported');
+        }
+
+        const shipping = order.shipping_address || {};
+        const customer = order.customer || {};
+        
+        const now = new Date();
+        const packageId = `${client.clientIdentifier}-${uuidv4().split('-')[0]}`;
+        const destination = shipping.address || 'N/A';
+        const commune = shipping.municipality || 'N/A';
+        const city = shipping.city || 'Santiago';
+        const origin = client.pickupAddress || client.address || 'Centro de Distribución';
+
+        const newPackage = {
+            id: packageId,
+            recipientName: shipping.fullname || customer.fullname || 'N/A',
+            recipientPhone: shipping.phone || customer.phone || 'N/A',
+            recipientEmail: customer.email || '',
+            status: 'PENDIENTE',
+            shippingType: 'SAME_DAY',
+            origin: origin,
+            destination: destination,
+            recipientAddress: destination,
+            recipientCommune: commune,
+            recipientCity: city,
+            notes: `Auto-Import Jumpseller Order: ${order.id}`,
+            estimatedDelivery: now,
+            createdAt: now,
+            updatedAt: now,
+            creatorId: clientId,
+            source: 'JUMPSELLER',
+            jumpsellerOrderId: order.id.toString()
+        };
+
+        const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+        const values = Object.values(newPackage);
+        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+        
+        // Add tracking event
+        await db.query(
+            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+            [packageId, 'Creado', origin, 'Auto-importado vía Webhook de Jumpseller.', now]
+        );
+
+        console.log(`[JumpsellerWebhook] Order ${order.id} imported successfully as ${packageId}`);
+        res.status(200).send('OK');
+
+    } catch (err) {
+        console.error('[JumpsellerWebhook] Error processing webhook:', err);
+        res.status(500).send('Error internal');
+    }
+});
+
 module.exports = router;

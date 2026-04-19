@@ -9,6 +9,7 @@ const https = require('https');
 const NotificationService = require('../services/notificationService');
 const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
+const jumpsellerPollingService = require('../services/jumpsellerPollingService');
 const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geocodingService');
 
 // Helper to get tracking history for a package
@@ -63,7 +64,7 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} OR p."recipientAddress" ILIKE $${paramIndex} OR p."recipientCity" ILIKE $${paramIndex} OR p."recipientCommune" ILIKE $${paramIndex} OR p.id ILIKE $${paramIndex} OR p."meliOrderId" ILIKE $${paramIndex} OR p."shopifyOrderId" ILIKE $${paramIndex} OR p."wooOrderId" ILIKE $${paramIndex} OR p."trackingId" ILIKE $${paramIndex} OR p."meliFlexCode" ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`);
+            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} OR p."recipientAddress" ILIKE $${paramIndex} OR p."recipientCity" ILIKE $${paramIndex} OR p."recipientCommune" ILIKE $${paramIndex} OR p.id ILIKE $${paramIndex} OR p."meliOrderId" ILIKE $${paramIndex} OR p."shopifyOrderId" ILIKE $${paramIndex} OR p."wooOrderId" ILIKE $${paramIndex} OR p."jumpsellerOrderId" ILIKE $${paramIndex} OR p."trackingId" ILIKE $${paramIndex} OR p."meliFlexCode" ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }
@@ -264,7 +265,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
     }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, trackingId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, jumpsellerOrderId, trackingId } = req.body;
     
     // Validation
     const requiredFields = {
@@ -324,6 +325,7 @@ router.post('/', authMiddleware, async (req, res) => {
             meliOrderId,
             shopifyOrderId,
             wooOrderId,
+            jumpsellerOrderId,
             trackingId,
             recipientEmail,
             destLatitude: coords.lat,
@@ -397,6 +399,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     meliOrderId, 
                     shopifyOrderId, 
                     wooOrderId, 
+                    jumpsellerOrderId,
                     trackingId 
                 } = pkgData;
                 
@@ -465,6 +468,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     meliOrderId, 
                     shopifyOrderId, 
                     wooOrderId, 
+                    jumpsellerOrderId,
                     trackingId,
                     recipientEmail,
                     destLatitude: coords.lat,
@@ -681,7 +685,7 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
     try {
         // [NUEVO] Búsqueda extendida: Intentar encontrar por ID interno, ID de Mercado Libre, Shopify, Woo o Tracking ID
         let { rows: pkgRows } = await db.query(
-            'SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
+            'SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "jumpsellerOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
             [id]
         );
         
@@ -949,6 +953,23 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
 
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
+
+        // --- NEW JUMPSELLER NOTIFICATION ---
+        if (updatedPackage.jumpsellerOrderId) {
+            try {
+                const { rows: clientRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [updatedPackage.creatorId]);
+                const jumpseller = clientRows[0]?.integrations?.jumpseller;
+                if (jumpseller && jumpseller.login && jumpseller.token) {
+                    await jumpsellerPollingService.makeJumpsellerRequest(jumpseller.login, jumpseller.token, `/orders/${updatedPackage.jumpsellerOrderId}.json`, 'PUT', {
+                        order: { status: 'Delivered' }
+                    });
+                    console.log(`[Deliver] Jumpseller order ${updatedPackage.jumpsellerOrderId} updated to Delivered.`);
+                }
+            } catch (jError) {
+                console.error(`[Deliver] Failed to update Jumpseller order ${updatedPackage.jumpsellerOrderId}`);
+            }
+        }
+        // --- END JUMPSELLER NOTIFICATION ---
 
         // Notify recipient
         NotificationService.notifyRecipient(id, 'ENTREGADO');
