@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconWoocommerce, IconJumpseller } from '../Icon';
+import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconWoocommerce, IconJumpseller, IconFalabella } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const ClientSettingsPage: React.FC = () => {
@@ -15,11 +15,14 @@ const ClientSettingsPage: React.FC = () => {
         wooConsumerSecret: '',
         jumpsellerLogin: '',
         jumpsellerToken: '',
+        falabellaSellerId: '',
+        falabellaApiKey: '',
     });
     const [passwordVisibility, setPasswordVisibility] = useState({
         shopifyAccessToken: false,
         wooConsumerSecret: false,
         jumpsellerToken: false,
+        falabellaApiKey: false,
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +34,8 @@ const ClientSettingsPage: React.FC = () => {
     const [wooTestResult, setWooTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [isTestingJumpseller, setIsTestingJumpseller] = useState(false);
     const [jumpsellerTestResult, setJumpsellerTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [isTestingFalabella, setIsTestingFalabella] = useState(false);
+    const [falabellaTestResult, setFalabellaTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -49,6 +54,8 @@ const ClientSettingsPage: React.FC = () => {
                     wooConsumerSecret: integrations.woocommerce?.consumerSecret || '',
                     jumpsellerLogin: integrations.jumpseller?.login || '',
                     jumpsellerToken: integrations.jumpseller?.token || '',
+                    falabellaSellerId: integrations.falabella?.sellerId || '',
+                    falabellaApiKey: integrations.falabella?.apiKey || '',
                 });
             } catch (err: any) {
                 console.error(err);
@@ -69,7 +76,7 @@ const ClientSettingsPage: React.FC = () => {
         setPasswordVisibility(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    const handleSave = async (type: 'shopify' | 'woocommerce' | 'jumpseller') => {
+    const handleSave = async (type: 'shopify' | 'woocommerce' | 'jumpseller' | 'falabella') => {
         if (!auth?.user) return;
         setIsSaving(true);
         try {
@@ -94,6 +101,11 @@ const ClientSettingsPage: React.FC = () => {
                 updatedIntegrations.jumpseller = {
                     login: settings.jumpsellerLogin,
                     token: settings.jumpsellerToken,
+                };
+            } else if (type === 'falabella') {
+                updatedIntegrations.falabella = {
+                    sellerId: settings.falabellaSellerId,
+                    apiKey: settings.falabellaApiKey,
                 };
             }
 
@@ -179,6 +191,22 @@ const ClientSettingsPage: React.FC = () => {
             setJumpsellerTestResult({ type: 'error', message: err.message || 'Error de conexión' });
         } finally {
             setIsTestingJumpseller(false);
+        }
+    };
+
+    const handleTestFalabella = async () => {
+        setIsTestingFalabella(true);
+        setFalabellaTestResult(null);
+        try {
+            const result = await api.testFalabellaConnection({
+                falabellaSellerId: settings.falabellaSellerId,
+                falabellaApiKey: settings.falabellaApiKey
+            });
+            setFalabellaTestResult({ type: 'success', message: result.message });
+        } catch (err: any) {
+            setFalabellaTestResult({ type: 'error', message: err.message || 'Error de conexión' });
+        } finally {
+            setIsTestingFalabella(false);
         }
     };
 
@@ -473,6 +501,74 @@ const ClientSettingsPage: React.FC = () => {
                             onClick={() => handleSave('jumpseller')}
                             disabled={isSaving}
                             className="px-6 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
+                        >
+                            {isSaving ? 'Guardando...' : 'Guardar Configuración'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Falabella Card */}
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col">
+                    <div className="p-6 flex-1">
+                        <div className="flex items-center gap-2 mb-4">
+                            <IconFalabella className="w-6 h-6 text-orange-600" />
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Falabella / Linio</h3>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Seller ID</label>
+                                <input
+                                    type="text"
+                                    name="falabellaSellerId"
+                                    value={settings.falabellaSellerId}
+                                    onChange={handleChange}
+                                    className={inputClasses}
+                                    placeholder="ID de Vendedor en Falabella"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">API Key</label>
+                                <div className="relative">
+                                    <input
+                                        type={passwordVisibility.falabellaApiKey ? 'text' : 'password'}
+                                        name="falabellaApiKey"
+                                        value={settings.falabellaApiKey}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="API Key de Falabella / Linio"
+                                        autoComplete="new-password"
+                                    />
+                                    <button type="button" onClick={() => togglePasswordVisibility('falabellaApiKey')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)]">
+                                        {passwordVisibility.falabellaApiKey ? <IconEyeOff className="h-5 w-5"/> : <IconEye className="h-5 w-5"/>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {falabellaTestResult && (
+                            <div className={`mt-4 p-3 rounded-md text-sm ${falabellaTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                <div className="flex items-center gap-2">
+                                    {falabellaTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
+                                    {falabellaTestResult.message}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-4 bg-[var(--background-muted)] border-t border-[var(--border-primary)] flex justify-between items-center bg-opacity-50">
+                        <button
+                            onClick={handleTestFalabella}
+                            disabled={isTestingFalabella || !settings.falabellaSellerId || !settings.falabellaApiKey}
+                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-sm font-bold rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
+                        >
+                            {isTestingFalabella ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-orange-600" />}
+                            Probar Conexión
+                        </button>
+                        <button
+                            onClick={() => handleSave('falabella')}
+                            disabled={isSaving}
+                            className="px-6 py-2 bg-orange-600 hover:bg-orange-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
                         >
                             {isSaving ? 'Guardando...' : 'Guardar Configuración'}
                         </button>
