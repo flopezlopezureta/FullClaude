@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual de Configuración Shopify - Full Envios</title>
+    <style>
+        :root {
+            --primary: #008ba3;
+            --secondary: #95bf47;
+            --text-dark: #1a202c;
+            --text-light: #4a5568;
+            --bg-light: #f7fafc;
+            --border: #e2e8f0;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            background-color: white;
+        }
+        .container {
+            max-width: 800px;
+            margin: 40px auto;
+            padding: 40px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+        }
+        header {
+            border-bottom: 2px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -1px;
+        }
+        h1 { font-size: 32px; color: var(--text-dark); margin: 0; }
+        h2 { font-size: 20px; color: var(--primary); border-left: 4px solid var(--primary); padding-left: 10px; margin-top: 30px; }
+        p { margin-bottom: 15px; color: var(--text-light); }
+        .alert {
+            background-color: #ebf8ff;
+            border-left: 4px solid #3182ce;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        .alert-important {
+            background-color: #fffaf0;
+            border-left: 4px solid #dd6b20;
+        }
+        .step {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+        .step-number {
+            background: var(--primary);
+            color: white;
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-weight: bold;
+        }
+        .token-box {
+            background: #f1f5f9;
+            padding: 10px;
+            border-radius: 4px;
+            font-family: monospace;
+            border: 1px solid #cbd5e1;
+        }
+        footer {
+            margin-top: 50px;
+            padding-top: 20px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-light);
+        }
+        @media print {
+            body { background: none; }
+            .container { box-shadow: none; border: none; margin: 0; padding: 0; width: 100%; max-width: 100%; }
+            .no-print { display: none; }
+            header { margin-bottom: 20px; }
+        }
+        .btn-print {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print" style="text-align: right;">
+            <a href="#" onclick="window.print(); return false;" class="btn-print">Descargar / Imprimir PDF</a>
+        </div>
+        
+        <header>
+            <div>
+                <div class="logo-text">FULL ENVIOS</div>
+                <h1>Manual de Integración Shopify</h1>
+            </div>
+            <div style="text-align: right; color: var(--text-light); font-size: 14px;">
+                Versión 2.1<br>
+                Abril 2026
+            </div>
+        </header>
+
+        <p>Esta guía detalla los pasos necesarios para conectar de manera exitosa su tienda Shopify con la plataforma de Full Envios, permitiendo la automatización de su flujo logístico.</p>
+
+        <div class="alert alert-important">
+            <strong>REQUISITO CRÍTICO:</strong> Antes de iniciar, asegúrese de estar <strong>logueado en su panel de administración de Shopify</strong> en el mismo navegador donde tiene abierta la plataforma de Full Envios. Esto es indispensable para que la conexión automática funcione correctamente.
+        </div>
+
+        <h2>1. Conexión Automática (Recomendado)</h2>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div>
+                <strong>Ingrese la URL:</strong> En la pestaña "Conexión", escriba el subdominio de su tienda (ej: <code>mi-tienda.myshopify.com</code>).
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div>
+                <strong>Conectar:</strong> Haga clic en el botón verde <strong>"Conectar automáticamente"</strong>. Si ya está logueado en Shopify, se abrirá una ventana de autorización.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div>
+                <strong>Instalar App:</strong> Revise los permisos y haga clic en <strong>"Instalar App"</strong>. El sistema lo regresará automáticamente a Full Envios con la conexión lista.
+            </div>
+        </div>
+
+        <h2>2. Conexión Manual (App Privada)</h2>
+        <p>Si prefiere no usar el flujo automático, puede configurar una App Personalizada en Shopify y obtener un "Access Token".</p>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div>
+                <strong>Pestaña Manual:</strong> Diríjase a la pestaña "Modo Manual" en la configuración de Shopify.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div>
+                <strong>Ingrese el Token:</strong> Pegue su token que comienza con <span class="token-box">shpat_...</span>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div>
+                <strong>Probar:</strong> Use el botón "Probar Conexión Manual" para validar que las credenciales son funcionales.
+            </div>
+        </div>
+
+        <h2>3. Ajustes de Sincronización</h2>
+        <p>Una vez conectado, active la automatización en la pestaña "Sincronización":</p>
+        <ul>
+            <li><strong>Interruptor:</strong> Debe estar activado (color verde) para importar órdenes sin intervención manual.</li>
+            <li><strong>Tiempo de revisión:</strong> Recomendamos <strong>5 o 15 minutos</strong> para un flujo constante. Si su tienda tiene poco volumen, puede usar 30 o 60 minutos.</li>
+        </ul>
+
+        <div class="alert">
+            <strong>NOTA SOBRE REGIONES:</strong> La importación automática actualmente procesa exclusivamente pedidos con destino a la <strong>Región Metropolitana</strong>. Pedidos a regiones extremas deben gestionarse manualmente.
+        </div>
+
+        <h2>4. Guardado Final</h2>
+        <p>Independiente de los cambios realizados en las pestañas, es <strong>obligatorio</strong> hacer clic en el botón inferior <strong>"Guardar Configuración"</strong> para aplicar los cambios en el servidor.</p>
+
+        <footer>
+            © 2026 Full Envios - Soporte Técnico: soporte@fullenvios.cl<br>
+            Este documento fue generado automáticamente por el sistema.
+        </footer>
+    </div>
+</body>
+</html>

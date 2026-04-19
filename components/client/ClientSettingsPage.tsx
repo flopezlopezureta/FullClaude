@@ -227,6 +227,30 @@ const ClientSettingsPage: React.FC = () => {
                 <p className="text-[var(--text-secondary)]">Configura tus tiendas para importar pedidos automáticamente.</p>
             </div>
 
+            {/* Manuales Section */}
+            <div className="bg-gradient-to-r from-sky-600 to-sky-700 rounded-xl p-6 shadow-lg text-white">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div>
+                        <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
+                            <span className="text-2xl">📚</span> Manuales y Recursos de Ayuda
+                        </h2>
+                        <p className="text-sky-100 text-sm">Descarga las guías paso a paso para configurar tus tiendas correctamente.</p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                        <a 
+                            href="/manuals/shopify_guide.html" 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all border border-white/30"
+                        >
+                            <IconShopify className="w-4 h-4" />
+                            Guía Shopify (PDF)
+                        </a>
+                        {/* More manuals can be added here in the future */}
+                    </div>
+                </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Shopify Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
