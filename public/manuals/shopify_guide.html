@@ -18,7 +18,7 @@
         }
         @page {
             size: letter;
-            margin: 2.5cm 2cm; /* Increased vertical margin to 2.5cm */
+            margin: 2.5cm !important;
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -107,61 +107,35 @@
             text-align: center;
             font-size: 13px;
             color: var(--text-light);
+            break-inside: avoid;
         }
-        /* Print/PDF View - Letter Size Constraints */
+        /* Print/PDF View - CRITICAL: Standard Margins */
         @media print {
             body { 
-                background: white !important; 
-                margin: 0 !important; 
-                padding: 0 !important;
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
+                background-color: white !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
             .container { 
-                box-shadow: none !important; 
-                border: none !important; 
-                margin: 0 !important; 
-                padding: 0 !important; 
-                width: 100% !important; 
-                max-width: 100% !important; 
-                border-radius: 0 !important;
+                max-width: 100% !important;
+                width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
                 display: block !important;
             }
-            header { 
-                margin-top: 0 !important;
-                margin-bottom: 40pt !important; 
-                padding-bottom: 20pt !important; 
-                break-inside: avoid !important;
-            }
-            h1 { font-size: 22pt !important; }
-            h2 { 
-                font-size: 16pt !important; 
-                margin-top: 30pt !important; 
-                margin-bottom: 15pt !important;
-                padding-top: 10pt !important;
-                break-after: avoid !important; 
-                break-inside: avoid !important;
-            }
-            p, ul, .step-content, .alert { 
-                font-size: 11pt !important; 
-                margin-bottom: 12pt !important;
-            }
+            .no-print { display: none !important; }
+            h1 { font-size: 24pt !important; line-height: 1.2 !important; }
+            h2 { font-size: 16pt !important; margin-top: 25pt !important; break-after: avoid !important; }
+            p, ul, li, .step-content, .alert { font-size: 11pt !important; }
             .alert { 
                 padding: 15pt !important; 
-                margin: 20pt 0 !important; 
-                break-inside: avoid !important;
-                border: 1px solid #e2e8f0 !important; /* Visual boundary for print */
+                margin: 15pt 0 !important; 
+                border: 1px solid var(--border) !important;
             }
-            .step { 
-                margin-bottom: 20pt !important; 
-                break-inside: avoid !important;
-            }
-            .no-print { display: none !important; }
-            footer { 
-                margin-top: 50pt !important; 
-                font-size: 9pt !important; 
-                break-inside: avoid !important;
-            }
+            .step { margin-bottom: 12pt !important; }
+            footer { margin-top: 30pt !important; }
         }
         .btn-print {
             background: var(--primary);
