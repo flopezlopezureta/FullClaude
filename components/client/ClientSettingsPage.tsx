@@ -10,6 +10,7 @@ const ClientSettingsPage: React.FC = () => {
         shopifyShopUrl: '',
         shopifyAccessToken: '',
         shopifyAutoImport: false,
+        shopifySyncInterval: 5,
         wooUrl: '',
         wooConsumerKey: '',
         wooConsumerSecret: '',
@@ -49,6 +50,7 @@ const ClientSettingsPage: React.FC = () => {
                     shopifyShopUrl: integrations.shopify?.shopUrl || '',
                     shopifyAccessToken: integrations.shopify?.accessToken || '',
                     shopifyAutoImport: integrations.shopify?.autoImport || false,
+                    shopifySyncInterval: integrations.shopify?.syncInterval || 5,
                     wooUrl: integrations.woocommerce?.storeUrl || integrations.woocommerce?.wooUrl || '',
                     wooConsumerKey: integrations.woocommerce?.consumerKey || '',
                     wooConsumerSecret: integrations.woocommerce?.consumerSecret || '',
@@ -90,6 +92,7 @@ const ClientSettingsPage: React.FC = () => {
                     shopUrl: settings.shopifyShopUrl,
                     accessToken: settings.shopifyAccessToken,
                     autoImport: settings.shopifyAutoImport,
+                    syncInterval: settings.shopifySyncInterval,
                 };
             } else if (type === 'woocommerce') {
                 updatedIntegrations.woocommerce = {
@@ -227,9 +230,27 @@ const ClientSettingsPage: React.FC = () => {
                 {/* Shopify Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col">
                     <div className="p-6 flex-1">
-                        <div className="flex items-center gap-2 mb-4">
-                            <IconShopify className="w-6 h-6 text-green-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Shopify</h3>
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <IconShopify className="w-6 h-6 text-green-600" />
+                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Shopify</h3>
+                            </div>
+                            <div className="flex bg-[var(--background-muted)] p-1 rounded-lg border border-[var(--border-primary)] shadow-sm">
+                                <button 
+                                    type="button"
+                                    onClick={() => setSettings(prev => ({ ...prev, shopifyAutoImport: false }))}
+                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${!settings.shopifyAutoImport ? 'bg-white text-[var(--brand-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                                >
+                                    Manual
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setSettings(prev => ({ ...prev, shopifyAutoImport: true }))}
+                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${settings.shopifyAutoImport ? 'bg-green-500 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
+                                >
+                                    Automático
+                                </button>
+                            </div>
                         </div>
                         
                         <div className="space-y-4">
@@ -295,12 +316,12 @@ const ClientSettingsPage: React.FC = () => {
                             </div>
 
 
-                            <div className="pt-4 border-t border-[var(--border-primary)]">
-                                <label className="flex items-center justify-between cursor-pointer">
+                            <div className="pt-4 border-t border-[var(--border-primary)] space-y-4">
+                                <div className="flex items-center justify-between">
                                     <div>
                                         <h4 className="text-sm font-bold text-[var(--text-primary)]">Sincronización Automática</h4>
                                         <p className="text-xs text-[var(--text-secondary)] mt-0.5">
-                                            Importa tus pedidos pagados cada 5 minutos.
+                                            Importa tus pedidos pagados automáticamente.
                                         </p>
                                     </div>
                                     <div className="relative">
@@ -313,7 +334,29 @@ const ClientSettingsPage: React.FC = () => {
                                         />
                                         <div className="w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-green-500 transition-all duration-300 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-6"></div>
                                     </div>
-                                </label>
+                                </div>
+
+                                {settings.shopifyAutoImport && (
+                                    <div className="bg-[var(--background-muted)] p-3 rounded-lg border border-[var(--border-secondary)] animate-fade-in">
+                                        <label className="block text-xs font-bold text-[var(--text-secondary)] mb-2 uppercase tracking-tight">Tiempo de revisión</label>
+                                        <div className="flex gap-2">
+                                            {[5, 15, 30, 60].map((interval) => (
+                                                <button
+                                                    key={interval}
+                                                    type="button"
+                                                    onClick={() => setSettings(prev => ({ ...prev, shopifySyncInterval: interval }))}
+                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-md border transition-all ${
+                                                        settings.shopifySyncInterval === interval 
+                                                        ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm' 
+                                                        : 'bg-white text-[var(--text-primary)] border-[var(--border-secondary)] hover:border-[var(--brand-primary)]'
+                                                    }`}
+                                                >
+                                                    {interval} min
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
 
                             <div className="p-4 bg-[var(--brand-muted)] border border-[var(--brand-secondary)] rounded-lg shadow-sm">

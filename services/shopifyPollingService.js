@@ -124,7 +124,20 @@ async function autoImportShopifyPackages() {
                 continue;
             }
 
+            // --- PER-USER INTERVAL CHECK ---
+            const syncIntervalMin = shopify.syncInterval || 5; // Default to 5 mins
+            const lastSync = shopify.lastSync ? new Date(shopify.lastSync).getTime() : 0;
+            const now = Date.now();
+            
+            if (now - lastSync < (syncIntervalMin * 60 * 1000)) {
+                // Not enough time has passed yet
+                continue;
+            }
+
             try {
+                // Update lastSync timestamp in DB immediately to prevent concurrent triggers if poller is slow
+                await db.query(`UPDATE users SET integrations = jsonb_set(integrations, '{shopify,lastSync}', $1) WHERE id = $2`, [JSON.stringify(new Date().toISOString()), clientId]);
+
                 // 2. Fetch recent paid orders
                 // status=open & financial_status=paid
                 const ordersData = await makeShopifyRequest(shopify.shopUrl, shopify.accessToken, '/orders.json?status=open&financial_status=paid&limit=50');
