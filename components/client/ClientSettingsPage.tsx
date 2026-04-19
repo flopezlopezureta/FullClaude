@@ -37,6 +37,7 @@ const ClientSettingsPage: React.FC = () => {
     const [jumpsellerTestResult, setJumpsellerTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [isTestingFalabella, setIsTestingFalabella] = useState(false);
     const [falabellaTestResult, setFalabellaTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [shopifyActiveTab, setShopifyActiveTab] = useState<'connect' | 'manual' | 'sync'>('connect');
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -228,176 +229,198 @@ const ClientSettingsPage: React.FC = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Shopify Card */}
-                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col">
-                    <div className="p-6 flex-1">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <IconShopify className="w-6 h-6 text-green-600" />
-                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Shopify</h3>
-                            </div>
-                            <div className="flex bg-[var(--background-muted)] p-1 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                                <button 
-                                    type="button"
-                                    onClick={() => setSettings(prev => ({ ...prev, shopifyAutoImport: false }))}
-                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${!settings.shopifyAutoImport ? 'bg-white text-[var(--brand-primary)] shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-                                >
-                                    Manual
-                                </button>
-                                <button 
-                                    type="button"
-                                    onClick={() => setSettings(prev => ({ ...prev, shopifyAutoImport: true }))}
-                                    className={`px-3 py-1 text-xs font-bold rounded-md transition-all ${settings.shopifyAutoImport ? 'bg-green-500 text-white shadow-sm' : 'text-[var(--text-muted)] hover:text-[var(--text-primary)]'}`}
-                                >
-                                    Automático
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div className="space-y-4">
-                            <div>
-                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda</label>
-                                <input
-                                    type="text"
-                                    name="shopifyShopUrl"
-                                    value={settings.shopifyShopUrl}
-                                    onChange={handleChange}
-                                    className={inputClasses}
-                                    placeholder="ejemplo.myshopify.com"
-                                    autoComplete="off"
-                                />
-                            </div>
-                            
-                            {settings.shopifyAccessToken ? (
-                                <div className="p-4 bg-green-50 border border-green-200 rounded-lg flex flex-col gap-2">
-                                    <div className="flex items-center gap-2 text-green-700">
-                                        <IconCheckCircle className="w-5 h-5"/>
-                                        <span className="font-semibold">Tienda Conectada Correctamente</span>
-                                    </div>
-                                    <p className="text-xs text-green-600">
-                                        Tu tienda está autorizada. Puedes probar la conexión o activar la sincronización automática.
-                                    </p>
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    {/* Tab Navigation */}
+                    <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                        {[
+                            { id: 'connect', label: 'Conexión', icon: <IconShopify className="w-4 h-4" /> },
+                            { id: 'manual', label: 'Modo Manual', icon: <IconPlugConnected className="w-4 h-4" /> },
+                            { id: 'sync', label: 'Sincronización', icon: <IconLoader className="w-4 h-4" /> }
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setShopifyActiveTab(tab.id as any)}
+                                className={`flex-1 py-3 px-2 text-[13px] font-bold flex items-center justify-center gap-1.5 transition-all ${
+                                    shopifyActiveTab === tab.id 
+                                    ? 'bg-[var(--background-secondary)] text-[var(--brand-primary)] border-b-2 border-[var(--brand-primary)]' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                                }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="p-6 flex-1 flex flex-col min-h-[350px]">
+                        {shopifyActiveTab === 'connect' && (
+                            <div className="animate-fade-in space-y-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <IconShopify className="w-6 h-6 text-green-600" />
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)]">Shopify</h3>
                                 </div>
-                            ) : (
-                                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg flex flex-col gap-3">
-                                    <p className="text-sm text-blue-800">
-                                        Para importar tus pedidos, necesitas darle permiso a nuestra aplicación en tu tienda Shopify.
+                                
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1.5">URL de la Tienda</label>
+                                        <input
+                                            type="text"
+                                            name="shopifyShopUrl"
+                                            value={settings.shopifyShopUrl}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="ejemplo.myshopify.com"
+                                            autoComplete="off"
+                                        />
+                                    </div>
+                                    
+                                    <div className="p-5 bg-sky-50/50 border border-sky-100 rounded-xl flex flex-col gap-4">
+                                        <p className="text-[13px] text-sky-800 font-medium leading-relaxed">
+                                            Para importar tus pedidos, necesitas darle permiso a nuestra aplicación en tu tienda Shopify.
+                                        </p>
+                                        <button
+                                            type="button"
+                                            onClick={handleConnectShopify}
+                                            disabled={!settings.shopifyShopUrl}
+                                            className="w-full py-2.5 bg-[#b5d691] hover:bg-[#a5c681] text-white text-sm font-black rounded-lg shadow-sm disabled:opacity-50 transition-all flex items-center justify-center gap-2"
+                                        >
+                                            <IconShopify className="w-5 h-5 text-white" />
+                                            Conectar automáticamente
+                                        </button>
+                                    </div>
+                                    
+                                    {settings.shopifyAccessToken && (
+                                        <div className="p-4 bg-green-50 border border-green-100 rounded-xl flex items-center gap-3">
+                                            <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center text-white">
+                                                <IconCheckCircle className="w-5 h-5"/>
+                                            </div>
+                                            <div>
+                                                <p className="text-sm font-bold text-green-800">Tienda Conectada</p>
+                                                <p className="text-xs text-green-600">Conexión establecida correctamente.</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {shopifyActiveTab === 'manual' && (
+                            <div className="animate-fade-in space-y-6">
+                                <div className="flex items-center gap-2 mb-2">
+                                    <div className="w-6 h-6 bg-yellow-400 rounded-full flex items-center justify-center text-white text-[10px]">💡</div>
+                                    <h3 className="text-lg font-bold text-[var(--text-primary)]">Conexión Manual / Token Avanzado</h3>
+                                </div>
+                                
+                                <div className="space-y-4">
+                                    <p className="text-xs text-[var(--text-secondary)] leading-relaxed font-medium">
+                                        Si el botón verde falla, o si tu tienda usa una App Privada, puedes pegar tu token (shpat_) aquí. Borra este cuadro si quieres desconectar la tienda.
                                     </p>
+                                    
+                                    <div className="relative">
+                                        <input
+                                            type={passwordVisibility.shopifyAccessToken ? 'text' : 'password'}
+                                            name="shopifyAccessToken"
+                                            value={settings.shopifyAccessToken || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="shpat_xxxxxxxxxxxxxxxx"
+                                            autoComplete="new-password"
+                                        />
+                                        <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
+                                        </button>
+                                    </div>
+
                                     <button
                                         type="button"
-                                        onClick={handleConnectShopify}
-                                        disabled={!settings.shopifyShopUrl}
-                                        className="w-full py-2 bg-[#95bf47] hover:bg-[#86ac40] text-white text-sm font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                                        onClick={handleTestShopify}
+                                        disabled={isTestingShopify || !settings.shopifyAccessToken}
+                                        className="w-full py-2.5 bg-white border border-[var(--border-secondary)] hover:bg-[var(--background-muted)] text-[var(--text-primary)] text-sm font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-sm"
                                     >
-                                        <IconShopify className="w-5 h-5 text-white" />
-                                        Conectar automáticamente
+                                        {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-green-600" />}
+                                        Probar Conexión Manual
                                     </button>
-                                </div>
-                            )}
 
-                            <div className="pt-4 border-t border-[var(--border-primary)]">
-                                <label className="block text-sm font-bold text-[var(--text-primary)] mb-1">💡 Conexión Manual / Token Avanzado</label>
-                                <p className="text-xs text-[var(--text-secondary)] mb-2">
-                                    Si el botón verde falla, o si tu tienda usa una App Privada, puedes pegar tu token (shpat_) aquí. Borra este cuadro si quieres desconectar la tienda.
-                                </p>
-                                <div className="relative">
-                                    <input
-                                        type={passwordVisibility.shopifyAccessToken ? 'text' : 'password'}
-                                        name="shopifyAccessToken"
-                                        value={settings.shopifyAccessToken || ''}
-                                        onChange={handleChange}
-                                        className={inputClasses}
-                                        placeholder="shpat_xxxxxxxxxxxxxxxx"
-                                        autoComplete="new-password"
-                                    />
-                                    <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-gray-400"/> : <IconEye className="h-5 w-5 text-gray-400"/>}
-                                    </button>
+                                    {shopifyTestResult && (
+                                        <div className={`mt-2 p-3 rounded-lg text-sm font-medium border ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-red-100 text-red-800 border-red-200'}`}>
+                                            <div className="flex items-center gap-2">
+                                                {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
+                                                {shopifyTestResult.message}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
+                        )}
 
-
-                            <div className="pt-4 border-t border-[var(--border-primary)] space-y-4">
+                        {shopifyActiveTab === 'sync' && (
+                            <div className="animate-fade-in space-y-6">
                                 <div className="flex items-center justify-between">
                                     <div>
-                                        <h4 className="text-sm font-bold text-[var(--text-primary)]">Sincronización Automática</h4>
-                                        <p className="text-xs text-[var(--text-secondary)] mt-0.5">
+                                        <h4 className="text-[15px] font-black text-sky-900">Sincronización Automática</h4>
+                                        <p className="text-[12px] text-sky-700 font-medium">
                                             Importa tus pedidos pagados automáticamente.
                                         </p>
                                     </div>
                                     <div className="relative">
-                                        <input
-                                            type="checkbox"
-                                            name="shopifyAutoImport"
-                                            checked={settings.shopifyAutoImport}
-                                            onChange={handleChange}
-                                            className="sr-only peer"
-                                        />
-                                        <div className="w-12 h-6 bg-gray-200 dark:bg-gray-700 rounded-full peer peer-checked:bg-green-500 transition-all duration-300 after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-6"></div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input
+                                                type="checkbox"
+                                                name="shopifyAutoImport"
+                                                checked={settings.shopifyAutoImport}
+                                                onChange={handleChange}
+                                                className="sr-only peer"
+                                            />
+                                            <div className="w-12 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500 shadow-inner"></div>
+                                        </label>
                                     </div>
                                 </div>
 
-                                {settings.shopifyAutoImport && (
-                                    <div className="bg-[var(--background-muted)] p-3 rounded-lg border border-[var(--border-secondary)] animate-fade-in">
-                                        <label className="block text-xs font-bold text-[var(--text-secondary)] mb-2 uppercase tracking-tight">Tiempo de revisión</label>
-                                        <div className="flex gap-2">
-                                            {[5, 15, 30, 60].map((interval) => (
-                                                <button
-                                                    key={interval}
-                                                    type="button"
-                                                    onClick={() => setSettings(prev => ({ ...prev, shopifySyncInterval: interval }))}
-                                                    className={`flex-1 py-1.5 text-xs font-bold rounded-md border transition-all ${
-                                                        settings.shopifySyncInterval === interval 
-                                                        ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-sm' 
-                                                        : 'bg-white text-[var(--text-primary)] border-[var(--border-secondary)] hover:border-[var(--brand-primary)]'
-                                                    }`}
-                                                >
-                                                    {interval} min
-                                                </button>
-                                            ))}
-                                        </div>
+                                <div className="bg-sky-50 p-4 rounded-xl border border-sky-100 shadow-sm">
+                                    <label className="block text-[10px] font-black text-sky-900 mb-3 uppercase tracking-widest opacity-70">TIEMPO DE REVISIÓN</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[5, 15, 30, 60].map((interval) => (
+                                            <button
+                                                key={interval}
+                                                type="button"
+                                                onClick={() => setSettings(prev => ({ ...prev, shopifySyncInterval: interval }))}
+                                                className={`py-2 text-[13px] font-black rounded-lg border transition-all ${
+                                                    settings.shopifySyncInterval === interval 
+                                                    ? 'bg-[#008ba3] text-white border-[#008ba3] shadow-md transform scale-[1.02]' 
+                                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                {interval} min
+                                            </button>
+                                        ))}
                                     </div>
-                                )}
-                            </div>
+                                </div>
 
-                            <div className="p-4 bg-[var(--brand-muted)] border border-[var(--brand-secondary)] rounded-lg shadow-sm">
-                                <div className="flex gap-3">
-                                    <div className="bg-[var(--brand-primary)] p-1.5 rounded-full flex-shrink-0 h-fit mt-0.5">
-                                        <IconAlertTriangle className="w-4 h-4 text-white" />
+                                <div className="p-4 bg-cyan-100/50 border border-cyan-200 rounded-xl flex gap-3 shadow-sm">
+                                    <div className="flex-shrink-0">
+                                        <div className="w-6 h-6 bg-[#008ba3] rounded-full flex items-center justify-center text-white font-black text-xs ring-4 ring-cyan-100">!</div>
                                     </div>
                                     <div>
-                                        <p className="text-sm font-bold text-[var(--brand-text)] mb-1 uppercase tracking-wider">Restricción de Importación</p>
-                                        <p className="text-xs text-[var(--brand-text)] opacity-90 leading-relaxed font-medium">
-                                            La sincronización automática está <strong>limitada exclusivamente</strong> a la <strong>Región Metropolitana</strong> (Santiago). Los pedidos a otras regiones deben ingresarse de forma manual.
+                                        <h5 className="text-[11px] font-black text-cyan-950 uppercase tracking-widest mb-1 opacity-90">RESTRICCIÓN DE IMPORTACIÓN</h5>
+                                        <p className="text-[12px] text-cyan-900 leading-relaxed font-bold opacity-80">
+                                            La sincronización automática está <span className="text-cyan-950 underline decoration-2 decoration-cyan-400">limitada exclusivamente</span> a la <span className="text-cyan-950">Región Metropolitana (Santiago)</span>. 
+                                            Los pedidos a otras regiones deben ingresarse de forma manual.
                                         </p>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-
-                        {shopifyTestResult && (
-                            <div className={`mt-4 p-3 rounded-md text-sm ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
-                                <div className="flex items-center gap-2">
-                                    {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
-                                    {shopifyTestResult.message}
-                                </div>
-                            </div>
                         )}
                     </div>
-                    <div className="p-4 bg-[var(--background-muted)] border-t border-[var(--border-primary)] flex justify-between items-center bg-opacity-50">
-                        <button
-                            onClick={handleTestShopify}
-                            disabled={isTestingShopify || !settings.shopifyShopUrl || !settings.shopifyAccessToken}
-                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-sm font-bold rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
-                        >
-                            {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-[var(--brand-primary)]" />}
-                            Probar Conexión
-                        </button>
+
+                    <div className="p-4 bg-[var(--background-muted)]/50 border-t border-[var(--border-primary)] flex justify-end items-center">
                         <button
                             onClick={() => handleSave('shopify')}
                             disabled={isSaving}
-                            className="px-6 py-2 bg-[var(--success-text)] hover:opacity-90 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
+                            className="px-8 py-2.5 bg-green-600 hover:bg-green-700 text-white text-sm font-black rounded-lg shadow-lg disabled:opacity-50 transition-all transform active:scale-95 flex items-center gap-2"
                         >
-                            {isSaving ? 'Guardando...' : 'Guardar Configuración'}
+                            {isSaving && <IconLoader className="w-4 h-4 animate-spin" />}
+                            Guardar Configuración
                         </button>
                     </div>
                 </div>
