@@ -238,7 +238,7 @@ const ClientSettingsPage: React.FC = () => {
                     </div>
                     <div className="flex flex-wrap gap-2">
                         <a 
-                            href="/manuals/shopify_guide.html" 
+                            href="/manuals/shopify_guide.html?v=2026.4.19.1" 
                             target="_blank" 
                             rel="noopener noreferrer"
                             className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all border border-white/30"
