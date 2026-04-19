@@ -19,6 +19,16 @@ import { exportToExcel, exportToCSV } from '../../services/exportService';
 import ClientSettingsPage from './ClientSettingsPage';
 
 const getISODate = (date: Date) => date.toISOString().split('T')[0];
+const IconSortAsc = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10 4l-4-4m0 0l-4 4m4-4v12" />
+  </svg>
+);
+const IconSortDesc = ({ className }: { className?: string }) => (
+  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10-4l-4 4m0 0l-4-4m4 4V4" />
+  </svg>
+);
 
 const ClientDashboard: React.FC = () => {
   const [packages, setPackages] = useState<Package[]>([]);
@@ -52,7 +62,8 @@ const ClientDashboard: React.FC = () => {
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [itemsPerPage, setItemsPerPage] = useState(25);
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
 
   const auth = useContext(AuthContext);
   const [isExporting, setIsExporting] = useState(false);
@@ -70,7 +81,8 @@ const ClientDashboard: React.FC = () => {
             communeFilter,
             startDate,
             endDate,
-            clientFilter: auth.user.id
+            clientFilter: auth.user.id,
+            sortOrder
         };
         const { packages: pkgs, total } = await api.getPackages(params);
         setPackages(pkgs);
@@ -88,7 +100,7 @@ const ClientDashboard: React.FC = () => {
     if (activeTab === 'packages') {
         fetchData();
     }
-  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate, activeTab]);
+  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate, activeTab, sortOrder]);
 
   const handleSelectAll = () => {
       setSelectedPackages(prev => {
@@ -339,6 +351,61 @@ const ClientDashboard: React.FC = () => {
                             setCurrentPage(1);
                         }}
                     />
+
+                {/* [NEW] Control Bar (Admin Style) */}
+                <div className="bg-white border-x border-t border-gray-100 p-4 bg-opacity-50">
+                    <div className="flex flex-wrap items-center justify-between w-full gap-4">
+                        <div className="flex items-center gap-4 flex-wrap">
+                            <div className="flex items-center gap-3">
+                                <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filas por página</label>
+                                <select
+                                    value={itemsPerPage}
+                                    onChange={(e) => setItemsPerPage(Number(e.target.value))}
+                                    className="bg-white border border-gray-300 text-gray-900 rounded-md py-1 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
+                                >
+                                    <option value={10}>10</option>
+                                    <option value={25}>25</option>
+                                    <option value={50}>50</option>
+                                    <option value={100}>100</option>
+                                </select>
+                            </div>
+                            
+                            <div className="flex items-center gap-3">
+                                <span className="text-sm text-gray-600 font-bold whitespace-nowrap">
+                                    {Math.min((currentPage - 1) * itemsPerPage + 1, totalPackages)}-{Math.min(currentPage * itemsPerPage, totalPackages)} de {totalPackages}
+                                </span>
+                                <div className="flex items-center bg-gray-100 rounded-md p-1 border border-gray-200">
+                                    <button onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all">
+                                        <IconChevronLeft className="w-4 h-4 text-gray-600" />
+                                    </button>
+                                    <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all">
+                                        <IconChevronRight className="w-4 h-4 text-gray-600" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <button
+                                onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
+                                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${
+                                    sortOrder === 'asc'
+                                        ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100'
+                                        : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
+                                }`}
+                            >
+                                {sortOrder === 'desc' ? (
+                                    <><IconSortDesc className="w-3.5 h-3.5" /> Más nuevos</>  
+                                ) : (
+                                    <><IconSortAsc className="w-3.5 h-3.5" /> Más antiguos</>
+                                )}
+                            </button>
+                        </div>
+
+                        <div className="bg-blue-50 text-blue-700 px-4 py-1.5 rounded-lg border border-blue-200 text-[10px] font-black uppercase tracking-widest shadow-sm flex items-center gap-2">
+                             <div className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></div>
+                             Total de paquetes en sistema: {totalPackages}
+                        </div>
+                    </div>
+                </div>
 
                 <div className="bg-white shadow-lg rounded-xl overflow-hidden border border-gray-100">
                     {selectedPackages.size > 0 && (
