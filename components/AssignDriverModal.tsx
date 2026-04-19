@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { Package, User } from '../types';
 import { IconX, IconCalendar } from './Icon';
-import SearchableDriverSelect from './SearchableDriverSelect';
+import SearchableSelect from './SearchableSelect';
 
 interface AssignDriverModalProps {
   pkg: Package;
@@ -55,11 +55,13 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({ pkg, drivers, onC
               <label htmlFor="driver-select" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                 Conductor
               </label>
-              <SearchableDriverSelect
-                drivers={drivers}
-                selectedDriverId={selectedDriverId || 'none'}
+              <SearchableSelect
+                items={drivers}
+                selectedId={selectedDriverId || 'none'}
                 onSelect={(id) => setSelectedDriverId(id === 'none' ? '' : id)}
                 placeholder="-- Sin Asignar --"
+                searchPlaceholder="Buscar conductor..."
+                noneLabel="-- Sin Asignar --"
               />
             <div>
               <label htmlFor="delivery-date" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">

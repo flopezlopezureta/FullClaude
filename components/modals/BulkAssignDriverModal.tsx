@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { User } from '../../types';
 import { IconX, IconCalendar, IconUserPlus } from '../Icon';
-import SearchableDriverSelect from '../SearchableDriverSelect';
+import SearchableSelect from '../SearchableSelect';
 
 interface BulkAssignDriverModalProps {
   packageCount: number;
@@ -47,11 +47,13 @@ const BulkAssignDriverModal: React.FC<BulkAssignDriverModalProps> = ({ packageCo
             </p>
             <div>
               <label htmlFor="bulk-driver-select" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">Conductor</label>
-              <SearchableDriverSelect
-                drivers={drivers}
-                selectedDriverId={selectedDriverId || 'none'}
+              <SearchableSelect
+                items={drivers}
+                selectedId={selectedDriverId || 'none'}
                 onSelect={(id) => setSelectedDriverId(id)}
                 placeholder="-- Seleccionar Conductor --"
+                searchPlaceholder="Buscar conductor..."
+                noneLabel="-- Sin Asignar (Disponible) --"
               />
             </div>
             <div>

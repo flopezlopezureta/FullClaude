@@ -5,6 +5,7 @@ import { api, PackageCreationData } from '../../services/api';
 import type { User, MeliOrder } from '../../types';
 import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle, IconWoocommerce, IconFalabella } from '../Icon';
 import { PackageSource, ShippingType } from '../../constants';
+import SearchableSelect from '../SearchableSelect';
 
 const ImportOrdersPage: React.FC = () => {
     const [allClients, setAllClients] = useState<User[]>([]);
@@ -225,17 +226,14 @@ const ImportOrdersPage: React.FC = () => {
                         <label htmlFor="client-select" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">
                             {source === PackageSource.MercadoLibre ? 'Cliente con Integración ML' : 'Asignar a Cliente'}
                         </label>
-                        <select
-                            id="client-select"
-                            value={selectedClientId}
-                            onChange={e => setSelectedClientId(e.target.value)}
-                            className={inputClasses}
-                        >
-                            <option value="">-- Seleccionar Cliente --</option>
-                            {clientsForSource.map(client => (
-                                <option key={client.id} value={client.id}>{client.name}</option>
-                            ))}
-                        </select>
+                        <SearchableSelect
+                            items={clientsForSource}
+                            selectedId={selectedClientId}
+                            onSelect={id => setSelectedClientId(id === 'none' ? '' : id)}
+                            placeholder="-- Seleccionar Cliente --"
+                            searchPlaceholder="Buscar cliente..."
+                            showNoneOption={false}
+                        />
                     </div>
                     <button
                         onClick={handleFetchOrders}

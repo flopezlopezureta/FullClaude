@@ -1,36 +1,48 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { User } from '../types';
 import { IconSearch, IconX, IconChevronDown } from './Icon';
 
-interface SearchableDriverSelectProps {
-  drivers: User[];
-  selectedDriverId: string;
-  onSelect: (driverId: string) => void;
-  placeholder?: string;
-  showNoneOption?: boolean;
+interface SearchableItem {
+  id: string;
+  name: string;
 }
 
-const SearchableDriverSelect: React.FC<SearchableDriverSelectProps> = ({
-  drivers,
-  selectedDriverId,
+interface SearchableSelectProps {
+  items: SearchableItem[];
+  selectedId: string;
+  onSelect: (id: string) => void;
+  placeholder?: string;
+  searchPlaceholder?: string;
+  noneLabel?: string;
+  showNoneOption?: boolean;
+  className?: string;
+  disabled?: boolean;
+}
+
+const SearchableSelect: React.FC<SearchableSelectProps> = ({
+  items,
+  selectedId,
   onSelect,
-  placeholder = '-- Seleccionar Conductor --',
+  placeholder = '-- Seleccionar --',
+  searchPlaceholder = 'Buscar...',
+  noneLabel = '-- Sin Asignar / Disponible --',
   showNoneOption = true,
+  className = '',
+  disabled = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const containerRef = useRef<HTMLDivElement>(null);
 
-  const selectedDriver = useMemo(() => {
-    if (selectedDriverId === 'none' || !selectedDriverId) return null;
-    return drivers.find(d => d.id === selectedDriverId);
-  }, [drivers, selectedDriverId]);
+  const selectedItem = useMemo(() => {
+    if (selectedId === 'none' || !selectedId) return null;
+    return items.find(item => item.id === selectedId);
+  }, [items, selectedId]);
 
-  const filteredDrivers = useMemo(() => {
-    return drivers.filter(driver =>
-      driver.name.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredItems = useMemo(() => {
+    return items.filter(item =>
+      item.name.toLowerCase().includes(searchTerm.toLowerCase())
     );
-  }, [drivers, searchTerm]);
+  }, [items, searchTerm]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -49,14 +61,15 @@ const SearchableDriverSelect: React.FC<SearchableDriverSelectProps> = ({
   };
 
   return (
-    <div className="relative" ref={containerRef}>
+    <div className={`relative ${className}`} ref={containerRef}>
       <button
         type="button"
+        disabled={disabled}
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full flex items-center justify-between pl-3 pr-10 py-2 text-base border border-[var(--border-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] sm:text-sm rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] text-left transition-all hover:bg-[var(--background-hover)]"
+        className={`w-full flex items-center justify-between pl-3 pr-10 py-2 text-base border border-[var(--border-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] sm:text-sm rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] text-left transition-all hover:bg-[var(--background-hover)] ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <span className="block truncate">
-          {selectedDriverId === 'none' ? '-- Sin Asignar (Disponible) --' : (selectedDriver ? selectedDriver.name : placeholder)}
+          {selectedId === 'none' ? noneLabel : (selectedItem ? selectedItem.name : placeholder)}
         </span>
         <span className="absolute inset-y-0 right-0 flex items-center pr-3 pointer-events-none">
           <IconChevronDown className={`h-5 w-5 text-[var(--text-muted)] transition-transform duration-200 ${isOpen ? 'rotate-180' : ''}`} />
@@ -74,7 +87,7 @@ const SearchableDriverSelect: React.FC<SearchableDriverSelectProps> = ({
                 type="text"
                 autoFocus
                 className="block w-full pl-9 pr-3 py-1.5 border border-[var(--border-secondary)] rounded-md focus:ring-[var(--brand-secondary)] focus:border-[var(--brand-secondary)] bg-[var(--background-muted)] text-[var(--text-primary)] text-sm"
-                placeholder="Buscar conductor..."
+                placeholder={searchPlaceholder}
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onClick={(e) => e.stopPropagation()}
@@ -94,26 +107,26 @@ const SearchableDriverSelect: React.FC<SearchableDriverSelectProps> = ({
           <ul className="pt-1">
             {showNoneOption && (
               <li
-                className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-[var(--brand-primary)] hover:text-white transition-colors ${selectedDriverId === 'none' ? 'bg-[var(--brand-muted)] text-[var(--brand-primary)] font-semibold' : 'text-[var(--text-primary)]'}`}
+                className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-[var(--brand-primary)] hover:text-white transition-colors ${selectedId === 'none' ? 'bg-[var(--brand-muted)] text-[var(--brand-primary)] font-semibold' : 'text-[var(--text-primary)]'}`}
                 onClick={() => handleSelect('none')}
               >
-                <span className="block truncate">-- Sin Asignar (Disponible) --</span>
+                <span className="block truncate">{noneLabel}</span>
               </li>
             )}
             
-            {filteredDrivers.length > 0 ? (
-              filteredDrivers.map((driver) => (
+            {filteredItems.length > 0 ? (
+              filteredItems.map((item) => (
                 <li
-                  key={driver.id}
-                  className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-[var(--brand-primary)] hover:text-white transition-colors ${selectedDriverId === driver.id ? 'bg-[var(--brand-muted)] text-[var(--brand-primary)] font-semibold' : 'text-[var(--text-primary)]'}`}
-                  onClick={() => handleSelect(driver.id)}
+                  key={item.id}
+                  className={`cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-[var(--brand-primary)] hover:text-white transition-colors ${selectedId === item.id ? 'bg-[var(--brand-muted)] text-[var(--brand-primary)] font-semibold' : 'text-[var(--text-primary)]'}`}
+                  onClick={() => handleSelect(item.id)}
                 >
-                  <span className="block truncate">{driver.name}</span>
+                  <span className="block truncate">{item.name}</span>
                 </li>
               ))
             ) : (
               <li className="py-4 text-center text-[var(--text-muted)] italic">
-                No se encontraron conductores
+                No se encontraron resultados
               </li>
             )}
           </ul>
@@ -133,4 +146,4 @@ const SearchableDriverSelect: React.FC<SearchableDriverSelectProps> = ({
   );
 };
 
-export default SearchableDriverSelect;
+export default SearchableSelect;
