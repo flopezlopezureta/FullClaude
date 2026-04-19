@@ -637,8 +637,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                                     </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                        
+                                            
                                         {/* WooCommerce Test Results */}
                                         {wooTestResult && (
                                             <div className={`mt-3 p-3 rounded-md text-sm ${wooTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
