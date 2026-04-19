@@ -231,6 +231,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     setTimeout(() => setCopiedUserId(null), 2000);
   };
 
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = 
+      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (user.phone && user.phone.includes(searchTerm)) ||
+      (user.rut && user.rut.toLowerCase().includes(searchTerm.toLowerCase()));
+    
     if (showDeleted) return matchesSearch;
     return matchesSearch && user.status !== UserStatus.Deleted;
   }).sort((a, b) => {
