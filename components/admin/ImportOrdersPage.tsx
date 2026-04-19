@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api, PackageCreationData } from '../../services/api';
 import type { User, MeliOrder } from '../../types';
-import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle, IconWoocommerce, IconFalabella } from '../Icon';
+import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle, IconWoocommerce, IconFalabella, IconJumpseller } from '../Icon';
 import { PackageSource, ShippingType } from '../../constants';
 import SearchableSelect from '../SearchableSelect';
 
@@ -63,6 +63,8 @@ const ImportOrdersPage: React.FC = () => {
                 fetchedOrders = await api.fetchWooCommerceOrders(selectedClientId);
             } else if (source === PackageSource.Falabella) {
                 fetchedOrders = await api.fetchFalabellaOrders(selectedClientId);
+            } else if (source === PackageSource.Jumpseller) {
+                fetchedOrders = await api.fetchJumpsellerOrders(selectedClientId);
             }
             setOrders(fetchedOrders);
         } catch (err: any) {
@@ -158,6 +160,7 @@ const ImportOrdersPage: React.FC = () => {
                     shippingType: ShippingType.SameDay,
                     source: source,
                     shopifyOrderId: source === PackageSource.Shopify ? order.id : undefined,
+                    jumpsellerOrderId: source === PackageSource.Jumpseller ? order.id : undefined,
                     creatorId: selectedClientId,
                     origin: origin
                 }));
@@ -218,6 +221,13 @@ const ImportOrdersPage: React.FC = () => {
                             <IconFalabella className="w-5 h-5 mr-2" />
                             Falabella
                         </button>
+                        <button
+                            onClick={() => { setSource(PackageSource.Jumpseller); setOrders([]); setSelectedClientId(''); }}
+                            className={`flex items-center px-4 py-2 text-sm font-medium rounded-md transition-colors whitespace-nowrap ${source === PackageSource.Jumpseller ? 'bg-white shadow text-sky-600' : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)]'}`}
+                        >
+                            <IconJumpseller className="w-5 h-5 mr-2" />
+                            Jumpseller
+                        </button>
                     </div>
                 </div>
 
@@ -248,7 +258,8 @@ const ImportOrdersPage: React.FC = () => {
                         {source === PackageSource.MercadoLibre ? <IconMercadoLibre className="w-5 h-5 mr-2"/> : 
                          source === PackageSource.Shopify ? <IconShopify className="w-5 h-5 mr-2"/> :
                          source === PackageSource.WooCommerce ? <IconWoocommerce className="w-5 h-5 mr-2"/> :
-                         <IconFalabella className="w-5 h-5 mr-2"/>}
+                         source === PackageSource.Falabella ? <IconFalabella className="w-5 h-5 mr-2"/> :
+                         <IconJumpseller className="w-5 h-5 mr-2"/>}
                         {isLoading ? 'Cargando...' : 'Buscar Envíos'}
                     </button>
                 </div>

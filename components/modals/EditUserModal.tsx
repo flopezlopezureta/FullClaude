@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify, IconWoocommerce, IconFalabella, IconPlugConnected, IconAlertTriangle } from '../Icon';
+import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify, IconWoocommerce, IconFalabella, IconPlugConnected, IconAlertTriangle, IconJumpseller } from '../Icon';
 import type { User, Vehicle, UserPricing, IntegrationSettings } from '../../types';
 import { Role } from '../../constants';
 import { UserUpdateData, api } from '../../services/api';
@@ -98,6 +98,11 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
     const [clientFalabellaSellerId, setClientFalabellaSellerId] = useState('');
     const [clientFalabellaApiKey, setClientFalabellaApiKey] = useState('');
     const [showFalabellaApiKey, setShowFalabellaApiKey] = useState(false);
+
+    // Client specific Jumpseller fields
+    const [clientJumpsellerLogin, setClientJumpsellerLogin] = useState('');
+    const [clientJumpsellerToken, setClientJumpsellerToken] = useState('');
+    const [showJumpsellerToken, setShowJumpsellerToken] = useState(false);
     
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
@@ -114,6 +119,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
     const [shopifyTestResult, setShopifyTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [isTestingWoo, setIsTestingWoo] = useState(false);
     const [wooTestResult, setWooTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [isTestingJumpseller, setIsTestingJumpseller] = useState(false);
+    const [jumpsellerTestResult, setJumpsellerTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
 
     const passwordRequirements = [
@@ -167,6 +174,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
             if (user.integrations?.falabella) {
                 setClientFalabellaSellerId(user.integrations.falabella.sellerId || '');
                 setClientFalabellaApiKey(user.integrations.falabella.apiKey || '');
+            }
+            if (user.integrations?.jumpseller) {
+                setClientJumpsellerLogin(user.integrations.jumpseller.login || '');
+                setClientJumpsellerToken(user.integrations.jumpseller.token || '');
             }
         }
         
@@ -285,6 +296,22 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
         }
     };
 
+    const handleTestJumpseller = async () => {
+        setIsTestingJumpseller(true);
+        setJumpsellerTestResult(null);
+        try {
+            const result = await api.testJumpsellerConnection({
+                jumpsellerLogin: clientJumpsellerLogin,
+                jumpsellerToken: clientJumpsellerToken
+            });
+            setJumpsellerTestResult({ type: 'success', message: result.message });
+        } catch (err: any) {
+            setJumpsellerTestResult({ type: 'error', message: err.message || 'Error de conexión' });
+        } finally {
+            setIsTestingJumpseller(false);
+        }
+    };
+
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -337,6 +364,10 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                 falabella: (clientFalabellaSellerId && clientFalabellaApiKey) ? {
                     sellerId: clientFalabellaSellerId,
                     apiKey: clientFalabellaApiKey
+                } : undefined,
+                jumpseller: (clientJumpsellerLogin && clientJumpsellerToken) ? {
+                    login: clientJumpsellerLogin,
+                    token: clientJumpsellerToken
                 } : undefined
             };
         }
@@ -630,40 +661,61 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                     </div>
 
 
-                                    {/* --- Falabella --- */}
+                                        </div>
+                                    </div>
+
+                                    {/* --- Jumpseller --- */}
                                     <div className="pt-4 border-t border-[var(--border-secondary)]">
                                         <div className="flex items-center mb-3">
-                                            <IconFalabella className="w-5 h-5 text-lime-600 mr-2" />
-                                            <h5 className="font-medium text-[var(--text-primary)]">Falabella Seller Center</h5>
+                                            <IconJumpseller className="w-5 h-5 text-sky-600 mr-2" />
+                                            <h5 className="font-medium text-[var(--text-primary)]">Jumpseller</h5>
                                         </div>
                                         <div className="space-y-3">
-                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                                <div>
-                                                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Seller ID</label>
+                                            <div>
+                                                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Login (User Email / API User)</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={clientJumpsellerLogin} 
+                                                    onChange={(e) => setClientJumpsellerLogin(e.target.value)} 
+                                                    className={inputClasses}
+                                                    placeholder="usuario@jumpseller.com"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">API Token</label>
+                                                <div className="relative">
                                                     <input 
-                                                        type="text" 
-                                                        value={clientFalabellaSellerId} 
-                                                        onChange={(e) => setClientFalabellaSellerId(e.target.value)} 
-                                                        className={inputClasses}
-                                                        placeholder="ID de Vendedor"
+                                                        type={showJumpsellerToken ? "text" : "password"} 
+                                                        value={clientJumpsellerToken} 
+                                                        onChange={(e) => setClientJumpsellerToken(e.target.value)} 
+                                                        className={`${inputClasses} pr-10`}
+                                                        placeholder="Token de Jumpseller"
                                                     />
-                                                </div>
-                                                <div>
-                                                    <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">API Key</label>
-                                                    <div className="relative">
-                                                        <input 
-                                                            type={showFalabellaApiKey ? "text" : "password"} 
-                                                            value={clientFalabellaApiKey} 
-                                                            onChange={(e) => setClientFalabellaApiKey(e.target.value)} 
-                                                            className={`${inputClasses} pr-10`}
-                                                            placeholder="Clave de API"
-                                                        />
-                                                        <button type="button" onClick={() => setShowFalabellaApiKey(!showFalabellaApiKey)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)]">
-                                                            {showFalabellaApiKey ? <IconEyeOff className="w-4 h-4"/> : <IconEye className="w-4 h-4"/>}
-                                                        </button>
-                                                    </div>
+                                                    <button type="button" onClick={() => setShowJumpsellerToken(!showJumpsellerToken)} className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)]">
+                                                        {showJumpsellerToken ? <IconEyeOff className="w-4 h-4"/> : <IconEye className="w-4 h-4"/>}
+                                                    </button>
                                                 </div>
                                             </div>
+                                            
+                                            {/* Jumpseller Test Results */}
+                                            {jumpsellerTestResult && (
+                                                <div className={`p-3 rounded-md text-sm ${jumpsellerTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                                    <div className="flex items-center gap-2">
+                                                        {jumpsellerTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
+                                                        {jumpsellerTestResult.message}
+                                                    </div>
+                                                </div>
+                                            )}
+
+                                            <button
+                                                type="button"
+                                                onClick={handleTestJumpseller}
+                                                disabled={isTestingJumpseller || !clientJumpsellerLogin || !clientJumpsellerToken}
+                                                className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-xs font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors"
+                                            >
+                                                {isTestingJumpseller ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-sky-600" />}
+                                                Probar Conexión Jumpseller
+                                            </button>
                                         </div>
                                     </div>
                                 </div>

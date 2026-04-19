@@ -61,6 +61,7 @@ export enum PackageSource {
   Shopify = 'SHOPIFY',
   WooCommerce = 'WOOCOMMERCE',
   Falabella = 'FALABELLA',
+  Jumpseller = 'JUMPSELLER',
 }
 
 export enum MessagingPlan {

@@ -1566,4 +1566,105 @@ router.get('/shopify/callback', async (req, res) => {
     }
 });
 
+
+// --- JUMPSELLER API HELPERS ---
+const makeJumpsellerRequest = (login, token, path, method = 'GET', postData = null) => {
+    return new Promise((resolve, reject) => {
+        if (!login) return reject(new Error('El Login de Jumpseller es requerido.'));
+        if (!token) return reject(new Error('El API Token de Jumpseller es requerido.'));
+
+        const url = new URL(`https://api.jumpseller.com/v1${path}`);
+        url.searchParams.append('login', login);
+        url.searchParams.append('authtoken', token);
+
+        const options = {
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(parsedData);
+                    } else {
+                        reject({ statusCode: res.statusCode, body: parsedData });
+                    }
+                } catch (e) {
+                    reject({ statusCode: res.statusCode, body: data, isRaw: true });
+                }
+            });
+        });
+        req.on('error', (e) => reject(e));
+        if (postData) req.write(JSON.stringify(postData));
+        req.end();
+    });
+};
+
+// POST /api/integrations/test/jumpseller - Test Jumpseller connection
+router.post('/test/jumpseller', authMiddleware, async (req, res) => {
+    const { jumpsellerLogin, jumpsellerToken } = req.body;
+    try {
+        const response = await makeJumpsellerRequest(jumpsellerLogin, jumpsellerToken, '/store/info.json');
+        res.json({ message: `Conexión exitosa con tienda: ${response.store?.name || 'Jumpseller'}` });
+    } catch (err) {
+        console.error("Jumpseller Test Error:", err.body || err);
+        res.status(err.statusCode || 500).json({ message: 'Error de conexión con Jumpseller. Verifica tus credenciales.', error: err.body || err.message });
+    }
+});
+
+// GET /api/integrations/:clientId/jumpseller/orders - Fetch orders from Jumpseller
+router.get('/:clientId/jumpseller/orders', authMiddleware, async (req, res) => {
+    const { clientId } = req.params;
+
+    if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
+    }
+
+    try {
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Cliente no encontrado.' });
+        
+        const jumpsellerIntegration = userRows[0].integrations?.jumpseller;
+        if (!jumpsellerIntegration) return res.status(400).json({ message: 'El cliente no tiene Jumpseller conectado.' });
+
+        // Fetch recent orders (Ready or Paid)
+        // Jumpseller orders endpoint: /orders.json
+        const orders = await makeJumpsellerRequest(jumpsellerIntegration.login, jumpsellerIntegration.token, '/orders.json?status=all&limit=50');
+        
+        // Filter and map to local format
+        // Statuses usually: 'Paid', 'Pending', 'Abandoned', 'Canceled', 'Shipped', 'Ready'
+        const eligibleOrders = orders
+            .filter(o => o.order.status === 'Paid' || o.order.status === 'Ready')
+            .map(o => {
+                const order = o.order;
+                const shipping = order.shipping_address || {};
+                const customer = order.customer || {};
+                
+                return {
+                    id: order.id.toString(),
+                    recipientName: shipping.fullname || customer.fullname || 'N/A',
+                    address: shipping.address || 'N/A',
+                    commune: shipping.municipality || 'N/A',
+                    city: shipping.city || 'N/A',
+                    notes: `Jumpseller Order: ${order.id}`,
+                    shipmentId: order.id.toString() // Jumpseller doesn't have a separate shipment ID easily accessible like ML
+                };
+            });
+
+        res.json(eligibleOrders);
+    } catch (err) {
+        console.error("Jumpseller Fetch Orders Error:", err.body || err);
+        res.status(500).json({ message: err.message || 'Error al obtener pedidos de Jumpseller.' });
+    }
+});
+
 module.exports = router;

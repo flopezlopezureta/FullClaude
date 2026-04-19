@@ -107,6 +107,11 @@ export interface FalabellaIntegration {
   apiKey: string;
 }
 
+export interface JumpsellerIntegration {
+  login: string;
+  token: string;
+}
+
 export interface DriverPermissions {
   canDeliver: boolean;
   canPickup: boolean;
@@ -198,6 +203,7 @@ export interface User {
     woocommerce?: WooCommerceIntegration;
     shopify?: ShopifyIntegration;
     falabella?: FalabellaIntegration;
+    jumpseller?: JumpsellerIntegration;
   };
 }
 
@@ -229,6 +235,7 @@ export interface Package {
   meliOrderId?: string;
   wooOrderId?: string;
   shopifyOrderId?: string;
+  jumpsellerOrderId?: string;
   trackingId?: string;
   meliFlexCode?: string;
   isFlexed?: boolean;

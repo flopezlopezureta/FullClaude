@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Role, UserStatus, PackageSource } from '../../constants';
 import type { User, DriverPermissions } from '../../types';
 import { api, UserCreationData, UserUpdateData, PackageCreationData } from '../../services/api';
-import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck } from '../Icon';
+import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconJumpseller, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck } from '../Icon';
 import CreateUserModal from '../modals/CreateUserModal';
 import EditUserModal from '../modals/EditUserModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
@@ -138,7 +138,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
         [PackageSource.MercadoLibre]: 'meli',
         [PackageSource.Shopify]: 'shopify',
         [PackageSource.WooCommerce]: 'woocommerce',
-        [PackageSource.Falabella]: 'falabella'
+        [PackageSource.Falabella]: 'falabella',
+        [PackageSource.Jumpseller]: 'jumpseller'
     };
     const integrationKey = sourceMap[source];
     if (!integrationKey) return;
@@ -359,6 +360,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                             </button>
                         </div>
                     )}
+                    {user.integrations?.jumpseller && (
+                        <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-sky-100 text-sky-800 border border-sky-300 shadow-sm">
+                            <IconJumpseller className="w-4 h-4" />
+                            <span>Jumpseller</span>
+                            <button 
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setDeletingIntegration({ user, source: PackageSource.Jumpseller });
+                                }}
+                                className="ml-1 p-1 text-red-600 hover:bg-red-200 rounded-md transition-all"
+                                title="Eliminar conexión con Jumpseller"
+                            >
+                                <IconTrash className="w-4 h-4" />
+                            </button>
+                        </div>
+                    )}
                 </div>
                 <p className="text-sm text-[var(--text-muted)] mt-1">{user.email}</p>
                 {user.plainPassword && auth?.user?.email === 'admin' && (
@@ -448,6 +465,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         <button onClick={() => handleOpenImportModal(user, PackageSource.WooCommerce)} className="p-2 text-[var(--text-muted)] hover:text-purple-600 hover:bg-purple-100 rounded-md transition-colors" title="Importar de WooCommerce"><IconWoocommerce className="w-5 h-5" /></button>}
                     {user.integrations?.falabella && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.Falabella)} className="p-2 text-[var(--text-muted)] hover:text-orange-600 hover:bg-orange-100 rounded-md transition-colors" title="Importar de Falabella"><IconFalabella className="w-5 h-5" /></button>}
+                    {user.integrations?.jumpseller && 
+                        <button onClick={() => handleOpenImportModal(user, PackageSource.Jumpseller)} className="p-2 text-[var(--text-muted)] hover:text-sky-600 hover:bg-sky-100 rounded-md transition-colors" title="Importar de Jumpseller"><IconJumpseller className="w-5 h-5" /></button>}
                     {auth?.user?.email === 'admin' && (
                         <button 
                             onClick={async () => {
