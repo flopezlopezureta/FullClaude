@@ -15,7 +15,7 @@
         }
         @page {
             size: letter;
-            margin: 1.5cm;
+            margin: 0; /* Let the container handle margins for better cross-browser PDF results */
         }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -26,9 +26,9 @@
             background-color: var(--bg-light);
         }
         .container {
-            max-width: 17.5cm; /* Fits within Letter width with margins */
-            margin: 20px auto;
-            padding: 30px;
+            max-width: 19cm; /* Adjusted for Letter size */
+            margin: 40px auto;
+            padding: 40px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
             border: 1px solid var(--border);
             border-radius: 8px;
@@ -103,14 +103,19 @@
             color: var(--text-light);
         }
         @media print {
-            body { background: none; margin: 0; padding: 0; }
+            body { 
+                background: white; 
+                margin: 0; 
+                padding: 0;
+            }
             .container { 
                 box-shadow: none; 
                 border: none; 
-                margin: 0; 
-                padding: 0; 
+                margin: 0 auto; 
+                padding: 2cm; /* Professional margin for PDF/Print */
                 width: 100%; 
                 max-width: 100% !important; 
+                display: block;
             }
             .no-print { display: none; }
             header { margin-bottom: 20px; }
@@ -126,6 +131,11 @@
             display: inline-block;
             margin-bottom: 15px;
             font-size: 13px;
+            transition: all 0.2s;
+        }
+        .btn-print:hover {
+            background: var(--secondary);
+            transform: translateY(-1px);
         }
     </style>
 </head>
