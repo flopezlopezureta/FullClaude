@@ -659,12 +659,9 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                             Probar Conexión WooCommerce
                                         </button>
                                     </div>
+                                </div>
 
-
-                                        </div>
-                                    </div>
-
-                                    {/* --- Jumpseller --- */}
+                                {/* --- Jumpseller --- */}
                                     <div className="pt-4 border-t border-[var(--border-secondary)]">
                                         <div className="flex items-center mb-3">
                                             <IconJumpseller className="w-5 h-5 text-sky-600 mr-2" />
