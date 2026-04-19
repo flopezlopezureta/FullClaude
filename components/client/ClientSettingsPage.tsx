@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconWoocommerce } from '../Icon';
+import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconWoocommerce, IconJumpseller } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const ClientSettingsPage: React.FC = () => {
@@ -13,10 +13,13 @@ const ClientSettingsPage: React.FC = () => {
         wooUrl: '',
         wooConsumerKey: '',
         wooConsumerSecret: '',
+        jumpsellerLogin: '',
+        jumpsellerToken: '',
     });
     const [passwordVisibility, setPasswordVisibility] = useState({
         shopifyAccessToken: false,
         wooConsumerSecret: false,
+        jumpsellerToken: false,
     });
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState(false);
@@ -26,6 +29,8 @@ const ClientSettingsPage: React.FC = () => {
     const [shopifyTestResult, setShopifyTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [isTestingWoo, setIsTestingWoo] = useState(false);
     const [wooTestResult, setWooTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+    const [isTestingJumpseller, setIsTestingJumpseller] = useState(false);
+    const [jumpsellerTestResult, setJumpsellerTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -42,6 +47,8 @@ const ClientSettingsPage: React.FC = () => {
                     wooUrl: integrations.woocommerce?.storeUrl || integrations.woocommerce?.wooUrl || '',
                     wooConsumerKey: integrations.woocommerce?.consumerKey || '',
                     wooConsumerSecret: integrations.woocommerce?.consumerSecret || '',
+                    jumpsellerLogin: integrations.jumpseller?.login || '',
+                    jumpsellerToken: integrations.jumpseller?.token || '',
                 });
             } catch (err: any) {
                 console.error(err);
@@ -62,7 +69,7 @@ const ClientSettingsPage: React.FC = () => {
         setPasswordVisibility(prev => ({ ...prev, [key]: !prev[key] }));
     };
 
-    const handleSave = async (type: 'shopify' | 'woocommerce') => {
+    const handleSave = async (type: 'shopify' | 'woocommerce' | 'jumpseller') => {
         if (!auth?.user) return;
         setIsSaving(true);
         try {
@@ -77,17 +84,22 @@ const ClientSettingsPage: React.FC = () => {
                     accessToken: settings.shopifyAccessToken,
                     autoImport: settings.shopifyAutoImport,
                 };
-            } else {
+            } else if (type === 'woocommerce') {
                 updatedIntegrations.woocommerce = {
                     wooUrl: settings.wooUrl,
                     wooConsumerKey: settings.wooConsumerKey,
                     wooConsumerSecret: settings.wooConsumerSecret,
                 };
+            } else if (type === 'jumpseller') {
+                updatedIntegrations.jumpseller = {
+                    login: settings.jumpsellerLogin,
+                    token: settings.jumpsellerToken,
+                };
             }
 
             await api.updateUser(auth.user.id, { integrations: updatedIntegrations });
             await auth.refetchUser();
-            alert(`Configuración de ${type === 'shopify' ? 'Shopify' : 'WooCommerce'} guardada con éxito.`);
+            alert(`Configuración de ${type.charAt(0).toUpperCase() + type.slice(1)} guardada con éxito.`);
         } catch (err: any) {
             alert(`Error al guardar configuración: ${err.message}`);
         } finally {
@@ -151,6 +163,22 @@ const ClientSettingsPage: React.FC = () => {
             setWooTestResult({ type: 'error', message: err.message || 'Error de conexión' });
         } finally {
             setIsTestingWoo(false);
+        }
+    };
+
+    const handleTestJumpseller = async () => {
+        setIsTestingJumpseller(true);
+        setJumpsellerTestResult(null);
+        try {
+            const result = await api.testJumpsellerConnection({
+                login: settings.jumpsellerLogin,
+                token: settings.jumpsellerToken
+            });
+            setJumpsellerTestResult({ type: 'success', message: result.message });
+        } catch (err: any) {
+            setJumpsellerTestResult({ type: 'error', message: err.message || 'Error de conexión' });
+        } finally {
+            setIsTestingJumpseller(false);
         }
     };
 
@@ -377,6 +405,74 @@ const ClientSettingsPage: React.FC = () => {
                             onClick={() => handleSave('woocommerce')}
                             disabled={isSaving}
                             className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
+                        >
+                            {isSaving ? 'Guardando...' : 'Guardar Configuración'}
+                        </button>
+                    </div>
+                </div>
+
+                {/* Jumpseller Card */}
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col">
+                    <div className="p-6 flex-1">
+                        <div className="flex items-center gap-2 mb-4">
+                            <IconJumpseller className="w-6 h-6 text-sky-600" />
+                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Jumpseller</h3>
+                        </div>
+                        
+                        <div className="space-y-4">
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Login (Email del Usuario)</label>
+                                <input
+                                    type="text"
+                                    name="jumpsellerLogin"
+                                    value={settings.jumpsellerLogin}
+                                    onChange={handleChange}
+                                    className={inputClasses}
+                                    placeholder="usuario@tu-tienda.com"
+                                    autoComplete="off"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">API Token</label>
+                                <div className="relative">
+                                    <input
+                                        type={passwordVisibility.jumpsellerToken ? 'text' : 'password'}
+                                        name="jumpsellerToken"
+                                        value={settings.jumpsellerToken}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="Token de Jumpseller"
+                                        autoComplete="new-password"
+                                    />
+                                    <button type="button" onClick={() => togglePasswordVisibility('jumpsellerToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center text-[var(--text-muted)]">
+                                        {passwordVisibility.jumpsellerToken ? <IconEyeOff className="h-5 w-5"/> : <IconEye className="h-5 w-5"/>}
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        {jumpsellerTestResult && (
+                            <div className={`mt-4 p-3 rounded-md text-sm ${jumpsellerTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
+                                <div className="flex items-center gap-2">
+                                    {jumpsellerTestResult.type === 'success' ? <IconCheckCircle className="w-4 h-4" /> : <IconAlertTriangle className="w-4 h-4" />}
+                                    {jumpsellerTestResult.message}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                    <div className="p-4 bg-[var(--background-muted)] border-t border-[var(--border-primary)] flex justify-between items-center bg-opacity-50">
+                        <button
+                            onClick={handleTestJumpseller}
+                            disabled={isTestingJumpseller || !settings.jumpsellerLogin || !settings.jumpsellerToken}
+                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-sm font-bold rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-colors"
+                        >
+                            {isTestingJumpseller ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-sky-600" />}
+                            Probar Conexión
+                        </button>
+                        <button
+                            onClick={() => handleSave('jumpseller')}
+                            disabled={isSaving}
+                            className="px-6 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
                         >
                             {isSaving ? 'Guardando...' : 'Guardar Configuración'}
                         </button>
