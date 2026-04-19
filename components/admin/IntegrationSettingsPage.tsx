@@ -861,7 +861,7 @@ const IntegrationSettingsPage: React.FC = () => {
 
                         <div className="p-4 bg-[var(--background-muted)] rounded-md border border-dashed border-[var(--border-secondary)]">
                             <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">Configuración de Webhook Automático</h4>
-                            <p className="text-xs text-[var(--text-secondary)] mb-2">Para recibir pedidos automáticamente, configura un Webhook en tu panel de Jumpseller (**Configuración > Checkout > API**):</p>
+                            <p className="text-xs text-[var(--text-secondary)] mb-2">Para recibir pedidos automáticamente, configura un Webhook en tu panel de Jumpseller (Ajustes &gt; Checkout &gt; API):</p>
                             <div className="space-y-2">
                                 <div>
                                     <span className="text-xs font-bold text-[var(--text-muted)] block uppercase font-mono">Evento:</span>
@@ -872,7 +872,7 @@ const IntegrationSettingsPage: React.FC = () => {
                                     <div className="flex items-center gap-2 mt-1">
                                         <code className="flex-1 text-xs bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)] break-all select-all">https://fullenvios.selcom.cl/api/integrations/jumpseller/webhook</code>
                                     </div>
-                                    <p className="text-[10px] text-[var(--text-muted)] mt-1 ml-1 font-italic">* Recomendamos añadir `?clientId=[ID_DEL_CLIENTE]` al final si usas cuentas separadas.</p>
+                                    <p className="text-[10px] text-[var(--text-muted)] mt-1 ml-1 italic">* Recomendamos añadir ?clientId=[ID_DEL_CLIENTE] al final si usas cuentas separadas.</p>
                                 </div>
                             </div>
                         </div>
