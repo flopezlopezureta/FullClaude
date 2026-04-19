@@ -330,8 +330,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[user.status].badge}`}>
                         {statusStyles[user.status].text}
                     </span>
-                    <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 border border-blue-200">
-                        <IconPackage className="w-3.5 h-3.5" />
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border-2 border-emerald-300 shadow-sm uppercase tracking-tighter">
+                        <IconPackage className="w-4 h-4" />
                         {user.packageCount || 0} paquetes
                     </span>
                     {user.integrations?.meli && (

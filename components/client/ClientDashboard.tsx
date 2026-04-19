@@ -234,7 +234,14 @@ const ClientDashboard: React.FC = () => {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <div>
                 <h1 className="text-2xl font-bold text-[var(--text-primary)]">¡Bienvenido, {auth?.user?.name}!</h1>
-                <p className="text-sm text-[var(--text-muted)]">Gestiona tus envíos y seguimiento.</p>
+                <div className="flex items-center gap-2">
+                    <p className="text-sm text-[var(--text-muted)]">Gestiona tus envíos y seguimiento.</p>
+                    {totalPackages > 0 && (
+                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-200">
+                            📦 {totalPackages} paquetes históricos
+                        </span>
+                    )}
+                </div>
             </div>
             
             {activeTab === 'packages' && (
@@ -273,6 +280,12 @@ const ClientDashboard: React.FC = () => {
                                             <IconShopify className="w-4 h-4 text-green-600"/>
                                         </div>
                                         Shopify
+                                    </button>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.Jumpseller)} className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                        <div className="p-1.5 bg-sky-100 rounded-lg">
+                                            <IconJumpseller className="w-4 h-4 text-sky-600"/>
+                                        </div>
+                                        Jumpseller
                                     </button>
                                 </div>
                             </div>
