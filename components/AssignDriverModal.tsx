@@ -63,6 +63,7 @@ const AssignDriverModal: React.FC<AssignDriverModalProps> = ({ pkg, drivers, onC
                 searchPlaceholder="Buscar conductor..."
                 noneLabel="-- Sin Asignar --"
               />
+            </div>
             <div>
               <label htmlFor="delivery-date" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
                 Nueva Fecha de Entrega
