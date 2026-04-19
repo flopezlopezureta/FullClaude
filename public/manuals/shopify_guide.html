@@ -170,9 +170,31 @@
 </head>
 <body>
     <div class="container">
-        <div class="no-print" style="text-align: right;">
+        <div class="no-print" style="text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+            <span id="version-tag" style="font-size: 12px; color: var(--text-light); font-weight: bold;"></span>
             <a href="#" onclick="window.print(); return false;" class="btn-print">Descargar / Imprimir PDF</a>
         </div>
+        
+        <script>
+            // Generate unique filename with timestamp for PDF saving
+            function updateTitle() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                
+                const timestamp = `${year}${month}${day}_${hours}${minutes}`;
+                const baseTitle = "Manual_Shopify_2026";
+                document.title = `${baseTitle}_${timestamp}`;
+                
+                // Also update the version tag in UI
+                const tagEl = document.getElementById('version-tag');
+                if (tagEl) tagEl.innerText = "Versión Gen: " + timestamp;
+            }
+            updateTitle();
+        </script>
         
         <header>
             <div style="display: flex; align-items: center; gap: 20px;">
