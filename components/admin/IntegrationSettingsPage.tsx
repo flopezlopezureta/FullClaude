@@ -35,7 +35,7 @@ const IntegrationSettingsPage: React.FC = () => {
         jumpsellerAutoImport: false,
         jumpsellerSyncInterval: 10,
     });
-创新    const [passwordVisibility, setPasswordVisibility] = useState({
+    const [passwordVisibility, setPasswordVisibility] = useState({
         meliClientSecret: false,
         shopifyAccessToken: false,
         shopifyWebhookSecret: false,
