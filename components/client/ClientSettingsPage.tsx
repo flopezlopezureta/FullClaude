@@ -665,6 +665,18 @@ const ClientSettingsPage: React.FC = () => {
                     )}
                 </div>
 
+                {/* Jumpseller Card */}
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    <div className="bg-sky-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconJumpseller className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Jumpseller</h3>
+                                <p className="text-[10px] text-sky-100 font-bold uppercase tracking-widest mt-0.5">Integración Directa</p>
+                            </div>
+                        </div>
+                    </div>
+
                     {/* Tab Navigation */}
                     <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
                         {[
