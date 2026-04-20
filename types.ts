@@ -93,12 +93,15 @@ export interface WooCommerceIntegration {
   wooUrl?: string;
   wooConsumerKey?: string;
   wooConsumerSecret?: string;
+  autoImport?: boolean;
+  syncInterval?: number;
 }
 
 export interface ShopifyIntegration {
   shopUrl: string;
   accessToken: string;
   autoImport?: boolean;
+  syncInterval?: number;
   webhookSecret?: string;
 }
 
@@ -110,6 +113,8 @@ export interface FalabellaIntegration {
 export interface JumpsellerIntegration {
   login: string;
   token: string;
+  autoImport?: boolean;
+  syncInterval?: number;
 }
 
 export interface DriverPermissions {
@@ -127,6 +132,8 @@ export interface IntegrationSettings {
     meliClientSecret?: string;
     shopifyShopUrl?: string;
     shopifyAccessToken?: string;
+    shopifyAutoImport?: boolean;
+    shopifySyncInterval?: number;
     shopifyWebhookSecret?: string;
     githubToken?: string;
     githubRepo?: string;
@@ -134,10 +141,14 @@ export interface IntegrationSettings {
     wooUrl?: string;
     wooConsumerKey?: string;
     wooConsumerSecret?: string;
+    wooAutoImport?: boolean;
+    wooSyncInterval?: number;
     falabellaApiKey?: string;
     falabellaSellerId?: string;
     jumpsellerLogin?: string;
     jumpsellerToken?: string;
+    jumpsellerAutoImport?: boolean;
+    jumpsellerSyncInterval?: number;
     smtpHost?: string;
     smtpPort?: string;
     smtpUser?: string;
