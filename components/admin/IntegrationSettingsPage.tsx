@@ -986,7 +986,10 @@ const IntegrationSettingsPage: React.FC = () => {
                                 jumpsellerActiveTab === tab.id 
                                 ? 'bg-[var(--background-secondary)] text-sky-600 border-b-2 border-sky-600' 
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
-                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
                     ))}
                 </div>
 
