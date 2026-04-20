@@ -265,7 +265,8 @@ const ClientSettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-                {/* Shopify Card */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Shopify Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
                     {/* Tab Navigation */}
                     <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
@@ -451,14 +452,11 @@ const ClientSettingsPage: React.FC = () => {
                         </button>
                     </div>
 
-                    {shopifyTestResult && shopifyActiveTab === 'connect' && (
-                        <div className={`mx-4 mb-4 p-2.5 rounded-lg text-[11px] font-black uppercase tracking-tight ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            <div className="flex items-center gap-2">
-                                {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-3 h-3" /> : <IconAlertTriangle className="w-3 h-3" />}
-                                {shopifyTestResult.message}
-                            </div>
                         </div>
-                               {/* WooCommerce Card */}
+                    )}
+                </div>
+
+                {/* WooCommerce Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
                     {/* Tab Navigation */}
                     <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
@@ -630,7 +628,6 @@ const ClientSettingsPage: React.FC = () => {
                         </div>
                     )}
                 </div>
-创新
 
                 {/* Jumpseller Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
