@@ -515,37 +515,6 @@ const IntegrationSettingsPage: React.FC = () => {
                 </div>
             </div>
 
-            {/* Shopify Card */}
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)]">
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <IconShopify className="w-6 h-6 text-green-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Shopify</h3>
-                        </div>
-                        <button
-                            onClick={handleSaveShopify}
-                            disabled={isSavingShopify}
-                            className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-400 transition-colors"
-                        >
-                            {isSavingShopify ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
-                            Guardar Shopify
-                        </button>
-                    </div>
-
-                    <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para Custom App en Shopify.</p>
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="shopifyClientId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client ID (OAuth 2026)</label>
-                            <input
-                                type="text"
-                                id="shopifyClientId"
-                                name="shopifyClientId"
-                                value={settings.shopifyClientId || ''}
-                                onChange={handleChange}
-                                className={inputClasses}
-                                placeholder="Ingresa el Client ID de tu App Pública de Shopify"
-                       {/* Shopify Card */}
             <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
                 <div className="p-6 border-b border-[var(--border-secondary)] bg-[var(--background-secondary)]/50">
                     <div className="flex items-center justify-between">
@@ -595,25 +564,38 @@ const IntegrationSettingsPage: React.FC = () => {
                                             {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
                                         </button>
                                     </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="shopifyClientId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client ID (OAuth 2026)</label>
+                                    <input
+                                        type="text"
+                                        id="shopifyClientId"
+                                        name="shopifyClientId"
+                                        value={settings.shopifyClientId || ''}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="Ingresa el Client ID de tu App Pública de Shopify"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="shopifyWebhookSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
+                                    <div className="relative">
+                                        <input
+                                            type={passwordVisibility.shopifyWebhookSecret ? 'text' : 'password'}
+                                            id="shopifyWebhookSecret"
+                                            name="shopifyWebhookSecret"
+                                            value={settings.shopifyWebhookSecret || ''}
+                                            onChange={handleChange}
+                                            className={`${inputClasses} pr-10`}
+                                            placeholder="Webhook Secret"
+                                        />
+                                        <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
-
-                            <div>
-                                <label htmlFor="shopifyWebhookSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
-                                <div className="relative">
-                                    <input
-                                        type={passwordVisibility.shopifyWebhookSecret ? 'text' : 'password'}
-                                        id="shopifyWebhookSecret"
-                                        name="shopifyWebhookSecret"
-                                        value={settings.shopifyWebhookSecret || ''}
-                                        onChange={handleChange}
-                                        className={`${inputClasses} pr-10`}
-                                        placeholder="Webhook Secret"
-                                    />
-                                    <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
-                                    </button>
-                                </div>
+      </div>
                             </div>
                         </div>
                     )}
