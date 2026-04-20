@@ -516,18 +516,37 @@ const IntegrationSettingsPage: React.FC = () => {
             </div>
 
             <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
-                <div className="p-6 border-b border-[var(--border-secondary)] bg-[var(--background-secondary)]/50">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <IconShopify className="w-6 h-6 text-green-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Shopify</h3>
-                        </div>
-                        <div className="flex bg-[var(--background-muted)] p-1 rounded-lg">
-                            <button onClick={() => setShopifyActiveTab('connect')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${shopifyActiveTab === 'connect' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Conexión</button>
-                            <button onClick={() => setShopifyActiveTab('sync')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${shopifyActiveTab === 'sync' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Automatización</button>
-                            <button onClick={() => setShopifyActiveTab('manual')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${shopifyActiveTab === 'manual' ? 'bg-white text-green-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Manual</button>
+                <div className="bg-green-600 p-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <IconShopify className="w-8 h-8" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Shopify</h3>
+                            <p className="text-[10px] text-green-100 font-bold uppercase tracking-widest mt-0.5">Gestión Global</p>
                         </div>
                     </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                    {[
+                        { id: 'connect', label: 'Conexión', icon: <IconShopify className="w-4 h-4" /> },
+                        { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                        { id: 'manual', label: 'Ayuda', icon: <IconPlugConnected className="w-4 h-4" /> }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setShopifyActiveTab(tab.id as any)}
+                            className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                shopifyActiveTab === tab.id 
+                                ? 'bg-[var(--background-secondary)] text-green-600 border-b-2 border-green-600' 
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 <div className="p-6 min-h-[350px]">
@@ -564,7 +583,7 @@ const IntegrationSettingsPage: React.FC = () => {
                                             {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
                                         </button>
                                     </div>
-                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                </div>
                                 <div>
                                     <label htmlFor="shopifyClientId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client ID (OAuth 2026)</label>
                                     <input
@@ -594,8 +613,6 @@ const IntegrationSettingsPage: React.FC = () => {
                                         </button>
                                     </div>
                                 </div>
-                            </div>
-      </div>
                             </div>
                         </div>
                     )}
@@ -695,18 +712,37 @@ const IntegrationSettingsPage: React.FC = () => {
             </div>
             {/* WooCommerce Card */}
             <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
-                <div className="p-6 border-b border-[var(--border-secondary)] bg-[var(--background-secondary)]/50">
-                    <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                            <IconWoocommerce className="w-6 h-6 text-purple-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">WooCommerce</h3>
-                        </div>
-                        <div className="flex bg-[var(--background-muted)] p-1 rounded-lg">
-                            <button onClick={() => setWooActiveTab('connect')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${wooActiveTab === 'connect' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Conexión</button>
-                            <button onClick={() => setWooActiveTab('sync')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${wooActiveTab === 'sync' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Automatización</button>
-                            <button onClick={() => setWooActiveTab('manual')} className={`px-4 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${wooActiveTab === 'manual' ? 'bg-white text-purple-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Manual</button>
+                <div className="bg-purple-600 p-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <IconWoocommerce className="w-8 h-8" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">WooCommerce</h3>
+                            <p className="text-[10px] text-purple-100 font-bold uppercase tracking-widest mt-0.5">Tienda WordPress</p>
                         </div>
                     </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                    {[
+                        { id: 'connect', label: 'Conexión', icon: <IconWoocommerce className="w-4 h-4" /> },
+                        { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                        { id: 'manual', label: 'Ayuda', icon: <IconPlugConnected className="w-4 h-4" /> }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setWooActiveTab(tab.id as any)}
+                            className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                wooActiveTab === tab.id 
+                                ? 'bg-[var(--background-secondary)] text-purple-600 border-b-2 border-purple-600' 
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
                 </div>
 
                 <div className="p-6 min-h-[350px]">
@@ -846,23 +882,17 @@ const IntegrationSettingsPage: React.FC = () => {
             </div>
 
 
-            {/* Falabella Card */}
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)]">
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <IconFalabella className="w-6 h-6 text-lime-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Falabella / Linio</h3>
+                <div className="bg-lime-600 p-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <IconFalabella className="w-8 h-8" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Falabella / Linio</h3>
+                            <p className="text-[10px] text-lime-100 font-bold uppercase tracking-widest mt-0.5">Seller Center</p>
                         </div>
-                        <button
-                            onClick={handleSaveFalabella}
-                            disabled={isSavingFalabella}
-                            className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-lime-600 hover:bg-lime-700 disabled:bg-slate-400 transition-colors"
-                        >
-                            {isSavingFalabella ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
-                            Guardar Falabella
-                        </button>
                     </div>
+                </div>
+
+                <div className="p-6">
 
                     <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Falabella Seller Center.</p>
                     <div className="space-y-4">
@@ -898,15 +928,22 @@ const IntegrationSettingsPage: React.FC = () => {
                             </div>
                         </div>
 
-                        <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">
+                        <div className="flex items-center justify-between pt-6 border-t border-[var(--border-secondary)] mt-6">
                              <button
                                 type="button"
                                 onClick={handleTestFalabellaConnection}
                                 disabled={isTestingFalabella}
                                 className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
                             >
-                                {isTestingFalabella ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2"/>}
-                                Probar Conexión Falabella
+                                {isTestingFalabella ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2 text-lime-600"/>}
+                                Probar Conexión
+                            </button>
+                            <button
+                                onClick={handleSaveFalabella}
+                                disabled={isSavingFalabella}
+                                className="px-6 py-2 bg-lime-600 hover:bg-lime-700 text-white text-xs font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95 flex items-center gap-2"
+                            >
+                                {isSavingFalabella ? 'Guardando...' : 'Guardar Global'}
                             </button>
                         </div>
 
@@ -922,18 +959,38 @@ const IntegrationSettingsPage: React.FC = () => {
 
             {/* Jumpseller Card */}
             <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8 overflow-hidden">
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-6">
-                        <div className="flex items-center gap-2">
-                            <IconJumpseller className="w-6 h-6 text-sky-600" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Integración Jumpseller</h3>
-                        </div>
-                        <div className="flex bg-[var(--background-muted)] p-1 rounded-lg">
-                            <button onClick={() => setJumpsellerActiveTab('connect')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${jumpsellerActiveTab === 'connect' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Conexión</button>
-                            <button onClick={() => setJumpsellerActiveTab('sync')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${jumpsellerActiveTab === 'sync' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Automatización</button>
-                            <button onClick={() => setJumpsellerActiveTab('manual')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${jumpsellerActiveTab === 'manual' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Manual</button>
+                <div className="bg-sky-600 p-4 text-white flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                        <IconJumpseller className="w-8 h-8" />
+                        <div>
+                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Jumpseller</h3>
+                            <p className="text-[10px] text-sky-100 font-bold uppercase tracking-widest mt-0.5">Integración Directa</p>
                         </div>
                     </div>
+                </div>
+
+                {/* Tab Navigation */}
+                <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                    {[
+                        { id: 'connect', label: 'Conexión', icon: <IconPlugConnected className="w-4 h-4" /> },
+                        { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                        { id: 'manual', label: 'Manual', icon: <IconAlertTriangle className="w-4 h-4" /> }
+                    ].map((tab) => (
+                        <button
+                            key={tab.id}
+                            type="button"
+                            onClick={() => setJumpsellerActiveTab(tab.id as any)}
+                            className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                jumpsellerActiveTab === tab.id 
+                                ? 'bg-[var(--background-secondary)] text-sky-600 border-b-2 border-sky-600' 
+                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                            }`}
+                        >
+                            {tab.icon}
+                            {tab.label}
+                        </button>
+                    ))}
+                </div>
                     {jumpsellerActiveTab === 'connect' && (
                         <div className="space-y-4 animate-fade-in-up">
                             <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Jumpseller.</p>

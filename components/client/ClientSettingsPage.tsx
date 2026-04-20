@@ -665,29 +665,30 @@ const ClientSettingsPage: React.FC = () => {
                     )}
                 </div>
 
-                {/* Jumpseller Card */}
-                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
-                    <div className="bg-sky-600 p-4 text-white flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                            <IconJumpseller className="w-8 h-8" />
-                            <div>
-                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Jumpseller</h3>
-                                <p className="text-[10px] text-sky-100 font-bold uppercase tracking-widest mt-0.5">Integración Directa</p>
-                            </div>
-                        </div>
+                    {/* Tab Navigation */}
+                    <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                        {[
+                            { id: 'connect', label: 'Conexión', icon: <IconPlugConnected className="w-4 h-4" /> },
+                            { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                            { id: 'manual', label: 'Ayuda', icon: <IconAlertTriangle className="w-4 h-4" /> }
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setJumpsellerActiveTab(tab.id as any)}
+                                className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                    jumpsellerActiveTab === tab.id 
+                                    ? 'bg-[var(--background-secondary)] text-sky-600 border-b-2 border-sky-600' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                                }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
                     </div>
-                    <div className="p-6 flex-1">
-                        <div className="flex items-center justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                                <IconJumpseller className="w-6 h-6 text-sky-600" />
-                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Jumpseller</h3>
-                            </div>
-                            <div className="flex bg-[var(--background-muted)] p-1 rounded-lg">
-                                <button onClick={() => setJumpsellerActiveTab('connect')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${jumpsellerActiveTab === 'connect' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Conexión</button>
-                                <button onClick={() => setJumpsellerActiveTab('sync')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${jumpsellerActiveTab === 'sync' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Automatización</button>
-                                <button onClick={() => setJumpsellerActiveTab('manual')} className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-widest rounded-md transition-all ${jumpsellerActiveTab === 'manual' ? 'bg-white text-sky-700 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>Manual</button>
-                            </div>
-                        </div>
+
+                    <div className="p-6 flex-1 flex flex-col min-h-[380px]">
                         
                         {jumpsellerActiveTab === 'connect' && (
                             <div className="space-y-4 animate-fade-in-up">
