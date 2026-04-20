@@ -241,33 +241,19 @@ const ClientSettingsPage: React.FC = () => {
                 <p className="text-[var(--text-secondary)]">Configura tus tiendas para importar pedidos automáticamente.</p>
             </div>
 
-            {/* Manuales Section */}
-            <div className="bg-gradient-to-r from-sky-600 to-sky-700 rounded-xl p-6 shadow-lg text-white">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div>
-                        <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
-                            <span className="text-2xl">📚</span> Manuales y Recursos de Ayuda
-                        </h2>
-                        <p className="text-sky-100 text-sm">Descarga las guías paso a paso para configurar tus tiendas correctamente.</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                        <a 
-                            href="/manuals/shopify_guide.html?v=2026.4.19.1" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all border border-white/30"
-                        >
-                            <IconShopify className="w-4 h-4" />
-                            Guía Shopify (PDF)
-                        </a>
-                        {/* More manuals can be added here in the future */}
-                    </div>
-                </div>
-            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 {/* Shopify Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    <div className="bg-green-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconShopify className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Shopify</h3>
+                                <p className="text-[10px] text-green-100 font-bold uppercase tracking-widest mt-0.5">Integración Oficial</p>
+                            </div>
+                        </div>
+                    </div>
                     {/* Tab Navigation */}
                     <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
                         {[
@@ -410,6 +396,28 @@ const ClientSettingsPage: React.FC = () => {
 
                         {shopifyActiveTab === 'manual' && (
                             <div className="animate-fade-in-up space-y-4 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+                                <a 
+                                    href="/manuals/shopify_guide.html" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block p-4 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <IconShopify className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Shopify</h4>
+                                                <p className="text-[11px] text-green-100 font-medium">Manual paso a paso en PDF</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                            <span className="text-xl">↓</span>
+                                        </div>
+                                    </div>
+                                </a>
+
                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                     <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
                                         <div className="w-2 h-2 bg-green-500 rounded-full"></div>
@@ -455,6 +463,15 @@ const ClientSettingsPage: React.FC = () => {
 
                 {/* WooCommerce Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    <div className="bg-purple-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconWoocommerce className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">WooCommerce</h3>
+                                <p className="text-[10px] text-purple-100 font-bold uppercase tracking-widest mt-0.5">Tienda WordPress</p>
+                            </div>
+                        </div>
+                    </div>
                     {/* Tab Navigation */}
                     <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
                         {[
@@ -575,6 +592,28 @@ const ClientSettingsPage: React.FC = () => {
 
                         {wooActiveTab === 'manual' && (
                             <div className="animate-fade-in-up space-y-4 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+                                <a 
+                                    href="/manuals/woocommerce_guide.html" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <IconWoocommerce className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Woo</h4>
+                                                <p className="text-[11px] text-purple-100 font-medium">Manual de configuración REST API</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                            <span className="text-xl">↓</span>
+                                        </div>
+                                    </div>
+                                </a>
+
                                 <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
                                     <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
                                         <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
@@ -628,6 +667,15 @@ const ClientSettingsPage: React.FC = () => {
 
                 {/* Jumpseller Card */}
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    <div className="bg-sky-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconJumpseller className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Jumpseller</h3>
+                                <p className="text-[10px] text-sky-100 font-bold uppercase tracking-widest mt-0.5">Integración Directa</p>
+                            </div>
+                        </div>
+                    </div>
                     <div className="p-6 flex-1">
                         <div className="flex items-center justify-between mb-4">
                             <div className="flex items-center gap-2">
