@@ -882,6 +882,8 @@ const IntegrationSettingsPage: React.FC = () => {
             </div>
 
 
+            {/* Falabella Card */}
+            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8 overflow-hidden">
                 <div className="bg-lime-600 p-4 text-white flex items-center justify-between">
                     <div className="flex items-center gap-3">
                         <IconFalabella className="w-8 h-8" />
