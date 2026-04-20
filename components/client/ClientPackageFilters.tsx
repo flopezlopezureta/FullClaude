@@ -273,22 +273,6 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
 
       </div>
       
-      {/* Items per Page - Separate row or integrated if space */}
-      <div className="mt-4 pt-4 border-t border-gray-100 flex justify-end">
-          <div className="flex items-center gap-3">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Filas:</label>
-              <select
-                  value={itemsPerPage}
-                  onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-                  className="bg-white border border-gray-200 text-gray-900 font-bold rounded-lg py-1 px-3 text-xs focus:ring-2 focus:ring-blue-500 shadow-sm outline-none"
-              >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-              </select>
-          </div>
-      </div>
     </div>
   );
 };
