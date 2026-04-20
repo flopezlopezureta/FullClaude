@@ -987,12 +987,10 @@ const IntegrationSettingsPage: React.FC = () => {
                                 ? 'bg-[var(--background-secondary)] text-sky-600 border-b-2 border-sky-600' 
                                 : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
                             }`}
-                        >
-                            {tab.icon}
-                            {tab.label}
-                        </button>
                     ))}
                 </div>
+
+                <div className="p-6 flex-1 flex flex-col min-h-[380px]">
                     {jumpsellerActiveTab === 'connect' && (
                         <div className="space-y-4 animate-fade-in-up">
                             <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Jumpseller.</p>
