@@ -1016,7 +1016,7 @@ const IntegrationSettingsPage: React.FC = () => {
                             <div className="space-y-4">
                                 <div className="p-4 bg-sky-50 border border-sky-100 rounded-lg text-sky-900">
                                     <h4 className="text-sm font-bold mb-2">Instrucciones de Webhook</h4>
-                                    <p className="text-xs mb-3">Configura un Webhook en Jumpseller (Ajustes > Checkout > API) para recibir pedidos al instante:</p>
+                                    <p className="text-xs mb-3">Configura un Webhook en Jumpseller (Ajustes &gt; Checkout &gt; API) para recibir pedidos al instante:</p>
                                     <div className="space-y-2">
                                         <div className="bg-white p-2 rounded border border-sky-200">
                                             <span className="text-[10px] font-black text-sky-600 uppercase block mb-1">Webhook URL:</span>
@@ -1067,7 +1067,7 @@ const IntegrationSettingsPage: React.FC = () => {
                     )}
                     </div>
                 </div>
-            </div>
+            
 
             {/* SMTP Card - Restricted to Super Admin */}
             {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl') && (
