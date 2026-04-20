@@ -667,15 +667,39 @@ const IntegrationSettingsPage: React.FC = () => {
                     )}
 
                     {shopifyActiveTab === 'manual' && (
-                        <div className="animate-fade-in-up max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                            <div className="prose prose-sm prose-green">
-                                <h4 className="text-[13px] font-black text-green-900 uppercase mb-2">Guía de Configuración Shopify</h4>
-                                <ol className="text-xs text-gray-700 space-y-2 list-decimal pl-4">
-                                    <li>En Shopify: **Configuración &gt; Apps y canales de venta &gt; Desarrollar apps**.</li>
-                                    <li>Crea una app y configura los **Admin API scopes**.</li>
-                                    <li>Scopes requeridos: `read_orders`, `read_products`, `read_inventory`.</li>
-                                    <li>Instala la app y obtén el **Admin API access token** (shpat_...).</li>
-                                    <li>Pega el token y la URL de la tienda en la pestaña **Conexión**.</li>
+                        <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                            <a 
+                                href="/manuals/shopify_guide.html" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block p-4 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <IconShopify className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Shopify</h4>
+                                            <p className="text-[11px] text-green-100 font-medium">Manual paso a paso en PDF</p>
+                                        </div>
+                                    </div>
+                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                        <span className="text-xl">↓</span>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                    Guía Rápida
+                                </h4>
+                                <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
+                                    <li className="flex gap-2"><span className="text-green-600 font-black">1.</span> En Shopify, ve a <b>Apps &gt; Desarrollar apps</b>.</li>
+                                    <li className="flex gap-2"><span className="text-green-600 font-black">2.</span> Configura los <b>Admin API Scopes</b> requeridos.</li>
+                                    <li className="flex gap-2"><span className="text-green-600 font-black">3.</span> Habilita <b>read_orders</b>, <b>read_products</b> y <b>read_inventory</b>.</li>
+                                    <li className="flex gap-2"><span className="text-green-600 font-black">4.</span> Instala la app y obtén el <b>Access Token</b>.</li>
                                 </ol>
                             </div>
                         </div>
@@ -838,14 +862,39 @@ const IntegrationSettingsPage: React.FC = () => {
                     )}
 
                     {wooActiveTab === 'manual' && (
-                        <div className="animate-fade-in-up max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                            <div className="prose prose-sm prose-purple">
-                                <h4 className="text-[13px] font-black text-purple-900 uppercase mb-2">Guía de Configuración WooCommerce</h4>
-                                <ol className="text-xs text-gray-700 space-y-2 list-decimal pl-4">
-                                    <li>En WordPress: **WooCommerce &gt; Ajustes &gt; Avanzado &gt; REST API**.</li>
-                                    <li>Crea una clave API con permisos de **Lectura/Escritura**.</li>
-                                    <li>Copia el **Consumer Key** y el **Consumer Secret**.</li>
-                                    <li>Asegúrate de tener habilitados los **Enlaces permanentes** (Permalinks) en Ajustes &gt; Enlaces permanentes.</li>
+                        <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                            <a 
+                                href="/manuals/woocommerce_guide.html" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <IconWoocommerce className="w-6 h-6 text-white" />
+                                        </div>
+                                        <div>
+                                            <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía WooCommerce</h4>
+                                            <p className="text-[11px] text-purple-100 font-medium">Manual paso a paso en PDF</p>
+                                        </div>
+                                    </div>
+                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                        <span className="text-xl">↓</span>
+                                    </div>
+                                </div>
+                            </a>
+
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                    Guía Rápida
+                                </h4>
+                                <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
+                                    <li className="flex gap-2"><span className="text-purple-600 font-black">1.</span> En WordPress: <b>WooCommerce &gt; Ajustes &gt; Avanzado</b>.</li>
+                                    <li className="flex gap-2"><span className="text-purple-600 font-black">2.</span> Ve a <b>REST API</b> y haz clic en <b>Añadir clave</b>.</li>
+                                    <li className="flex gap-2"><span className="text-purple-600 font-black">3.</span> Permisos: <b>Lectura/Escritura</b>.</li>
+                                    <li className="flex gap-2"><span className="text-purple-600 font-black">4.</span> Copia el <b>Consumer Key</b> y el <b>Consumer Secret</b>.</li>
                                 </ol>
                             </div>
                         </div>
@@ -1073,26 +1122,47 @@ const IntegrationSettingsPage: React.FC = () => {
                     )}
 
                     {jumpsellerActiveTab === 'manual' && (
-                        <div className="animate-fade-in-up max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                            <div className="space-y-4">
-                                <div className="p-4 bg-sky-50 border border-sky-100 rounded-lg text-sky-900">
-                                    <h4 className="text-sm font-bold mb-2">Instrucciones de Webhook</h4>
-                                    <p className="text-xs mb-3">Configura un Webhook en Jumpseller (Ajustes &gt; Checkout &gt; API) para recibir pedidos al instante:</p>
-                                    <div className="space-y-2">
-                                        <div className="bg-white p-2 rounded border border-sky-200">
-                                            <span className="text-[10px] font-black text-sky-600 uppercase block mb-1">Webhook URL:</span>
-                                            <code className="text-xs break-all font-mono">https://api.fullenvios.cl/api/integrations/jumpseller/webhook</code>
+                        <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                            <a 
+                                href="/manuals/jumpseller_guide.html" 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="block p-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                            >
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-3">
+                                        <div className="p-2 bg-white/20 rounded-lg">
+                                            <IconJumpseller className="w-6 h-6 text-white" />
                                         </div>
-                                        <p className="text-[11px] italic font-medium">* Evento recomendado: Order Created / Order Paid</p>
+                                        <div>
+                                            <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Jumpseller</h4>
+                                            <p className="text-[11px] text-sky-100 font-medium">Manual paso a paso en PDF</p>
+                                        </div>
+                                    </div>
+                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                        <span className="text-xl">↓</span>
                                     </div>
                                 </div>
-                                <div className="p-4 border border-[var(--border-secondary)] rounded-lg">
-                                    <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">Reglas de Importación</h4>
-                                    <ul className="text-xs text-[var(--text-secondary)] space-y-1 list-disc pl-4">
-                                        <li>Solo pedidos en estado <span className="font-bold text-sky-600">Paid/Ready</span>.</li>
-                                        <li>Solo direcciones en la <span className="font-bold">Región Metropolitana</span>.</li>
-                                    </ul>
+                            </a>
+
+                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                    <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
+                                    Instrucciones de Webhook
+                                </h4>
+                                <p className="text-[12px] text-gray-600 mb-2 font-medium">Configura un Webhook en Jumpseller (Ajustes &gt; Checkout &gt; API) para recibir pedidos al instante:</p>
+                                <div className="bg-white p-2 rounded border border-sky-100 font-mono text-[10px] break-all mb-2 text-sky-700">
+                                    https://api.fullenvios.cl/api/integrations/jumpseller/webhook
                                 </div>
+                                <p className="text-[11px] text-sky-600 font-bold italic">* Evento recomendado: Order Created / Order Paid</p>
+                            </div>
+
+                            <div className="p-4 border border-[var(--border-secondary)] rounded-xl">
+                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-2 tracking-widest">Reglas de Importación</h4>
+                                <ul className="text-xs text-[var(--text-secondary)] space-y-1 list-disc pl-4 font-medium">
+                                    <li>Solo pedidos en estado <span className="font-bold text-sky-600 text-[11px]">Paid/Ready</span>.</li>
+                                    <li>Solo direcciones en la <span className="font-bold">Región Metropolitana</span>.</li>
+                                </ul>
                             </div>
                         </div>
                     )}

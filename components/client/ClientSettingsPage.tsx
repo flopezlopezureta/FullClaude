@@ -591,7 +591,7 @@ const ClientSettingsPage: React.FC = () => {
                         )}
 
                         {wooActiveTab === 'manual' && (
-                            <div className="animate-fade-in-up space-y-4 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
+                            <div className="animate-fade-in-up space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
                                 <a 
                                     href="/manuals/woocommerce_guide.html" 
                                     target="_blank" 
@@ -604,8 +604,8 @@ const ClientSettingsPage: React.FC = () => {
                                                 <IconWoocommerce className="w-6 h-6 text-white" />
                                             </div>
                                             <div>
-                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Woo</h4>
-                                                <p className="text-[11px] text-purple-100 font-medium">Manual de configuración REST API</p>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía WooCommerce</h4>
+                                                <p className="text-[11px] text-purple-100 font-medium">Manual paso a paso en PDF</p>
                                             </div>
                                         </div>
                                         <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
@@ -791,24 +791,40 @@ const ClientSettingsPage: React.FC = () => {
                         )}
 
                         {jumpsellerActiveTab === 'manual' && (
-                            <div className="animate-fade-in-up max-h-[300px] overflow-y-auto pr-2 custom-scrollbar">
-                                <div className="prose prose-sm prose-sky">
-                                    <h4 className="text-[13px] font-black text-sky-900 uppercase mb-2">¿Cómo obtener el API Token?</h4>
-                                    <ol className="text-xs text-gray-700 space-y-2 list-decimal pl-4">
-                                        <li>Entra a tu Store de **Jumpseller**.</li>
-                                        <li>Ve a **Configuración** &rarr; **General**.</li>
-                                        <li>Baja hasta la sección **API**.</li>
-                                        <li>Copia el **API Token** mostrado allí.</li>
-                                        <li>El **Login** es el email del administrador.</li>
-                                    </ol>
-                                    <div className="mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                                        <p className="text-[11px] text-amber-900 font-bold italic">
-                                            Tip: Para recibir pedidos al instante, configura un Webhook a:
-                                            <code className="block mt-1 bg-white p-1 rounded border border-amber-300 text-[10px] break-all">
-                                                https://api.fullenvios.cl/api/integrations/jumpseller/webhook
-                                            </code>
-                                        </p>
+                            <div className="animate-fade-in-up space-y-4 max-h-[350px] overflow-y-auto pr-2 custom-scrollbar">
+                                <a 
+                                    href="/manuals/jumpseller_guide.html" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block p-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <IconJumpseller className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Jumpseller</h4>
+                                                <p className="text-[11px] text-sky-100 font-medium">Manual paso a paso en PDF</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                            <span className="text-xl">↓</span>
+                                        </div>
                                     </div>
+                                </a>
+
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
+                                        Guía Rápida
+                                    </h4>
+                                    <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
+                                        <li className="flex gap-2"><span className="text-sky-600 font-black">1.</span> En Jumpseller: <b>Configuración &gt; General</b>.</li>
+                                        <li className="flex gap-2"><span className="text-sky-600 font-black">2.</span> Busca la sección <b>API</b> al final de la página.</li>
+                                        <li className="flex gap-2"><span className="text-sky-600 font-black">3.</span> Copia el <b>Login</b> (tu email) y el <b>API Token</b>.</li>
+                                        <li className="flex gap-2"><span className="text-sky-600 font-black">4.</span> Pégalos en la pestaña <b>Conexión</b> de Full Envios.</li>
+                                    </ol>
                                 </div>
                             </div>
                         )}
