@@ -416,7 +416,7 @@ const ClientSettingsPage: React.FC = () => {
                                         Guía de Configuración
                                     </h4>
                                     <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
-                                        <li className="flex gap-2"><span className="text-green-600 font-black">1.</span> En Shopify, ve a <b>Apps > Desarrollar apps</b>.</li>
+                                        <li className="flex gap-2"><span className="text-green-600 font-black">1.</span> En Shopify, ve a <b>Apps &gt; Desarrollar apps</b>.</li>
                                         <li className="flex gap-2"><span className="text-green-600 font-black">2.</span> Crea una app y configura los <b>Admin API Scopes</b>.</li>
                                         <li className="flex gap-2"><span className="text-green-600 font-black">3.</span> Habilita <b>read_orders</b>, <b>read_products</b> y <b>read_inventory</b>.</li>
                                         <li className="flex gap-2"><span className="text-green-600 font-black">4.</span> Instala la app y obtén el <b>Admin API Token</b> (shpat_...).</li>
@@ -451,9 +451,6 @@ const ClientSettingsPage: React.FC = () => {
                             {isSaving ? 'Guardando...' : 'Guardar'}
                         </button>
                     </div>
-
-                        </div>
-                    )}
                 </div>
 
                 {/* WooCommerce Card */}
@@ -584,10 +581,10 @@ const ClientSettingsPage: React.FC = () => {
                                         Guía WooCommerce
                                     </h4>
                                     <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
-                                        <li className="flex gap-2"><span className="text-purple-600 font-black">1.</span> Ve a <b>WooCommerce > Ajustes > Avanzado > REST API</b>.</li>
+                                        <li className="flex gap-2"><span className="text-purple-600 font-black">1.</span> Ve a <b>WooCommerce &gt; Ajustes &gt; Avanzado &gt; REST API</b>.</li>
                                         <li className="flex gap-2"><span className="text-purple-600 font-black">2.</span> Crea una clave con permisos de <b>Lectura/Escritura</b>.</li>
                                         <li className="flex gap-2"><span className="text-purple-600 font-black">3.</span> Copia el <b>Consumer Key</b> y el <b>Consumer Secret</b> aquí.</li>
-                                        <li className="flex gap-2"><span className="text-purple-600 font-black">4.</span> **IMPORTANTE**: Ve a <b>Ajustes > Enlaces permanentes</b> y no uses el modo "Simple".</li>
+                                        <li className="flex gap-2"><span className="text-purple-600 font-black">4.</span> **IMPORTANTE**: Ve a <b>Ajustes &gt; Enlaces permanentes</b> y no uses el modo "Simple".</li>
                                     </ol>
                                 </div>
                                 
@@ -738,7 +735,7 @@ const ClientSettingsPage: React.FC = () => {
                                     <h4 className="text-[13px] font-black text-sky-900 uppercase mb-2">¿Cómo obtener el API Token?</h4>
                                     <ol className="text-xs text-gray-700 space-y-2 list-decimal pl-4">
                                         <li>Entra a tu Store de **Jumpseller**.</li>
-                                        <li>Ve a **Configuración** -> **General**.</li>
+                                        <li>Ve a **Configuración** &rarr; **General**.</li>
                                         <li>Baja hasta la sección **API**.</li>
                                         <li>Copia el **API Token** mostrado allí.</li>
                                         <li>El **Login** es el email del administrador.</li>

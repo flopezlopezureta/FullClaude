@@ -654,7 +654,7 @@ const IntegrationSettingsPage: React.FC = () => {
                             <div className="prose prose-sm prose-green">
                                 <h4 className="text-[13px] font-black text-green-900 uppercase mb-2">Guía de Configuración Shopify</h4>
                                 <ol className="text-xs text-gray-700 space-y-2 list-decimal pl-4">
-                                    <li>En Shopify: **Configuración > Apps y canales de venta > Desarrollar apps**.</li>
+                                    <li>En Shopify: **Configuración &gt; Apps y canales de venta &gt; Desarrollar apps**.</li>
                                     <li>Crea una app y configura los **Admin API scopes**.</li>
                                     <li>Scopes requeridos: `read_orders`, `read_products`, `read_inventory`.</li>
                                     <li>Instala la app y obtén el **Admin API access token** (shpat_...).</li>
@@ -806,10 +806,10 @@ const IntegrationSettingsPage: React.FC = () => {
                             <div className="prose prose-sm prose-purple">
                                 <h4 className="text-[13px] font-black text-purple-900 uppercase mb-2">Guía de Configuración WooCommerce</h4>
                                 <ol className="text-xs text-gray-700 space-y-2 list-decimal pl-4">
-                                    <li>En WordPress: **WooCommerce > Ajustes > Avanzado > REST API**.</li>
+                                    <li>En WordPress: **WooCommerce &gt; Ajustes &gt; Avanzado &gt; REST API**.</li>
                                     <li>Crea una clave API con permisos de **Lectura/Escritura**.</li>
                                     <li>Copia el **Consumer Key** y el **Consumer Secret**.</li>
-                                    <li>Asegúrate de tener habilitados los **Enlaces permanentes** (Permalinks) en Ajustes > Enlaces permanentes.</li>
+                                    <li>Asegúrate de tener habilitados los **Enlaces permanentes** (Permalinks) en Ajustes &gt; Enlaces permanentes.</li>
                                 </ol>
                             </div>
                         </div>
