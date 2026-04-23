@@ -3,7 +3,7 @@ import React, { useState, ReactNode } from 'react';
 import { api, PackageCreationData } from '../../services/api';
 import { User } from '../../types';
 import { PackageSource, ShippingType } from '../../constants';
-import { IconX, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader } from '../Icon';
+import { IconX, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader, IconJumpseller } from '../Icon';
 
 interface ExternalImportModalProps {
     client: User;
@@ -35,7 +35,13 @@ const sourceConfig: { [key in Exclude<PackageSource, 'MANUAL'>]: { title: string
         title: 'Falabella',
         icon: <IconFalabella className="w-8 h-8 text-green-700" />,
         fetchFn: api.fetchFalabellaOrders,
-        orderIdField: 'meliOrderId', // Using meliOrderId as generic external ID field for now
+        orderIdField: 'meliOrderId',
+    },
+    'JUMPSELLER': {
+        title: 'Jumpseller',
+        icon: <IconJumpseller className="w-8 h-8 text-sky-500" />,
+        fetchFn: api.fetchJumpsellerOrders,
+        orderIdField: 'shopifyOrderId',
     }
 }
 
