@@ -18,6 +18,9 @@ interface ClientPackageFiltersProps {
   communes: string[];
   itemsPerPage: number;
   onItemsPerPageChange: (limit: number) => void;
+  accountId: string;
+  onAccountIdChange: (id: string) => void;
+  accounts: any[];
 }
 
 const statusOptions: { label: string; value: PackageStatus | null }[] = [
@@ -48,6 +51,9 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
   communes,
   itemsPerPage,
   onItemsPerPageChange,
+  accountId,
+  onAccountIdChange,
+  accounts,
 }) => {
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -96,6 +102,25 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
             />
           </div>
         </div>
+
+        {/* Account Filter */}
+        {accounts.length > 0 && (
+          <div className="lg:col-span-2">
+            <label className={labelClasses}>Tienda / Cuenta</label>
+            <select
+              value={accountId}
+              onChange={(e) => onAccountIdChange(e.target.value)}
+              className={`${selectClasses} text-xs font-black uppercase tracking-tight`}
+            >
+              <option value="">TODAS LAS TIENDAS</option>
+              {accounts.map(acc => (
+                <option key={acc.id} value={acc.id}>
+                  {acc.name.toUpperCase()} ({acc.type})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
         
         {/* Status Dropdown */}
         <div className="relative lg:col-span-2" ref={dropdownRef}>

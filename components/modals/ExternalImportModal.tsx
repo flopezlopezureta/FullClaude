@@ -105,6 +105,7 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
                 estimatedDelivery: new Date(), // Today by default
                 shippingType: ShippingType.SameDay, // Default
                 source: source,
+                sourceAccountId: order.sourceAccountId,
                 [config.orderIdField]: order.id
             }));
 
@@ -173,6 +174,7 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
                                         <input type="checkbox" checked={selectedOrderIds.size === filteredOrders.length && filteredOrders.length > 0} onChange={handleSelectAll} className="rounded border-gray-300 text-[var(--brand-primary)] focus:ring-[var(--brand-secondary)]" />
                                     </th>
                                     <th className="p-3">ID Orden</th>
+                                    <th className="p-3">Tienda / Cuenta</th>
                                     <th className="p-3">Destinatario</th>
                                     <th className="p-3">Dirección</th>
                                     <th className="p-3">Comuna</th>
@@ -184,7 +186,14 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
                                         <td className="p-3" onClick={e => e.stopPropagation()}>
                                             <input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={() => handleSelectOrder(order.id)} className="rounded border-gray-300 text-[var(--brand-primary)] focus:ring-[var(--brand-secondary)]" />
                                         </td>
-                                        <td className="p-3 font-mono">{order.id}</td>
+                                        <td className="p-3 font-mono text-[10px]">{order.id}</td>
+                                        <td className="p-3">
+                                            <div className="flex items-center gap-2">
+                                                <span className="text-[10px] font-black px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full uppercase tracking-tighter">
+                                                    {order.sourceAccountName || 'Principal'}
+                                                </span>
+                                            </div>
+                                        </td>
                                         <td className="p-3 font-medium">{order.recipientName}</td>
                                         <td className="p-3">{order.address}</td>
                                         <td className="p-3">{order.commune}</td>

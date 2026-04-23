@@ -73,7 +73,7 @@ const NotificationService = {
      */
     async sendEmailNotification(pkg, status, settings, integration, trackingUrl) {
         try {
-            const transporter = nodemailer.createTransport({
+            const transporterConfig = {
                 host: integration.smtp_host,
                 port: parseInt(integration.smtp_port) || 587,
                 secure: parseInt(integration.smtp_port) === 465,
@@ -81,7 +81,27 @@ const NotificationService = {
                     user: integration.smtp_user,
                     pass: integration.smtp_password
                 }
-            });
+            };
+
+            // [NUEVO] Soporte para Google OAuth2
+            if (integration.smtp_google_refresh_token) {
+                transporterConfig.auth = {
+                    type: 'OAuth2',
+                    user: integration.smtp_google_email || integration.smtp_user,
+                    clientId: process.env.GOOGLE_CLIENT_ID,
+                    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                    refreshToken: integration.smtp_google_refresh_token
+                };
+                
+                // Si es Gmail y no hay host configurado, usamos los valores por defecto recomendados para OAuth2
+                if (!integration.smtp_host || integration.smtp_host.includes('gmail')) {
+                    transporterConfig.host = 'smtp.gmail.com';
+                    transporterConfig.port = 465;
+                    transporterConfig.secure = true;
+                }
+            }
+
+            const transporter = nodemailer.createTransport(transporterConfig);
 
             let subject = '';
             let html = '';

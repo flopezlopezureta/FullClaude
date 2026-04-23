@@ -50,6 +50,7 @@ router.get('/', authMiddleware, async (req, res) => {
             flexFilter,
             quickFilter,
             isAssigned,
+            accountId,
             sortOrder = 'desc',
         } = req.query;
 
@@ -140,6 +141,11 @@ router.get('/', authMiddleware, async (req, res) => {
         } else if (isAssigned === 'false') {
             whereClauses.push(`p."driverId" IS NULL`);
         }
+        
+        if (accountId) {
+            whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
+            queryParams.push(accountId);
+        }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
@@ -156,7 +162,8 @@ router.get('/', authMiddleware, async (req, res) => {
         const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         const packageQuery = `
-            SELECT p.*, u.name as "clientName" 
+            SELECT p.*, u.name as "clientName",
+            (SELECT acc->>'nickname' FROM jsonb_array_elements(COALESCE(u.integrations->'accounts', '[]'::jsonb)) acc WHERE acc->>'id' = p."sourceAccountId" LIMIT 1) as "sourceAccountName"
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 

@@ -1,3 +1,4 @@
+@import url('https://fonts.cdnfonts.com/css/zekton');
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -15,9 +16,9 @@
     --border-primary: #e2e8f0;
     --border-secondary: #cbd5e1;
     --brand-primary: #4f46e5;
-    --brand-secondary: #6366f1;
-    --brand-muted: #e0e7ff;
-    --brand-text: #3730a3;
+    --brand-secondary: #ec4899;
+    --brand-muted: #eef2ff;
+    --brand-text: #374151;
     --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
     --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
     --status-pending-bg: #f1f5f9; --status-pending-text: #334155; --status-pending-border: #94a3b8; --status-pending-bg-subtle: #f8fafc;
@@ -44,10 +45,10 @@
     --text-on-brand: #ffffff;
     --border-primary: #e2e8f0;
     --border-secondary: #cbd5e1;
-    --brand-primary: #2563eb;
-    --brand-secondary: #3b82f6;
-    --brand-muted: #dbeafe;
-    --brand-text: #1d4ed8;
+    --brand-primary: #4338ca;
+    --brand-secondary: #db2777;
+    --brand-muted: #e0e7ff;
+    --brand-text: #1f2937;
     --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
     --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
     --status-pending-bg: #f1f5f9; --status-pending-text: #334155; --status-pending-border: #94a3b8; --status-pending-bg-subtle: #f8fafc;
@@ -237,8 +238,12 @@
   background-color: var(--text-muted);
 }
 body {
-    font-family: 'Inter', sans-serif;
+    font-family: 'Zekton', sans-serif;
     background-color: var(--background-primary);
+}
+
+.font-inter {
+    font-family: 'Inter', sans-serif !important;
 }
 
 @keyframes fade-in-up {

@@ -326,6 +326,8 @@ export const api = {
   testFalabellaConnection: (creds: { falabellaApiKey: string, falabellaSellerId: string }) => post<{message: string}>('/integrations/test/falabella', creds),
   testJumpsellerConnection: (creds: { jumpsellerLogin: string, jumpsellerToken: string }) => post<{message: string}>('/integrations/test/jumpseller', creds),
   testSmtpConnection: (creds: { smtpHost: string, smtpPort: string, smtpUser: string, smtpPassword: string }) => post<{message: string}>('/settings/test-smtp', creds),
+  getGoogleAuthUrl: () => get<{url: string}>('/auth/google/url'),
+  disconnectGoogleSmtp: () => post<{message: string}>('/settings/disconnect-google-smtp', {}),
   
   fetchMeliOrders: (clientId: string) => get<MeliOrder[]>(`/integrations/${clientId}/meli/orders`),
   importMeliOrders: (clientId: string, orderIds: string[]) => post<void>(`/integrations/${clientId}/meli/import`, { orderIds }),
@@ -336,6 +338,11 @@ export const api = {
   importScannedMeliOrder: (clientId: string, scannedId: string, flexCode?: string) => post<{message: string, pkg: Package}>(`/integrations/import/meli-scanned`, { clientId, scannedId, flexCode }),
   checkMeliShipmentStatus: (shipmentId: string) => get<{status: string, substatus: string}>(`/integrations/status/${shipmentId}`),
   syncMeliPackage: (shipmentId: string) => post<Package>(`/integrations/sync-shipment/${shipmentId}`, {}),
+  
+  // New Accounts Management
+  getIntegrationAccounts: () => get<any[]>('/integrations/accounts'),
+  updateIntegrationAccount: (accountId: string, data: any) => request<any>(`/integrations/accounts/${accountId}`, { method: 'PATCH', body: JSON.stringify(data) }),
+  deleteIntegrationAccount: (accountId: string) => request<void>(`/integrations/accounts/${accountId}`, { method: 'DELETE' }),
 
   // Push Notifications
   savePushSubscription: (subscription: PushSubscription) => post<void>('/notifications/subscribe', subscription),

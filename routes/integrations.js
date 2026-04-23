@@ -9,6 +9,165 @@ const bcrypt = require('bcryptjs');
 
 const meliPollingService = require('../services/meliPollingService');
 
+// --- MULTI-ACCOUNT HELPERS ---
+const ensureMultiAccountStructure = (integrations) => {
+    if (!integrations) integrations = { accounts: [] };
+    if (!integrations.accounts) {
+        const accounts = [];
+        
+        // Migrate old 'meli' structure
+        if (integrations.meli) {
+            accounts.push({
+                id: `meli-${integrations.meli.userId || uuidv4()}`,
+                type: 'MERCADO_LIBRE',
+                nickname: 'Mercado Libre (Principal)',
+                credentials: { ...integrations.meli },
+                settings: { 
+                    autoImport: true, 
+                    syncInterval: 30,
+                    lastSync: integrations.meli.lastSync 
+                },
+                connectedAt: integrations.meli.connectedAt || new Date().toISOString()
+            });
+        }
+        
+        // Migrate old 'shopify' structure
+        if (integrations.shopify) {
+            accounts.push({
+                id: `shopify-${uuidv4()}`,
+                type: 'SHOPIFY',
+                nickname: 'Shopify (Principal)',
+                credentials: { 
+                    shopUrl: integrations.shopify.shopUrl,
+                    accessToken: integrations.shopify.accessToken
+                },
+                settings: { 
+                    autoImport: integrations.shopify.autoImport || false, 
+                    syncInterval: integrations.shopify.syncInterval || 5,
+                    lastSync: integrations.shopify.lastSync
+                },
+                connectedAt: integrations.shopify.connectedAt || new Date().toISOString()
+            });
+        }
+
+        // Migrate old 'woocommerce' structure
+        if (integrations.woocommerce) {
+            accounts.push({
+                id: `woo-${uuidv4()}`,
+                type: 'WOOCOMMERCE',
+                nickname: 'WooCommerce (Principal)',
+                credentials: { ...integrations.woocommerce },
+                settings: { 
+                    autoImport: integrations.woocommerce.autoImport || false, 
+                    syncInterval: integrations.woocommerce.syncInterval || 30 
+                },
+                connectedAt: new Date().toISOString()
+            });
+        }
+
+        // Migrate old 'jumpseller' structure
+        if (integrations.jumpseller) {
+            accounts.push({
+                id: `jump-${uuidv4()}`,
+                type: 'JUMPSELLER',
+                nickname: 'Jumpseller (Principal)',
+                credentials: { ...integrations.jumpseller },
+                settings: { 
+                    autoImport: integrations.jumpseller.autoImport || false, 
+                    syncInterval: integrations.jumpseller.syncInterval || 10 
+                },
+                connectedAt: new Date().toISOString()
+            });
+        }
+
+        integrations.accounts = accounts;
+        // We keep old keys for a while to avoid breaking other parts until they are updated,
+        // but we prioritize 'accounts' in the logic.
+    }
+    return integrations;
+};
+
+// GET /api/integrations/accounts - List all linked accounts
+router.get('/accounts', authMiddleware, async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        
+        const integrations = ensureMultiAccountStructure(rows[0].integrations);
+        
+        // Return accounts without sensitive credential details (optional, but safer)
+        const safeAccounts = integrations.accounts.map(acc => ({
+            id: acc.id,
+            type: acc.type,
+            nickname: acc.nickname,
+            settings: acc.settings,
+            connectedAt: acc.connectedAt,
+            // Only return identifying info, not tokens
+            identifier: acc.type === 'SHOPIFY' ? acc.credentials.shopUrl : (acc.type === 'MERCADO_LIBRE' ? acc.credentials.userId : null)
+        }));
+
+        res.json(safeAccounts);
+    } catch (err) {
+        console.error('[GetAccounts] Error:', err);
+        res.status(500).json({ message: 'Error al obtener cuentas vinculadas' });
+    }
+});
+
+// PATCH /api/integrations/accounts/:accountId - Update account nickname or settings
+router.patch('/accounts/:accountId', authMiddleware, async (req, res) => {
+    const { accountId } = req.params;
+    const { nickname, settings } = req.body;
+
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        
+        const integrations = ensureMultiAccountStructure(rows[0].integrations);
+        const accountIndex = integrations.accounts.findIndex(acc => acc.id === accountId);
+        
+        if (accountIndex === -1) return res.status(404).json({ message: 'Cuenta no encontrada' });
+        
+        if (nickname !== undefined) integrations.accounts[accountIndex].nickname = nickname;
+        if (settings !== undefined) {
+            integrations.accounts[accountIndex].settings = {
+                ...integrations.accounts[accountIndex].settings,
+                ...settings
+            };
+        }
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), req.user.id]);
+        res.json({ message: 'Cuenta actualizada correctamente', account: integrations.accounts[accountIndex] });
+    } catch (err) {
+        console.error('[UpdateAccount] Error:', err);
+        res.status(500).json({ message: 'Error al actualizar cuenta' });
+    }
+});
+
+// DELETE /api/integrations/accounts/:accountId - Remove a linked account
+router.delete('/accounts/:accountId', authMiddleware, async (req, res) => {
+    const { accountId } = req.params;
+
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        
+        const integrations = ensureMultiAccountStructure(rows[0].integrations);
+        const newAccounts = integrations.accounts.filter(acc => acc.id !== accountId);
+        
+        if (newAccounts.length === integrations.accounts.length) {
+            return res.status(404).json({ message: 'Cuenta no encontrada' });
+        }
+        
+        integrations.accounts = newAccounts;
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), req.user.id]);
+        res.json({ message: 'Cuenta eliminada correctamente' });
+    } catch (err) {
+        console.error('[DeleteAccount] Error:', err);
+        res.status(500).json({ message: 'Error al eliminar cuenta' });
+    }
+});
+
 // TEMP DEBUG: List all clients and IDs
 router.get('/list-clients-debug', async (req, res) => {
     const { secret } = req.query;
@@ -429,31 +588,60 @@ const makeMeliPostRequest = (path, postData) => makeMeliRequest({
     }
 }, postData);
 
-const getValidMeliIntegration = async (clientId) => {
+const getValidMeliIntegration = async (clientId, accountId = null) => {
     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
     if (userRows.length === 0) throw new Error('Cliente no encontrado.');
     
-    let meliIntegration = userRows[0].integrations?.meli;
+    let integrations = userRows[0].integrations || {};
+    let meliIntegration = null;
+    let accountIndex = -1;
+
+    if (accountId) {
+        if (!integrations.accounts) integrations = ensureMultiAccountStructure(integrations);
+        accountIndex = integrations.accounts.findIndex(acc => acc.id === accountId);
+        if (accountIndex === -1) throw new Error('Cuenta de Mercado Libre no encontrada.');
+        meliIntegration = integrations.accounts[accountIndex].credentials;
+    } else {
+        meliIntegration = integrations.meli;
+        if (!meliIntegration && integrations.accounts) {
+            accountIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE');
+            if (accountIndex > -1) {
+                meliIntegration = integrations.accounts[accountIndex].credentials;
+                accountId = integrations.accounts[accountIndex].id;
+            }
+        }
+    }
+
     if (!meliIntegration) throw new Error('El cliente no tiene Mercado Libre conectado.');
 
     // Refresh Token if needed
     if (Date.now() >= meliIntegration.expiresAt) {
         const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-        if (settingsRows.length === 0) throw new Error('Configuración de Mercado Libre no encontrada en el servidor.');
+        if (settingsRows.length === 0) throw new Error('Configuración de app ML no encontrada.');
+        
         const { meli_app_id, meli_client_secret } = settingsRows[0];
-        
-        const refreshData = new URLSearchParams({
-            grant_type: 'refresh_token', client_id: meli_app_id, client_secret: meli_client_secret, refresh_token: meliIntegration.refreshToken,
+        const postData = new URLSearchParams({
+            grant_type: 'refresh_token',
+            client_id: meli_app_id,
+            client_secret: meli_client_secret,
+            refresh_token: meliIntegration.refreshToken
         }).toString();
-        
-        const refreshed = await makeMeliPostRequest('/oauth/token', refreshData);
+
+        const tokenData = await makeMeliPostRequest('/oauth/token', postData);
         meliIntegration = {
             ...meliIntegration,
-            accessToken: refreshed.access_token,
-            refreshToken: refreshed.refresh_token,
-            expiresAt: Date.now() + (refreshed.expires_in * 1000),
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: Date.now() + (tokenData.expires_in * 1000)
         };
-        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), clientId]);
+
+        if (accountId && accountIndex > -1) {
+            integrations.accounts[accountIndex].credentials = meliIntegration;
+        } else {
+            integrations.meli = meliIntegration;
+        }
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
     }
     return meliIntegration;
 };
@@ -598,43 +786,60 @@ router.get('/status/:shipmentId', authMiddleware, async (req, res) => {
 router.get('/:clientId/meli/orders', authMiddleware, async (req, res) => {
     const { clientId } = req.params;
 
-    // Security check: only admin or the client themselves can fetch orders
     if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
         return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
     }
 
     try {
-        const meliIntegration = await getValidMeliIntegration(clientId);
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
         
-        // Fetch recent orders (last 2 days) that are paid and not shipped yet
-        // ML API: /orders/search?seller=${seller_id}&order.status=paid
-        // Added sort=date_desc to get the most recent orders first
-        const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, meliIntegration.accessToken);
-        
-        const orders = await Promise.all(ordersData.results.map(async (order) => {
-            // For each order, we need shipment details to get the address
-            const shipmentId = order.shipping?.id;
-            let shipment = null;
-            if (shipmentId) {
-                try {
-                    shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
-                } catch (e) {
-                    console.error(`Error fetching shipment ${shipmentId} for order ${order.id}`);
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations);
+        const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
+
+        if (meliAccounts.length === 0) {
+            return res.json([]);
+        }
+
+        let allOrders = [];
+        for (const account of meliAccounts) {
+            try {
+                const meliIntegration = await getValidMeliIntegration(clientId, account.id);
+                const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=30`, meliIntegration.accessToken);
+                
+                if (ordersData && ordersData.results) {
+                    const mappedOrders = await Promise.all(ordersData.results.map(async (order) => {
+                        const shipmentId = order.shipping?.id;
+                        let shipment = null;
+                        if (shipmentId) {
+                            try {
+                                shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
+                            } catch (e) {
+                                console.error(`Error fetching shipment ${shipmentId} for account ${account.nickname}`);
+                            }
+                        }
+
+                        return {
+                            id: order.id.toString(),
+                            recipientName: shipment?.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
+                            address: shipment?.receiver_address?.address_line || 'N/A',
+                            commune: shipment?.receiver_address?.city?.name || 'N/A',
+                            city: shipment?.receiver_address?.state?.name || 'N/A',
+                            notes: `ML Order: ${order.id} (${account.nickname})`,
+                            shipmentId: shipmentId,
+                            sourceAccountId: account.id,
+                            sourceAccountName: account.nickname
+                        };
+                    }));
+                    allOrders = [...allOrders, ...mappedOrders];
                 }
+            } catch (accErr) {
+                console.error(`Error fetching orders for account ${account.nickname}:`, accErr.message);
+                // Continue with next account
             }
+        }
 
-            return {
-                id: order.id.toString(),
-                recipientName: shipment?.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
-                address: shipment?.receiver_address?.address_line || 'N/A',
-                commune: shipment?.receiver_address?.city?.name || 'N/A',
-                city: shipment?.receiver_address?.state?.name || 'N/A',
-                notes: `ML Order: ${order.id}`,
-                shipmentId: shipmentId
-            };
-        }));
-
-        res.json(orders);
+        res.json(allOrders);
     } catch (err) {
         console.error("Meli Fetch Orders Error:", err.body || err);
         res.status(500).json({ message: err.message || 'Error al obtener pedidos de Mercado Libre.' });
@@ -644,46 +849,68 @@ router.get('/:clientId/meli/orders', authMiddleware, async (req, res) => {
 // POST /api/integrations/:clientId/meli/import
 router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
     const { clientId } = req.params;
-    const { orderIds } = req.body;
+    const { orderIds, orderAccountMap } = req.body; // orderAccountMap is optional: { orderId: accountId }
 
     if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
         return res.status(403).json({ message: 'No tienes permiso para importar estos pedidos.' });
     }
 
     try {
-        const meliIntegration = await getValidMeliIntegration(clientId);
-        const { rows: userRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [clientId]);
+        const { rows: userRows } = await db.query('SELECT integrations, "clientIdentifier" FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Cliente no encontrado.' });
+        
         const clientIdentifier = userRows[0].clientIdentifier;
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations);
+        const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
 
         const results = [];
         for (const orderId of orderIds) {
             try {
+                // Determine which account to use
+                let accountToUse = null;
+                const explicitAccountId = orderAccountMap ? orderAccountMap[orderId] : null;
+                
+                if (explicitAccountId) {
+                    accountToUse = meliAccounts.find(acc => acc.id === explicitAccountId);
+                }
+
+                // If not found or not provided, try to find by fetching order details (expensive but safe fallback)
+                if (!accountToUse) {
+                    for (const acc of meliAccounts) {
+                        try {
+                            const testIntegration = await getValidMeliIntegration(clientId, acc.id);
+                            const orderTest = await makeMeliGetRequest(`/orders/${orderId}`, testIntegration.accessToken);
+                            if (orderTest && orderTest.id) {
+                                accountToUse = acc;
+                                break;
+                            }
+                        } catch (e) { continue; }
+                    }
+                }
+
+                if (!accountToUse) {
+                    results.push({ orderId, status: 'error', message: 'No se encontró la cuenta vinculada para este pedido.' });
+                    continue;
+                }
+
+                const meliIntegration = await getValidMeliIntegration(clientId, accountToUse.id);
+                
                 // 1. Get Order Details
                 const order = await makeMeliGetRequest(`/orders/${orderId}`, meliIntegration.accessToken);
                 const shipmentId = order.shipping?.id;
-                const sellerId = order.seller?.id?.toString() || meliIntegration.userId;
-
-                // Safety Check: Ensure the seller ID matches the user's integration
-                if (sellerId !== meliIntegration.userId) {
-                    console.warn(`[MeliImport] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${meliIntegration.userId})`);
-                    results.push({ orderId, status: 'error', message: 'Este pedido no pertenece a tu cuenta de Mercado Libre.' });
-                    continue;
-                }
                 
                 if (!shipmentId) {
-                    results.push({ orderId, status: 'error', message: 'No shipment ID found for this order.' });
+                    results.push({ orderId, status: 'error', message: 'No se encontró un ID de envío para este pedido.' });
                     continue;
                 }
 
                 // 2. Get Shipment Details
                 const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
-                console.log(`[MeliImport] Shipment details for ${shipmentId}:`, JSON.stringify(shipment.receiver_address));
 
                 // 3. Check if already imported
                 const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId.toString(), shipmentId.toString()]);
                 if (existing.length > 0) {
-                    console.log(`[MeliImport] Order ${orderId} already imported (ID: ${existing[0].id}), skipping.`);
-                    results.push({ orderId, status: 'skipped', message: 'Already imported.' });
+                    results.push({ orderId, status: 'skipped', message: 'Ya importado.' });
                     continue;
                 }
 
@@ -699,7 +926,6 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                              lowerState.includes('r.m.');
 
                 if (!isRM) {
-                    console.warn(`[MeliImport] Skipping order ${orderId} - Outside RM (${stateName})`);
                     results.push({ orderId, status: 'error', message: `El destino (${stateName}) está fuera de la Región Metropolitana.` });
                     continue;
                 }
@@ -720,34 +946,36 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                     createdAt: now,
                     updatedAt: now,
                     creatorId: clientId,
-                    source: 'MERCADO_LIBRE',
                     meliOrderId: orderId.toString(),
                     meliFlexCode: shipmentId.toString(),
-                    trackingId: shipment?.tracking_id ? String(shipment.tracking_id) : null
+                    meliSellerId: meliIntegration.userId.toString(),
+                    sourceAccountId: accountToUse.id,
+                    isFlex: shipment.logistic_type === 'self_service',
+                    source: 'MERCADO_LIBRE'
                 };
 
                 const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                const values = Object.values(newPackage).map(v => v === undefined ? null : v);
-                const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+                const placeholders = Object.keys(newPackage).map((_, i) => `$${i + 1}`).join(', ');
+                const values = Object.values(newPackage);
 
-                await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                const { rows: inserted } = await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders}) RETURNING id`, values);
+                
+                // Add tracking event
                 await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                    [newPackage.id, 'Creado', newPackage.origin, 'Importado vía integración ML.', now]);
+                    [inserted[0].id, 'Creado', newPackage.origin, 'Importado desde Mercado Libre.', now]);
 
-                // [NUEVO] Sincronizar trackingId original de forma asíncrona
-                meliPollingService.syncTrackingId(newPackage.id);
+                results.push({ orderId, status: 'success', packageId: inserted[0].id });
 
-                results.push({ orderId, status: 'success' });
-            } catch (e) {
-                console.error(`Error importing order ${orderId}:`, e.body || e);
-                results.push({ orderId, status: 'error', message: e.message || 'Unknown error' });
+            } catch (err) {
+                console.error(`[MeliImport] Error importing order ${orderId}:`, err.message);
+                results.push({ orderId, status: 'error', message: err.message || 'Error desconocido.' });
             }
         }
 
-        res.json({ results });
+        res.json(results);
     } catch (err) {
-        console.error("Meli Import Orders Error:", err.body || err);
-        res.status(500).json({ message: err.message || 'Error al importar pedidos de Mercado Libre.' });
+        console.error("Meli Import Error:", err);
+        res.status(500).json({ message: 'Error interno al importar pedidos.' });
     }
 });
 
@@ -1266,11 +1494,28 @@ router.get('/meli/callback', async (req, res) => {
 
         const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
         const currentIntegrations = userRows[0]?.integrations || {};
+        const integrations = ensureMultiAccountStructure(currentIntegrations);
         
-        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [
-            JSON.stringify({ ...currentIntegrations, meli: meliIntegration }),
-            userId
-        ]);
+        const meliAccount = {
+            id: `meli-${meliUserId}`,
+            type: 'MERCADO_LIBRE',
+            nickname: `Mercado Libre (${meliUserId})`,
+            credentials: meliIntegration,
+            settings: { 
+                autoImport: true, 
+                syncInterval: 30 
+            },
+            connectedAt: new Date().toISOString()
+        };
+
+        const existingIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE' && acc.credentials.userId === meliUserId);
+        if (existingIndex > -1) {
+            integrations.accounts[existingIndex] = meliAccount;
+        } else {
+            integrations.accounts.push(meliAccount);
+        }
+        
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
 
         // 4. Redirect back to the frontend with success
         res.send(`
@@ -1306,7 +1551,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         // 1. Search in ML across all clients that have ML integration
         // We prioritize ML search as requested: "LA HERRAMIENTA DEBE BUSCAR EL ENVIO EN ml Y NO EN EL SISTEMA"
         const { rows: clients } = await db.query(
-            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE role = 'CLIENT' AND integrations->'meli' IS NOT NULL"
+            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE role = 'CLIENT' AND (integrations->'meli' IS NOT NULL OR integrations->'accounts' IS NOT NULL)"
         );
 
         if (clients.length === 0) {
@@ -1315,28 +1560,35 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
 
         let foundShipment = null;
         let clientUsed = null;
+        let accountUsed = null;
 
         // Try each client until we find the shipment in ML
         for (const client of clients) {
-            try {
-                const meliIntegration = await getValidMeliIntegration(client.id);
-                const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
-                
-                if (shipment && shipment.id) {
-                    // Verify that the shipment's seller matches the client's Meli User ID
-                    const sellerId = shipment.sender_id?.toString() || meliIntegration.userId;
-                    if (sellerId !== meliIntegration.userId) {
-                        console.warn(`[SyncShipment] Seller mismatch for client ${client.id} (Expected ${meliIntegration.userId}, got ${sellerId})`);
-                        continue;
+            const integrations = ensureMultiAccountStructure(client.integrations);
+            const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
+
+            for (const account of meliAccounts) {
+                try {
+                    const meliIntegration = await getValidMeliIntegration(client.id, account.id);
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
+                    
+                    if (shipment && shipment.id) {
+                        // Verify that the shipment's seller matches the account's Meli User ID
+                        const sellerId = shipment.sender_id?.toString() || meliIntegration.userId;
+                        if (sellerId !== meliIntegration.userId.toString()) {
+                            console.warn(`[SyncShipment] Seller mismatch for client ${client.id} account ${account.id} (Expected ${meliIntegration.userId}, got ${sellerId})`);
+                            continue;
+                        }
+                        foundShipment = shipment;
+                        clientUsed = client;
+                        accountUsed = account;
+                        break;
                     }
-                    foundShipment = shipment;
-                    clientUsed = client;
-                    break;
+                } catch (err) {
+                    continue;
                 }
-            } catch (err) {
-                // Skip if not found for this client
-                continue;
             }
+            if (foundShipment) break;
         }
 
         if (!foundShipment) {
@@ -1390,6 +1642,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             creatorId: clientUsed.id,
             meliOrderId: foundShipment.order_id?.toString(),
             meliFlexCode: foundShipment.id?.toString(),
+            meliSellerId: foundShipment.sender_id?.toString() || (accountUsed?.credentials?.userId?.toString()),
+            sourceAccountId: accountUsed?.id,
             isFlex: true,
             source: 'MERCADO_LIBRE'
         };
@@ -1399,8 +1653,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
                 id, "recipientName", "recipientPhone", status, "shippingType", origin, 
                 "recipientAddress", "recipientCommune", "recipientCity", notes, 
                 "estimatedDelivery", "createdAt", "updatedAt", "creatorId", 
-                "meliOrderId", "meliFlexCode", "isFlex", source
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                "meliOrderId", "meliFlexCode", "meliSellerId", "sourceAccountId", "isFlex", source
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING *
         `;
         const values = [
@@ -1408,7 +1662,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             newPackage.shippingType, newPackage.origin, newPackage.recipientAddress,
             newPackage.recipientCommune, newPackage.recipientCity, newPackage.notes,
             newPackage.estimatedDelivery, newPackage.createdAt, newPackage.updatedAt,
-            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, newPackage.isFlex,
+            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, 
+            newPackage.meliSellerId, newPackage.sourceAccountId, newPackage.isFlex,
             newPackage.source
         ];
 
@@ -1517,15 +1772,33 @@ router.get('/shopify/callback', async (req, res) => {
                         }
                         
                         const currentIntegrations = userRows[0].integrations || {};
-                        const shopifyIntegration = {
-                            shopUrl: shop,
-                            accessToken: accessToken, // El famoso código shpat_
-                            autoImport: false, // Por defecto apagado por precaución
+                        const integrations = ensureMultiAccountStructure(currentIntegrations);
+                        
+                        const shopifyAccount = {
+                            id: `shopify-${uuidv4()}`,
+                            type: 'SHOPIFY',
+                            nickname: `Shopify (${shop})`,
+                            credentials: {
+                                shopUrl: shop,
+                                accessToken: accessToken
+                            },
+                            settings: {
+                                autoImport: false,
+                                syncInterval: 5
+                            },
                             connectedAt: new Date().toISOString()
                         };
 
+                        // Check if this specific shop is already connected
+                        const existingIndex = integrations.accounts.findIndex(acc => acc.type === 'SHOPIFY' && acc.credentials.shopUrl === shop);
+                        if (existingIndex > -1) {
+                            integrations.accounts[existingIndex] = shopifyAccount;
+                        } else {
+                            integrations.accounts.push(shopifyAccount);
+                        }
+
                         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [
-                            JSON.stringify({ ...currentIntegrations, shopify: shopifyIntegration }),
+                            JSON.stringify(integrations),
                             userId
                         ]);
 

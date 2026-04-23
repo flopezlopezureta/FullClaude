@@ -328,7 +328,7 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
@@ -345,11 +345,9 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             wooConsumerSecret: rows[0].woo_consumer_secret,
             falabellaApiKey: rows[0].falabella_api_key,
             falabellaSellerId: rows[0].falabella_seller_id,
-            smtpHost: rows[0].smtp_host,
-            smtpPort: rows[0].smtp_port,
-            smtpUser: rows[0].smtp_user,
-            smtpPassword: rows[0].smtp_password,
-            smtpFrom: rows[0].smtp_from
+            smtpFrom: rows[0].smtp_from,
+            smtpGoogleEmail: rows[0].smtp_google_email,
+            hasGoogleSmtp: !!rows[0].smtp_google_refresh_token
         });
     } catch (err) {
         console.error(err);
@@ -476,11 +474,9 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 wooConsumerSecret: saved.woo_consumer_secret,
                 falabellaApiKey: saved.falabella_api_key,
                 falabellaSellerId: saved.falabella_seller_id,
-                smtpHost: saved.smtp_host,
-                smtpPort: saved.smtp_port,
-                smtpUser: saved.smtp_user,
-                smtpPassword: saved.smtp_password,
-                smtpFrom: saved.smtp_from
+                smtpFrom: saved.smtp_from,
+                smtpGoogleEmail: saved.smtp_google_email,
+                hasGoogleSmtp: !!saved.smtp_google_refresh_token
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });
@@ -536,23 +532,41 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
 // POST /api/settings/test-smtp
 router.post('/test-smtp', authMiddleware, adminOnly, async (req, res) => {
     const { smtpHost, smtpPort, smtpUser, smtpPassword } = req.body;
-
-    if (!smtpHost || !smtpPort || !smtpUser || !smtpPassword) {
-        return res.status(400).json({ message: 'Todos los campos SMTP (Host, Puerto, Usuario, Contraseña) son requeridos.' });
-    }
-
     try {
-        const nodemailer = require('nodemailer');
-        const transporter = nodemailer.createTransport({
-            host: smtpHost,
-            port: parseInt(smtpPort),
-            secure: parseInt(smtpPort) === 465,
+        // [NUEVO] Obtener configuración actual para soportar prueba OAuth2
+        const { rows: current } = await db.query('SELECT smtp_host, smtp_port, smtp_user, smtp_password, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
+        const integration = current[0] || {};
+
+        const transporterConfig = {
+            host: smtpHost || integration.smtp_host,
+            port: parseInt(smtpPort || integration.smtp_port) || 587,
+            secure: parseInt(smtpPort || integration.smtp_port) === 465,
             auth: {
-                user: smtpUser,
-                pass: smtpPassword
+                user: smtpUser || integration.smtp_user,
+                pass: smtpPassword || integration.smtp_password
             },
-            connectTimeout: 10000 // 10s timeout
-        });
+            connectTimeout: 10000
+        };
+
+        // Si estamos probando la conexión de Google (OAuth2)
+        if (integration.smtp_google_refresh_token && (!smtpPassword || smtpPassword === '************************')) {
+            transporterConfig.auth = {
+                type: 'OAuth2',
+                user: integration.smtp_google_email || transporterConfig.auth.user,
+                clientId: process.env.GOOGLE_CLIENT_ID,
+                clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+                refreshToken: integration.smtp_google_refresh_token
+            };
+            
+            if (!transporterConfig.host || transporterConfig.host.includes('gmail')) {
+                transporterConfig.host = 'smtp.gmail.com';
+                transporterConfig.port = 465;
+                transporterConfig.secure = true;
+            }
+        }
+
+        const nodemailer = require('nodemailer');
+        const transporter = nodemailer.createTransport(transporterConfig);
 
         // Verify connection configuration
         await transporter.verify();
@@ -643,6 +657,18 @@ router.post('/github-backup', authMiddleware, adminOnly, async (req, res) => {
     } catch (err) {
         console.error('Error in GitHub backup:', err);
         res.status(500).json({ message: `Error al realizar el respaldo: ${err.message}` });
+    }
+});
+
+// POST /api/settings/disconnect-google-smtp
+router.post('/disconnect-google-smtp', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        await db.query('UPDATE integration_settings SET smtp_google_refresh_token = NULL, smtp_google_email = NULL WHERE id = 1');
+        await logAction(req.user.id, req.user.name, 'DISCONNECT_GOOGLE_SMTP', { details: 'Google SMTP disconnected' });
+        res.json({ message: 'Cuenta de Google desconectada con éxito.' });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al desconectar Google SMTP.' });
     }
 });
 

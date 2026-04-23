@@ -45,6 +45,7 @@ const ClientDashboard: React.FC = () => {
   const [printingPackages, setPrintingPackages] = useState<Package[]>([]);
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [isDeletePasswordModalOpen, setIsDeletePasswordModalOpen] = useState(false);
+  const [accounts, setAccounts] = useState<any[]>([]);
 
   const [activeTab, setActiveTab] = useState<'packages' | 'settings'>('packages');
 
@@ -53,6 +54,7 @@ const ClientDashboard: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState<PackageStatus[]>([]);
   const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
   const [communeFilter, setCommuneFilter] = useState('');
+  const [accountIdFilter, setAccountIdFilter] = useState('');
   
   const today = new Date();
   const oneMonthAgo = new Date();
@@ -82,6 +84,7 @@ const ClientDashboard: React.FC = () => {
             startDate,
             endDate,
             clientFilter: auth.user.id,
+            accountId: accountIdFilter,
             sortOrder
         };
         const { packages: pkgs, total } = await api.getPackages(params);
@@ -100,7 +103,20 @@ const ClientDashboard: React.FC = () => {
     if (activeTab === 'packages') {
         fetchData();
     }
-  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, startDate, endDate, activeTab, sortOrder]);
+  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, accountIdFilter, startDate, endDate, activeTab, sortOrder]);
+
+  useEffect(() => {
+    const fetchAccounts = async () => {
+        if (!auth?.user) return;
+        try {
+            const accs = await api.getIntegrationAccounts();
+            setAccounts(accs);
+        } catch (error) {
+            console.error("Failed to fetch integration accounts", error);
+        }
+    };
+    fetchAccounts();
+  }, [auth?.user]);
 
   const handleSelectAll = () => {
       setSelectedPackages(prev => {
@@ -350,6 +366,12 @@ const ClientDashboard: React.FC = () => {
                             setItemsPerPage(val);
                             setCurrentPage(1);
                         }}
+                        accountId={accountIdFilter}
+                        onAccountIdChange={(id) => {
+                            setAccountIdFilter(id);
+                            setCurrentPage(1);
+                        }}
+                        accounts={accounts}
                     />
 
                 {/* [NEW] Control Bar (Admin Style) */}

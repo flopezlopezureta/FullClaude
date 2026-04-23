@@ -154,6 +154,8 @@ export interface IntegrationSettings {
     smtpUser?: string;
     smtpPassword?: string;
     smtpFrom?: string;
+    smtpGoogleEmail?: string;
+    hasGoogleSmtp?: boolean;
 }
 
 export interface MeliOrder {
@@ -258,6 +260,8 @@ export interface Package {
   flexLabelPhotoBase64?: string;
   recipientRut?: string;
   recipientEmail?: string;
+  sourceAccountId?: string;
+  sourceAccountName?: string;
 }
 
 export interface Notification {

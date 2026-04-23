@@ -42,6 +42,7 @@ async function startServer() {
       res.json({ status: 'ok', message: 'Backend is running' });
     });
     const authRoute = tryRequireRoute('./routes/auth.js'); if (authRoute) app.use('/api/auth', authRoute);
+    const googleAuthRoute = tryRequireRoute('./routes/googleAuth.js'); if (googleAuthRoute) app.use('/api/auth/google', googleAuthRoute);
     const usersRoute = tryRequireRoute('./routes/users.js'); if (usersRoute) app.use('/api/users', usersRoute);
     const packagesRoute = tryRequireRoute('./routes/packages.js'); if (packagesRoute) app.use('/api/packages', packagesRoute);
     const settingsRoute = tryRequireRoute('./routes/settings.js'); if (settingsRoute) app.use('/api/settings', settingsRoute);
@@ -583,7 +584,9 @@ async function initializeDatabase() {
             'smtp_port TEXT',
             'smtp_user TEXT',
             'smtp_password TEXT',
-            'smtp_from TEXT'
+            'smtp_from TEXT',
+            'smtp_google_refresh_token TEXT',
+            'smtp_google_email TEXT'
         ];
         for (const spec of smtpCols) {
             const col = spec.split(' ')[0];
@@ -720,6 +723,19 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "packagesPickedUp" added to "pickup_assignments".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during pickup_assignments migration (packagesPickedUp):', err); }
+        }
+
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "meliSellerId" TEXT');
+            console.log('MIGRATION APPLIED: Column "meliSellerId" added to "packages".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during packages migration (meliSellerId):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "sourceAccountId" TEXT');
+            console.log('MIGRATION APPLIED: Column "sourceAccountId" added to "packages".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during packages migration (sourceAccountId):', err); }
         }
 
         await db.query(`

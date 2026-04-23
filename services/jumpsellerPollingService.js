@@ -51,6 +51,27 @@ const makeJumpsellerRequest = (login, token, path, method = 'GET', postData = nu
         req.end();
     });
 };
+const ensureMultiAccountStructure = (integrations) => {
+    if (!integrations) integrations = { accounts: [] };
+    if (!integrations.accounts) {
+        const accounts = [];
+        if (integrations.jumpseller) {
+            accounts.push({
+                id: `jump-${uuidv4()}`,
+                type: 'JUMPSELLER',
+                nickname: 'Jumpseller (Principal)',
+                credentials: { ...integrations.jumpseller },
+                settings: { 
+                    autoImport: integrations.jumpseller.autoImport || false, 
+                    syncInterval: integrations.jumpseller.syncInterval || 10 
+                },
+                connectedAt: new Date().toISOString()
+            });
+        }
+        integrations.accounts = accounts;
+    }
+    return integrations;
+};
 
 let isPolling = false;
 let pollingStartTime = null;
@@ -74,8 +95,7 @@ async function pollJumpsellerPackages() {
             const { rows: settingsRows } = await db.query('SELECT "jumpsellerAutoImport" FROM system_settings WHERE id = 1');
             autoImportEnabled = settingsRows.length > 0 && settingsRows[0].jumpsellerAutoImport;
         } catch (settingsErr) {
-            // Column might not exist yet if migration hasn't run or fail
-            console.warn('[JumpsellerPolling] Could not fetch jumpsellerAutoImport from DB. Defaulting to true for active customers.');
+            console.warn('[JumpsellerPolling] Could not fetch jumpsellerAutoImport from DB. Defaulting to true.');
             autoImportEnabled = true; 
         }
 
@@ -98,34 +118,46 @@ async function pollJumpsellerPackages() {
 async function autoImportJumpsellerPackages() {
     console.log('[JumpsellerPolling] Starting auto-import cycle...');
     try {
-        // 1. Get all users with Jumpseller integration
-        const { rows: users } = await db.query("SELECT id, integrations, \"clientIdentifier\", address, \"pickupAddress\" FROM users WHERE integrations->'jumpseller' IS NOT NULL");
+        // 1. Get all users with Jumpseller integration (old or new format)
+        const { rows: users } = await db.query(`
+            SELECT id, integrations, "clientIdentifier", address, "pickupAddress" 
+            FROM users 
+            WHERE role = 'CLIENT' 
+            AND (integrations->'jumpseller' IS NOT NULL OR integrations->'accounts' IS NOT NULL)
+        `);
         
         for (const user of users) {
             const clientId = user.id;
             const clientIdentifier = user.clientIdentifier || 'CLI';
-            const jumpseller = user.integrations.jumpseller;
-
-            if (!jumpseller.login || !jumpseller.token) continue;
-
-            // Check if the individual client has auto-import disabled
-            if (jumpseller.autoImport === false) {
-                console.log(`[JumpsellerPolling] Skipping client ${clientId} - Auto-import is currently set to MANUAL.`);
-                continue;
-            }
-
-            // --- PER-USER INTERVAL CHECK ---
-            const syncIntervalMin = jumpseller.syncInterval || 10; // Default to 10 mins for Jumpseller
-            const lastSync = jumpseller.lastSync ? new Date(jumpseller.lastSync).getTime() : 0;
-            const now = Date.now();
             
-            if (now - lastSync < (syncIntervalMin * 60 * 1000)) {
-                continue;
-            }
+            let integrations = ensureMultiAccountStructure(user.integrations);
+            const jumpsellerAccounts = integrations.accounts.filter(acc => acc.type === 'JUMPSELLER');
 
-            try {
-                // Update lastSync timestamp in DB
-                await db.query(`UPDATE users SET integrations = jsonb_set(integrations, '{jumpseller,lastSync}', $1) WHERE id = $2`, [JSON.stringify(new Date().toISOString()), clientId]);
+            if (jumpsellerAccounts.length === 0) continue;
+
+            for (const account of jumpsellerAccounts) {
+                try {
+                    const jumpseller = account.credentials;
+                    const settings = account.settings || {};
+
+                    if (!jumpseller.login || !jumpseller.token) continue;
+
+                    // Check if the individual client has auto-import disabled
+                    if (settings.autoImport === false) continue;
+
+                    // --- PER-ACCOUNT INTERVAL CHECK ---
+                    const syncIntervalMin = settings.syncInterval || 10; 
+                    const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
+                    const now = Date.now();
+                    
+                    if (now - lastSync < (syncIntervalMin * 60 * 1000)) continue;
+
+                    // Update lastSync timestamp for this account
+                    const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
+                    if (accountIndex > -1) {
+                        integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
+                        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
+                    }
 
                 // 2. Fetch recent orders
                 const orders = await makeJumpsellerRequest(jumpseller.login, jumpseller.token, '/orders.json?status=all&limit=50');
@@ -201,9 +233,9 @@ async function autoImportJumpsellerPackages() {
 
                         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, vals);
                         await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                            [newPackage.id, 'Creado', origin, 'Auto-importado vía Jumpseller Polling.', importNow]);
+                            [newPackage.id, 'Creado', origin, `Auto-importado vía Jumpseller (${account.nickname}).`, importNow]);
                         
-                        console.log(`[JumpsellerPolling] Auto-imported order ${orderId} for client ${clientId}`);
+                        console.log(`[JumpsellerPolling] Auto-imported order ${orderId} for client ${clientId} (Account: ${account.nickname})`);
                         
                     } catch (orderErr) {
                         console.error(`[JumpsellerPolling] Error processing order ${o?.order?.id}:`, orderErr.message);

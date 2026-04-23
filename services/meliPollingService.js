@@ -53,11 +53,61 @@ const makeMeliPostRequest = (path, postData) => makeMeliRequest({
     }
 }, postData);
 
-async function getValidMeliToken(clientId) {
+const ensureMultiAccountStructure = (integrations) => {
+    if (!integrations) integrations = { accounts: [] };
+    if (!integrations.accounts) {
+        const accounts = [];
+        if (integrations.meli) {
+            accounts.push({
+                id: `meli-${integrations.meli.userId || uuidv4()}`,
+                type: 'MERCADO_LIBRE',
+                nickname: 'Mercado Libre (Principal)',
+                credentials: { ...integrations.meli },
+                settings: { 
+                    autoImport: true, 
+                    syncInterval: 30,
+                    lastSync: integrations.meli.lastSync 
+                },
+                connectedAt: integrations.meli.connectedAt || new Date().toISOString()
+            });
+        }
+        // ... (can add others if needed, but Meli is priority here)
+        integrations.accounts = accounts;
+    }
+    return integrations;
+};
+
+async function getValidMeliToken(clientId, accountId = null) {
     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
     if (userRows.length === 0) return null;
     
-    let meliIntegration = userRows[0].integrations?.meli;
+    let integrations = userRows[0].integrations || {};
+    let meliIntegration = null;
+    let accountIndex = -1;
+
+    // Si tenemos accountId, buscamos esa cuenta específica
+    if (accountId) {
+        if (!integrations.accounts) integrations = ensureMultiAccountStructure(integrations);
+        accountIndex = integrations.accounts.findIndex(acc => acc.id === accountId);
+        if (accountIndex === -1) return null;
+        meliIntegration = integrations.accounts[accountIndex].credentials;
+    } else {
+        // Fallback a la estructura antigua o a la primera cuenta de ML encontrada
+        meliIntegration = integrations.meli;
+        if (!meliIntegration && integrations.accounts) {
+            accountIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE');
+            if (accountIndex > -1) {
+                meliIntegration = integrations.accounts[accountIndex].credentials;
+                accountId = integrations.accounts[accountIndex].id;
+            }
+        } else if (meliIntegration && !integrations.accounts) {
+            // Migrar sobre la marcha si es necesario
+            integrations = ensureMultiAccountStructure(integrations);
+            accountIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE');
+            accountId = integrations.accounts[accountIndex].id;
+        }
+    }
+
     if (!meliIntegration) return null;
 
     if (Date.now() >= meliIntegration.expiresAt) {
@@ -80,7 +130,15 @@ async function getValidMeliToken(clientId) {
                 refreshToken: refreshed.refresh_token,
                 expiresAt: Date.now() + (refreshed.expires_in * 1000),
             };
-            await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), clientId]);
+
+            // Guardar el token actualizado
+            if (accountId && accountIndex > -1) {
+                integrations.accounts[accountIndex].credentials = meliIntegration;
+            } else {
+                integrations.meli = meliIntegration;
+            }
+            
+            await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
         } catch (err) {
             console.error(`Error refreshing ML token for client ${clientId}:`, err);
             return null;
@@ -145,7 +203,7 @@ async function pollMeliPackages() {
 
         // 1. Get all active Mercado Libre packages that are not finished
         const { rows: packages } = await db.query(`
-            SELECT id, "meliOrderId", "meliFlexCode", "driverId", status, "creatorId" 
+            SELECT id, "meliOrderId", "meliFlexCode", "driverId", status, "creatorId", "sourceAccountId" 
             FROM packages 
             WHERE source = 'MERCADO_LIBRE' 
             AND status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
@@ -161,7 +219,7 @@ async function pollMeliPackages() {
             // Use limited concurrency (e.g., 5 at a time) to avoid hitting ML rate limits or hanging
             await runWithLimit(5, packages, async (pkg) => {
                 try {
-                    const accessToken = await getValidMeliToken(pkg.creatorId);
+                    const accessToken = await getValidMeliToken(pkg.creatorId, pkg.sourceAccountId);
                     if (!accessToken) {
                         processedPackagesCount++;
                         return;
@@ -390,172 +448,173 @@ async function syncPackage(packageId) {
 async function autoImportMeliPackages() {
     console.log('[MeliPolling] Starting auto-import cycle...');
     try {
-        // 1. Get all users with Meli integration
-        const { rows: users } = await db.query("SELECT id, integrations, \"clientIdentifier\" FROM users WHERE integrations->'meli' IS NOT NULL");
+        // 1. Get all customers with ML integrations (new or old format)
+        const { rows: users } = await db.query(`
+            SELECT id, integrations, "clientIdentifier" 
+            FROM users 
+            WHERE role = 'CLIENT' 
+            AND (integrations->'meli' IS NOT NULL OR integrations->'accounts' IS NOT NULL)
+        `);
         
         for (const user of users) {
             const clientId = user.id;
             const clientIdentifier = user.clientIdentifier || 'CLI';
-            const accessToken = await getValidMeliToken(clientId);
-            if (!accessToken) continue;
-
-            const meliIntegration = user.integrations.meli;
-
-            // 2. Fetch recent orders that are paid or partially_paid
-            // We broaden the search by removing shipping.mode=self_service to ensure No order is missed, 
-            // and we filter for Flex/Self-Service later in the loop.
-            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, accessToken);
             
-            if (!ordersData.results || ordersData.results.length === 0) {
-                console.log(`[MeliPolling] No recent paid orders for client ${clientId} (ML User ID: ${meliIntegration.userId})`);
-                continue;
-            }
+            // Asegurar estructura multi-cuenta
+            let integrations = ensureMultiAccountStructure(user.integrations);
+            const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
 
-            console.log(`[MeliPolling] Found ${ordersData.results.length} recent paid orders for client ${clientId}. Processing...`);
+            if (meliAccounts.length === 0) continue;
 
-            for (const order of ordersData.results) {
+            for (const account of meliAccounts) {
                 try {
-                    const orderId = order.id.toString();
-                    const shipmentId = order.shipping?.id;
-                    const sellerId = order.seller?.id?.toString();
-                    const integrationUserId = meliIntegration.userId?.toString();
+                    const meliIntegration = account.credentials;
+                    const settings = account.settings || {};
 
-                    // Safety Check: Ensure the seller ID matches the user's integration
-                    if (sellerId && integrationUserId && sellerId !== integrationUserId) {
-                        console.warn(`[MeliPolling] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${integrationUserId})`);
-                        continue;
-                    }
+                    // Ignorar si el auto-import está apagado para esta cuenta
+                    if (settings.autoImport !== true) continue;
 
-                    console.log(`[MeliPolling] Order ${orderId} belongs to seller ${integrationUserId}. Proceeding...`);
+                    // --- CHECK INTERVAL PER ACCOUNT ---
+                    const syncIntervalMin = settings.syncInterval || 30;
+                    const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
+                    const nowTime = Date.now();
                     
-                    if (!shipmentId) {
-                        console.log(`[MeliPolling] Skipping order ${orderId} - No shipment ID`);
-                        continue;
+                    if (nowTime - lastSync < (syncIntervalMin * 60 * 1000)) continue;
+
+                    // Obtener token (refresca si es necesario)
+                    const accessToken = await getValidMeliToken(clientId, account.id);
+                    if (!accessToken) continue;
+
+                    // Actualizar lastSync para esta cuenta específica
+                    const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
+                    if (accountIndex > -1) {
+                        integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
+                        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
                     }
 
-                    // 3. Check if already imported
-                    // We check by both orderId and shipmentId (meliFlexCode) to be extra safe
-                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId, shipmentId.toString()]);
-                    if (existing.length > 0) {
-                        // console.log(`[MeliPolling] Order ${orderId} already imported, skipping.`);
-                        continue;
-                    }
-
-                    // 4. Get Shipment Details to check address
-                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    // 2. Fetch recent orders for this seller
+                    const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, accessToken);
                     
-                    // Prevent importing history (old packages already delivered or cancelled natively)
-                    if (shipment.status === 'delivered' || shipment.status === 'cancelled') {
-                        console.log(`[MeliPolling] Order ${orderId} is already ${shipment.status} in ML, skipping import to prevent history flood.`);
+                    if (!ordersData.results || ordersData.results.length === 0) {
+                        console.log(`[MeliPolling] No recent paid orders for client ${clientId} (Account: ${account.nickname})`);
                         continue;
                     }
 
-                    // [NEW] 4.5 Deep Search for Phone Number
-                    // ML often hides phone in /shipments but provides it in /orders/{id} for authorized sellers
-                    let recipientPhone = 'N/A';
-                    try {
-                        const fullOrder = await makeMeliGetRequest(`/orders/${orderId}`, accessToken);
-                        
-                        // Cascade search for phone
-                        const phoneCandidates = [
-                            shipment.receiver_address?.receiver_phone,
-                            shipment.receiver_address?.phone,
-                            fullOrder.buyer?.phone?.number,
-                            fullOrder.buyer?.mobile?.number,
-                            fullOrder.buyer?.phone?.area_code ? `${fullOrder.buyer.phone.area_code}${fullOrder.buyer.phone.number}` : null,
-                            fullOrder.status_info?.reason // Sometimes hidden here in some specific ML versions
-                        ];
+                    console.log(`[MeliPolling] Found ${ordersData.results.length} recent paid orders for client ${clientId} (${account.nickname}). Processing...`);
 
-                        for (const candidate of phoneCandidates) {
-                            if (candidate && 
-                                typeof candidate === 'string' && 
-                                candidate.length > 5 && 
-                                !candidate.includes('*') && 
-                                !candidate.includes('obfuscated') &&
-                                !candidate.includes('@')) {
-                                recipientPhone = candidate;
-                                break;
+                    for (const order of ordersData.results) {
+                        try {
+                            const orderId = order.id.toString();
+                            const shipmentId = order.shipping?.id;
+                            const sellerId = order.seller?.id?.toString();
+                            const integrationUserId = meliIntegration.userId?.toString();
+
+                            // Safety Check: Ensure the seller ID matches the user's integration
+                            if (sellerId && integrationUserId && sellerId !== integrationUserId) {
+                                console.warn(`[MeliPolling] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${integrationUserId})`);
+                                continue;
                             }
-                        }
-                        
-                        if (recipientPhone === 'N/A') {
-                            console.log(`[MeliPolling] Phone still N/A for order ${orderId} after deep search.`);
-                        } else {
-                            console.log(`[MeliPolling] Successfully recovered phone for order ${orderId}: ${recipientPhone}`);
-                        }
-                    } catch (phoneErr) {
-                        console.warn(`[MeliPolling] Failed to fetch full order ${orderId} for phone recovery:`, phoneErr.message);
-                        recipientPhone = shipment.receiver_address?.receiver_phone || 'N/A';
-                    }
-                    
-                    // 5. Region Check (Optional/Permissive)
-                    let stateName = shipment.receiver_address?.state?.name || 'Santiago';
-                    const lowerState = stateName.toLowerCase();
-                    
-                    // Normalize Region/City name for RM
-                    const isRM = lowerState.includes('metropolitana') || 
-                                 lowerState.includes('santiago') || 
-                                 lowerState === 'rm' ||
-                                 lowerState.includes('r.m.');
-                    
-                    if (isRM) {
-                        stateName = 'Región Metropolitana';
-                    } else {
-                        console.log(`[MeliPolling] Skipping order ${orderId} as it is in state: ${stateName} (Outside RM).`);
-                        continue; // SKIP import
-                    }
 
-                    // 6. Import Package
-                    const now = new Date();
-                    const newPackage = {
-                        id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
-                        recipientName: shipment.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
-                        recipientPhone: recipientPhone,
-                        status: 'PENDIENTE',
-                        shippingType: 'SAME_DAY',
-                        origin: 'Centro de Distribución',
-                        recipientAddress: shipment.receiver_address?.address_line || 'N/A',
-                        recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                        recipientCity: stateName,
-                        notes: `Auto-Import ML Order: ${orderId}`,
-                        estimatedDelivery: now,
-                        createdAt: now,
-                        updatedAt: now,
-                        creatorId: clientId,
-                        source: 'MERCADO_LIBRE',
-                        meliOrderId: orderId.toString(),
-                        meliFlexCode: shipmentId.toString(),
-                        trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null,
-                        recipientRut: shipment.receiver_address?.federal_id || null
-                    };
+                            if (!shipmentId) {
+                                console.log(`[MeliPolling] Skipping order ${orderId} - No shipment ID`);
+                                continue;
+                            }
 
-                    const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                    const values = Object.values(newPackage).map(v => v === undefined ? null : v);
-                    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+                            // 3. Check if already imported
+                            const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId, shipmentId.toString()]);
+                            if (existing.length > 0) continue;
 
-                    try {
-                        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                            [newPackage.id, 'Creado', newPackage.origin, 'Auto-importado vía integración ML.', now]);
-                        
-                        console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId}`);
-                        
-                        // [NUEVO] Intentar sincronizar el tracking_id original inmediatamente
-                        if (!newPackage.trackingId) {
-                            syncTrackingId(newPackage.id); 
-                        }
-                    } catch (dbErr) {
-                        if (dbErr.code === '23505') { // Duplicate unique key
-                             console.warn(`[MeliPolling] Order ${orderId} seems to be already in DB, skipping...`);
-                        } else {
-                             throw dbErr;
+                            // 4. Get Shipment Details to check address
+                            const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                            
+                            if (shipment.status === 'delivered' || shipment.status === 'cancelled') continue;
+
+                            // 4.5 Deep Search for Phone Number
+                            let recipientPhone = 'N/A';
+                            try {
+                                const fullOrder = await makeMeliGetRequest(`/orders/${orderId}`, accessToken);
+                                const phoneCandidates = [
+                                    shipment.receiver_address?.receiver_phone,
+                                    shipment.receiver_address?.phone,
+                                    fullOrder.buyer?.phone?.number,
+                                    fullOrder.buyer?.mobile?.number,
+                                    fullOrder.buyer?.phone?.area_code ? `${fullOrder.buyer.phone.area_code}${fullOrder.buyer.phone.number}` : null
+                                ];
+                                for (const candidate of phoneCandidates) {
+                                    if (candidate && typeof candidate === 'string' && candidate.length > 5 && !candidate.includes('*')) {
+                                        recipientPhone = candidate;
+                                        break;
+                                    }
+                                }
+                            } catch (phoneErr) {
+                                recipientPhone = shipment.receiver_address?.receiver_phone || 'N/A';
+                            }
+                            
+                            // 5. Region Check
+                            let stateName = shipment.receiver_address?.state?.name || 'Santiago';
+                            const lowerState = stateName.toLowerCase();
+                            const isRM = lowerState.includes('metropolitana') || lowerState.includes('santiago') || lowerState === 'rm';
+                            
+                            if (isRM) {
+                                stateName = 'Región Metropolitana';
+                            } else {
+                                continue; 
+                            }
+
+                            // 6. Import Package
+                            const now = new Date();
+                            const newPackage = {
+                                id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
+                                recipientName: shipment.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
+                                recipientPhone: recipientPhone,
+                                status: 'PENDIENTE',
+                                shippingType: 'SAME_DAY',
+                                origin: 'Centro de Distribución',
+                                recipientAddress: shipment.receiver_address?.address_line || 'N/A',
+                                recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
+                                recipientCity: stateName,
+                                notes: `Auto-Import ML Order: ${orderId}`,
+                                estimatedDelivery: now,
+                                createdAt: now,
+                                updatedAt: now,
+                                creatorId: clientId,
+                                source: 'MERCADO_LIBRE',
+                                meliOrderId: orderId.toString(),
+                                meliFlexCode: shipmentId.toString(),
+                                meliSellerId: meliIntegration.userId?.toString(),
+                                sourceAccountId: account.id,
+                                trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null,
+                                recipientRut: shipment.receiver_address?.federal_id || null
+                            };
+
+                            const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+                            const values = Object.values(newPackage).map(v => v === undefined ? null : v);
+                            const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+                            await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                            await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                                [newPackage.id, 'Creado', newPackage.origin, 'Auto-importado vía integración ML.', now]);
+                            
+                            console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId} (Account: ${account.nickname})`);
+                            
+                            if (!newPackage.trackingId) {
+                                syncTrackingId(newPackage.id); 
+                            }
+                        } catch (orderErr) {
+                            console.error(`[MeliPolling] Error processing order ${order.id}:`, orderErr.message);
                         }
                     }
-                } catch (err) {
-                    console.error(`[MeliPolling] Error auto-importing order ${order.id}:`, err.body || err);
+                } catch (accErr) {
+                    console.error(`[MeliPolling] Error in account ${account.nickname} for client ${clientId}:`, accErr.message);
                 }
             }
         }
+        
+        setTimeout(() => triggerBackgroundGeocoding(), 2000);
+    } catch (err) {
+        console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
+    }
+}
         
         // Trigger background geocoding after import
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
