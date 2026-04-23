@@ -615,13 +615,6 @@ async function autoImportMeliPackages() {
         console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
     }
 }
-        
-        // Trigger background geocoding after import
-        setTimeout(() => triggerBackgroundGeocoding(), 2000);
-    } catch (err) {
-        console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
-    }
-}
 
 async function cleanupOutOfZonePackages() {
     try {

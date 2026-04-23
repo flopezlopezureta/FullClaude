@@ -250,13 +250,6 @@ async function autoImportShopifyPackages() {
         console.error('[ShopifyPolling] Fatal error in auto-import cycle:', err);
     }
 }
-        
-        // Trigger background geocoding after import
-        setTimeout(() => triggerBackgroundGeocoding(), 2000);
-    } catch (err) {
-        console.error('[ShopifyPolling] Fatal error in auto-import cycle:', err);
-    }
-}
 
 let timeoutId = null;
 

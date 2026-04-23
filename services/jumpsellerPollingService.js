@@ -237,12 +237,13 @@ async function autoImportJumpsellerPackages() {
                         
                         console.log(`[JumpsellerPolling] Auto-imported order ${orderId} for client ${clientId} (Account: ${account.nickname})`);
                         
-                    } catch (orderErr) {
-                        console.error(`[JumpsellerPolling] Error processing order ${o?.order?.id}:`, orderErr.message);
+                        } catch (orderErr) {
+                            console.error(`[JumpsellerPolling] Error processing order ${o?.order?.id}:`, orderErr.message);
+                        }
                     }
+                } catch (apiErr) {
+                    console.error(`[JumpsellerPolling] Error fetching orders for client ${clientId}:`, apiErr.body || apiErr);
                 }
-            } catch (apiErr) {
-                console.error(`[JumpsellerPolling] Error fetching orders for client ${clientId}:`, apiErr.body || apiErr);
             }
         }
         
