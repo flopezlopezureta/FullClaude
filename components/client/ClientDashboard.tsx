@@ -11,16 +11,6 @@ import ClientPackageFilters from './ClientPackageFilters';
 import ShippingLabelModal from './ShippingLabelModal';
 import BatchShippingLabelModal from './BatchShippingLabelModal';
 import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconTrash, IconDownload, IconFileText, IconShopify, IconMercadoLibre, IconJumpseller } from '../Icon';
-const IconSortAsc = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10 4l-4-4m0 0l-4 4m4-4v12" />
-  </svg>
-);
-const IconSortDesc = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-    <path strokeLinecap="round" strokeLinejoin="round" d="M3 4h13M3 8h9M3 12h5m10-4l-4 4m0 0l-4-4m4 4V4" />
-  </svg>
-);
 import ImportPackagesModal from './ImportPackagesModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
 import DeletePasswordModal from '../modals/DeletePasswordModal';
