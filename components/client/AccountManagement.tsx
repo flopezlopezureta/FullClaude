@@ -15,7 +15,10 @@ import {
     IconPlus, 
     IconRefresh,
     IconX,
-    IconCheck
+    IconCheck,
+    IconDownload,
+    IconInfo,
+    IconFileText
 } from '../Icon';
 
 const AccountManagement: React.FC = () => {
@@ -326,6 +329,72 @@ const AccountManagement: React.FC = () => {
                     <p className="text-sm text-blue-700 max-w-md">Conecta tus cuentas de ventas para que Full Envíos pueda importar automáticamente tus pedidos y generar etiquetas de despacho.</p>
                 </div>
             )}
+
+            {/* Help & Manuals Section */}
+            <div className="mt-12 pt-8 border-t border-gray-100">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                        <IconInfo className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h3 className="font-bold text-gray-800">Centro de Ayuda</h3>
+                        <p className="text-xs text-gray-500">Descarga los manuales paso a paso para tus integraciones.</p>
+                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <a 
+                        href="/manuals/shopify_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-green-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                <IconShopify className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Shopify</h4>
+                                <p className="text-[10px] text-gray-400">Configuración OAuth 2.0</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-green-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/woocommerce_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-purple-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                <IconWoocommerce className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía WooCommerce</h4>
+                                <p className="text-[10px] text-gray-400">Instalación del Plugin</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-purple-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/jumpseller_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-sky-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-sky-50 text-sky-600 rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                                <IconJumpseller className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Jumpseller</h4>
+                                <p className="text-[10px] text-gray-400">Configuración de Webhooks</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-sky-500" />
+                    </a>
+                </div>
+            </div>
         </div>
     );
 };
