@@ -178,7 +178,25 @@ const AccountManagement: React.FC = () => {
                                 <div className="flex items-center justify-between">
                                     <div className="flex flex-col">
                                         <span className="text-xs font-bold text-gray-700">Sincronización Automática</span>
-                                        <span className="text-[10px] text-gray-400">Importar pedidos cada {acc.settings?.syncInterval || 30} min</span>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            <span className="text-[10px] text-gray-400">Cada</span>
+                                            <select 
+                                                value={acc.settings?.syncInterval || 30}
+                                                onChange={(e) => {
+                                                    const val = parseInt(e.target.value);
+                                                    api.updateIntegrationAccount(acc.id, { settings: { ...acc.settings, syncInterval: val } })
+                                                        .then(() => fetchAccounts())
+                                                        .catch(err => alert('Error: ' + err.message));
+                                                }}
+                                                className="text-[10px] font-bold text-indigo-600 bg-indigo-50 border-none rounded px-1 py-0.5 outline-none cursor-pointer hover:bg-indigo-100 transition-colors"
+                                            >
+                                                <option value="5">5 min</option>
+                                                <option value="10">10 min</option>
+                                                <option value="15">15 min</option>
+                                                <option value="30">30 min</option>
+                                                <option value="60">60 min</option>
+                                            </select>
+                                        </div>
                                     </div>
                                     <button 
                                         onClick={() => toggleAutoImport(acc.id, acc.settings?.autoImport)}
