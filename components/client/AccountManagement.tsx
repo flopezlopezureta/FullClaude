@@ -22,6 +22,7 @@ const AccountManagement: React.FC = () => {
     const [accounts, setAccounts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState<string | null>(null);
+    const [error, setError] = useState<string | null>(null);
     const [editingAccount, setEditingAccount] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
     const [showShopifyModal, setShowShopifyModal] = useState(false);
