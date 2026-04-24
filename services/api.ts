@@ -341,6 +341,7 @@ export const api = {
   
   // New Accounts Management
   getIntegrationAccounts: () => get<any[]>('/integrations/accounts'),
+  createIntegrationAccount: (data: { type: string, nickname?: string, credentials: any }) => post<any>('/integrations/accounts', data),
   updateIntegrationAccount: (accountId: string, data: any) => request<any>(`/integrations/accounts/${accountId}`, { method: 'PATCH', body: JSON.stringify(data) }),
   deleteIntegrationAccount: (accountId: string) => request<void>(`/integrations/accounts/${accountId}`, { method: 'DELETE' }),
 

@@ -583,6 +583,7 @@ async function autoImportMeliPackages() {
                                 meliFlexCode: shipmentId.toString(),
                                 meliSellerId: meliIntegration.userId?.toString(),
                                 sourceAccountId: account.id,
+                                sourceAccountName: account.nickname,
                                 trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null,
                                 recipientRut: shipment.receiver_address?.federal_id || null
                             };

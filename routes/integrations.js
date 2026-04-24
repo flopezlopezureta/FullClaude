@@ -197,13 +197,13 @@ router.get('/debug-poll/:clientId', async (req, res) => {
             }
             
             const meliIntegration = user.integrations?.meli;
-            if (!meliIntegration) return res.status(400).json({ message: 'Usuario no tiene integración ML', debugLogs });
+            if (!meliIntegration) return res.status(400).json({ message: 'Usuario no tiene integraciÃ³n ML', debugLogs });
 
             log('Getting access token...');
             const accessToken = await meliPollingService.getValidMeliToken(clientId);
             if (!accessToken) {
                 log('FAILED to get access token. Check integration_settings or refresh token.');
-                return res.status(401).json({ message: 'Error de autenticación ML', debugLogs });
+                return res.status(401).json({ message: 'Error de autenticaciÃ³n ML', debugLogs });
             }
             log('Access token obtained successfully');
 
@@ -313,7 +313,7 @@ router.get('/meli-tracking/:packageId', authMiddleware, async (req, res) => {
 
         // Otherwise fetch fresh from ML API
         if (!pkg.meliFlexCode) {
-            return res.status(400).json({ message: 'El paquete no tiene ID de envío ML' });
+            return res.status(400).json({ message: 'El paquete no tiene ID de envÃ­o ML' });
         }
 
         const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
@@ -362,7 +362,7 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
         if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado' });
 
         const pkg = pkgRows[0];
-        if (!pkg.meliFlexCode) return res.status(400).json({ message: 'El paquete no tiene ID de envío ML' });
+        if (!pkg.meliFlexCode) return res.status(400).json({ message: 'El paquete no tiene ID de envÃ­o ML' });
 
         const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
         if (!accessToken) return res.status(401).json({ message: 'Token ML no disponible' });
@@ -403,7 +403,7 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
 
         } catch (fetchError) {
             console.error('[MeliLabel] Fetch Error:', fetchError);
-            res.status(500).json({ message: 'Error de conexión con ML' });
+            res.status(500).json({ message: 'Error de conexiÃ³n con ML' });
         }
 
     } catch (err) {
@@ -422,7 +422,7 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
     }
 
     if (!password) {
-        return res.status(400).json({ message: 'La contraseña de administrador es requerida.' });
+        return res.status(400).json({ message: 'La contraseÃ±a de administrador es requerida.' });
     }
 
     try {
@@ -432,7 +432,7 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
         const isMatch = await bcrypt.compare(password, admin.password);
         
         if (!isMatch) {
-            return res.status(401).json({ message: 'Contraseña de administrador incorrecta.' });
+            return res.status(401).json({ message: 'ContraseÃ±a de administrador incorrecta.' });
         }
 
         // 2. Remove integration from user
@@ -446,10 +446,10 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
 
         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
 
-        res.json({ message: `Integración ${source} eliminada con éxito.` });
+        res.json({ message: `IntegraciÃ³n ${source} eliminada con Ã©xito.` });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Error al eliminar la integración.' });
+        res.status(500).json({ message: 'Error al eliminar la integraciÃ³n.' });
     }
 });
 
@@ -617,7 +617,7 @@ const getValidMeliIntegration = async (clientId, accountId = null) => {
     // Refresh Token if needed
     if (Date.now() >= meliIntegration.expiresAt) {
         const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-        if (settingsRows.length === 0) throw new Error('Configuración de app ML no encontrada.');
+        if (settingsRows.length === 0) throw new Error('ConfiguraciÃ³n de app ML no encontrada.');
         
         const { meli_app_id, meli_client_secret } = settingsRows[0];
         const postData = new URLSearchParams({
@@ -646,7 +646,7 @@ const getValidMeliIntegration = async (clientId, accountId = null) => {
     return meliIntegration;
 };
 
-// [TEMPORAL] Ruta administrativa para limpiar pedidos fuera de zona (Auditoría profunda)
+// [TEMPORAL] Ruta administrativa para limpiar pedidos fuera de zona (AuditorÃ­a profunda)
 router.get('/admin/cleanup-deep', async (req, res) => {
     const { secret, target } = req.query;
     if (secret !== 'cleanup_2026') return res.status(403).send('Forbidden');
@@ -709,7 +709,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
         
         // 3. Create local package
         const now = new Date();
-        // [NUEVO] Validación estricta de Región (Solo Santiago / RM)
+        // [NUEVO] ValidaciÃ³n estricta de RegiÃ³n (Solo Santiago / RM)
         let stateName = shipment.receiver_address?.state?.name || 'Santiago';
         const lowerState = stateName.toLowerCase();
         const isRM = lowerState.includes('metropolitana') || 
@@ -718,9 +718,9 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
                      lowerState.includes('r.m.');
 
         if (!isRM) {
-            return res.status(400).json({ message: `No se puede importar: El destino (${stateName}) está fuera de la Región Metropolitana.` });
+            return res.status(400).json({ message: `No se puede importar: El destino (${stateName}) estÃ¡ fuera de la RegiÃ³n Metropolitana.` });
         }
-        stateName = 'Región Metropolitana';
+        stateName = 'RegiÃ³n Metropolitana';
 
         const newPackage = {
             id: `${userRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
@@ -728,7 +728,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
-            origin: 'Centro de Distribución',
+            origin: 'Centro de DistribuciÃ³n',
             recipientAddress: shipment.receiver_address?.address_line || 'N/A',
             recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
             recipientCity: stateName,
@@ -736,7 +736,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             estimatedDelivery: now,
             createdAt: now,
             updatedAt: now,
-            creatorId: clientId,
+            creatorId: req.user.id,
             source: 'MERCADO_LIBRE',
             meliOrderId: scannedId,
             meliFlexCode: flexCode || scannedId,
@@ -749,9 +749,9 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
 
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
         await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-            [newPackage.id, 'Creado', newPackage.origin, 'Importado vía escaneo ML.', now]);
+            [newPackage.id, 'Creado', newPackage.origin, 'Importado vÃ­a escaneo ML.', now]);
 
-        // [NUEVO] Sincronizar trackingId original de forma asíncrona
+        // [NUEVO] Sincronizar trackingId original de forma asÃ­ncrona
         meliPollingService.syncTrackingId(newPackage.id);
 
         res.status(201).json({ message: `Paquete para ${newPackage.recipientName} importado!`, pkg: newPackage });
@@ -889,7 +889,7 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                 }
 
                 if (!accountToUse) {
-                    results.push({ orderId, status: 'error', message: 'No se encontró la cuenta vinculada para este pedido.' });
+                    results.push({ orderId, status: 'error', message: 'No se encontrÃ³ la cuenta vinculada para este pedido.' });
                     continue;
                 }
 
@@ -900,7 +900,7 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                 const shipmentId = order.shipping?.id;
                 
                 if (!shipmentId) {
-                    results.push({ orderId, status: 'error', message: 'No se encontró un ID de envío para este pedido.' });
+                    results.push({ orderId, status: 'error', message: 'No se encontrÃ³ un ID de envÃ­o para este pedido.' });
                     continue;
                 }
 
@@ -926,10 +926,10 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                              lowerState.includes('r.m.');
 
                 if (!isRM) {
-                    results.push({ orderId, status: 'error', message: `El destino (${stateName}) está fuera de la Región Metropolitana.` });
+                    results.push({ orderId, status: 'error', message: `El destino (${stateName}) estÃ¡ fuera de la RegiÃ³n Metropolitana.` });
                     continue;
                 }
-                stateName = 'Región Metropolitana';
+                stateName = 'RegiÃ³n Metropolitana';
 
                 const newPackage = {
                     id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
@@ -937,7 +937,7 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                     recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
                     status: 'PENDIENTE',
                     shippingType: 'SAME_DAY',
-                    origin: 'Centro de Distribución',
+                    origin: 'Centro de DistribuciÃ³n',
                     recipientAddress: shipment.receiver_address?.address_line || 'N/A',
                     recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
                     recipientCity: stateName,
@@ -1003,7 +1003,7 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
         }
 
         if (!hostname) {
-            return reject(new Error('URL de tienda inválida. Por favor usa el formato "tienda.myshopify.com".'));
+            return reject(new Error('URL de tienda invÃ¡lida. Por favor usa el formato "tienda.myshopify.com".'));
         }
 
         const options = {
@@ -1136,7 +1136,7 @@ router.post('/test/shopify', authMiddleware, async (req, res) => {
         // Test by fetching shop info
         const shopData = await makeShopifyRequest(shopifyShopUrl, shopifyAccessToken, '/shop.json');
         res.json({ 
-            message: 'Conexión exitosa con Shopify.',
+            message: 'ConexiÃ³n exitosa con Shopify.',
             shopName: shopData?.shop?.name
         });
     } catch (err) {
@@ -1151,7 +1151,7 @@ router.post('/test/shopify', authMiddleware, async (req, res) => {
             } else if (err.statusCode === 404) {
                 errorMsg = 'No encontrado. Verifica que la URL de la tienda sea correcta.';
             } else if (err.statusCode === 403) {
-                errorMsg = 'Acceso prohibido. El token no tiene permisos para acceder a la información de la tienda.';
+                errorMsg = 'Acceso prohibido. El token no tiene permisos para acceder a la informaciÃ³n de la tienda.';
             }
         }
 
@@ -1180,7 +1180,7 @@ router.post('/test/woocommerce', authMiddleware, async (req, res) => {
     try {
         // Test by fetching system status or just a simple endpoint
         await makeWooCommerceRequest(wooUrl, wooConsumerKey, wooConsumerSecret, '/system_status');
-        res.json({ message: 'Conexión exitosa con WooCommerce.' });
+        res.json({ message: 'ConexiÃ³n exitosa con WooCommerce.' });
     } catch (err) {
         console.error("WooCommerce Test Connection Error:", err.body || err);
         let errorMsg = 'Error al conectar con WooCommerce.';
@@ -1191,7 +1191,7 @@ router.post('/test/woocommerce', authMiddleware, async (req, res) => {
             if (err.statusCode === 401) {
                 errorMsg = 'No autorizado. Verifica que el Consumer Key y Consumer Secret sean correctos.';
             } else if (err.statusCode === 404) {
-                errorMsg = 'No encontrado. Verifica que la URL sea correcta y la API REST esté habilitada.';
+                errorMsg = 'No encontrado. Verifica que la URL sea correcta y la API REST estÃ© habilitada.';
             }
         }
 
@@ -1217,7 +1217,7 @@ router.post('/test/falabella', authMiddleware, async (req, res) => {
         // Placeholder for Falabella test
         // In a real scenario, we would call a "ping" or "status" endpoint.
         // For now, we'll simulate a successful connection if the fields are provided.
-        res.json({ message: 'Configuración de Falabella guardada (Prueba de conexión pendiente de implementación exacta).' });
+        res.json({ message: 'ConfiguraciÃ³n de Falabella guardada (Prueba de conexiÃ³n pendiente de implementaciÃ³n exacta).' });
     } catch (err) {
         console.error("Falabella Test Connection Error:", err);
         res.status(500).json({ message: 'Error al conectar con Falabella: ' + (err.message || 'Error desconocido') });
@@ -1357,7 +1357,7 @@ router.post('/shopify/webhook', async (req, res) => {
 
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
         await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-            [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía Webhook de Shopify.', now]);
+            [newPackage.id, 'Creado', newPackage.origin, 'Importado automÃ¡ticamente vÃ­a Webhook de Shopify.', now]);
 
         console.log(`[ShopifyWebhook] Order ${orderId} imported successfully as package ${newPackage.id}`);
         res.status(201).send('Order Imported');
@@ -1440,40 +1440,40 @@ router.get('/meli/auth', authMiddleware, async (req, res) => {
 
         const clientId = rows[0].meli_app_id;
         const host = req.get('host');
-        // Usamos https por defecto ya que producción exige SSL, localhost se maneja por proxy o directamente
+        // Usamos https por defecto ya que producciÃ³n exige SSL, localhost se maneja por proxy o directamente
         const protocol = host.includes('localhost') ? 'http' : 'https';
         const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/meli/callback`);
         
-        // El 'state' es fundamental para saber a qué usuario asignar la cuenta al volver
+        // El 'state' es fundamental para saber a quÃ© usuario asignar la cuenta al volver
         const authUrl = `https://auth.mercadolibre.cl/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${req.user.id}`;
         
         res.redirect(authUrl);
     } catch (err) {
         console.error('[MeliAuth] Error:', err);
-        res.status(500).json({ message: 'Error interno al iniciar autenticación con ML' });
+        res.status(500).json({ message: 'Error interno al iniciar autenticaciÃ³n con ML' });
     }
 });
 
 // GET /api/integrations/meli/callback
-// Recibe el código de ML y guarda la cuenta en el array de integraciones del usuario
+// Recibe el cÃ³digo de ML y guarda la cuenta en el array de integraciones del usuario
 router.get('/meli/callback', async (req, res) => {
     const { code, state: userId } = req.query;
 
     if (!code || !userId) {
-        return res.status(400).send('Faltan parámetros de autorización (code o state).');
+        return res.status(400).send('Faltan parÃ¡metros de autorizaciÃ³n (code o state).');
     }
 
     try {
         // 1. Obtener credenciales de la App
         const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-        if (settingsRows.length === 0) return res.status(500).send('Configuración de ML no encontrada.');
+        if (settingsRows.length === 0) return res.status(500).send('ConfiguraciÃ³n de ML no encontrada.');
         
         const { meli_app_id, meli_client_secret } = settingsRows[0];
         const host = req.get('host');
         const protocol = host.includes('localhost') ? 'http' : 'https';
         const redirectUri = `${protocol}://${host}/api/integrations/meli/callback`;
         
-        // 2. Intercambiar código por tokens
+        // 2. Intercambiar cÃ³digo por tokens
         const postData = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: meli_app_id,
@@ -1485,14 +1485,14 @@ router.get('/meli/callback', async (req, res) => {
         const tokenData = await makeMeliPostRequest('/oauth/token', postData);
         const meliUserId = tokenData.user_id.toString();
 
-        // 3. Obtener información básica del vendedor (nickname)
+        // 3. Obtener informaciÃ³n bÃ¡sica del vendedor (nickname)
         let nickname = `Mercado Libre (${meliUserId})`;
         try {
             const userData = await makeMeliGetRequest(`/users/${meliUserId}`, tokenData.access_token);
             if (userData && userData.nickname) nickname = userData.nickname;
         } catch (e) { console.error('Error fetching ML user info:', e); }
 
-        // 4. Verificar duplicados (¿Está esta cuenta de ML en otro usuario?)
+        // 4. Verificar duplicados (Â¿EstÃ¡ esta cuenta de ML en otro usuario?)
         // Buscamos tanto en la estructura vieja como en el nuevo array 'accounts'
         const duplicateCheckQuery = `
             SELECT id, name FROM users 
@@ -1512,7 +1512,7 @@ router.get('/meli/callback', async (req, res) => {
                 <head>
                     <meta charset="UTF-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Cuenta ya vinculada | Full Envíos</title>
+                    <title>Cuenta ya vinculada | Full EnvÃ­os</title>
                     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
                     <style>
                         :root {
@@ -1581,10 +1581,10 @@ router.get('/meli/callback', async (req, res) => {
                 </head>
                 <body>
                     <div class="container">
-                        <div class="icon-circle">✕</div>
+                        <div class="icon-circle">âœ•</div>
                         <h2>Cuenta ya vinculada</h2>
                         <p>La tienda <span class="highlight">${nickname}</span> ya pertenece al cliente <span class="highlight">${duplicateRows[0].name}</span>.</p>
-                        <p style="font-size: 0.85rem;">Por seguridad, una cuenta de plataforma solo puede estar asociada a un único usuario en Full Envíos.</p>
+                        <p style="font-size: 0.85rem;">Por seguridad, una cuenta de plataforma solo puede estar asociada a un Ãºnico usuario en Full EnvÃ­os.</p>
                         <button onclick="window.close()" class="btn">Cerrar Ventana</button>
                     </div>
                 </body>
@@ -1615,13 +1615,13 @@ router.get('/meli/callback', async (req, res) => {
             connectedAt: new Date().toISOString()
         };
 
-        // Actualizar si existe, o añadir si es nueva
+        // Actualizar si existe, o aÃ±adir si es nueva
         const existingIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE' && acc.credentials.userId === meliUserId);
         if (existingIndex > -1) {
             integrations.accounts[existingIndex] = {
                 ...integrations.accounts[existingIndex],
                 credentials: meliIntegration,
-                nickname: nickname // Actualizar nickname por si cambió
+                nickname: nickname // Actualizar nickname por si cambiÃ³
             };
         } else {
             integrations.accounts.push(newAccount);
@@ -1640,7 +1640,7 @@ router.get('/meli/callback', async (req, res) => {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>¡Éxito! | Full Envíos</title>
+                <title>Â¡Ã‰xito! | Full EnvÃ­os</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
                 <style>
                     :root {
@@ -1715,11 +1715,11 @@ router.get('/meli/callback', async (req, res) => {
             </head>
             <body>
                 <div class="container">
-                    <div class="icon-circle">✓</div>
-                    <h2>¡Conexión Exitosa!</h2>
-                    <p>La tienda <span class="highlight">${nickname}</span> se ha vinculado correctamente a Full Envíos.</p>
+                    <div class="icon-circle">âœ“</div>
+                    <h2>Â¡ConexiÃ³n Exitosa!</h2>
+                    <p>La tienda <span class="highlight">${nickname}</span> se ha vinculado correctamente a Full EnvÃ­os.</p>
                     <button onclick="window.close()" class="btn">Listo, Volver</button>
-                    <div class="timer">Esta ventana se cerrará automáticamente...</div>
+                    <div class="timer">Esta ventana se cerrarÃ¡ automÃ¡ticamente...</div>
                 </div>
                 <script>setTimeout(() => window.close(), 4000);</script>
             </body>
@@ -1728,7 +1728,7 @@ router.get('/meli/callback', async (req, res) => {
 
     } catch (err) {
         console.error('[MeliCallback] Error:', err);
-        res.status(500).send('Error al procesar la vinculación con Mercado Libre.');
+        res.status(500).send('Error al procesar la vinculaciÃ³n con Mercado Libre.');
     }
 });
 
@@ -1745,7 +1745,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         );
 
         if (clients.length === 0) {
-            return res.status(404).json({ message: 'No hay clientes con integración de Mercado Libre configurada.' });
+            return res.status(404).json({ message: 'No hay clientes con integraciÃ³n de Mercado Libre configurada.' });
         }
 
         let foundShipment = null;
@@ -1782,7 +1782,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         }
 
         if (!foundShipment) {
-            return res.status(404).json({ message: 'No se encontró el envío en Mercado Libre con ninguna de las cuentas conectadas.' });
+            return res.status(404).json({ message: 'No se encontrÃ³ el envÃ­o en Mercado Libre con ninguna de las cuentas conectadas.' });
         }
 
         // 2. Check if it already exists locally to return the full local record if available
@@ -1821,7 +1821,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             recipientPhone: foundShipment.receiver_address?.receiver_phone || 'N/A',
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
-            origin: 'Centro de Distribución',
+            origin: 'Centro de DistribuciÃ³n',
             recipientAddress: foundShipment.receiver_address?.address_line || 'N/A',
             recipientCommune: foundShipment.receiver_address?.city?.name || 'N/A',
             recipientCity: foundShipment.receiver_address?.state?.name || 'Santiago',
@@ -1862,14 +1862,14 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         // Add tracking event
         await db.query(
             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-            [insertedRows[0].id, 'Creado', 'Centro de Distribución', 'Sincronizado manualmente desde Mercado Libre.', now]
+            [insertedRows[0].id, 'Creado', 'Centro de DistribuciÃ³n', 'Sincronizado manualmente desde Mercado Libre.', now]
         );
 
         res.json(insertedRows[0]);
 
     } catch (err) {
         console.error("Sync Shipment Error:", err);
-        res.status(500).json({ message: 'Error interno al sincronizar el envío.' });
+        res.status(500).json({ message: 'Error interno al sincronizar el envÃ­o.' });
     }
 });
 
@@ -1882,7 +1882,7 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
     const { shop } = req.query; // e.g. "mi-tienda.myshopify.com"
 
     if (!shop) {
-        return res.status(400).json({ message: 'El parámetro "shop" es obligatorio. Debe ser el dominio de tu tienda Shopify.' });
+        return res.status(400).json({ message: 'El parÃ¡metro "shop" es obligatorio. Debe ser el dominio de tu tienda Shopify.' });
     }
 
     try {
@@ -1895,7 +1895,7 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
         const scopes = 'read_orders,write_orders,read_customers,read_fulfillments,write_fulfillments';
         const host = req.get('host');
         
-        // Determinar el protocolo dinámicamente: localhost permite http, servidores reales exigen https
+        // Determinar el protocolo dinÃ¡micamente: localhost permite http, servidores reales exigen https
         const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
         const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/shopify/callback`);
         const formattedShop = shop.replace(/^https?:\/\//, '').split('/')[0].trim();
@@ -1907,7 +1907,7 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
         res.redirect(installUrl);
     } catch (err) {
         console.error("Shopify Install Error:", err);
-        res.status(500).json({ message: 'Error interno del servidor al iniciar la instalación de Shopify.' });
+        res.status(500).json({ message: 'Error interno del servidor al iniciar la instalaciÃ³n de Shopify.' });
     }
 });
 
@@ -1917,13 +1917,13 @@ router.get('/shopify/callback', async (req, res) => {
     const { code, shop, state: userId, hmac } = req.query;
 
     if (!code || !shop || !userId) {
-        return res.status(400).send('Faltan parámetros obligatorios en la respuesta de Shopify.');
+        return res.status(400).send('Faltan parÃ¡metros obligatorios en la respuesta de Shopify.');
     }
 
     try {
         const { rows: settingsRows } = await db.query('SELECT shopify_client_id, shopify_client_secret FROM integration_settings WHERE id = 1');
         if (settingsRows.length === 0 || !settingsRows[0].shopify_client_id || !settingsRows[0].shopify_client_secret) {
-            return res.status(500).send('Configuración global de Shopify faltante.');
+            return res.status(500).send('ConfiguraciÃ³n global de Shopify faltante.');
         }
 
         const clientId = settingsRows[0].shopify_client_id;
@@ -1955,7 +1955,7 @@ router.get('/shopify/callback', async (req, res) => {
                     if (resApi.statusCode >= 200 && resApi.statusCode < 300 && response.access_token) {
                         const accessToken = response.access_token;
                         
-                        // Guardar en la base de datos del usuario específico (userId = state)
+                        // Guardar en la base de datos del usuario especÃ­fico (userId = state)
                         const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
                         if (userRows.length === 0) {
                             return res.status(404).send('Usuario propietario no encontrado.');
@@ -1997,8 +1997,8 @@ router.get('/shopify/callback', async (req, res) => {
                             <html>
                                 <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6;">
                                     <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); text-align: center;">
-                                        <h2 style="color: #059669;">¡Tienda Conectada Correctamente!</h2>
-                                        <p>Se ha configurado la aplicación Full Envios en <strong>${shop}</strong> y obtenido el token seguro.</p>
+                                        <h2 style="color: #059669;">Â¡Tienda Conectada Correctamente!</h2>
+                                        <p>Se ha configurado la aplicaciÃ³n Full Envios en <strong>${shop}</strong> y obtenido el token seguro.</p>
                                         <p>Ya puedes cerrar esta ventana y regresar a tu panel.</p>
                                         <button onclick="window.close()" style="margin-top: 15px; padding: 10px 20px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">Cerrar Ventana</button>
                                     </div>
@@ -2007,10 +2007,10 @@ router.get('/shopify/callback', async (req, res) => {
                             </html>
                         `);
                     } else {
-                        return res.status(400).send(`Error de Autenticación con Shopify: ${JSON.stringify(response)}`);
+                        return res.status(400).send(`Error de AutenticaciÃ³n con Shopify: ${JSON.stringify(response)}`);
                     }
                 } catch (e) {
-                    return res.status(500).send('Respuesta inválida de Shopify durante el intercambio de token.');
+                    return res.status(500).send('Respuesta invÃ¡lida de Shopify durante el intercambio de token.');
                 }
             });
         });
@@ -2077,10 +2077,111 @@ router.post('/test/jumpseller', authMiddleware, async (req, res) => {
     const { jumpsellerLogin, jumpsellerToken } = req.body;
     try {
         const response = await makeJumpsellerRequest(jumpsellerLogin, jumpsellerToken, '/store/info.json');
-        res.json({ message: `Conexión exitosa con tienda: ${response.store?.name || 'Jumpseller'}` });
+        res.json({ message: `ConexiÃ³n exitosa con tienda: ${response.store?.name || 'Jumpseller'}` });
     } catch (err) {
         console.error("Jumpseller Test Error:", err.body || err);
-        res.status(err.statusCode || 500).json({ message: 'Error de conexión con Jumpseller. Verifica tus credenciales.', error: err.body || err.message });
+        res.status(err.statusCode || 500).json({ message: 'Error de conexiÃ³n con Jumpseller. Verifica tus credenciales.', error: err.body || err.message });
+    }
+});
+
+// GET /api/integrations/:clientId/jumpseller/orders - Fetch orders from Jumpseller
+router.get('/:clientId/jumpseller/orders', authMiddleware, async (req, res) => {
+    const { clientId } = req.params;
+
+    if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
+        return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
+    }
+
+    try {
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Cliente no encontrado.' });
+        
+        const jumpsellerIntegration = userRows[0].integrations?.jumpseller;
+        if (!jumpsellerIntegration) return res.status(400).json({ message: 'El cliente no tiene Jumpseller conectado.' });
+
+        // Fetch recent orders (Ready or Paid)
+        // Jumpseller orders endpoint: /orders.json
+        const orders = await makeJumpsellerRequest(jumpsellerIntegration.login, jumpsellerIntegration.token, '/orders.json?status=all&limit=50');
+        
+        // Filter and map to local format
+        // Statuses usually: 'Paid', 'Pending', 'Abandoned', 'Canceled', 'Shipped', 'Ready'
+        const eligibleOrders = orders
+            .filter(o => o.order.status === 'Paid' || o.order.status === 'Ready')
+            .map(o => {
+                const order = o.order;
+                const shipping = order.shipping_address || {};
+                const customer = order.customer || {};
+                
+                return {
+                    id: order.id.toString(),
+                    recipientName: shipping.fullname || customer.fullname || 'N/A',
+                    address: shipping.address || 'N/A',
+                    commune: shipping.municipality || 'N/A',
+                    city: shipping.city || 'N/A',
+                    notes: `Jumpseller Order: ${order.id}`,
+                    shipmentId: order.id.toString() // Jumpseller doesn't have a separate shipment ID easily accessible like ML
+                };
+            });
+
+        res.json(eligibleOrders);
+    } catch (err) {
+        console.error("Jumpseller Fetch Orders Error:", err.body || err);
+        res.status(500).json({ message: err.message || 'Error al obtener pedidos de Jumpseller.' });
+    }
+});
+
+
+// --- JUMPSELLER API HELPERS ---
+const makeJumpsellerRequest = (login, token, path, method = 'GET', postData = null) => {
+    return new Promise((resolve, reject) => {
+        if (!login) return reject(new Error('El Login de Jumpseller es requerido.'));
+        if (!token) return reject(new Error('El API Token de Jumpseller es requerido.'));
+
+        const url = new URL(`https://api.jumpseller.com/v1${path}`);
+        url.searchParams.append('login', login);
+        url.searchParams.append('authtoken', token);
+
+        const options = {
+            hostname: url.hostname,
+            path: url.pathname + url.search,
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            }
+        };
+
+        const req = https.request(options, (res) => {
+            let data = '';
+            res.on('data', (chunk) => { data += chunk; });
+            res.on('end', () => {
+                try {
+                    const parsedData = JSON.parse(data);
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(parsedData);
+                    } else {
+                        reject({ statusCode: res.statusCode, body: parsedData });
+                    }
+                } catch (e) {
+                    reject({ statusCode: res.statusCode, body: data, isRaw: true });
+                }
+            });
+        });
+        req.on('error', (e) => reject(e));
+        if (postData) req.write(JSON.stringify(postData));
+        req.end();
+    });
+};
+
+// POST /api/integrations/test/jumpseller - Test Jumpseller connection
+router.post('/test/jumpseller', authMiddleware, async (req, res) => {
+    const { jumpsellerLogin, jumpsellerToken } = req.body;
+    try {
+        const response = await makeJumpsellerRequest(jumpsellerLogin, jumpsellerToken, '/store/info.json');
+        res.json({ message: `ConexiÃ³n exitosa con tienda: ${response.store?.name || 'Jumpseller'}` });
+    } catch (err) {
+        console.error("Jumpseller Test Error:", err.body || err);
+        res.status(err.statusCode || 500).json({ message: 'Error de conexiÃ³n con Jumpseller. Verifica tus credenciales.', error: err.body || err.message });
     }
 });
 
@@ -2132,94 +2233,120 @@ router.get('/:clientId/jumpseller/orders', authMiddleware, async (req, res) => {
 
 // POST /api/integrations/jumpseller/webhook - Handle Jumpseller webhooks (e.g., order_paid)
 router.post('/jumpseller/webhook', async (req, res) => {
-    // Jumpseller doesn't sign webhooks with a secret in the same way Shopify does by default, 
-    // unless configured. For now, we'll process it and recommend IP or token validation in production.
     const orderData = req.body;
-    
-    // Webhook structure: { "id": 123, "status": "Paid", ... } or { "order": { ... } }
     const order = orderData.order || orderData;
-    
-    if (!order || !order.id) {
-        return res.status(400).send('Invalid webhook data');
-    }
-
-    console.log(`[JumpsellerWebhook] Received webhook for order ${order.id} (Status: ${order.status})`);
-
-    // We only import if status is Paid or Ready
-    if (order.status !== 'Paid' && order.status !== 'Ready') {
-        return res.status(200).send('Order status not eligible for import');
-    }
+    if (!order || !order.id) return res.status(400).send('Invalid webhook data');
+    if (order.status !== 'Paid' && order.status !== 'Ready') return res.status(200).send('Order status not eligible');
 
     try {
-        // Find the client associated with this store
-        // Since Jumpseller webhooks don't send the store identifier in a standard header, 
-        // we might need a custom parameter in the webhook URL: /webhook?clientId=XYZ
         const { clientId } = req.query;
-        if (!clientId) {
-            console.error('[JumpsellerWebhook] No clientId provided in webhook URL');
-            return res.status(400).send('Missing clientId');
-        }
-
-        const { rows: userRows } = await db.query('SELECT id, "clientIdentifier", address, "pickupAddress" FROM users WHERE id = $1', [clientId]);
+        const { rows: userRows } = await db.query('SELECT id, "clientIdentifier", address, "pickupAddress", integrations FROM users WHERE id = $1', [clientId]);
         if (userRows.length === 0) return res.status(404).send('Client not found');
-        
         const client = userRows[0];
-        
-        // Check if already exists
-        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "jumpsellerOrderId" = $1', [order.id.toString()]);
-        if (existing.length > 0) {
-            return res.status(200).send('Order already imported');
+
+        let sourceAccountId = null;
+        let sourceAccountName = null;
+        if (client.integrations && client.integrations.accounts) {
+            const jumpsellerAcc = client.integrations.accounts.find(a => a.type === 'JUMPSELLER');
+            if (jumpsellerAcc) {
+                sourceAccountId = jumpsellerAcc.id;
+                sourceAccountName = jumpsellerAcc.nickname;
+            }
         }
 
         const shipping = order.shipping_address || {};
-        const customer = order.customer || {};
-        
         const now = new Date();
         const packageId = `${client.clientIdentifier}-${uuidv4().split('-')[0]}`;
-        const destination = shipping.address || 'N/A';
-        const commune = shipping.municipality || 'N/A';
-        const city = shipping.city || 'Santiago';
         const origin = client.pickupAddress || client.address || 'Centro de Distribución';
 
         const newPackage = {
             id: packageId,
-            recipientName: shipping.fullname || customer.fullname || 'N/A',
-            recipientPhone: shipping.phone || customer.phone || 'N/A',
-            recipientEmail: customer.email || '',
+            recipientName: shipping.fullname || order.customer?.fullname || 'N/A',
+            recipientPhone: shipping.phone || order.customer?.phone || 'N/A',
+            recipientEmail: order.customer?.email || '',
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
             origin: origin,
-            destination: destination,
-            recipientAddress: destination,
-            recipientCommune: commune,
-            recipientCity: city,
+            destination: shipping.address || 'N/A',
+            recipientAddress: shipping.address || 'N/A',
+            recipientCommune: shipping.municipality || 'N/A',
+            recipientCity: shipping.city || 'Santiago',
             notes: `Auto-Import Jumpseller Order: ${order.id}`,
             estimatedDelivery: now,
             createdAt: now,
             updatedAt: now,
             creatorId: clientId,
             source: 'JUMPSELLER',
-            jumpsellerOrderId: order.id.toString()
+            jumpsellerOrderId: order.id.toString(),
+            sourceAccountId,
+            sourceAccountName
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
         const values = Object.values(newPackage);
         const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-        
-        // Add tracking event
-        await db.query(
-            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-            [packageId, 'Creado', origin, 'Auto-importado vía Webhook de Jumpseller.', now]
-        );
-
-        console.log(`[JumpsellerWebhook] Order ${order.id} imported successfully as ${packageId}`);
+        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', [packageId, 'Creado', origin, 'Auto-importado vía Webhook.', now]);
         res.status(200).send('OK');
-
     } catch (err) {
-        console.error('[JumpsellerWebhook] Error processing webhook:', err);
-        res.status(500).send('Error internal');
+        console.error('[JumpsellerWebhook] Error:', err);
+        res.status(500).send('Error');
+    }
+});
+
+
+
+// POST /api/integrations/accounts - Link a new account manually (Jumpseller, Falabella, WooCommerce)
+router.post('/accounts', authMiddleware, async (req, res) => {
+    const userId = req.user.id;
+    const { type, nickname, credentials } = req.body;
+
+    if (!type || !credentials) {
+        return res.status(400).json({ message: 'Tipo de cuenta y credenciales son obligatorios.' });
+    }
+
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado.' });
+
+        let integrations = ensureMultiAccountStructure(rows[0].integrations);
+
+        let identifier = '';
+        if (type === 'JUMPSELLER') identifier = credentials.shopUrl || credentials.login;
+        if (type === 'FALABELLA') identifier = credentials.falabellaSellerId;
+        if (type === 'WOOCOMMERCE') identifier = credentials.wooUrl;
+
+        const existing = integrations.accounts.find(acc => acc.type === type && (
+            (type === 'JUMPSELLER' && (acc.credentials.shopUrl === identifier || acc.credentials.login === identifier)) ||
+            (type === 'FALABELLA' && acc.credentials.falabellaSellerId === identifier) ||
+            (type === 'WOOCOMMERCE' && acc.credentials.wooUrl === identifier)
+        ));
+
+        if (existing) {
+            return res.status(400).json({ message: 'Esta cuenta ya está vinculada a tu perfil.' });
+        }
+
+        const newAccount = {
+            id: `${type.toLowerCase()}-${uuidv4()}`,
+            type: type,
+            nickname: nickname || `${type} Account`,
+            credentials: credentials,
+            settings: {
+                autoImport: true,
+                syncInterval: 30
+            },
+            connectedAt: new Date().toISOString(),
+            status: 'CONNECTED'
+        };
+
+        integrations.accounts.push(newAccount);
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
+
+        res.status(201).json(newAccount);
+    } catch (err) {
+        console.error("Create Integration Account Error:", err);
+        res.status(500).json({ message: 'Error interno al crear la cuenta de integración.' });
     }
 });
 

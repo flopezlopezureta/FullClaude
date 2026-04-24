@@ -1,0 +1,280 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Manual de Configuración Shopify 2026 - Full Envios</title>
+    <style>
+        :root {
+            --primary: #008ba3;
+            --secondary: #95bf47;
+            --text-dark: #1a202c;
+            --text-light: #4a5568;
+            --bg-light: #f7fafc;
+            --border: #e2e8f0;
+        }
+        @page {
+            size: letter;
+            margin: 25mm !important; /* Forces 2.5cm margin on all sides */
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            -webkit-font-smoothing: antialiased;
+        }
+        /* Web View - Normal Size */
+        .container {
+            max-width: 950px;
+            margin: 40px auto;
+            padding: 50px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background-color: white;
+            position: relative;
+        }
+        header {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -1px;
+        }
+        h1 { font-size: 32px; color: var(--text-dark); margin: 0; }
+        h2 { font-size: 22px; color: var(--primary); border-left: 5px solid var(--primary); padding-left: 15px; margin-top: 40px; margin-bottom: 15px; }
+        p { margin-bottom: 15px; color: var(--text-light); font-size: 16px; }
+        .alert {
+            background-color: #ebf8ff !important;
+            border-left: 5px solid #3182ce !important;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+            font-size: 15px;
+            break-inside: avoid;
+        }
+        .alert-important {
+            background-color: #fffaf0 !important;
+            border-left: 5px solid #dd6b20 !important;
+        }
+        .step {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            break-inside: avoid;
+        }
+        .step-number {
+            background: var(--primary) !important;
+            color: white !important;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .step-content {
+            font-size: 16px;
+        }
+        .token-box {
+            background: #f1f5f9;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-family: monospace;
+            border: 1px solid #cbd5e1;
+            font-size: 14px;
+        }
+        ul { font-size: 16px; color: var(--text-light); padding-left: 25px; }
+        footer {
+            margin-top: 60px;
+            padding-top: 25px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-light);
+            break-inside: avoid;
+        }
+        /* Bulletproof Print View */
+        @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: white !important;
+                overflow: visible !important;
+            }
+            .container {
+                max-width: none !important;
+                width: 165mm !important; /* Total width minus 50mm margins */
+                margin: 0 auto !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                display: block !important;
+                position: static !important;
+            }
+            .no-print { display: none !important; }
+            h1 { font-size: 18pt !important; }
+            h2 { font-size: 14pt !important; margin-top: 25pt !important; break-after: avoid !important; }
+            p, ul, li, .step-content, .alert { font-size: 10pt !important; }
+            .alert { 
+                padding: 12pt !important; 
+                margin: 12pt 0 !important; 
+                border: 0.5pt solid #e2e8f0 !important;
+            }
+            .step { margin-bottom: 10pt !important; }
+            header { margin-bottom: 25pt !important; }
+            footer { margin-top: 30pt !important; font-size: 8pt !important; }
+        }
+        .btn-print {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 15px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-print:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print" style="text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+            <span id="version-tag" style="font-size: 12px; color: var(--text-light); font-weight: bold;"></span>
+            <a href="#" onclick="window.print(); return false;" class="btn-print">Descargar / Imprimir PDF</a>
+        </div>
+        
+        <script>
+            // Generate unique filename with timestamp for PDF saving
+            function updateTitle() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const hours = String(now.getHours()).padStart(2, '0');
+                const minutes = String(now.getMinutes()).padStart(2, '0');
+                
+                const timestamp = `${year}${month}${day}_${hours}${minutes}`;
+                const baseTitle = "Manual_Shopify_2026";
+                document.title = `${baseTitle}_${timestamp}`;
+                
+                // Also update the version tag in UI
+                const tagEl = document.getElementById('version-tag');
+                if (tagEl) tagEl.innerText = "Versión Gen: " + timestamp;
+            }
+            updateTitle();
+        </script>
+        
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="/logo.png" alt="Full Envios Logo" style="height: 60px; width: auto;">
+                <div>
+                    <div class="logo-text">FULL ENVIOS</div>
+                    <h1>Manual de Integración Shopify 2026</h1>
+                </div>
+            </div>
+            <div style="text-align: right; color: var(--text-light); font-size: 14px;">
+                Versión 2.1<br>
+                Abril 2026
+            </div>
+        </header>
+
+        <p>Esta guía detalla los pasos necesarios para conectar de manera exitosa su tienda Shopify con la plataforma de Full Envios, permitiendo la automatización de su flujo logístico.</p>
+
+        <div class="alert alert-important">
+            <strong>REQUISITO CRÍTICO:</strong> Antes de iniciar, asegúrese de estar <strong>logueado en su panel de administración de Shopify</strong> en el mismo navegador donde tiene abierta la plataforma de Full Envios. Esto es indispensable para que la conexión automática funcione correctamente.
+        </div>
+
+        <h2>1. Conexión Automática (Recomendado)</h2>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div>
+                <strong>Ingrese la URL:</strong> En la pestaña "Conexión", escriba el subdominio de su tienda (ej: <code>mi-tienda.myshopify.com</code>).
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div>
+                <strong>Conectar:</strong> Haga clic en el botón verde <strong>"Conectar automáticamente"</strong>. Si ya está logueado en Shopify, se abrirá una ventana de autorización.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div>
+                <strong>Instalar App:</strong> Revise los permisos y haga clic en <strong>"Instalar App"</strong>. El sistema lo regresará automáticamente a Full Envios con la conexión lista.
+            </div>
+        </div>
+
+        <h2>2. Conexión Manual (App Privada)</h2>
+        <p>Si prefiere no usar el flujo automático, puede configurar una App Personalizada en Shopify y obtener un "Access Token".</p>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div>
+                <strong>Pestaña Manual:</strong> Diríjase a la pestaña "Modo Manual" en la configuración de Shopify.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div>
+                <strong>Ingrese el Token:</strong> Pegue su token que comienza con <span class="token-box">shpat_...</span>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div>
+                <strong>Probar:</strong> Use el botón "Probar Conexión Manual" para validar que las credenciales son funcionales.
+            </div>
+        </div>
+
+        <h2>3. Ajustes de Sincronización</h2>
+        <p>Una vez conectado, active la automatización en la pestaña "Sincronización":</p>
+        <ul>
+            <li><strong>Interruptor:</strong> Debe estar activado (color verde) para importar órdenes sin intervención manual.</li>
+            <li><strong>Tiempo de revisión:</strong> Recomendamos <strong>5 o 15 minutos</strong> para un flujo constante. Si su tienda tiene poco volumen, puede usar 30 o 60 minutos.</li>
+        </ul>
+
+        <div class="alert">
+            <strong>NOTA SOBRE REGIONES:</strong> La importación automática actualmente procesa exclusivamente pedidos con destino a la <strong>Región Metropolitana</strong>. Pedidos a regiones extremas deben gestionarse manualmente.
+        </div>
+
+        <h2>4. Guardado Final</h2>
+        <p>Independiente de los cambios realizados en las pestañas, es <strong>obligatorio</strong> hacer clic en el botón inferior <strong>"Guardar Configuración"</strong> para aplicar los cambios en el servidor.</p>
+
+        <footer>
+            © 2026 Full Envios - Soporte Técnico: soporte@fullenvios.cl<br>
+            Este documento fue generado automáticamente por el sistema.
+        </footer>
+    </div>
+</body>
+</html>

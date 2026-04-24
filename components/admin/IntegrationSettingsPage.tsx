@@ -87,6 +87,7 @@ const IntegrationSettingsPage: React.FC = () => {
     const [jumpsellerActiveTab, setJumpsellerActiveTab] = useState<'connect' | 'sync' | 'manual'>('connect');
     const [shopifyActiveTab, setShopifyActiveTab] = useState<'connect' | 'sync' | 'manual'>('connect');
     const [wooActiveTab, setWooActiveTab] = useState<'connect' | 'sync' | 'manual'>('connect');
+    const [isAuthorizingGoogle, setIsAuthorizingGoogle] = useState(false);
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -104,6 +105,20 @@ const IntegrationSettingsPage: React.FC = () => {
             }
         };
         fetchSettings();
+
+        // [NUEVO] Escuchar el mensaje de éxito desde el popup de Google
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                setSettings(prev => ({
+                    ...prev,
+                    hasGoogleSmtp: true,
+                    smtpGoogleEmail: event.data.email
+                }));
+                setSmtpTestResult({ type: 'success', message: `Cuenta ${event.data.email} vinculada con éxito.` });
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
     }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -220,6 +235,37 @@ const IntegrationSettingsPage: React.FC = () => {
         }
     };
     
+    const handleGoogleAuth = async () => {
+        setIsAuthorizingGoogle(true);
+        try {
+            const { url } = await api.getGoogleAuthUrl();
+            const width = 500;
+            const height = 600;
+            const left = window.screenX + (window.outerWidth - width) / 2;
+            const top = window.screenY + (window.outerHeight - height) / 2;
+            window.open(url, 'google-auth', `width=${width},height=${height},left=${left},top=${top}`);
+        } catch (err: any) {
+            alert('Error al iniciar flujo de Google: ' + err.message);
+        } finally {
+            setIsAuthorizingGoogle(false);
+        }
+    };
+
+    const handleDisconnectGoogle = async () => {
+        if (!confirm('¿Estás seguro de que deseas desconectar la cuenta de Google? El envío de correos dejará de funcionar hasta que configures SMTP manual.')) return;
+        try {
+            await api.disconnectGoogleSmtp();
+            setSettings(prev => ({
+                ...prev,
+                hasGoogleSmtp: false,
+                smtpGoogleEmail: undefined
+            }));
+            alert('Cuenta de Google desconectada.');
+        } catch (err: any) {
+            alert('Error al desconectar: ' + err.message);
+        }
+    };
+
     const handleSaveSmtp = async () => {
         setIsSavingSmtp(true);
         setSmtpTestResult(null);
@@ -1289,6 +1335,60 @@ const IntegrationSettingsPage: React.FC = () => {
                                     className={inputClasses}
                                     placeholder="Notificaciones Full Envíos <noreply@dominio.com>"
                                 />
+                            </div>
+
+                            {/* [NUEVO] Sección de Google Auth */}
+                            <div className="pt-4 border-t border-[var(--border-secondary)]">
+                                <div className="bg-[var(--background-muted)] rounded-lg p-4 border border-[var(--border-primary)] shadow-inner">
+                                    <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="bg-white p-2 rounded-full shadow-sm">
+                                                <svg className="w-6 h-6" viewBox="0 0 24 24">
+                                                    <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                                    <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-1 .67-2.28 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
+                                                    <path fill="#FBBC05" d="M5.84 14.09c-.22-.67-.35-1.39-.35-2.09s.13-1.42.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"/>
+                                                    <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
+                                                </svg>
+                                            </div>
+                                            <div>
+                                                <h4 className="text-sm font-bold text-[var(--text-primary)]">Google OAuth2</h4>
+                                                <p className="text-[11px] text-[var(--text-muted)] font-medium leading-tight">Autoriza el envío de correos iniciando sesión directamente con Google.</p>
+                                            </div>
+                                        </div>
+
+                                        {!settings.hasGoogleSmtp ? (
+                                            <button
+                                                type="button"
+                                                onClick={handleGoogleAuth}
+                                                disabled={isAuthorizingGoogle}
+                                                className="bg-white hover:bg-gray-50 text-gray-700 font-bold py-2 px-4 rounded-md border border-gray-300 shadow-md flex items-center gap-2 transition-all active:scale-95 disabled:opacity-50"
+                                            >
+                                                {isAuthorizingGoogle ? <IconLoader className="w-4 h-4 animate-spin text-blue-600" /> : null}
+                                                Iniciar sesión con Google
+                                            </button>
+                                        ) : (
+                                            <div className="flex items-center gap-2">
+                                                <div className="bg-green-100 text-green-700 px-3 py-1.5 rounded-full text-[11px] font-black uppercase tracking-wider flex items-center gap-2 border border-green-200">
+                                                    <IconCheckCircle className="w-3 h-3" />
+                                                    Conectado: {settings.smtpGoogleEmail}
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={handleDisconnectGoogle}
+                                                    className="text-red-500 hover:text-red-700 text-[11px] font-black uppercase tracking-widest hover:underline transition-all"
+                                                >
+                                                    Desconectar
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                    
+                                    {settings.hasGoogleSmtp && (
+                                        <div className="mt-3 p-2 bg-blue-50 border border-blue-100 rounded text-[10px] text-blue-700 font-medium">
+                                            <strong>Nota:</strong> Al usar Google OAuth2, los campos manuales de host y contraseña son ignorados. El sistema priorizará la conexión segura de Google.
+                                        </div>
+                                    )}
+                                </div>
                             </div>
 
                             <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">

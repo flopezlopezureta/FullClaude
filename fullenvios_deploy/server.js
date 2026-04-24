@@ -1,0 +1,841 @@
+
+
+
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const path = require('path');
+const db = require('./db');
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
+
+const app = express();
+
+// Trust proxy is required for correct protocol detection (http vs https) behind a load balancer
+app.set('trust proxy', 1);
+
+// --- Middlewares ---
+// Aggressively disable caching for all responses to solve stale asset issues.
+app.use((req, res, next) => {
+  res.setHeader('Cache-Control', 'no-store');
+  next();
+});
+
+app.use(cors());
+app.use(express.json({ limit: '10mb' })); // Allow larger payloads for photo uploads
+
+const PORT = process.env.PORT || 3000;
+
+async function startServer() {
+    // --- API Routes ---
+    // Helper to avoid startup crashes if a route file is missing in deploy.
+    function tryRequireRoute(modulePath) {
+      try {
+        return require(modulePath);
+      } catch (err) {
+        console.warn(`[WARN] Route module not found: ${modulePath}. Skipping.`, err && err.code ? err.code : err && err.message ? err.message : err);
+        return null;
+      }
+    }
+    // Define API routes first to ensure they are not overridden by the static file server or SPA fallback.
+    app.get('/api/health', (req, res) => {
+      res.json({ status: 'ok', message: 'Backend is running' });
+    });
+    const authRoute = tryRequireRoute('./routes/auth.js'); if (authRoute) app.use('/api/auth', authRoute);
+    const googleAuthRoute = tryRequireRoute('./routes/googleAuth.js'); if (googleAuthRoute) app.use('/api/auth/google', googleAuthRoute);
+    const usersRoute = tryRequireRoute('./routes/users.js'); if (usersRoute) app.use('/api/users', usersRoute);
+    const packagesRoute = tryRequireRoute('./routes/packages.js'); if (packagesRoute) app.use('/api/packages', packagesRoute);
+    const settingsRoute = tryRequireRoute('./routes/settings.js'); if (settingsRoute) app.use('/api/settings', settingsRoute);
+    const zonesRoute = tryRequireRoute('./routes/zones.js'); if (zonesRoute) app.use('/api/zones', zonesRoute);
+    const invoicesRoute = tryRequireRoute('./routes/invoices.js'); if (invoicesRoute) app.use('/api/invoices', invoicesRoute);
+    const billingRoute = tryRequireRoute('./routes/billing.js'); if (billingRoute) app.use('/api/billing', billingRoute);
+    const integrationsRoute = tryRequireRoute('./routes/integrations.js'); if (integrationsRoute) app.use('/api/integrations', integrationsRoute);
+    const geoRoute = tryRequireRoute('./routes/geo.js'); if (geoRoute) app.use('/api/geo', geoRoute);
+    const logsRoute = tryRequireRoute('./routes/logs.js'); if (logsRoute) app.use('/api/logs', logsRoute);
+    // Montar rutas de pickups directamente
+    const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
+    const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
+    const mobileRoute = tryRequireRoute('./routes/mobile.js'); if (mobileRoute) app.use('/api', mobileRoute);
+    const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
+    const notificationsRoute = tryRequireRoute('./routes/notifications.js'); if (notificationsRoute) app.use('/api/notifications', notificationsRoute);
+
+
+    // --- Frontend Serving & SPA Fallback ---
+    if (process.env.NODE_ENV !== 'production') {
+        const { createServer: createViteServer } = require('vite');
+        const vite = await createViteServer({
+            server: { middlewareMode: true },
+            appType: 'spa',
+        });
+        app.use(vite.middlewares);
+    } else {
+        const distPath = path.join(__dirname, 'dist');
+        // Serve static files from the 'dist' directory (Vite's build output).
+        app.use(express.static(distPath));
+
+        // The SPA fallback (catch-all) MUST be the last route.
+        // It handles all GET requests that didn't match an API route or a static file.
+        app.get('*', (req, res) => {
+            res.sendFile(path.join(distPath, 'index.html'));
+        });
+    }
+
+    app.listen(PORT, '0.0.0.0', async () => {
+      console.log(`Server is running on port ${PORT}`);
+      try {
+        await initializeDatabase();
+        // await importUsersFromFile(); // Disabled to prevent deleted users from reappearing
+        await ensureAdminUser();
+        await seedDatabase();
+        
+        // Start background services with coordinated offsets to prevent overlap
+        // Default interval is 5 minutes (300,000ms)
+        const POLL_INTERVAL = 5 * 60 * 1000;
+        
+        const meliPollingService = tryRequireRoute('./services/meliPollingService.js');
+        if (meliPollingService && typeof meliPollingService.start === 'function') {
+            // Start Meli immediately
+            meliPollingService.start(POLL_INTERVAL, 0);
+            console.log('Background Service: Mercado Libre Polling scheduled (0s delay).');
+        }
+    
+        const shopifyPollingService = tryRequireRoute('./services/shopifyPollingService.js');
+        if (shopifyPollingService && typeof shopifyPollingService.start === 'function') {
+            // Offset Shopify by 2.5 minutes (half the interval)
+            const shopifyDelay = POLL_INTERVAL / 2;
+            shopifyPollingService.start(POLL_INTERVAL, shopifyDelay);
+            console.log(`Background Service: Shopify Polling scheduled (${shopifyDelay/1000}s delay).`);
+        }
+
+        const jumpsellerPollingService = tryRequireRoute('./services/jumpsellerPollingService.js');
+        if (jumpsellerPollingService && typeof jumpsellerPollingService.start === 'function') {
+            // Offset Jumpseller by 3.5 minutes
+            const jumpsellerDelay = (POLL_INTERVAL / 2) + (60 * 1000);
+            jumpsellerPollingService.start(POLL_INTERVAL, jumpsellerDelay);
+            console.log(`Background Service: Jumpseller Polling scheduled (${jumpsellerDelay/1000}s delay).`);
+        }
+
+      } catch (initErr) {
+        console.error('Failed to initialize database during startup:', initErr);
+      }
+    });
+}
+
+startServer();
+
+async function initializeDatabase() {
+    console.log('Initializing database schema...');
+    try {
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS users (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                email TEXT NOT NULL UNIQUE,
+                phone TEXT,
+                password TEXT NOT NULL,
+                role TEXT NOT NULL,
+                status TEXT NOT NULL,
+                "assignedDriverId" TEXT,
+                "lastAssignmentTimestamp" TIMESTAMPTZ,
+                rut TEXT,
+                address TEXT,
+                "pickupAddress" TEXT,
+                "storesInfo" TEXT,
+                pricing JSONB,
+                "clientIdentifier" TEXT,
+                "pickupCost" INTEGER,
+                "billingName" TEXT,
+                "billingRut" TEXT,
+                "billingAddress" TEXT,
+                "billingCommune" TEXT,
+                "billingGiro" TEXT,
+                invoices JSONB,
+                "personalRut" TEXT,
+                "hasCompany" BOOLEAN,
+                "companyName" TEXT,
+                "companyRut" TEXT,
+                "companyAddress" TEXT,
+                "licenseExpiry" TEXT,
+                "licenseType" TEXT,
+                "backgroundCheckNotes" TEXT,
+                vehicles JSONB,
+                "driverPermissions" JSONB,
+                latitude REAL,
+                longitude REAL,
+                "lastLocationUpdate" TIMESTAMPTZ,
+                integrations JSONB,
+                "plainPassword" TEXT,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Table "users" is ready.');
+
+        // --- USERS: ensure critical columns exist in older schemas ---
+        const ensureUserColumns = async () => {
+            const userCols = [
+                'assignedDriverId TEXT',
+                'lastAssignmentTimestamp TIMESTAMPTZ',
+                'pickupAddress TEXT',
+                'phone TEXT',
+                'pricing JSONB',
+                'clientIdentifier TEXT',
+                'pickupCost INTEGER',
+                'billingName TEXT',
+                'billingRut TEXT',
+                'billingAddress TEXT',
+                'billingCommune TEXT',
+                'billingGiro TEXT',
+                'personalRut TEXT',
+                'plainPassword TEXT',
+                'rut TEXT',
+                'address TEXT',
+                'storesInfo TEXT',
+                'invoices JSONB',
+                'hasCompany BOOLEAN',
+                'companyName TEXT',
+                'companyRut TEXT',
+                'companyAddress TEXT',
+                'licenseExpiry TEXT',
+                'licenseType TEXT',
+                'backgroundCheckNotes TEXT',
+                'vehicles JSONB',
+                'driverPermissions JSONB',
+                'latitude REAL',
+                'longitude REAL',
+                'lastLocationUpdate TIMESTAMPTZ',
+                'integrations JSONB',
+                'createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP'
+            ];
+            for (const spec of userCols) {
+                const col = spec.split(' ')[0];
+                try {
+                    await db.query(`ALTER TABLE users ADD COLUMN "${col}" ${spec.split(' ').slice(1).join(' ')}`);
+                    console.log(`MIGRATION APPLIED: Column "${col}" added to "users".`);
+                } catch (err) {
+                    if (err.code !== '42701') { console.error(`Error during users migration (${col}):`, err); }
+                }
+            }
+        };
+        await ensureUserColumns();
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS packages (
+                id TEXT PRIMARY KEY,
+                "recipientName" TEXT NOT NULL,
+                "recipientPhone" TEXT NOT NULL,
+                status TEXT NOT NULL,
+                "shippingType" TEXT NOT NULL,
+                origin TEXT,
+                destination TEXT,
+                "recipientAddress" TEXT,
+                "recipientCommune" TEXT,
+                "recipientCity" TEXT,
+                notes TEXT,
+                "estimatedDelivery" TIMESTAMPTZ,
+                "createdAt" TIMESTAMPTZ,
+                "updatedAt" TIMESTAMPTZ,
+                "driverId" TEXT,
+                "creatorId" TEXT,
+                "deliveryReceiverName" TEXT,
+                "deliveryReceiverId" TEXT,
+                "deliveryPhotosBase64" JSONB,
+                billed BOOLEAN DEFAULT false,
+                source TEXT,
+                "meliOrderId" TEXT,
+                "wooOrderId" TEXT,
+                "shopifyOrderId" TEXT,
+                "jumpsellerOrderId" TEXT,
+                "trackingId" TEXT,
+                "recipientRut" TEXT,
+                "isFlexed" BOOLEAN DEFAULT false,
+                "flexedAt" TIMESTAMPTZ
+            );
+        `);
+        console.log('Table "packages" is ready.');
+
+        // --- PACKAGES: ensure critical columns exist in older schemas ---
+        const ensurePackageColumns = async () => {
+            const pkgCols = [
+                'createdAt TIMESTAMPTZ',
+                'updatedAt TIMESTAMPTZ',
+                'driverId TEXT',
+                'creatorId TEXT',
+                'deliveryPhotosBase64 JSONB',
+                'billed BOOLEAN DEFAULT false',
+                'source TEXT',
+                'shopifyOrderId TEXT',
+                'trackingId TEXT',
+                'meliFlexCode TEXT',
+                'isFlexed BOOLEAN DEFAULT false',
+                'flexedAt TIMESTAMPTZ',
+                'destLatitude REAL',
+                'destLongitude REAL',
+                'flexLabelPhotoBase64 TEXT',
+                'recipientRut TEXT',
+                'recipientEmail TEXT',
+                'jumpsellerOrderId TEXT'
+            ];
+            for (const spec of pkgCols) {
+                const col = spec.split(' ')[0];
+                try {
+                    // EMERGENCY RENAMES: If column exists in lowercase (due to previous bad migration), rename it to camelCase
+                    const lowerCol = col.toLowerCase();
+                    if (lowerCol !== col) {
+                        try {
+                            await db.query(`ALTER TABLE packages RENAME COLUMN "${lowerCol}" TO "${col}"`);
+                            console.log(`MIGRATION FIXED: Renamed "${lowerCol}" to "${col}" in "packages".`);
+                        } catch (e) { /* ignore if column doesn't exist in lowercase */ }
+                    }
+
+                    await db.query(`ALTER TABLE packages ADD COLUMN "${col}" ${spec.split(' ').slice(1).join(' ')}`);
+                    console.log(`MIGRATION APPLIED: Column "${col}" added to "packages".`);
+                } catch (err) {
+                    if (err.code !== '42701') { console.error(`Error during packages migration (${col}):`, err); }
+                }
+            }
+        };
+        await ensurePackageColumns();
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS tracking_events (
+                id SERIAL PRIMARY KEY,
+                "packageId" TEXT NOT NULL,
+                status TEXT,
+                location TEXT,
+                details TEXT,
+                timestamp TIMESTAMPTZ NOT NULL
+            );
+        `);
+        console.log('Table "tracking_events" is ready.');
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS system_settings (
+                id INTEGER PRIMARY KEY,
+                "companyName" TEXT,
+                "isAppEnabled" BOOLEAN DEFAULT true,
+                "requiredPhotos" INTEGER DEFAULT 1,
+                "messagingPlan" TEXT DEFAULT 'NONE',
+                "pickupMode" TEXT DEFAULT 'SCAN',
+                "meliFlexValidation" BOOLEAN DEFAULT true,
+                "recipientNotificationsEnabled" BOOLEAN DEFAULT false,
+                "saveFlexLabelPhoto" BOOLEAN DEFAULT false,
+                "meliAutoImport" BOOLEAN DEFAULT false,
+                "shopifyAutoImport" BOOLEAN DEFAULT false,
+                "jumpsellerAutoImport" BOOLEAN DEFAULT false,
+                "publicTrackingEnabled" BOOLEAN DEFAULT true,
+                "isRutRequired" BOOLEAN DEFAULT true,
+                "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
+                "circuitExportEnabled" BOOLEAN DEFAULT false
+            );
+        `);
+        
+        // --- MIGRATION SCRIPT ---
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "isAppEnabled" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "isAppEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (isAppEnabled):', err); }
+        }
+         try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "requiredPhotos" INTEGER DEFAULT 1');
+            console.log('MIGRATION APPLIED: Column "requiredPhotos" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (requiredPhotos):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "messagingPlan" TEXT DEFAULT \'NONE\'');
+            console.log('MIGRATION APPLIED: Column "messagingPlan" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (messagingPlan):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "createdAt" TIMESTAMPTZ');
+            console.log('MIGRATION APPLIED: Column "createdAt" was added to "packages".');
+        } catch (err) {
+             if (err.code !== '42701') { console.error('Error during packages migration (createdAt):', err); }
+        }
+
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "pickupMode" TEXT DEFAULT \'SCAN\'');
+            console.log('MIGRATION APPLIED: Column "pickupMode" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (pickupMode):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "publicTrackingEnabled" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "publicTrackingEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (publicTrackingEnabled):', err); }
+        }
+
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "meliFlexValidation" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "meliFlexValidation" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (meliFlexValidation):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "meliAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "meliAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (meliAutoImport):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "recipientNotificationsEnabled" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "recipientNotificationsEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (recipientNotificationsEnabled):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "labelFormat" TEXT DEFAULT \'compact_thermal\'');
+            console.log('MIGRATION APPLIED: Column "labelFormat" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (labelFormat):', err); }
+        }
+        // Drop old columns if they exist. Using IF EXISTS is safer.
+        const dropOldPlanColumns = async () => {
+            try { await db.query('ALTER TABLE system_settings DROP COLUMN IF EXISTS "planType"'); } catch(e){}
+            try { await db.query('ALTER TABLE system_settings DROP COLUMN IF EXISTS "planPackageLimit"'); } catch(e){}
+            try { await db.query('ALTER TABLE system_settings DROP COLUMN IF EXISTS "planOverageFee"'); } catch(e){}
+            try { await db.query('ALTER TABLE system_settings DROP COLUMN IF EXISTS "planLimits"'); } catch(e){}
+            console.log('MIGRATION APPLIED: Old plan-related columns were dropped.');
+        };
+        await dropOldPlanColumns();
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "saveFlexLabelPhoto" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "saveFlexLabelPhoto" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (saveFlexLabelPhoto):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "meliAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "meliAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (meliAutoImport):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "isRutRequired" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "isRutRequired" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (isRutRequired):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE notifications ALTER COLUMN "userId" DROP NOT NULL');
+            console.log('MIGRATION APPLIED: Column "userId" in "notifications" is now nullable.');
+        } catch (err) {
+            console.error('Error during notifications migration (userId nullable):', err);
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "circuitExportEnabled" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "circuitExportEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (circuitExportEnabled):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "shopifyAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "shopifyAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (shopifyAutoImport):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "jumpsellerAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "jumpsellerAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (jumpsellerAutoImport):', err); }
+        }
+        // --- END MIGRATION SCRIPT ---
+
+        console.log('Table "system_settings" is ready.');
+        
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS delivery_zones (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                communes JSONB,
+                pricing JSONB
+            );
+        `);
+        console.log('Table "delivery_zones" is ready.');
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS notifications (
+                id TEXT PRIMARY KEY,
+                "userId" TEXT,
+                title TEXT NOT NULL,
+                message TEXT NOT NULL,
+                type TEXT NOT NULL,
+                read BOOLEAN DEFAULT false,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                "relatedId" TEXT
+            );
+        `);
+        console.log('Table "notifications" is ready.');
+
+        // --- NEW PICKUP TABLES ---
+        await db.query(`
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE)
+            ON CONFLICT (id) DO NOTHING;
+        `);
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS assignment_events (
+                id TEXT PRIMARY KEY,
+                "clientId" TEXT NOT NULL,
+                "clientName" TEXT NOT NULL,
+                "driverId" TEXT,
+                "driverName" TEXT,
+                "assignedAt" TIMESTAMPTZ NOT NULL,
+                "completedAt" TIMESTAMPTZ,
+                status TEXT NOT NULL,
+                "pickupCost" INTEGER,
+                "packagesPickedUp" INTEGER
+            );
+        `);
+        console.log('Table "assignment_events" is ready.');
+
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS pickup_runs (
+                id TEXT PRIMARY KEY,
+                "driverId" TEXT NOT NULL,
+                date DATE NOT NULL,
+                shift TEXT,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Table "pickup_runs" is ready.');
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS pickup_assignments (
+                id TEXT PRIMARY KEY,
+                "runId" TEXT NOT NULL REFERENCES pickup_runs(id) ON DELETE CASCADE,
+                "clientId" TEXT NOT NULL,
+                status TEXT NOT NULL,
+                cost INTEGER NOT NULL,
+                "packagesToPickup" INTEGER NOT NULL,
+                "packagesPickedUp" INTEGER,
+                notes TEXT,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Table "pickup_assignments" is ready.');
+
+        // --- NEW INTEGRATIONS TABLE ---
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS integration_settings (
+                id INTEGER PRIMARY KEY DEFAULT 1,
+                meli_app_id TEXT,
+                meli_client_secret TEXT,
+                shopify_shop_url TEXT,
+                shopify_access_token TEXT,
+                github_token TEXT,
+                github_repo TEXT,
+                github_owner TEXT,
+                whatsapp_api_key TEXT,
+                whatsapp_phone_number TEXT,
+                woo_url TEXT,
+                woo_consumer_key TEXT,
+                woo_consumer_secret TEXT,
+                falabella_api_key TEXT,
+                falabella_seller_id TEXT,
+                shopify_webhook_secret TEXT,
+                jumpseller_login TEXT,
+                jumpseller_token TEXT
+            );
+        `);
+        console.log('Table "integration_settings" is ready.');
+
+        // --- MIGRATIONS: Add Shopify fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_client_id TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_client_id" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_client_id):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_client_secret TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_client_secret" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_client_secret):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_shop_url TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_shop_url" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_shop_url):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_access_token TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_access_token" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_access_token):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN shopify_webhook_secret TEXT');
+            console.log('MIGRATION APPLIED: Column "shopify_webhook_secret" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (shopify_webhook_secret):', err); }
+        }
+
+        // --- SMTP MIGRATIONS ---
+        const smtpCols = [
+            'smtp_host TEXT',
+            'smtp_port TEXT',
+            'smtp_user TEXT',
+            'smtp_password TEXT',
+            'smtp_from TEXT',
+            'smtp_google_refresh_token TEXT',
+            'smtp_google_email TEXT'
+        ];
+        for (const spec of smtpCols) {
+            const col = spec.split(' ')[0];
+            try {
+                await db.query(`ALTER TABLE integration_settings ADD COLUMN "${col}" ${spec.split(' ').slice(1).join(' ')}`);
+                console.log(`MIGRATION APPLIED: Column "${col}" added to "integration_settings".`);
+            } catch (err) {
+                if (err.code !== '42701') { console.error(`Error during integration_settings migration (${col}):`, err); }
+            }
+        }
+
+        // --- MIGRATIONS: Add GitHub fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN github_token TEXT');
+            console.log('MIGRATION APPLIED: Column "github_token" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (github_token):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN github_repo TEXT');
+            console.log('MIGRATION APPLIED: Column "github_repo" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (github_repo):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN github_owner TEXT');
+            console.log('MIGRATION APPLIED: Column "github_owner" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (github_owner):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN whatsapp_api_key TEXT');
+            console.log('MIGRATION APPLIED: Column "whatsapp_api_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (whatsapp_api_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN whatsapp_phone_number TEXT');
+            console.log('MIGRATION APPLIED: Column "whatsapp_phone_number" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (whatsapp_phone_number):', err); }
+        }
+
+        // --- MIGRATIONS: Add WooCommerce fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN woo_url TEXT');
+            console.log('MIGRATION APPLIED: Column "woo_url" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (woo_url):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN woo_consumer_key TEXT');
+            console.log('MIGRATION APPLIED: Column "woo_consumer_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (woo_consumer_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN woo_consumer_secret TEXT');
+            console.log('MIGRATION APPLIED: Column "woo_consumer_secret" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (woo_consumer_secret):', err); }
+        }
+
+        // --- MIGRATIONS: Add Falabella fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN falabella_api_key TEXT');
+            console.log('MIGRATION APPLIED: Column "falabella_api_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (falabella_api_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN falabella_seller_id TEXT');
+            console.log('MIGRATION APPLIED: Column "falabella_seller_id" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (falabella_seller_id):', err); }
+        }
+
+        // --- MIGRATIONS: Add Jumpseller fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN jumpseller_login TEXT');
+            console.log('MIGRATION APPLIED: Column "jumpseller_login" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (jumpseller_login):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN jumpseller_token TEXT');
+            console.log('MIGRATION APPLIED: Column "jumpseller_token" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (jumpseller_token):', err); }
+        }
+        
+        // --- MIGRATIONS: Add missing package fields ---
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "shopifyOrderId" TEXT');
+            console.log('MIGRATION APPLIED: Column "shopifyOrderId" added to "packages".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during packages migration (shopifyOrderId):', err); }
+        }
+
+
+        // --- MIGRATIONS: Add informed fields to pickup tables ---
+        try {
+            await db.query('ALTER TABLE pickup_runs ADD COLUMN informed BOOLEAN DEFAULT FALSE');
+            console.log('MIGRATION APPLIED: Column "informed" added to "pickup_runs".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during pickup_runs migration (informed):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE pickup_runs ADD COLUMN "informedAt" TIMESTAMPTZ');
+            console.log('MIGRATION APPLIED: Column "informedAt" added to "pickup_runs".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during pickup_runs migration (informedAt):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE pickup_assignments ADD COLUMN informed BOOLEAN DEFAULT FALSE');
+            console.log('MIGRATION APPLIED: Column "informed" added to "pickup_assignments".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during pickup_assignments migration (informed):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE pickup_assignments ADD COLUMN "informedAt" TIMESTAMPTZ');
+            console.log('MIGRATION APPLIED: Column "informedAt" added to "pickup_assignments".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during pickup_assignments migration (informedAt):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE pickup_runs ADD COLUMN shift TEXT');
+            console.log('MIGRATION APPLIED: Column "shift" added to "pickup_runs".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during pickup_runs migration (shift):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE pickup_assignments ADD COLUMN "packagesPickedUp" INTEGER');
+            console.log('MIGRATION APPLIED: Column "packagesPickedUp" added to "pickup_assignments".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during pickup_assignments migration (packagesPickedUp):', err); }
+        }
+
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS system_logs (
+                id SERIAL PRIMARY KEY,
+                "userId" TEXT,
+                "userName" TEXT,
+                action TEXT NOT NULL,
+                details TEXT,
+                timestamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Table "system_logs" is ready.');
+
+        console.log('Database schema initialization complete.');
+    } catch (err) {
+        console.error('FATAL: Could not initialize database schema.', err);
+    }
+}
+
+async function ensureAdminUser() {
+    try {
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash('Dan15223.,.,', salt);
+
+        // Look specifically for the user with email 'admin'
+        const { rows } = await db.query("SELECT * FROM users WHERE email = 'admin'");
+
+        if (rows.length > 0) {
+            // User 'admin' exists, update its password and ensure role/status are correct
+            const adminToUpdate = rows[0];
+            console.log(`Admin user 'admin' found. Updating credentials...`);
+            await db.query('UPDATE users SET password = $1, role = $2, status = $3 WHERE id = $4', [hashedPassword, 'ADMIN', 'APROBADO', adminToUpdate.id]);
+            console.log('Admin user credentials updated.');
+        } else {
+            // User 'admin' does not exist, create it
+            console.log("Default 'admin' user not found. Creating one...");
+            const adminUser = {
+                id: `user-admin-${uuidv4()}`,
+                name: 'Administrador Principal',
+                email: 'admin',
+                password: hashedPassword,
+                role: 'ADMIN',
+                status: 'APROBADO',
+                phone: '123456789'
+            };
+            const columns = Object.keys(adminUser).map(k => `"${k}"`).join(', ');
+            const values = Object.values(adminUser);
+            const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+            await db.query(`INSERT INTO users (${columns}) VALUES (${placeholders})`, values);
+            console.log('Default admin user created with username: admin');
+        }
+    } catch (err) {
+        if (err.message && err.message.includes("La base de datos no está configurada")) {
+             console.warn('DB not configured. Skipping admin user seed.');
+        } else {
+             console.error('Error ensuring admin user exists:', err);
+        }
+    }
+}
+
+// PRODUCTION MODE: Data seeding disabled
+async function seedDatabase() {
+    // In production or after a "Reset Database", we want a clean slate.
+    // We return immediately to prevent creating mock data.
+    console.log('Data seeding disabled for production/clean mode.');
+    return;
+}
+
+async function importUsersFromFile() {
+    const fs = require('fs');
+    const filePath = path.join(__dirname, 'users_data.txt');
+    if (!fs.existsSync(filePath)) return;
+
+    console.log('Detectado archivo de datos de usuarios. Iniciando importación...');
+    try {
+        const data = fs.readFileSync(filePath, 'utf8');
+        const lines = data.split('\n').filter(l => l.trim() !== '' && l !== '\\.');
+
+        const columns = [
+            'id', 'name', 'email', 'phone', 'password', 'role', 'status', 
+            'assignedDriverId', 'lastAssignmentTimestamp', 'rut', 'address', 
+            'pickupAddress', 'storesInfo', 'pricing', 'clientIdentifier', 
+            'pickupCost', 'billingName', 'billingRut', 'billingAddress', 
+            'billingCommune', 'billingGiro', 'invoices', 'personalRut', 
+            'hasCompany', 'companyName', 'companyRut', 'companyAddress', 
+            'licenseExpiry', 'licenseType', 'backgroundCheckNotes', 'vehicles', 
+            'driverPermissions', 'latitude', 'longitude', 'lastLocationUpdate', 
+            'integrations'
+        ];
+
+        for (const line of lines) {
+            const fields = line.split('\t');
+            const values = fields.slice(0, 36).map(f => {
+                const val = f.trim();
+                if (val === '\\N' || val === '') return null;
+                if (val === 't') return true;
+                if (val === 'f') return false;
+                return val;
+            });
+
+            const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+            const query = `INSERT INTO users (${columns.map(c => `"${c}"`).join(', ')}) 
+                           VALUES (${placeholders}) 
+                           ON CONFLICT (id) DO UPDATE SET 
+                           ${columns.map(c => `"${c}" = EXCLUDED."${c}"`).join(', ')}`;
+            await db.query(query, values);
+        }
+        console.log(`✅ Importación de ${lines.length} usuarios completada.`);
+        // Opcional: borrar el archivo después de importar para no repetir
+        // fs.unlinkSync(filePath); 
+    } catch (err) {
+        console.error('Error durante la importación de usuarios:', err);
+    }
+}
+

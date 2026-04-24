@@ -224,7 +224,9 @@ async function autoImportJumpsellerPackages() {
                             updatedAt: importNow,
                             creatorId: clientId,
                             source: 'JUMPSELLER',
-                            jumpsellerOrderId: orderId
+                            jumpsellerOrderId: orderId,
+                            sourceAccountId: account.id,
+                            sourceAccountName: account.nickname
                         };
 
                         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

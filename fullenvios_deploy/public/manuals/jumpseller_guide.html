@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Manual de Configuración Jumpseller - Full Envios</title>
+    <style>
+        :root {
+            --primary: #0ea5e9;
+            --secondary: #0284c7;
+            --text-dark: #1a202c;
+            --text-light: #4a5568;
+            --bg-light: #f7fafc;
+            --border: #e2e8f0;
+        }
+        @page {
+            size: letter;
+            margin: 25mm !important;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 950px;
+            margin: 40px auto;
+            padding: 50px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background-color: white;
+            position: relative;
+        }
+        header {
+            border-bottom: 3px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--primary);
+            letter-spacing: -1px;
+        }
+        h1 { font-size: 32px; color: var(--text-dark); margin: 0; }
+        h2 { font-size: 22px; color: var(--primary); border-left: 5px solid var(--primary); padding-left: 15px; margin-top: 40px; margin-bottom: 15px; }
+        p { margin-bottom: 15px; color: var(--text-light); font-size: 16px; }
+        .alert {
+            background-color: #f0f9ff !important;
+            border-left: 5px solid #0ea5e9 !important;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+            font-size: 15px;
+            break-inside: avoid;
+        }
+        .alert-important {
+            background-color: #fffaf0 !important;
+            border-left: 5px solid #dd6b20 !important;
+        }
+        .step {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            break-inside: avoid;
+        }
+        .step-number {
+            background: var(--primary) !important;
+            color: white !important;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .step-content {
+            font-size: 16px;
+        }
+        .token-box {
+            background: #f1f5f9;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-family: monospace;
+            border: 1px solid #cbd5e1;
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: bold;
+        }
+        ul { font-size: 16px; color: var(--text-light); padding-left: 25px; }
+        footer {
+            margin-top: 60px;
+            padding-top: 25px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-light);
+            break-inside: avoid;
+        }
+        @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: white !important;
+                overflow: visible !important;
+            }
+            .container {
+                max-width: none !important;
+                width: 165mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                display: block !important;
+                position: static !important;
+            }
+            .no-print { display: none !important; }
+            h1 { font-size: 18pt !important; }
+            h2 { font-size: 14pt !important; margin-top: 25pt !important; break-after: avoid !important; }
+            p, ul, li, .step-content, .alert { font-size: 10pt !important; }
+            footer { margin-top: 30pt !important; font-size: 8pt !important; }
+        }
+        .btn-print {
+            background: var(--primary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 15px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-print:hover {
+            background: var(--secondary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print" style="text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+            <span id="version-tag" style="font-size: 12px; color: var(--text-light); font-weight: bold;"></span>
+            <a href="#" onclick="window.print(); return false;" class="btn-print">Descargar / Imprimir PDF</a>
+        </div>
+        
+        <script>
+            function updateTitle() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const timestamp = `${year}${month}${day}`;
+                const baseTitle = "Manual_Jumpseller_FullEnvios";
+                document.title = `${baseTitle}_${timestamp}`;
+                const tagEl = document.getElementById('version-tag');
+                if (tagEl) tagEl.innerText = "Versión: " + timestamp;
+            }
+            updateTitle();
+        </script>
+        
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="/logo.png" alt="Full Envios Logo" style="height: 60px; width: auto;">
+                <div>
+                    <div class="logo-text">FULL ENVIOS</div>
+                    <h1>Manual de Integración Jumpseller</h1>
+                </div>
+            </div>
+            <div style="text-align: right; color: var(--text-light); font-size: 14px;">
+                Versión 1.0<br>
+                Abril 2026
+            </div>
+        </header>
+
+        <p>Esta guía detalla los pasos para conectar su tienda Jumpseller con la plataforma logística de Full Envios.</p>
+
+        <h2>1. Obtener Credenciales de API</h2>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div>
+                <strong>Acceso:</strong> Ingrese a su panel de administración de Jumpseller y vaya a <strong>Configuración &gt; General</strong>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div>
+                <strong>Sección API:</strong> Deslice hacia abajo hasta encontrar la sección denominada <strong>"API"</strong>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div>
+                <strong>Credenciales:</strong> Verá un campo llamado <strong>"Login"</strong> (que corresponde al email del administrador) y un campo <strong>"Auth Token"</strong>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">4</div>
+            <div>
+                <strong>Copiar:</strong> Copie ambos valores. Son los que deberá ingresar en la pestaña "Conexión" de Full Envios.
+            </div>
+        </div>
+
+        <h2>2. Configuración de Webhooks (Alerta Instantánea)</h2>
+        <p>Para que los pedidos aparezcan en Full Envios en el mismo segundo en que se crean, le recomendamos configurar un Webhook:</p>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div>
+                <strong>Ruta:</strong> Vaya a <strong>Ajustes &gt; Checkout &gt; API</strong>.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div>
+                <strong>Añadir Webhook:</strong> En la sección de Webhooks, seleccione el evento "Orden Creada" (Order Created).
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div>
+                <strong>URL de Destino:</strong> Pegue la siguiente dirección:<br>
+                <code class="token-box">https://api.fullenvios.cl/api/integrations/jumpseller/webhook</code>
+            </div>
+        </div>
+
+        <h2>3. Consideraciones de Importación</h2>
+        <ul>
+            <li><strong>Estados:</strong> El sistema importa pedidos con estado "Pagado" o "Pendiente de Envío" de forma predeterminada.</li>
+            <li><strong>Zonas:</strong> Actualmente el sistema filtra automáticamente pedidos dirigidos a la Región Metropolitana para su gestión logística.</li>
+        </ul>
+
+        <div class="alert">
+            <strong>SUGERENCIA:</strong> Pruebe siempre la conexión usando el botón "Probar Conexión" antes de habilitar la sincronización automática.
+        </div>
+
+        <footer>
+            © 2026 Full Envios - Soporte Técnico: soporte@fullenvios.cl<br>
+            Este documento fue generado automáticamente por el sistema.
+        </footer>
+    </div>
+</body>
+</html>

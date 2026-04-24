@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy, IconMail } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy, IconMail, IconPlugConnected } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageListItemProps {
@@ -245,6 +245,12 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                             <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] pt-0.5">
                                 <IconUser className="w-3 h-3" />
                                 <span className="truncate">Cliente: {creatorName}</span>
+                            </div>
+                        )}
+                        {pkg.sourceAccountName && (
+                            <div className="flex items-center gap-1 text-[10px] text-blue-600 font-bold bg-blue-50 px-1.5 py-0.5 rounded w-fit">
+                                <IconPlugConnected className="w-3 h-3" />
+                                <span className="truncate tracking-tight uppercase">Cuenta: {pkg.sourceAccountName}</span>
                             </div>
                         )}
                          {(pkg.status === PackageStatus.Delivered || pkg.status === PackageStatus.Returned) && pkg.deliveryReceiverName && (

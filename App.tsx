@@ -6,9 +6,19 @@ import DashboardLayout from './components/layout/DashboardLayout';
 import { ThemeProvider } from './contexts/ThemeContext';
 import { ToastProvider } from './contexts/ToastContext';
 import ErrorBoundary from './components/ErrorBoundary';
+import LandingPage from './pages/LandingPage';
 
 const AppContent: React.FC = () => {
   const auth = useContext(AuthContext);
+  const [showLogin, setShowLogin] = React.useState(window.location.pathname === '/login');
+
+  useEffect(() => {
+    const handlePopState = () => {
+      setShowLogin(window.location.pathname === '/login');
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   useEffect(() => {
     // Aggressively unregister any service workers to prevent caching issues.
@@ -27,14 +37,6 @@ const AppContent: React.FC = () => {
   }, []); // Run only once on component mount
 
   useEffect(() => {
-    const handlePopState = () => {
-      // Re-trigger re-render on back/forward
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
-
-  useEffect(() => {
     if (auth?.systemSettings.companyName) {
       document.title = `${auth.systemSettings.companyName} - Sistema de Seguimiento`;
     }
@@ -42,8 +44,11 @@ const AppContent: React.FC = () => {
 
   if (!auth || !auth.isInitialized) {
     return (
-      <div className="flex items-center justify-center h-screen bg-[var(--background-muted)]">
-        <div className="text-xl font-semibold text-[var(--text-secondary)]">Cargando...</div>
+      <div className="flex items-center justify-center h-screen bg-slate-50">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+          <div className="text-xl font-bold text-slate-400 tracking-tight uppercase">Full Envios</div>
+        </div>
       </div>
     );
   }
@@ -54,8 +59,15 @@ const AppContent: React.FC = () => {
   }
 
   if (!auth.user) {
-    return <AuthPage onBack={() => {
+    if (showLogin) {
+      return <AuthPage onBack={() => {
+        window.history.pushState({}, '', '/');
+        setShowLogin(false);
+      }} />;
+    }
+    return <LandingPage onLogin={() => {
       window.history.pushState({}, '', '/login');
+      setShowLogin(true);
     }} />;
   }
 

@@ -221,7 +221,8 @@ async function autoImportShopifyPackages() {
                                 creatorId: clientId,
                                 source: 'SHOPIFY',
                                 shopifyOrderId: orderId,
-                                sourceAccountId: account.id // Guardar el ID de la cuenta
+                                sourceAccountId: account.id, // Guardar el ID de la cuenta
+                                sourceAccountName: account.nickname // Guardar el nombre de la cuenta
                             };
 
                             const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
