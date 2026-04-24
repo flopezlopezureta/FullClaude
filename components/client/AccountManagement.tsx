@@ -211,7 +211,8 @@ const AccountManagement: React.FC = () => {
                 {/* Add Account Card */}
                 <div 
                     onClick={() => {
-                        window.location.href = '/api/integrations/meli/auth';
+                        const token = localStorage.getItem('token');
+                        window.location.href = `/api/integrations/meli/auth?token=${token}`;
                     }}
                     className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer bg-gray-50/50"
                 >
@@ -223,7 +224,10 @@ const AccountManagement: React.FC = () => {
                     
                     <div className="flex flex-wrap justify-center gap-4" onClick={(e) => e.stopPropagation()}>
                         <button 
-                            onClick={() => window.location.href = '/api/integrations/meli/auth'}
+                            onClick={() => {
+                                const token = localStorage.getItem('token');
+                                window.location.href = `/api/integrations/meli/auth?token=${token}`;
+                            }}
                             className="flex flex-col items-center gap-1 group/btn"
                             title="Añadir Mercado Libre"
                         >
@@ -236,7 +240,8 @@ const AccountManagement: React.FC = () => {
                             onClick={() => {
                                 const shop = prompt('Ingresa la URL de tu tienda Shopify (ej: mi-tienda.myshopify.com):');
                                 if (shop) {
-                                    window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shop)}`;
+                                    const token = localStorage.getItem('token');
+                                    window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shop)}&token=${token}`;
                                 }
                             }}
                             className="flex flex-col items-center gap-1 group/btn"
