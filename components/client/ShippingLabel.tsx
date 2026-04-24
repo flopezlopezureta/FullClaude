@@ -148,7 +148,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
             <div className="bg-white font-sans text-black w-[101.6mm] h-[152.4mm] border border-black flex overflow-hidden">
                 <div className="w-1/4 bg-white text-black p-2 flex flex-col items-center justify-between border-r border-black border-dashed">
                     <div className="rotate-90 origin-center whitespace-nowrap mt-16 max-h-[80mm] flex items-center justify-center">
-                         <p className={`font-black tracking-widest leading-none ${pkg.recipientCommune.length > 12 ? 'text-sm' : 'text-md'}`}>{pkg.recipientCommune.toUpperCase()}</p>
+                         <p className={`font-black tracking-widest leading-none ${pkg.recipientCommune.length > 12 ? 'text-sm' : 'text-md'}`}>{ (pkg.recipientCommune || '').toUpperCase()}</p>
                     </div>
                     {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-full p-1" style={{ imageRendering: 'pixelated' }} />}
                     <p className="text-[7px] font-black uppercase tracking-widest opacity-30">DISEÑO 3</p>

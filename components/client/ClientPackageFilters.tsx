@@ -115,7 +115,7 @@ const ClientPackageFilters: React.FC<ClientPackageFiltersProps> = ({
               <option value="">TODAS LAS TIENDAS</option>
               {accounts.map(acc => (
                 <option key={acc.id} value={acc.id}>
-                  {acc.name.toUpperCase()} ({acc.type})
+                  {(acc.nickname || acc.name || 'Sin nombre').toUpperCase()} ({acc.type})
                 </option>
               ))}
             </select>

@@ -152,9 +152,9 @@ const AccountManagement: React.FC = () => {
                                             </div>
                                         ) : (
                                             <div className="flex items-center gap-2 group">
-                                                <h3 className="font-bold text-[var(--text-primary)]">{acc.name}</h3>
+                                                <h3 className="font-bold text-[var(--text-primary)]">{acc.nickname || acc.name || 'Sin nombre'}</h3>
                                                 <button 
-                                                    onClick={() => { setEditingAccount(acc.id); setNewName(acc.name); }}
+                                                    onClick={() => { setEditingAccount(acc.id); setNewName(acc.nickname || acc.name || ''); }}
                                                     className="opacity-0 group-hover:opacity-100 transition-opacity p-1 text-gray-400 hover:text-blue-500"
                                                 >
                                                     <IconPencil className="w-3.5 h-3.5" />

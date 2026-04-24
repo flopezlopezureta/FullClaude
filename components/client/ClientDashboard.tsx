@@ -242,7 +242,7 @@ const ClientDashboard: React.FC = () => {
   };
 
   const uniqueCommunes = useMemo(() => {
-      const communes = new Set(packages.map(p => p.recipientCommune));
+      const communes = new Set(packages.map(p => p.recipientCommune).filter(Boolean));
       return Array.from(communes).sort();
   }, [packages]);
 
