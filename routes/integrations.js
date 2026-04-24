@@ -1755,7 +1755,7 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
         const state = encodeURIComponent(userId);
         
         const installUrl = `https://${formattedShop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
-        res.json({ redirectUrl: installUrl });
+        res.redirect(installUrl);
     } catch (err) {
         console.error("Shopify Install Error:", err);
         res.status(500).json({ message: 'Error interno del servidor al iniciar la instalación de Shopify.' });
