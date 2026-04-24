@@ -342,7 +342,7 @@ const AccountManagement: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                     <a 
                         href="/manuals/shopify_guide.html" 
                         target="_blank" 
@@ -358,6 +358,23 @@ const AccountManagement: React.FC = () => {
                             </div>
                         </div>
                         <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-green-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/falabella_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-lime-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-lime-50 text-lime-600 rounded-xl group-hover:bg-lime-600 group-hover:text-white transition-colors">
+                                <IconFalabella className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Falabella</h4>
+                                <p className="text-[10px] text-gray-400">Credenciales API Key</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-lime-500" />
                     </a>
 
                     <a 
