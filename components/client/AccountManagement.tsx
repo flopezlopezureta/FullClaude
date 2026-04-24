@@ -18,7 +18,8 @@ import {
     IconCheck,
     IconDownload,
     IconInfo,
-    IconFileText
+    IconFileText,
+    IconFalabella
 } from '../Icon';
 
 const AccountManagement: React.FC = () => {
@@ -29,7 +30,17 @@ const AccountManagement: React.FC = () => {
     const [editingAccount, setEditingAccount] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
     const [showShopifyModal, setShowShopifyModal] = useState(false);
+    const [showJumpsellerModal, setShowJumpsellerModal] = useState(false);
+    const [showFalabellaModal, setShowFalabellaModal] = useState(false);
+    const [showWooModal, setShowWooModal] = useState(false);
     const [shopifyUrl, setShopifyUrl] = useState('');
+    const [wooUrl, setWooUrl] = useState('');
+    const [wooConsumerKey, setWooConsumerKey] = useState('');
+    const [wooConsumerSecret, setWooConsumerSecret] = useState('');
+    const [jumpsellerToken, setJumpsellerToken] = useState('');
+    const [jumpsellerLogin, setJumpsellerLogin] = useState('');
+    const [falabellaApiKey, setFalabellaApiKey] = useState('');
+    const [falabellaSellerId, setFalabellaSellerId] = useState('');
 
     const fetchAccounts = async () => {
         setIsLoading(true);
@@ -92,6 +103,7 @@ const AccountManagement: React.FC = () => {
             case 'MERCADO_LIBRE': return <IconMercadoLibre className="w-6 h-6 text-yellow-500" />;
             case 'SHOPIFY': return <IconShopify className="w-6 h-6 text-green-500" />;
             case 'WOOCOMMERCE': return <IconWoocommerce className="w-6 h-6 text-purple-600" />;
+            case 'FALABELLA': return <IconFalabella className="w-6 h-6 text-lime-600" />;
             case 'JUMPSELLER': return <IconJumpseller className="w-6 h-6 text-sky-600" />;
             default: return <IconPlugConnected className="w-6 h-6 text-gray-500" />;
         }
@@ -129,7 +141,7 @@ const AccountManagement: React.FC = () => {
                 </div>
             )}
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {accounts.map(acc => (
                     <div key={acc.id} className="bg-white border border-[var(--border-primary)] rounded-xl shadow-sm hover:shadow-md transition-all overflow-hidden flex flex-col">
                         <div className="p-5 flex-1">
@@ -265,6 +277,27 @@ const AccountManagement: React.FC = () => {
                         >
                             <IconShopify className="w-6 h-6" />
                         </button>
+                        <button 
+                            onClick={() => setShowWooModal(true)}
+                            className="p-3 bg-white border border-gray-200 rounded-xl hover:border-purple-500 hover:text-purple-600 hover:shadow-md transition-all active:scale-95"
+                            title="Vincular WooCommerce"
+                        >
+                            <IconWoocommerce className="w-6 h-6" />
+                        </button>
+                        <button 
+                            onClick={() => setShowFalabellaModal(true)}
+                            className="p-3 bg-white border border-gray-200 rounded-xl hover:border-lime-500 hover:text-lime-600 hover:shadow-md transition-all active:scale-95"
+                            title="Vincular Falabella"
+                        >
+                            <IconFalabella className="w-6 h-6" />
+                        </button>
+                        <button 
+                            onClick={() => setShowJumpsellerModal(true)}
+                            className="p-3 bg-white border border-gray-200 rounded-xl hover:border-sky-500 hover:text-sky-600 hover:shadow-md transition-all active:scale-95"
+                            title="Vincular Jumpseller"
+                        >
+                            <IconJumpseller className="w-6 h-6" />
+                        </button>
                     </div>
                 </div>
             </div>
@@ -320,6 +353,206 @@ const AccountManagement: React.FC = () => {
                 </div>
             )}
 
+            {/* Jumpseller Modal */}
+            {showJumpsellerModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowJumpsellerModal(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-zoom-in" onClick={e => e.stopPropagation()}>
+                        <div className="bg-sky-600 p-6 text-white relative">
+                            <button onClick={() => setShowJumpsellerModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                                <IconX className="w-5 h-5" />
+                            </button>
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                                <IconJumpseller className="w-7 h-7 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Vincular Jumpseller</h3>
+                            <p className="text-sky-100 text-sm mt-1">Conecta tu tienda usando tu API Token.</p>
+                        </div>
+                        
+                        <div className="p-8 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Email de acceso (Login)</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="email@ejemplo.com"
+                                    value={jumpsellerLogin}
+                                    onChange={(e) => setJumpsellerLogin(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-sky-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">API Token</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="Tu token de Jumpseller"
+                                    value={jumpsellerToken}
+                                    onChange={(e) => setJumpsellerToken(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-sky-500 outline-none transition-all"
+                                />
+                            </div>
+                            
+                            <button 
+                                onClick={async () => {
+                                    if (!jumpsellerLogin || !jumpsellerToken) return;
+                                    setIsLoading(true);
+                                    try {
+                                        await api.createIntegrationAccount({
+                                            type: 'JUMPSELLER',
+                                            nickname: `Tienda Jumpseller (${jumpsellerLogin})`,
+                                            credentials: { login: jumpsellerLogin, token: jumpsellerToken }
+                                        });
+                                        setShowJumpsellerModal(false);
+                                        fetchAccounts();
+                                    } catch (err: any) {
+                                        alert(err.message || 'Error al conectar Jumpseller');
+                                    } finally {
+                                        setIsLoading(false);
+                                    }
+                                }}
+                                className="w-full mt-4 bg-sky-600 hover:bg-sky-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-sky-200 transition-all active:scale-[0.98]"
+                            >
+                                Conectar Jumpseller
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* WooCommerce Modal */}
+            {showWooModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowWooModal(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-zoom-in" onClick={e => e.stopPropagation()}>
+                        <div className="bg-purple-600 p-6 text-white relative">
+                            <button onClick={() => setShowWooModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                                <IconX className="w-5 h-5" />
+                            </button>
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                                <IconWoocommerce className="w-7 h-7 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Vincular WooCommerce</h3>
+                            <p className="text-purple-100 text-sm mt-1">Conecta tu tienda WordPress vía API REST.</p>
+                        </div>
+                        
+                        <div className="p-8 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">URL del Sitio</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="https://tu-tienda.cl"
+                                    value={wooUrl}
+                                    onChange={(e) => setWooUrl(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-purple-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Consumer Key</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="ck_..."
+                                    value={wooConsumerKey}
+                                    onChange={(e) => setWooConsumerKey(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-purple-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Consumer Secret</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="cs_..."
+                                    value={wooConsumerSecret}
+                                    onChange={(e) => setWooConsumerSecret(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-purple-500 outline-none transition-all"
+                                />
+                            </div>
+                            
+                            <button 
+                                onClick={async () => {
+                                    if (!wooUrl || !wooConsumerKey || !wooConsumerSecret) return;
+                                    setIsLoading(true);
+                                    try {
+                                        await api.createIntegrationAccount({
+                                            type: 'WOOCOMMERCE',
+                                            nickname: `WooCommerce (${wooUrl})`,
+                                            credentials: { wooUrl, wooConsumerKey, wooConsumerSecret }
+                                        });
+                                        setShowWooModal(false);
+                                        fetchAccounts();
+                                    } catch (err: any) {
+                                        alert(err.message || 'Error al conectar WooCommerce');
+                                    } finally {
+                                        setIsLoading(false);
+                                    }
+                                }}
+                                className="w-full mt-4 bg-purple-600 hover:bg-purple-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-purple-200 transition-all active:scale-[0.98]"
+                            >
+                                Conectar WooCommerce
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            {showFalabellaModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowFalabellaModal(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-zoom-in" onClick={e => e.stopPropagation()}>
+                        <div className="bg-lime-600 p-6 text-white relative">
+                            <button onClick={() => setShowFalabellaModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                                <IconX className="w-5 h-5" />
+                            </button>
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                                <IconFalabella className="w-7 h-7 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Vincular Falabella</h3>
+                            <p className="text-lime-100 text-sm mt-1">Usa tus credenciales de Seller Center.</p>
+                        </div>
+                        
+                        <div className="p-8 space-y-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">API Key</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Tu API Key de Falabella"
+                                    value={falabellaApiKey}
+                                    onChange={(e) => setFalabellaApiKey(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-lime-500 outline-none transition-all"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-2">Seller ID / Email</label>
+                                <input 
+                                    type="text" 
+                                    placeholder="Tu ID de vendedor"
+                                    value={falabellaSellerId}
+                                    onChange={(e) => setFalabellaSellerId(e.target.value)}
+                                    className="w-full px-4 py-3 bg-gray-50 border-2 border-gray-100 rounded-xl focus:border-lime-500 outline-none transition-all"
+                                />
+                            </div>
+                            
+                            <button 
+                                onClick={async () => {
+                                    if (!falabellaApiKey || !falabellaSellerId) return;
+                                    setIsLoading(true);
+                                    try {
+                                        await api.createIntegrationAccount({
+                                            type: 'FALABELLA',
+                                            nickname: `Falabella (${falabellaSellerId})`,
+                                            credentials: { falabellaApiKey, falabellaSellerId }
+                                        });
+                                        setShowFalabellaModal(false);
+                                        fetchAccounts();
+                                    } catch (err: any) {
+                                        alert(err.message || 'Error al conectar Falabella');
+                                    } finally {
+                                        setIsLoading(false);
+                                    }
+                                }}
+                                className="w-full mt-4 bg-lime-600 hover:bg-lime-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-lime-200 transition-all active:scale-[0.98]"
+                            >
+                                Conectar Falabella
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {accounts.length === 0 && !isLoading && (
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-10 flex flex-col items-center text-center">
                     <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mb-4">
@@ -342,7 +575,24 @@ const AccountManagement: React.FC = () => {
                     </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <a 
+                        href="/manuals/meli_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-yellow-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                                <IconMercadoLibre className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Meli</h4>
+                                <p className="text-[10px] text-gray-400">Estrategia Multi-Cuenta</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-yellow-500" />
+                    </a>
+
                     <a 
                         href="/manuals/shopify_guide.html" 
                         target="_blank" 
