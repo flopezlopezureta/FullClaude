@@ -47,7 +47,13 @@ const ClientDashboard: React.FC = () => {
   const [isDeletePasswordModalOpen, setIsDeletePasswordModalOpen] = useState(false);
   const [accounts, setAccounts] = useState<any[]>([]);
 
-  const [activeTab, setActiveTab] = useState<'packages' | 'settings'>('packages');
+  const [activeTab, setActiveTab] = useState<'packages' | 'settings'>(() => {
+    return (localStorage.getItem('clientActiveTab') as 'packages' | 'settings') || 'packages';
+  });
+
+  useEffect(() => {
+    localStorage.setItem('clientActiveTab', activeTab);
+  }, [activeTab]);
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');

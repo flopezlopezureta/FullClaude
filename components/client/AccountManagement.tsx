@@ -209,34 +209,48 @@ const AccountManagement: React.FC = () => {
                 ))}
 
                 {/* Add Account Card */}
-                <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-400 transition-all bg-gray-50/50">
-                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                <div 
+                    onClick={() => {
+                        window.location.href = '/api/integrations/meli/auth';
+                    }}
+                    className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer bg-gray-50/50"
+                >
+                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
                         <IconPlus className="w-6 h-6" />
                     </div>
                     <h3 className="font-bold text-gray-700 mb-1">Vincular Nueva Cuenta</h3>
-                    <p className="text-xs text-gray-500 mb-6 max-w-[200px]">Conecta otra tienda de Mercado Libre, Shopify o Jumpseller.</p>
+                    <p className="text-xs text-gray-500 mb-6 max-w-[200px]">Haz clic aquí para conectar Mercado Libre o usa los iconos inferiores para otras plataformas.</p>
                     
-                    <div className="flex flex-wrap justify-center gap-2">
+                    <div className="flex flex-wrap justify-center gap-4" onClick={(e) => e.stopPropagation()}>
                         <button 
                             onClick={() => window.location.href = '/api/integrations/meli/auth'}
-                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-yellow-400 hover:shadow-sm transition-all"
+                            className="flex flex-col items-center gap-1 group/btn"
                             title="Añadir Mercado Libre"
                         >
-                            <IconMercadoLibre className="w-5 h-5 text-yellow-500" />
+                            <div className="p-3 bg-white border border-gray-200 rounded-xl group-hover/btn:border-yellow-400 group-hover/btn:shadow-md transition-all">
+                                <IconMercadoLibre className="w-6 h-6 text-yellow-500" />
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-yellow-600">MELI</span>
                         </button>
                         <button 
-                            onClick={() => {/* Trigger Shopify modal or flow */}}
-                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-green-400 hover:shadow-sm transition-all"
+                            onClick={() => {/* Trigger Shopify flow */}}
+                            className="flex flex-col items-center gap-1 group/btn"
                             title="Añadir Shopify"
                         >
-                            <IconShopify className="w-5 h-5 text-green-500" />
+                            <div className="p-3 bg-white border border-gray-200 rounded-xl group-hover/btn:border-green-400 group-hover/btn:shadow-md transition-all">
+                                <IconShopify className="w-6 h-6 text-green-500" />
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-green-600">SHOPIFY</span>
                         </button>
                         <button 
-                            onClick={() => {/* Trigger Jumpseller modal or flow */}}
-                            className="p-2 bg-white border border-gray-200 rounded-lg hover:border-sky-400 hover:shadow-sm transition-all"
+                            onClick={() => {/* Trigger Jumpseller flow */}}
+                            className="flex flex-col items-center gap-1 group/btn"
                             title="Añadir Jumpseller"
                         >
-                            <IconJumpseller className="w-5 h-5 text-sky-600" />
+                            <div className="p-3 bg-white border border-gray-200 rounded-xl group-hover/btn:border-sky-400 group-hover/btn:shadow-md transition-all">
+                                <IconJumpseller className="w-6 h-6 text-sky-600" />
+                            </div>
+                            <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-sky-600">JUMP</span>
                         </button>
                     </div>
                 </div>
