@@ -1507,15 +1507,87 @@ router.get('/meli/callback', async (req, res) => {
 
         if (duplicateRows.length > 0) {
             return res.status(400).send(`
-                <html>
-                    <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; text-align: center;">
-                        <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 450px;">
-                            <h2 style="color: #dc2626;">Cuenta ya vinculada</h2>
-                            <p>Esta cuenta de Mercado Libre (${nickname}) ya pertenece al cliente <b>${duplicateRows[0].name}</b>.</p>
-                            <p style="font-size: 0.8rem; color: #666;">Una tienda solo puede estar asociada a un único usuario en Full Envíos.</p>
-                            <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem; font-weight: bold;">Cerrar Ventana</button>
-                        </div>
-                    </body>
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Cuenta ya vinculada | Full Envíos</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        :root {
+                            --brand-primary: #6366f1;
+                            --error: #ef4444;
+                            --bg: #0f172a;
+                        }
+                        body {
+                            margin: 0;
+                            font-family: 'Outfit', sans-serif;
+                            background: var(--bg);
+                            color: white;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            height: 100vh;
+                            overflow: hidden;
+                        }
+                        .container {
+                            background: rgba(30, 41, 59, 0.7);
+                            backdrop-filter: blur(12px);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            padding: 3rem;
+                            border-radius: 2rem;
+                            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                            max-width: 450px;
+                            text-align: center;
+                            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                        }
+                        @keyframes slideUp {
+                            from { opacity: 0; transform: translateY(30px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        .icon-circle {
+                            width: 80px;
+                            height: 80px;
+                            background: rgba(239, 68, 68, 0.1);
+                            color: var(--error);
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 2.5rem;
+                            margin: 0 auto 2rem;
+                            border: 2px solid rgba(239, 68, 68, 0.2);
+                        }
+                        h2 { margin: 0 0 1rem; font-weight: 700; font-size: 1.75rem; background: linear-gradient(to right, #ff4d4d, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                        p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+                        .highlight { color: white; font-weight: 600; }
+                        .btn {
+                            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+                            color: white;
+                            border: none;
+                            padding: 1rem 2rem;
+                            border-radius: 1rem;
+                            font-weight: 700;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                            box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            font-size: 0.875rem;
+                        }
+                        .btn:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(239, 68, 68, 0.4); }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon-circle">✕</div>
+                        <h2>Cuenta ya vinculada</h2>
+                        <p>La tienda <span class="highlight">${nickname}</span> ya pertenece al cliente <span class="highlight">${duplicateRows[0].name}</span>.</p>
+                        <p style="font-size: 0.85rem;">Por seguridad, una cuenta de plataforma solo puede estar asociada a un único usuario en Full Envíos.</p>
+                        <button onclick="window.close()" class="btn">Cerrar Ventana</button>
+                    </div>
+                </body>
                 </html>
             `);
         }
@@ -1563,17 +1635,94 @@ router.get('/meli/callback', async (req, res) => {
         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
 
         res.send(`
-            <html>
-                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; text-align: center;">
-                    <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);">
-                        <div style="width: 60px; height: 60px; background: #dcfce7; color: #166534; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">✓</div>
-                        <h2 style="color: #166534; margin-bottom: 0.5rem;">¡Cuenta Vinculada!</h2>
-                        <p style="color: #4b5563;">La tienda <b>${nickname}</b> se ha conectado correctamente.</p>
-                        <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 1rem;">Esta ventana se cerrará automáticamente en 5 segundos.</p>
-                        <button onclick="window.close()" style="background: #22c55e; color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem; font-weight: bold;">Cerrar Ahora</button>
-                    </div>
-                    <script>setTimeout(() => window.close(), 5000);</script>
-                </body>
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>¡Éxito! | Full Envíos</title>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+                <style>
+                    :root {
+                        --success: #10b981;
+                        --bg: #0f172a;
+                    }
+                    body {
+                        margin: 0;
+                        font-family: 'Outfit', sans-serif;
+                        background: var(--bg);
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        overflow: hidden;
+                    }
+                    .container {
+                        background: rgba(30, 41, 59, 0.7);
+                        backdrop-filter: blur(12px);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        padding: 3rem;
+                        border-radius: 2rem;
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                        max-width: 450px;
+                        text-align: center;
+                        animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    }
+                    @keyframes popIn {
+                        0% { opacity: 0; transform: scale(0.8); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                    .icon-circle {
+                        width: 80px;
+                        height: 80px;
+                        background: rgba(16, 185, 129, 0.1);
+                        color: var(--success);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 2.5rem;
+                        margin: 0 auto 2rem;
+                        border: 2px solid rgba(16, 185, 129, 0.2);
+                        animation: checkmark 0.8s ease-in-out forwards;
+                    }
+                    @keyframes checkmark {
+                        0% { transform: scale(0); }
+                        50% { transform: scale(1.2); }
+                        100% { transform: scale(1); }
+                    }
+                    h2 { margin: 0 0 1rem; font-weight: 700; font-size: 1.75rem; background: linear-gradient(to right, #10b981, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                    p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+                    .highlight { color: white; font-weight: 600; }
+                    .btn {
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        border: none;
+                        padding: 1rem 2rem;
+                        border-radius: 1rem;
+                        font-weight: 700;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        font-size: 0.875rem;
+                    }
+                    .btn:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.4); }
+                    .timer { font-size: 0.75rem; color: #64748b; margin-top: 1.5rem; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon-circle">✓</div>
+                    <h2>¡Conexión Exitosa!</h2>
+                    <p>La tienda <span class="highlight">${nickname}</span> se ha vinculado correctamente a Full Envíos.</p>
+                    <button onclick="window.close()" class="btn">Listo, Volver</button>
+                    <div class="timer">Esta ventana se cerrará automáticamente...</div>
+                </div>
+                <script>setTimeout(() => window.close(), 4000);</script>
+            </body>
             </html>
         `);
 

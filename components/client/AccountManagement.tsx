@@ -22,9 +22,10 @@ const AccountManagement: React.FC = () => {
     const [accounts, setAccounts] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState<string | null>(null);
-    const [error, setError] = useState<string | null>(null);
     const [editingAccount, setEditingAccount] = useState<string | null>(null);
     const [newName, setNewName] = useState('');
+    const [showShopifyModal, setShowShopifyModal] = useState(false);
+    const [shopifyUrl, setShopifyUrl] = useState('');
 
     const fetchAccounts = async () => {
         setIsLoading(true);
@@ -207,64 +208,95 @@ const AccountManagement: React.FC = () => {
                         </div>
                     </div>
                 ))}
-
-                {/* Add Account Card */}
+                               {/* Add Account Card */}
                 <div 
                     onClick={() => {
                         const token = localStorage.getItem('token');
                         window.location.href = `/api/integrations/meli/auth?token=${token}`;
                     }}
-                    className="border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center text-center group hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer bg-gray-50/50"
+                    className="group relative overflow-hidden bg-white border-2 border-dashed border-gray-200 rounded-2xl p-8 flex flex-col items-center justify-center text-center hover:border-indigo-400 hover:bg-indigo-50/30 transition-all duration-300 cursor-pointer shadow-sm hover:shadow-xl"
                 >
-                    <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-sm">
-                        <IconPlus className="w-6 h-6" />
-                    </div>
-                    <h3 className="font-bold text-gray-700 mb-1">Vincular Nueva Cuenta</h3>
-                    <p className="text-xs text-gray-500 mb-6 max-w-[200px]">Haz clic aquí para conectar Mercado Libre o usa los iconos inferiores para otras plataformas.</p>
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
                     
-                    <div className="flex flex-wrap justify-center gap-4" onClick={(e) => e.stopPropagation()}>
+                    <div className="relative w-16 h-16 rounded-2xl bg-indigo-100 text-indigo-600 flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-500 shadow-inner">
+                        <IconPlus className="w-8 h-8" />
+                    </div>
+                    
+                    <h3 className="relative font-bold text-gray-800 text-lg mb-2">Vincular Nueva Cuenta</h3>
+                    <p className="relative text-sm text-gray-500 mb-6 max-w-[220px]">Sincroniza tus ventas automáticamente desde Mercado Libre o Shopify.</p>
+                    
+                    <div className="relative flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
                         <button 
                             onClick={() => {
                                 const token = localStorage.getItem('token');
                                 window.location.href = `/api/integrations/meli/auth?token=${token}`;
                             }}
-                            className="flex flex-col items-center gap-1 group/btn"
-                            title="Añadir Mercado Libre"
+                            className="p-3 bg-white border border-gray-200 rounded-xl hover:border-yellow-500 hover:text-yellow-600 hover:shadow-md transition-all active:scale-95"
+                            title="Vincular Mercado Libre"
                         >
-                            <div className="p-3 bg-white border border-gray-200 rounded-xl group-hover/btn:border-yellow-400 group-hover/btn:shadow-md transition-all">
-                                <IconMercadoLibre className="w-6 h-6 text-yellow-500" />
-                            </div>
-                            <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-yellow-600">MELI</span>
+                            <IconMercadoLibre className="w-6 h-6" />
                         </button>
                         <button 
-                            onClick={() => {
-                                const shop = prompt('Ingresa la URL de tu tienda Shopify (ej: mi-tienda.myshopify.com):');
-                                if (shop) {
-                                    const token = localStorage.getItem('token');
-                                    window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shop)}&token=${token}`;
-                                }
-                            }}
-                            className="flex flex-col items-center gap-1 group/btn"
-                            title="Añadir Shopify"
+                            onClick={() => setShowShopifyModal(true)}
+                            className="p-3 bg-white border border-gray-200 rounded-xl hover:border-green-500 hover:text-green-600 hover:shadow-md transition-all active:scale-95"
+                            title="Vincular Shopify"
                         >
-                            <div className="p-3 bg-white border border-gray-200 rounded-xl group-hover/btn:border-green-400 group-hover/btn:shadow-md transition-all">
-                                <IconShopify className="w-6 h-6 text-green-500" />
-                            </div>
-                            <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-green-600">SHOPIFY</span>
-                        </button>
-                        <button 
-                            onClick={() => {/* Trigger Jumpseller flow */}}
-                            className="flex flex-col items-center gap-1 group/btn"
-                            title="Añadir Jumpseller"
-                        >
-                            <div className="p-3 bg-white border border-gray-200 rounded-xl group-hover/btn:border-sky-400 group-hover/btn:shadow-md transition-all">
-                                <IconJumpseller className="w-6 h-6 text-sky-600" />
-                            </div>
-                            <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-sky-600">JUMP</span>
+                            <IconShopify className="w-6 h-6" />
                         </button>
                     </div>
                 </div>
             </div>
+
+            {/* Shopify Installation Modal */}
+            {showShopifyModal && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4 animate-fade-in" onClick={() => setShowShopifyModal(false)}>
+                    <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden animate-zoom-in" onClick={e => e.stopPropagation()}>
+                        <div className="bg-indigo-600 p-6 text-white relative">
+                            <button onClick={() => setShowShopifyModal(false)} className="absolute top-4 right-4 p-2 hover:bg-white/20 rounded-full transition-colors">
+                                <IconX className="w-5 h-5" />
+                            </button>
+                            <div className="w-12 h-12 bg-white/20 rounded-2xl flex items-center justify-center mb-4">
+                                <IconShopify className="w-7 h-7 text-white" />
+                            </div>
+                            <h3 className="text-xl font-bold">Vincular Tienda Shopify</h3>
+                            <p className="text-indigo-100 text-sm mt-1">Ingresa el dominio de tu tienda para comenzar.</p>
+                        </div>
+                        
+                        <div className="p-8">
+                            <label className="block text-sm font-semibold text-gray-700 mb-2">Dominio de la Tienda</label>
+                            <div className="relative">
+                                <input 
+                                    type="text" 
+                                    placeholder="mi-tienda.myshopify.com"
+                                    value={shopifyUrl}
+                                    onChange={(e) => setShopifyUrl(e.target.value)}
+                                    className="w-full pl-4 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-gray-800 font-medium placeholder:text-gray-300"
+                                />
+                            </div>
+                            
+                            <div className="mt-4 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3">
+                                <IconAlertTriangle className="w-5 h-5 text-blue-500 shrink-0" />
+                                <p className="text-[11px] text-blue-700 leading-relaxed">
+                                    Asegúrate de ingresar el dominio completo. Ejemplo: <span className="font-bold">mitienda.myshopify.com</span>. Serás redirigido a Shopify para autorizar la aplicación.
+                                </p>
+                            </div>
+                            
+                            <button 
+                                onClick={() => {
+                                    if (!shopifyUrl.trim()) return;
+                                    const token = localStorage.getItem('token');
+                                    window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shopifyUrl)}&token=${token}`;
+                                }}
+                                disabled={!shopifyUrl.trim()}
+                                className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                            >
+                                <IconPlugConnected className="w-5 h-5" />
+                                Conectar ahora
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {accounts.length === 0 && !isLoading && (
                 <div className="bg-blue-50 border border-blue-100 rounded-xl p-10 flex flex-col items-center text-center">
