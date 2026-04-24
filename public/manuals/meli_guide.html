@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
+    <title>Manual de Configuración Mercado Libre - Full Envios</title>
+    <style>
+        :root {
+            --primary: #ffe600; /* Meli Yellow */
+            --secondary: #2d3277; /* Meli Blue */
+            --text-dark: #1a202c;
+            --text-light: #4a5568;
+            --bg-light: #f7fafc;
+            --border: #e2e8f0;
+        }
+        @page {
+            size: letter;
+            margin: 25mm !important;
+        }
+        * {
+            box-sizing: border-box;
+            -webkit-print-color-adjust: exact !important;
+            print-color-adjust: exact !important;
+        }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6;
+            color: var(--text-dark);
+            margin: 0;
+            padding: 0;
+            background-color: var(--bg-light);
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 950px;
+            margin: 40px auto;
+            padding: 50px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            background-color: white;
+            position: relative;
+        }
+        header {
+            border-bottom: 5px solid var(--primary);
+            padding-bottom: 20px;
+            margin-bottom: 40px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .logo-text {
+            font-size: 26px;
+            font-weight: 800;
+            color: var(--secondary);
+            letter-spacing: -1px;
+        }
+        h1 { font-size: 32px; color: var(--text-dark); margin: 0; }
+        h2 { font-size: 22px; color: var(--secondary); border-left: 5px solid var(--primary); padding-left: 15px; margin-top: 40px; margin-bottom: 15px; }
+        p { margin-bottom: 15px; color: var(--text-light); font-size: 16px; }
+        .alert {
+            background-color: #fffde7 !important;
+            border-left: 5px solid #ffe600 !important;
+            padding: 20px;
+            margin: 25px 0;
+            border-radius: 8px;
+            font-size: 15px;
+            break-inside: avoid;
+        }
+        .alert-important {
+            background-color: #fff5f5 !important;
+            border-left: 5px solid #f56565 !important;
+        }
+        .step {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 25px;
+            break-inside: avoid;
+        }
+        .step-number {
+            background: var(--secondary) !important;
+            color: white !important;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-weight: bold;
+            font-size: 16px;
+        }
+        .step-content {
+            font-size: 16px;
+        }
+        footer {
+            margin-top: 60px;
+            padding-top: 25px;
+            border-top: 1px solid var(--border);
+            text-align: center;
+            font-size: 13px;
+            color: var(--text-light);
+            break-inside: avoid;
+        }
+        @media print {
+            html, body {
+                width: 100% !important;
+                height: auto !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                background-color: white !important;
+                overflow: visible !important;
+            }
+            .container {
+                max-width: none !important;
+                width: 165mm !important;
+                margin: 0 auto !important;
+                padding: 0 !important;
+                box-shadow: none !important;
+                border: none !important;
+                display: block !important;
+                position: static !important;
+            }
+            .no-print { display: none !important; }
+            h1 { font-size: 18pt !important; }
+            h2 { font-size: 14pt !important; margin-top: 25pt !important; break-after: avoid !important; }
+            p, ul, li, .step-content, .alert { font-size: 10pt !important; }
+            footer { margin-top: 30pt !important; font-size: 8pt !important; }
+        }
+        .btn-print {
+            background: var(--secondary);
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: bold;
+            display: inline-block;
+            margin-bottom: 20px;
+            font-size: 15px;
+            transition: all 0.2s;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        .btn-print:hover {
+            background: #1e214d;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="no-print" style="text-align: right; display: flex; justify-content: flex-end; align-items: center; gap: 15px;">
+            <span id="version-tag" style="font-size: 12px; color: var(--text-light); font-weight: bold;"></span>
+            <a href="#" onclick="window.print(); return false;" class="btn-print">Descargar / Imprimir PDF</a>
+        </div>
+        
+        <script>
+            function updateTitle() {
+                const now = new Date();
+                const year = now.getFullYear();
+                const month = String(now.getMonth() + 1).padStart(2, '0');
+                const day = String(now.getDate()).padStart(2, '0');
+                const timestamp = `${year}${month}${day}`;
+                const baseTitle = "Manual_MercadoLibre_FullEnvios";
+                document.title = `${baseTitle}_${timestamp}`;
+                const tagEl = document.getElementById('version-tag');
+                if (tagEl) tagEl.innerText = "Versión: " + timestamp;
+            }
+            updateTitle();
+        </script>
+        
+        <header>
+            <div style="display: flex; align-items: center; gap: 20px;">
+                <img src="/logo.png" alt="Full Envios Logo" style="height: 60px; width: auto;">
+                <div>
+                    <div class="logo-text">FULL ENVIOS</div>
+                    <h1>Manual de Integración Mercado Libre</h1>
+                </div>
+            </div>
+            <div style="text-align: right; color: var(--text-light); font-size: 14px;">
+                Versión 2.0<br>
+                Abril 2026
+            </div>
+        </header>
+
+        <div class="alert">
+            <strong>ESTRATEGIA MULTI-CUENTA:</strong> Full Envios le permite conectar múltiples cuentas de Mercado Libre en un solo dashboard. Esta función es ideal para vendedores que utilizan cuentas secundarias para proteger su reputación y evitar castigos por demoras en los plazos de entrega.
+        </div>
+
+        <h2>1. Vinculación de la Primera Cuenta</h2>
+        <div class="step">
+            <div class="step-number">1</div>
+            <div class="step-content">
+                <strong>Iniciar Sesión:</strong> Asegúrese de tener abierta la sesión de su cuenta de Mercado Libre en el navegador.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">2</div>
+            <div class="step-content">
+                <strong>Vincular:</strong> En el panel de Full Envios, haga clic en <strong>"Vincular Nueva Cuenta"</strong> y seleccione el icono de Mercado Libre.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">3</div>
+            <div class="step-content">
+                <strong>Autorizar:</strong> Será redirigido a Mercado Libre. Haga clic en <strong>"Permitir"</strong> para autorizar la conexión. Al finalizar, regresará automáticamente a Full Envios.
+            </div>
+        </div>
+
+        <h2>2. Vincular Cuentas Adicionales</h2>
+        <p>Para evitar conflictos de sesión en su navegador al añadir una segunda o tercera cuenta, siga estrictamente estos pasos:</p>
+        <div class="alert alert-important">
+            <strong>REGLA DE ORO:</strong> Mercado Libre detectará automáticamente la cuenta que tiene "abierta" en su navegador. Para vincular una cuenta distinta, debe cerrar la sesión anterior primero.
+        </div>
+        <div class="step">
+            <div class="step-number">A</div>
+            <div class="step-content">
+                <strong>Cerrar Sesión:</strong> Vaya a <a href="https://www.mercadolibre.cl" target="_blank">Mercado Libre</a> y cierre la sesión actual.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">B</div>
+            <div class="step-content">
+                <strong>Opcional (Recomendado):</strong> Use una ventana de <strong>Incógnito</strong> en su navegador para realizar la vinculación de cada cuenta nueva.
+            </div>
+        </div>
+        <div class="step">
+            <div class="step-number">C</div>
+            <div class="step-content">
+                <strong>Repetir:</strong> Una vez cerrada la sesión anterior, pulse nuevamente "Vincular Nueva Cuenta" e inicie sesión con los datos de su segunda cuenta de Seller.
+            </div>
+        </div>
+
+        <h2>3. Centralización y Gestión</h2>
+        <p>Una vez vinculadas todas sus cuentas, podrá disfrutar de los siguientes beneficios:</p>
+        <ul>
+            <li><strong>Dashboard Unificado:</strong> Todos los pedidos de todas sus cuentas aparecerán en una sola lista, permitiendo despachar todo de una sola vez.</li>
+            <li><strong>Apodos Personalizados:</strong> Puede editar el nombre de cada cuenta (ej: "Meli - Tienda A", "Meli - Sucursal Sur") para identificar de dónde viene cada pedido.</li>
+            <li><strong>Sincronización Inteligente:</strong> El sistema consultará cada cuenta de forma independiente según el intervalo que usted defina (5, 15, 30 min).</li>
+        </ul>
+
+        <h2>4. Cumplimiento de Plazos (Evitar Castigos)</h2>
+        <p>Para asegurar que Mercado Libre no castigue su reputación, le recomendamos:</p>
+        <ul>
+            <li>Establecer un intervalo de sincronización de <strong>5 o 10 minutos</strong> para cuentas de alto volumen.</li>
+            <li>Verificar que el interruptor de "Importación Automática" esté siempre encendido.</li>
+        </ul>
+
+        <footer>
+            © 2026 Full Envios - Soporte Técnico: soporte@fullenvios.cl<br>
+            Este documento fue generado automáticamente por el sistema.
+        </footer>
+    </div>
+</body>
+</html>
