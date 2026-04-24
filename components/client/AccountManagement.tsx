@@ -233,7 +233,12 @@ const AccountManagement: React.FC = () => {
                             <span className="text-[10px] font-bold text-gray-400 group-hover/btn:text-yellow-600">MELI</span>
                         </button>
                         <button 
-                            onClick={() => {/* Trigger Shopify flow */}}
+                            onClick={() => {
+                                const shop = prompt('Ingresa la URL de tu tienda Shopify (ej: mi-tienda.myshopify.com):');
+                                if (shop) {
+                                    window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shop)}`;
+                                }
+                            }}
                             className="flex flex-col items-center gap-1 group/btn"
                             title="Añadir Shopify"
                         >

@@ -1429,8 +1429,33 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/integrations/meli/auth
+// Inicia el flujo de OAuth con Mercado Libre
+router.get('/meli/auth', authMiddleware, async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT meli_app_id FROM integration_settings WHERE id = 1');
+        if (rows.length === 0 || !rows[0].meli_app_id) {
+            return res.status(500).json({ message: 'El administrador no ha configurado el App ID de Mercado Libre.' });
+        }
+
+        const clientId = rows[0].meli_app_id;
+        const host = req.get('host');
+        // Usamos https por defecto ya que producción exige SSL, localhost se maneja por proxy o directamente
+        const protocol = host.includes('localhost') ? 'http' : 'https';
+        const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/meli/callback`);
+        
+        // El 'state' es fundamental para saber a qué usuario asignar la cuenta al volver
+        const authUrl = `https://auth.mercadolibre.cl/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${req.user.id}`;
+        
+        res.redirect(authUrl);
+    } catch (err) {
+        console.error('[MeliAuth] Error:', err);
+        res.status(500).json({ message: 'Error interno al iniciar autenticación con ML' });
+    }
+});
+
 // GET /api/integrations/meli/callback
-// This is the public callback URL for Mercado Libre OAuth
+// Recibe el código de ML y guarda la cuenta en el array de integraciones del usuario
 router.get('/meli/callback', async (req, res) => {
     const { code, state: userId } = req.query;
 
@@ -1439,18 +1464,16 @@ router.get('/meli/callback', async (req, res) => {
     }
 
     try {
-        // 1. Get App Credentials
+        // 1. Obtener credenciales de la App
         const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-        if (settingsRows.length === 0) {
-            return res.status(500).send('Configuración de Mercado Libre no encontrada en el servidor.');
-        }
-        const { meli_app_id, meli_client_secret } = settingsRows[0];
-
-        // 2. Exchange Code for Tokens
-        // Force https as the app is running behind a proxy that handles SSL
-        const host = req.get('host');
-        const redirectUri = `https://${host}/api/integrations/meli/callback`;
+        if (settingsRows.length === 0) return res.status(500).send('Configuración de ML no encontrada.');
         
+        const { meli_app_id, meli_client_secret } = settingsRows[0];
+        const host = req.get('host');
+        const protocol = host.includes('localhost') ? 'http' : 'https';
+        const redirectUri = `${protocol}://${host}/api/integrations/meli/callback`;
+        
+        // 2. Intercambiar código por tokens
         const postData = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: meli_app_id,
@@ -1462,28 +1485,42 @@ router.get('/meli/callback', async (req, res) => {
         const tokenData = await makeMeliPostRequest('/oauth/token', postData);
         const meliUserId = tokenData.user_id.toString();
 
-        // 3. Check if this Meli account is already connected to another user
-        const { rows: duplicateRows } = await db.query(
-            "SELECT id, name FROM users WHERE integrations->'meli'->>'userId' = $1 AND id != $2",
-            [meliUserId, userId]
-        );
+        // 3. Obtener información básica del vendedor (nickname)
+        let nickname = `Mercado Libre (${meliUserId})`;
+        try {
+            const userData = await makeMeliGetRequest(`/users/${meliUserId}`, tokenData.access_token);
+            if (userData && userData.nickname) nickname = userData.nickname;
+        } catch (e) { console.error('Error fetching ML user info:', e); }
+
+        // 4. Verificar duplicados (¿Está esta cuenta de ML en otro usuario?)
+        // Buscamos tanto en la estructura vieja como en el nuevo array 'accounts'
+        const duplicateCheckQuery = `
+            SELECT id, name FROM users 
+            WHERE (
+                integrations->'meli'->>'userId' = $1 
+                OR integrations->'accounts' @> $3
+            ) 
+            AND id != $2
+        `;
+        const accountMatchJson = JSON.stringify([{ type: 'MERCADO_LIBRE', credentials: { userId: meliUserId } }]);
+        const { rows: duplicateRows } = await db.query(duplicateCheckQuery, [meliUserId, userId, accountMatchJson]);
 
         if (duplicateRows.length > 0) {
             return res.status(400).send(`
                 <html>
                     <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; text-align: center;">
-                        <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 400px;">
-                            <h2 style="color: #dc2626;">Error de Conexión</h2>
-                            <p>Esta cuenta de Mercado Libre ya está vinculada al cliente: <strong>${duplicateRows[0].name}</strong>.</p>
-                            <p>Para evitar duplicidad de paquetes, una cuenta de Mercado Libre solo puede estar vinculada a un cliente en el sistema.</p>
-                            <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem;">Cerrar Ventana</button>
+                        <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 450px;">
+                            <h2 style="color: #dc2626;">Cuenta ya vinculada</h2>
+                            <p>Esta cuenta de Mercado Libre (${nickname}) ya pertenece al cliente <b>${duplicateRows[0].name}</b>.</p>
+                            <p style="font-size: 0.8rem; color: #666;">Una tienda solo puede estar asociada a un único usuario en Full Envíos.</p>
+                            <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 0.6rem 1.2rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem; font-weight: bold;">Cerrar Ventana</button>
                         </div>
                     </body>
                 </html>
             `);
         }
 
-        // 4. Store Tokens in User record
+        // 5. Preparar objeto de cuenta
         const meliIntegration = {
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
@@ -1493,52 +1530,56 @@ router.get('/meli/callback', async (req, res) => {
         };
 
         const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
-        const currentIntegrations = userRows[0]?.integrations || {};
-        const integrations = ensureMultiAccountStructure(currentIntegrations);
+        if (userRows.length === 0) return res.status(404).send('Usuario no encontrado.');
         
-        const meliAccount = {
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        
+        const newAccount = {
             id: `meli-${meliUserId}`,
             type: 'MERCADO_LIBRE',
-            nickname: `Mercado Libre (${meliUserId})`,
+            nickname: nickname,
             credentials: meliIntegration,
-            settings: { 
-                autoImport: true, 
-                syncInterval: 30 
-            },
+            settings: { autoImport: true, syncInterval: 30 },
             connectedAt: new Date().toISOString()
         };
 
+        // Actualizar si existe, o añadir si es nueva
         const existingIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE' && acc.credentials.userId === meliUserId);
         if (existingIndex > -1) {
-            integrations.accounts[existingIndex] = meliAccount;
+            integrations.accounts[existingIndex] = {
+                ...integrations.accounts[existingIndex],
+                credentials: meliIntegration,
+                nickname: nickname // Actualizar nickname por si cambió
+            };
         } else {
-            integrations.accounts.push(meliAccount);
+            integrations.accounts.push(newAccount);
         }
-        
+
+        // Mantener compatibilidad con el campo viejo si es la primera cuenta
+        if (!integrations.meli || integrations.meli.userId === meliUserId) {
+            integrations.meli = meliIntegration;
+        }
+
         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
 
-        // 4. Redirect back to the frontend with success
         res.send(`
             <html>
-                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6;">
-                    <div style="background: white; padding: 2rem; border-radius: 1rem; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
-                        <h2 style="color: #059669;">¡Conexión Exitosa!</h2>
-                        <p>Mercado Libre se ha conectado correctamente a tu cuenta de Full Envios.</p>
-                        <p>Puedes cerrar esta ventana y refrescar el panel de administración.</p>
-                        <button onclick="window.close()" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">Cerrar Ventana</button>
+                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; text-align: center;">
+                    <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1);">
+                        <div style="width: 60px; height: 60px; background: #dcfce7; color: #166534; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem; font-size: 2rem;">✓</div>
+                        <h2 style="color: #166534; margin-bottom: 0.5rem;">¡Cuenta Vinculada!</h2>
+                        <p style="color: #4b5563;">La tienda <b>${nickname}</b> se ha conectado correctamente.</p>
+                        <p style="font-size: 0.875rem; color: #9ca3af; margin-top: 1rem;">Esta ventana se cerrará automáticamente en 5 segundos.</p>
+                        <button onclick="window.close()" style="background: #22c55e; color: white; border: none; padding: 0.6rem 1.5rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem; font-weight: bold;">Cerrar Ahora</button>
                     </div>
-                    <script>
-                        setTimeout(() => {
-                            window.close();
-                        }, 5000);
-                    </script>
+                    <script>setTimeout(() => window.close(), 5000);</script>
                 </body>
             </html>
         `);
 
     } catch (err) {
-        console.error("Meli Callback Error:", err.body || err);
-        res.status(500).send(`Error al procesar la conexión con Mercado Libre: ${JSON.stringify(err.body || err)}`);
+        console.error('[MeliCallback] Error:', err);
+        res.status(500).send('Error al procesar la vinculación con Mercado Libre.');
     }
 });
 
