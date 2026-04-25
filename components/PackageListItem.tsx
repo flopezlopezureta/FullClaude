@@ -303,6 +303,9 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                 )}
                 {hasActions ? (
                     <ActionsMenu>
+                    <div className="px-4 py-2 text-[8px] text-gray-400 border-b border-gray-100 uppercase font-bold">
+                        Status: {pkg.status} (M:{canModify ? 'Y' : 'N'} E:{onEdit ? 'Y' : 'N'} D:{onDelete ? 'Y' : 'N'})
+                    </div>
                     {onPrint && (
                          <button onClick={() => onPrint(pkg)} className="w-full text-left flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--background-hover)]">
                             <IconPrinter className="w-4 h-4 mr-3" /> Imprimir Etiqueta
