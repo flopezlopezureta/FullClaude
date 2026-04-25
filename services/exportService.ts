@@ -27,6 +27,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
 
     // Define columns
     worksheet.columns = [
+        { header: 'ID PAQUETE', key: 'idPaquete', width: 25 },
         { header: 'PEDIDO', key: 'pedido', width: 15 },
         { header: 'FECHA DE PEDIDO', key: 'fecha', width: 20 },
         { header: 'DESTINATARIO', key: 'destinatario', width: 25 },
@@ -42,7 +43,8 @@ export const exportToExcel = async (packages: Package[], filename: string, users
     // Add rows
     packages.forEach(pkg => {
         worksheet.addRow({
-            pedido: pkg.meliOrderId || pkg.id,
+            idPaquete: pkg.id,
+            pedido: pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
             fecha: new Date(pkg.createdAt).toLocaleDateString('es-CL').replace(/\//g, '-'),
             destinatario: pkg.recipientName,
             telefono: pkg.recipientPhone,
