@@ -26,7 +26,7 @@ const EXPECTED_HEADERS = [
     'Notas'
 ];
 
-const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipientAddress' | 'recipientCommune' | 'recipientCity' | 'shippingType' | 'notes' | 'shopifyOrderId' } = {
+const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipientAddress' | 'recipientCommune' | 'recipientCity' | 'shippingType' | 'notes' | 'shopifyOrderId' | 'trackingId' } = {
     'nombre destinatario': 'recipientName',
     'teléfono': 'recipientPhone',
     'dirección': 'recipientAddress',
@@ -38,7 +38,8 @@ const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipie
     'notas': 'notes',
     'pedido / referencia': 'shopifyOrderId',
     'pedido': 'shopifyOrderId',
-    'referencia': 'shopifyOrderId'
+    'referencia': 'shopifyOrderId',
+    'id paquete': 'trackingId'
 };
 
 interface ParsedRow {
@@ -141,6 +142,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             recipientEmail: rowData.recipientEmail ? String(rowData.recipientEmail).toLowerCase().trim() : '',
             notes: rowData.notes || '',
             shopifyOrderId: rowData.shopifyOrderId ? String(rowData.shopifyOrderId) : '',
+            trackingId: rowData.trackingId ? String(rowData.trackingId) : '',
             source: 'MANUAL',
         };
 
