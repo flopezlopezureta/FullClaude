@@ -25,6 +25,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
     const worksheet = workbook.addWorksheet('BASE');
 
     const userMap = new Map(users.map(u => [u.id, u.name]));
+    const clientIdMap = new Map(users.map(u => [u.id, u.clientIdentifier || u.name.substring(0, 4).toUpperCase()]));
 
     // Define columns
     worksheet.columns = [
@@ -43,9 +44,6 @@ export const exportToExcel = async (packages: Package[], filename: string, users
         { header: 'CONDUCTOR', key: 'conductor', width: 20 },
     ];
 
-        const userMap = new Map(users.map(u => [u.id, u.name]));
-    const clientIdMap = new Map(users.map(u => [u.id, u.clientIdentifier || u.name.substring(0, 4).toUpperCase()]));
-    
     // Add rows
     packages.forEach(pkg => {
         worksheet.addRow({
@@ -126,6 +124,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
 
 export const exportToCSV = (packages: Package[], filename: string, users: User[] = []) => {
     const userMap = new Map(users.map(u => [u.id, u.name]));
+    const clientIdMap = new Map(users.map(u => [u.id, u.clientIdentifier || u.name.substring(0, 4).toUpperCase()]));
     const headers = [
         'ID Paquete',
         'Pedido',
@@ -145,9 +144,6 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
         const str = String(val || '').replace(/"/g, '""');
         return `"${str}"`;
     };
-
-    const userMap = new Map(users.map(u => [u.id, u.name]));
-    const clientIdMap = new Map(users.map(u => [u.id, u.clientIdentifier || u.name.substring(0, 4).toUpperCase()]));
 
     const rows = packages.map(pkg => [
         pkg.id,
