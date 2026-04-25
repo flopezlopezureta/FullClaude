@@ -123,7 +123,7 @@ const DashboardLayout: React.FC = () => {
 
       // User Management
       case 'users-admins':
-        if (isAdmin && isSuperUser) return { title: 'Gestión de Administradores', content: <UserManagement roleFilter={Role.Admin} /> };
+        if (isAdmin) return { title: 'Gestión de Administradores', content: <UserManagement roleFilter={Role.Admin} /> };
         break;
       
       case 'users-operadores':
