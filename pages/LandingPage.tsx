@@ -211,13 +211,12 @@ const LandingPage: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
             <a href="#funciones" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">Funciones</a>
             <a href="#precios" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">Planes</a>
             <a href="#contacto" className="text-sm font-bold text-slate-500 hover:text-indigo-600 transition-colors">Contacto</a>
-            <a 
-              href="https://fullenvios.selcom.cl"
-              target="_blank"
+            <button 
+              onClick={onLogin}
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-8 py-3 rounded-xl font-bold text-sm transition-all shadow-xl shadow-indigo-100 active:scale-95"
             >
               Acceso Cliente
-            </a>
+            </button>
           </div>
 
           {/* Hamburger Menu Icon */}
@@ -242,14 +241,12 @@ const LandingPage: React.FC<{ onLogin: () => void }> = ({ onLogin }) => {
                 <a href="#funciones" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold text-slate-800">Funciones</a>
                 <a href="#precios" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold text-slate-800">Planes</a>
                 <a href="#contacto" onClick={() => setIsMenuOpen(false)} className="text-lg font-bold text-slate-800">Contacto</a>
-                <a 
-                  href="https://fullenvios.selcom.cl"
-                  target="_blank"
-                  onClick={() => setIsMenuOpen(false)}
+                <button 
+                  onClick={() => { setIsMenuOpen(false); onLogin(); }}
                   className="w-full bg-indigo-600 text-white py-4 rounded-xl font-bold text-lg text-center"
                 >
                   Acceso Cliente
-                </a>
+                </button>
               </div>
             </motion.div>
           )}
