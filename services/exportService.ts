@@ -30,7 +30,8 @@ export const exportToExcel = async (packages: Package[], filename: string, users
     worksheet.columns = [
         { header: 'ID PAQUETE', key: 'idPaquete', width: 25 },
         { header: 'PEDIDO', key: 'pedido', width: 15 },
-        { header: 'SELLER', key: 'seller', width: 20 },
+        { header: 'CLIENTE', key: 'sellerName', width: 20 },
+        { header: 'ID_CLIENTE', key: 'sellerId', width: 15 },
         { header: 'FECHA DE PEDIDO', key: 'fecha', width: 20 },
         { header: 'DESTINATARIO', key: 'destinatario', width: 25 },
         { header: 'TELEFONO', key: 'telefono', width: 15 },
@@ -42,12 +43,16 @@ export const exportToExcel = async (packages: Package[], filename: string, users
         { header: 'CONDUCTOR', key: 'conductor', width: 20 },
     ];
 
+        const userMap = new Map(users.map(u => [u.id, u.name]));
+    const clientIdMap = new Map(users.map(u => [u.id, u.clientIdentifier || u.name.substring(0, 4).toUpperCase()]));
+    
     // Add rows
     packages.forEach(pkg => {
         worksheet.addRow({
             idPaquete: pkg.id,
             pedido: pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
-            seller: pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
+            sellerName: pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
+            sellerId: pkg.creatorId ? (clientIdMap.get(pkg.creatorId) || 'N/A') : 'N/A',
             fecha: new Date(pkg.createdAt).toLocaleDateString('es-CL').replace(/\//g, '-'),
             destinatario: pkg.recipientName,
             telefono: pkg.recipientPhone,
@@ -124,7 +129,8 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
     const headers = [
         'ID Paquete',
         'Pedido',
-        'Seller',
+        'Cliente',
+        'ID Cliente',
         'Fecha Creación',
         'Estado',
         'Destinatario',
@@ -140,10 +146,14 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
         return `"${str}"`;
     };
 
+    const userMap = new Map(users.map(u => [u.id, u.name]));
+    const clientIdMap = new Map(users.map(u => [u.id, u.clientIdentifier || u.name.substring(0, 4).toUpperCase()]));
+
     const rows = packages.map(pkg => [
         pkg.id,
         pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
         pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
+        pkg.creatorId ? (clientIdMap.get(pkg.creatorId) || 'N/A') : 'N/A',
         new Date(pkg.createdAt).toLocaleString('es-CL'),
         (pkg.status || '').replace('_', ' '),
         pkg.recipientName,
