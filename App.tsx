@@ -10,15 +10,6 @@ import LandingPage from './pages/LandingPage';
 
 const AppContent: React.FC = () => {
   const auth = useContext(AuthContext);
-  const [showLogin, setShowLogin] = React.useState(window.location.pathname === '/login');
-
-  useEffect(() => {
-    const handlePopState = () => {
-      setShowLogin(window.location.pathname === '/login');
-    };
-    window.addEventListener('popstate', handlePopState);
-    return () => window.removeEventListener('popstate', handlePopState);
-  }, []);
 
   useEffect(() => {
     // Aggressively unregister any service workers to prevent caching issues.
@@ -59,16 +50,7 @@ const AppContent: React.FC = () => {
   }
 
   if (!auth.user) {
-    if (showLogin) {
-      return <AuthPage onBack={() => {
-        window.history.pushState({}, '', '/');
-        setShowLogin(false);
-      }} />;
-    }
-    return <LandingPage onLogin={() => {
-      window.history.pushState({}, '', '/login');
-      setShowLogin(true);
-    }} />;
+    return <AuthPage />;
   }
 
   return <DashboardLayout />;
