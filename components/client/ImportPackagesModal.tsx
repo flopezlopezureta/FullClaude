@@ -141,8 +141,8 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             estimatedDelivery: new Date(),
             recipientEmail: rowData.recipientEmail ? String(rowData.recipientEmail).toLowerCase().trim() : '',
             notes: rowData.notes || '',
-            shopifyOrderId: rowData.shopifyOrderId ? String(rowData.shopifyOrderId) : '',
-            trackingId: rowData.trackingId ? String(rowData.trackingId) : '',
+            shopifyOrderId: rowData.shopifyOrderId ? String(rowData.shopifyOrderId).trim() : '',
+            trackingId: rowData.trackingId ? String(rowData.trackingId).trim() : '',
             source: 'MANUAL',
         };
 

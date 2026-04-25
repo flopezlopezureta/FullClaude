@@ -65,7 +65,20 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} OR p."recipientAddress" ILIKE $${paramIndex} OR p."recipientCity" ILIKE $${paramIndex} OR p."recipientCommune" ILIKE $${paramIndex} OR p.id ILIKE $${paramIndex} OR p."meliOrderId" ILIKE $${paramIndex} OR p."shopifyOrderId" ILIKE $${paramIndex} OR p."wooOrderId" ILIKE $${paramIndex} OR p."jumpsellerOrderId" ILIKE $${paramIndex} OR p."trackingId" ILIKE $${paramIndex} OR p."meliFlexCode" ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`);
+            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} 
+                OR p."recipientAddress" ILIKE $${paramIndex} 
+                OR p."recipientCity" ILIKE $${paramIndex} 
+                OR p."recipientCommune" ILIKE $${paramIndex} 
+                OR p.id ILIKE $${paramIndex} 
+                OR p."meliOrderId" ILIKE $${paramIndex} 
+                OR p."shopifyOrderId" ILIKE $${paramIndex} 
+                OR p."wooOrderId" ILIKE $${paramIndex} 
+                OR p."jumpsellerOrderId" ILIKE $${paramIndex} 
+                OR p."trackingId" ILIKE $${paramIndex} 
+                OR p."recipientPhone" ILIKE $${paramIndex}
+                OR p."recipientEmail" ILIKE $${paramIndex}
+                OR p."meliFlexCode" ILIKE $${paramIndex} 
+                OR u.name ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }
@@ -106,12 +119,15 @@ router.get('/', authMiddleware, async (req, res) => {
             queryParams.push(cityFilter);
         }
         
-        if (startDate) {
+        // Relax date filtering if searching by query to find historical packages
+        const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
+
+        if (startDate && !isHistoricalSearch) {
             whereClauses.push(`p."createdAt" >= $${paramIndex++}`);
             queryParams.push(startDate);
         }
 
-        if (endDate) {
+        if (endDate && !isHistoricalSearch) {
             const end = new Date(endDate);
             end.setDate(end.getDate() + 1); // Make it inclusive of the end day
             whereClauses.push(`p."createdAt" < $${paramIndex++}`);
@@ -453,7 +469,8 @@ router.post('/batch', authMiddleware, async (req, res) => {
                 const coords = { lat: null, lng: null };
 
                 const now = new Date();
-                const packageId = trackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
+                const cleanTrackingId = trackingId ? String(trackingId).trim() : null;
+                const packageId = cleanTrackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
 
                 const newPackage = {
                     id: packageId,
@@ -476,7 +493,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     shopifyOrderId, 
                     wooOrderId, 
                     jumpsellerOrderId,
-                    trackingId,
+                    trackingId: cleanTrackingId,
                     recipientEmail,
                     destLatitude: coords.lat,
                     destLongitude: coords.lng
