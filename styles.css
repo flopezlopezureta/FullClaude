@@ -22,6 +22,7 @@
     --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
     --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
     --status-pending-bg: #f1f5f9; --status-pending-text: #334155; --status-pending-border: #94a3b8; --status-pending-bg-subtle: #f8fafc;
+    --status-asignado-bg: #e0f2fe; --status-asignado-text: #0369a1; --status-asignado-border: #7dd3fc; --status-asignado-bg-subtle: #f0f9ff;
     --status-pickedup-bg: #f5f3ff; --status-pickedup-text: #7c3aed; --status-pickedup-border: #a78bfa; --status-pickedup-bg-subtle: #faf5ff;
     --status-intransit-bg: #dbeafe; --status-intransit-text: #2563eb; --status-intransit-border: #60a5fa; --status-intransit-bg-subtle: #eff6ff;
     --status-delivered-bg: #dcfce7; --status-delivered-text: #16a34a; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
@@ -52,6 +53,7 @@
     --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
     --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
     --status-pending-bg: #f1f5f9; --status-pending-text: #334155; --status-pending-border: #94a3b8; --status-pending-bg-subtle: #f8fafc;
+    --status-asignado-bg: #e0f2fe; --status-asignado-text: #0369a1; --status-asignado-border: #7dd3fc; --status-asignado-bg-subtle: #f0f9ff;
     --status-pickedup-bg: #f5f3ff; --status-pickedup-text: #7c3aed; --status-pickedup-border: #a78bfa; --status-pickedup-bg-subtle: #faf5ff;
     --status-intransit-bg: #dbeafe; --status-intransit-text: #2563eb; --status-intransit-border: #60a5fa; --status-intransit-bg-subtle: #eff6ff;
     --status-delivered-bg: #dcfce7; --status-delivered-text: #16a34a; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
@@ -82,6 +84,7 @@
     --error-bg: #7f1d1d; --error-border: #dc2626; --error-text: #fecaca;
     --success-bg: #14532d; --success-border: #22c55e; --success-text: #bbf7d0;
     --status-pending-bg: #334155; --status-pending-text: #e2e8f0; --status-pending-border: #64748b; --status-pending-bg-subtle: #334155;
+    --status-asignado-bg: #1e3a8a; --status-asignado-text: #bfdbfe; --status-asignado-border: #3b82f6; --status-asignado-bg-subtle: #1e3a8a;
     --status-pickedup-bg: #5b21b6; --status-pickedup-text: #ddd6fe; --status-pickedup-border: #8b5cf6; --status-pickedup-bg-subtle: #5b21b6;
     --status-intransit-bg: #1e40af; --status-intransit-text: #bfdbfe; --status-intransit-border: #3b82f6; --status-intransit-bg-subtle: #1e40af;
     --status-delivered-bg: #166534; --status-delivered-text: #bbf7d0; --status-delivered-border: #22c55e; --status-delivered-bg-subtle: #166534;
@@ -112,6 +115,7 @@
     --error-bg: #f8d7da; --error-border: #f5c6cb; --error-text: #721c24;
     --success-bg: #d4edda; --success-border: #c3e6cb; --success-text: #155724;
     --status-pending-bg: #e9ecef; --status-pending-text: #343a40; --status-pending-border: #adb5bd; --status-pending-bg-subtle: #f8f9fa;
+    --status-asignado-bg: #cce5ff; --status-asignado-text: #004085; --status-asignado-border: #b8daff; --status-asignado-bg-subtle: #eef7ff;
     --status-pickedup-bg: #e2d9f3; --status-pickedup-text: #4d2d88; --status-pickedup-border: #b19cd9; --status-pickedup-bg-subtle: #f2eef9;
     --status-intransit-bg: #cce5ff; --status-intransit-text: #004085; --status-intransit-border: #b8daff; --status-intransit-bg-subtle: #eef7ff;
     --status-delivered-bg: #d4edda; --status-delivered-text: #155724; --status-delivered-border: #c3e6cb; --status-delivered-bg-subtle: #ebf7ed;
@@ -142,6 +146,7 @@
     --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
     --success-bg: #d1fae5; --success-border: #6ee7b7; --success-text: #065f46;
     --status-pending-bg: #e0f2fe; --status-pending-text: #0ea5e9; --status-pending-border: #7dd3fc; --status-pending-bg-subtle: #f0f9ff;
+    --status-asignado-bg: #cffafe; --status-asignado-text: #0891b2; --status-asignado-border: #67e8f9; --status-asignado-bg-subtle: #ecfeff;
     --status-pickedup-bg: #cffafe; --status-pickedup-text: #0891b2; --status-pickedup-border: #67e8f9; --status-pickedup-bg-subtle: #ecfeff;
     --status-intransit-bg: #ccfbf1; --status-intransit-text: #0d9488; --status-intransit-border: #5eead4; --status-intransit-bg-subtle: #f0fdfa;
     --status-delivered-bg: #dcfce7; --status-delivered-text: #16a34a; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
@@ -172,6 +177,7 @@
     --error-bg: #fee2e2; --error-border: #fca5a5; --error-text: #b91c1c;
     --success-bg: #dcfce7; --success-border: #86efac; --success-text: #166534;
     --status-pending-bg: #fef3c7; --status-pending-text: #ca8a04; --status-pending-border: #facc15; --status-pending-bg-subtle: #fefce8;
+    --status-asignado-bg: #fef9c3; --status-asignado-text: #a16207; --status-asignado-border: #fde047; --status-asignado-bg-subtle: #fefce8;
     --status-pickedup-bg: #fef9c3; --status-pickedup-text: #a16207; --status-pickedup-border: #fde047; --status-pickedup-bg-subtle: #fefce8;
     --status-intransit-bg: #d9f99d; --status-intransit-text: #65a30d; --status-intransit-border: #a3e635; --status-intransit-bg-subtle: #f7fee7;
     --status-delivered-bg: #bbf7d0; --status-delivered-text: #22c55e; --status-delivered-border: #4ade80; --status-delivered-bg-subtle: #f0fdf4;
@@ -202,6 +208,7 @@
     --error-bg: #991b1b; --error-border: #ef4444; --error-text: #fecaca;
     --success-bg: #166534; --success-border: #4ade80; --success-text: #bbf7d0;
     --status-pending-bg: #374151; --status-pending-text: #d1d5db; --status-pending-border: #6b7280; --status-pending-bg-subtle: #4b5563;
+    --status-asignado-bg: #4c1d95; --status-asignado-text: #c4b5fd; --status-asignado-border: #7c3aed; --status-asignado-bg-subtle: #5b21b6;
     --status-pickedup-bg: #4c1d95; --status-pickedup-text: #c4b5fd; --status-pickedup-border: #7c3aed; --status-pickedup-bg-subtle: #5b21b6;
     --status-intransit-bg: #1e3a8a; --status-intransit-text: #93c5fd; --status-intransit-border: #3b82f6; --status-intransit-bg-subtle: #1e40af;
     --status-delivered-bg: #14532d; --status-delivered-text: #a7f3d0; --status-delivered-border: #22c55e; --status-delivered-bg-subtle: #166534;

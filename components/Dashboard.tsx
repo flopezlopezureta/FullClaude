@@ -40,6 +40,7 @@ const statusOptions: { label: string; value: string | null }[] = [
     { label: 'Todos', value: null },
     { label: 'Cerrados', value: 'closed' },
     { label: 'Pendiente', value: PackageStatus.Pending },
+    { label: 'Asignado', value: PackageStatus.Assigned },
     { label: 'Retirado', value: PackageStatus.PickedUp },
     { label: 'En Tránsito', value: PackageStatus.InTransit },
     { label: 'Entregado', value: PackageStatus.Delivered },
@@ -492,7 +493,7 @@ const Dashboard: React.FC = () => {
 
   const canDeleteSelected = useMemo(() => {
       if (selectedPackageObjects.length === 0) return false;
-      return selectedPackageObjects.every(p => p.status === PackageStatus.Pending);
+      return selectedPackageObjects.every(p => p.status === PackageStatus.Pending || p.status === PackageStatus.Assigned || p.status === PackageStatus.PickedUp);
   }, [selectedPackageObjects]);
 
   const handleDeleteSelected = async (enteredPassword?: string) => {
@@ -503,7 +504,7 @@ const Dashboard: React.FC = () => {
     try {
       const idsToDelete = [...selectedPackages].filter(id => {
           const pkg = packages.find(p => p.id === id);
-          return pkg && pkg.status === PackageStatus.Pending;
+          return pkg && (pkg.status === PackageStatus.Pending || pkg.status === PackageStatus.Assigned || pkg.status === PackageStatus.PickedUp);
       });
 
       if (idsToDelete.length === 0) {

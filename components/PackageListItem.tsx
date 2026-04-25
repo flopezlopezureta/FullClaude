@@ -23,6 +23,7 @@ interface PackageListItemProps {
 
 const statusIcons: { [key in PackageStatus]: React.ReactNode } = {
   [PackageStatus.Pending]: <IconPackage className="h-5 w-5" />,
+  [PackageStatus.Assigned]: <IconUserPlus className="h-5 w-5" />,
   [PackageStatus.PickedUp]: <IconArchive className="h-5 w-5" />,
   [PackageStatus.InTransit]: <IconTruck className="h-5 w-5" />,
   [PackageStatus.Delivered]: <IconCheckCircle className="h-5 w-5" />,
@@ -117,7 +118,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
     }
   }, [pkg.createdAt]);
 
-  const canModify = /PENDIENTE/i.test(String(pkg.status || ''));
+  const canModify = /PENDIENTE|ASIGNADO|RETIRADO/i.test(String(pkg.status || ''));
   const canReassign = onAssign && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned;
   const canMarkForReturn = onMarkForReturn && pkg.status === PackageStatus.Problem;
   const hasActions = onPrint || (canModify && (onEdit || onDelete)) || canReassign || canMarkForReturn;

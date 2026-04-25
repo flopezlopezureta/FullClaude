@@ -18,6 +18,7 @@ export enum UserStatus {
 
 export enum PackageStatus {
   Pending = 'PENDIENTE',
+  Assigned = 'ASIGNADO',
   PickedUp = 'RETIRADO',
   InTransit = 'EN_TRANSITO',
   Delivered = 'ENTREGADO',

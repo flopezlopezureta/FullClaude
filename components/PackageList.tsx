@@ -27,6 +27,7 @@ const statusPriority: { [key in PackageStatus]: number } = {
   [PackageStatus.Problem]: 1,
   [PackageStatus.ReturnPending]: 2,
   [PackageStatus.Pending]: 3, // Moved up priority to ensure new packages are seen
+  [PackageStatus.Assigned]: 3.5, // Between Pending and Delayed
   [PackageStatus.Delayed]: 4,
   [PackageStatus.PickedUp]: 5,
   [PackageStatus.InTransit]: 6,
