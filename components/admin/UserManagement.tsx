@@ -54,7 +54,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [copiedUserId, setCopiedUserId] = useState<string | null>(null);
   const [importingClient, setImportingClient] = useState<User | null>(null);
   const [importingSource, setImportingSource] = useState<PackageSource | null>(null);
-  const [sortBy, setSortBy] = useState<'name' | 'newest' | 'oldest' | 'packages'>('newest');
+  const [sortBy, setSortBy] = useState<'name' | 'newest' | 'oldest' | 'packages'>('name');
   const auth = useContext(AuthContext);
 
   const fetchUsers = async () => {
