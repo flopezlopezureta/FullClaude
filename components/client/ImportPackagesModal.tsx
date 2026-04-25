@@ -15,6 +15,7 @@ interface ImportPackagesModalProps {
 
 const EXPECTED_HEADERS = [
     'ID PAQUETE', // Opcional, para referencia
+    'PEDIDO / REFERENCIA', // Identificador del cliente
     'Nombre Destinatario', 
     'Teléfono', 
     'Dirección', 
@@ -25,7 +26,7 @@ const EXPECTED_HEADERS = [
     'Notas'
 ];
 
-const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipientAddress' | 'recipientCommune' | 'recipientCity' | 'shippingType' | 'notes' } = {
+const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipientAddress' | 'recipientCommune' | 'recipientCity' | 'shippingType' | 'notes' | 'shopifyOrderId' } = {
     'nombre destinatario': 'recipientName',
     'teléfono': 'recipientPhone',
     'dirección': 'recipientAddress',
@@ -35,6 +36,9 @@ const HEADER_MAP: { [key: string]: 'recipientName' | 'recipientPhone' | 'recipie
     'email': 'recipientEmail',
     'correo': 'recipientEmail',
     'notas': 'notes',
+    'pedido / referencia': 'shopifyOrderId',
+    'pedido': 'shopifyOrderId',
+    'referencia': 'shopifyOrderId'
 };
 
 interface ParsedRow {
@@ -136,6 +140,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             estimatedDelivery: new Date(),
             recipientEmail: rowData.recipientEmail ? String(rowData.recipientEmail).toLowerCase().trim() : '',
             notes: rowData.notes || '',
+            shopifyOrderId: rowData.shopifyOrderId ? String(rowData.shopifyOrderId) : '',
             source: 'MANUAL',
         };
 
@@ -183,7 +188,8 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
 
     const handleDownloadTemplate = () => {
         const worksheet = XLSX.utils.aoa_to_sheet([EXPECTED_HEADERS, [
-            'PKG-EXAMPLE-123',
+            '', // ID PAQUETE (Vacío para nuevos)
+            'REF-001', // PEDIDO / REFERENCIA
             'Juan Pérez',
             '912345678',
             'Av. Siempre Viva 123',
