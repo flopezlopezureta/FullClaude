@@ -13,6 +13,7 @@ import BatchShippingLabelModal from './BatchShippingLabelModal';
 import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconTrash, IconDownload, IconFileText, IconShopify, IconMercadoLibre, IconJumpseller } from '../Icon';
 import ImportPackagesModal from './ImportPackagesModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
+import EditPackageModal from '../modals/EditPackageModal';
 import DeletePasswordModal from '../modals/DeletePasswordModal';
 import ExportFormatModal from '../modals/ExportFormatModal';
 import { exportToExcel, exportToCSV } from '../../services/exportService';
@@ -149,14 +150,14 @@ const ClientDashboard: React.FC = () => {
     }
   };
 
-  const handleUpdatePackage = async (id: string, data: Partial<PackageCreationData>) => {
+  const handleUpdatePackage = async (updatedPkg: Package) => {
     try {
-        await api.updatePackage(id, data);
-        fetchData();
-        setEditingPackage(null);
+      await api.updatePackage(updatedPkg.id, updatedPkg);
+      setEditingPackage(null);
+      fetchData();
     } catch (error: any) {
-        console.error("Failed to update package", error);
-        alert(error.message || "Error al actualizar paquete");
+      console.error("Failed to update package", error);
+      alert("Error al actualizar el paquete: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -572,6 +573,13 @@ const ClientDashboard: React.FC = () => {
                 onClose={() => setIsExportModalOpen(false)}
                 onSelect={handleExportData}
                 isExporting={isExporting}
+            />
+        )}
+        {editingPackage && (
+            <EditPackageModal 
+                pkg={editingPackage}
+                onClose={() => setEditingPackage(null)}
+                onUpdate={handleUpdatePackage}
             />
         )}
         {printingPackages.length > 0 && auth?.user && (
