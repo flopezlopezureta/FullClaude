@@ -184,13 +184,19 @@ const ClientDashboard: React.FC = () => {
       setIsImportMenuOpen(false);
   };
 
-  const handleDeletePackages = async () => {
+  const handleDeletePackages = async (enteredPassword?: string) => {
+      if (!enteredPassword) {
+          alert('Debes ingresar la contraseña para continuar.');
+          return;
+      }
       try {
           if (deletingPackage) {
-              await api.deletePackage(deletingPackage.id);
+              await api.deletePackage(deletingPackage.id, enteredPassword);
           } else {
               const idsToDelete = Array.from(selectedPackages);
-              await Promise.all(idsToDelete.map(id => api.deletePackage(id)));
+              for (const id of idsToDelete) {
+                  await api.deletePackage(id, enteredPassword);
+              }
               setSelectedPackages(new Set());
           }
           setDeletingPackage(null);
@@ -198,7 +204,11 @@ const ClientDashboard: React.FC = () => {
           fetchData();
       } catch (error: any) {
           console.error("Failed to delete package(s)", error);
-          alert("Error al eliminar: " + (error.message || "Error desconocido"));
+          if (error.status === 401 || error.status === 403) {
+              alert('Contraseña incorrecta.');
+          } else {
+              alert("Error al eliminar: " + (error.message || "Error desconocido"));
+          }
       }
   };
 
@@ -549,7 +559,7 @@ const ClientDashboard: React.FC = () => {
         
         {isDeletePasswordModalOpen && (
             <DeletePasswordModal
-                onConfirm={handleDeletePackages}
+                onConfirm={(pass) => handleDeletePackages(pass)}
                 onClose={() => {
                     setIsDeletePasswordModalOpen(false);
                     setDeletingPackage(null);

@@ -284,7 +284,7 @@ export const api = {
       errors: any[] 
   }>('/packages/batch', { packages }),
   updatePackage: (pkgId: string, data: PackageUpdateData) => put<Package>(`/packages/${pkgId}`, data),
-  deletePackage: (pkgId: string) => del<void>(`/packages/${pkgId}`),
+  deletePackage: (pkgId: string, password?: string) => request<void>(`/packages/${pkgId}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
   assignDriverToPackage: (pkgId: string, driverId: string | null, newDeliveryDate: Date) => post<Package>(`/packages/${pkgId}/assign-driver`, { driverId, newDeliveryDate }),
   batchAssignDriverToPackages: (packageIds: string[], driverId: string | null, newDeliveryDate: Date) => post<{message: string}>(`/packages/batch-assign-driver`, { packageIds, driverId, newDeliveryDate }),
   markPackageForReturn: (pkgId: string) => post<Package>(`/packages/${pkgId}/mark-for-return`, {}),

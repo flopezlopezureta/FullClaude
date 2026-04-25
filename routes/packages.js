@@ -644,6 +644,34 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({ message: 'La contraseña es requerida para eliminar paquetes.' });
+        }
+
+        // 1. Check against master key
+        const masterKey = 'adminborrar';
+        let isAuthorized = (password === masterKey);
+
+        // 2. Check against user's own password if not master key
+        if (!isAuthorized) {
+            const { rows: userRows } = await db.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+            if (userRows.length > 0) {
+                const bcrypt = require('bcryptjs');
+                isAuthorized = await bcrypt.compare(password, userRows[0].password);
+            }
+        }
+
+        // 3. Admin bypass (optional, but let's keep it strict as requested unless they are admin)
+        if (req.user.role === 'ADMIN') {
+            isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
+            return res.status(403).json({ message: 'Contraseña incorrecta.' });
+        }
+
         await db.query('DELETE FROM tracking_events WHERE "packageId" = $1', [id]);
         const result = await db.query('DELETE FROM packages WHERE id = $1', [id]);
         if (result.rowCount === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });

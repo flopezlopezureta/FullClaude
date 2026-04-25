@@ -3,23 +3,20 @@ import { IconX, IconEye, IconEyeOff, IconAlertTriangle } from '../Icon';
 
 interface DeletePasswordModalProps {
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (password: string) => void;
 }
 
 const DeletePasswordModal: React.FC<DeletePasswordModalProps> = ({ onClose, onConfirm }) => {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const correctPassword = 'adminborrar';
-
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === correctPassword) {
-      onConfirm();
-    } else {
-      setError('Contraseña incorrecta.');
-      setPassword('');
+    if (!password.trim()) {
+      setError('Debes ingresar la contraseña.');
+      return;
     }
+    onConfirm(password);
   };
   
   const inputClasses = "w-full px-3 py-2 font-mono border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)]";
