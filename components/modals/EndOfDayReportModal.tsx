@@ -78,10 +78,12 @@ const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, pack
     if (auth?.systemSettings.messagingPlan === MessagingPlan.WhatsApp && summary.clientPhone) {
         const url = `https://wa.me/${summary.clientPhone.replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
         window.open(url, '_blank');
+    /*
     } else if (auth?.systemSettings.messagingPlan === MessagingPlan.Email && summary.clientEmail) {
         const subject = `Resumen de jornada - ${new Date().toLocaleDateString('es-CL')}`;
         const url = `mailto:${summary.clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
         window.location.href = url;
+    */
     }
   };
 

@@ -200,10 +200,12 @@ const DriverDashboard: React.FC = () => {
               if (auth.systemSettings.messagingPlan === MessagingPlan.WhatsApp && creator.phone) {
                   const whatsappUrl = `https://wa.me/${(creator.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
                   window.open(whatsappUrl, '_blank');
+              /* 
               } else if (auth.systemSettings.messagingPlan === MessagingPlan.Email && creator.email) {
                   const subject = `Paquete Entregado: ${updatedPackage.id}`;
                   const mailtoUrl = `mailto:${creator.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
                   window.location.href = mailtoUrl;
+              */
               }
           }
       }

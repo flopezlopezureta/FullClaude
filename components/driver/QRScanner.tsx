@@ -297,10 +297,12 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
             const clientPhone = client.phone.replace(/\D/g, '');
             const whatsappUrl = `https://wa.me/${clientPhone}?text=${encodeURIComponent(message)}`;
             window.open(whatsappUrl, '_blank');
+        /*
         } else if (auth?.systemSettings.messagingPlan === MessagingPlan.Email && client.email) {
             const subject = `Retiro de ${finalCount} paquetes completado`;
             const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
             window.location.href = mailtoUrl;
+        */
         }
 
         setTimeout(() => {
