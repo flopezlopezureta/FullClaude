@@ -14,6 +14,7 @@ interface ImportPackagesModalProps {
 }
 
 const EXPECTED_HEADERS = [
+    'ID PAQUETE', // Opcional, para referencia
     'Nombre Destinatario', 
     'Teléfono', 
     'Dirección', 
@@ -118,7 +119,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
         }
         
         // --- Formatting ---
-        let phone = String(rowData.recipientPhone).replace(/\s+/g, '');
+        let phone = String(rowData.recipientPhone || '').replace(/\s+/g, '');
         if (phone.length === 9 && phone.startsWith('9')) {
           phone = `+56${phone}`;
         } else if (phone.length === 8 && /^\d+$/.test(phone)) {
@@ -126,10 +127,10 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
         }
 
         const packageData: Omit<PackageCreationData, 'origin' | 'creatorId'> = {
-            recipientName: String(rowData.recipientName).toUpperCase(),
+            recipientName: String(rowData.recipientName || '').toUpperCase(),
             recipientPhone: phone,
-            recipientAddress: String(rowData.recipientAddress).toUpperCase(),
-            recipientCommune: String(rowData.recipientCommune),
+            recipientAddress: String(rowData.recipientAddress || '').toUpperCase(),
+            recipientCommune: String(rowData.recipientCommune || ''),
             recipientCity: String(rowData.recipientCity || 'Santiago'),
             shippingType: validShippingType,
             estimatedDelivery: new Date(),
@@ -182,6 +183,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
 
     const handleDownloadTemplate = () => {
         const worksheet = XLSX.utils.aoa_to_sheet([EXPECTED_HEADERS, [
+            'PKG-EXAMPLE-123',
             'Juan Pérez',
             '912345678',
             'Av. Siempre Viva 123',
