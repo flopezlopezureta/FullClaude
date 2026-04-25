@@ -15,6 +15,7 @@ const mapStatus = (status: PackageStatus): string => {
         case PackageStatus.Returned: return 'DEVUELTO';
         case PackageStatus.Cancelled: return 'CANCELADO';
         case PackageStatus.Rescheduled: return 'REPROGRAMADO';
+        case PackageStatus.Assigned: return 'ASIGNADO';
         default: return status;
     }
 };
@@ -29,6 +30,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
     worksheet.columns = [
         { header: 'ID PAQUETE', key: 'idPaquete', width: 25 },
         { header: 'PEDIDO', key: 'pedido', width: 15 },
+        { header: 'SELLER', key: 'seller', width: 20 },
         { header: 'FECHA DE PEDIDO', key: 'fecha', width: 20 },
         { header: 'DESTINATARIO', key: 'destinatario', width: 25 },
         { header: 'TELEFONO', key: 'telefono', width: 15 },
@@ -45,6 +47,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
         worksheet.addRow({
             idPaquete: pkg.id,
             pedido: pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
+            seller: pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
             fecha: new Date(pkg.createdAt).toLocaleDateString('es-CL').replace(/\//g, '-'),
             destinatario: pkg.recipientName,
             telefono: pkg.recipientPhone,
@@ -120,6 +123,8 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
     const userMap = new Map(users.map(u => [u.id, u.name]));
     const headers = [
         'ID Paquete',
+        'Pedido',
+        'Seller',
         'Fecha Creación',
         'Estado',
         'Destinatario',
@@ -137,6 +142,8 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
 
     const rows = packages.map(pkg => [
         pkg.id,
+        pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
+        pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
         new Date(pkg.createdAt).toLocaleString('es-CL'),
         (pkg.status || '').replace('_', ' '),
         pkg.recipientName,
