@@ -300,7 +300,7 @@ const QRScanner: React.FC<QRScannerProps> = ({ client, onBack, driverPermissions
         } else if (auth?.systemSettings.messagingPlan === MessagingPlan.Email && client.email) {
             const subject = `Retiro de ${finalCount} paquetes completado`;
             const mailtoUrl = `mailto:${client.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-            window.open(mailtoUrl, '_blank');
+            window.location.href = mailtoUrl;
         }
 
         setTimeout(() => {

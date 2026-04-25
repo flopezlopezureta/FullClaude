@@ -81,7 +81,7 @@ const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, pack
     } else if (auth?.systemSettings.messagingPlan === MessagingPlan.Email && summary.clientEmail) {
         const subject = `Resumen de jornada - ${new Date().toLocaleDateString('es-CL')}`;
         const url = `mailto:${summary.clientEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-        window.open(url, '_blank');
+        window.location.href = url;
     }
   };
 

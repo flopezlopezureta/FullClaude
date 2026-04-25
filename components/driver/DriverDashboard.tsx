@@ -203,7 +203,7 @@ const DriverDashboard: React.FC = () => {
               } else if (auth.systemSettings.messagingPlan === MessagingPlan.Email && creator.email) {
                   const subject = `Paquete Entregado: ${updatedPackage.id}`;
                   const mailtoUrl = `mailto:${creator.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-                  window.open(mailtoUrl, '_blank');
+                  window.location.href = mailtoUrl;
               }
           }
       }
