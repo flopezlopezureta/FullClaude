@@ -47,6 +47,7 @@ const sourceIcons: { [key in PackageSource]?: React.ReactNode } = {
 
 const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const [openUpwards, setOpenUpwards] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
@@ -58,6 +59,15 @@ const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
         document.addEventListener('mousedown', handleClickOutside);
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
+
+    useEffect(() => {
+        if (isOpen && menuRef.current) {
+            const rect = menuRef.current.getBoundingClientRect();
+            const spaceBelow = window.innerHeight - rect.bottom;
+            // Si hay menos de 250px abajo, abrir hacia arriba
+            setOpenUpwards(spaceBelow < 250);
+        }
+    }, [isOpen]);
     
     const childrenWithCloseAction = Children.map(children, child => {
         if (isValidElement(child)) {
@@ -81,7 +91,7 @@ const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
             </button>
             {isOpen && (
                 <div 
-                    className="absolute right-0 mt-2 w-48 bg-[var(--background-secondary)] rounded-md shadow-lg z-10 border border-[var(--border-primary)]"
+                    className={`absolute right-0 ${openUpwards ? 'bottom-full mb-1' : 'top-full mt-1'} w-56 bg-[var(--background-secondary)] rounded-lg shadow-2xl z-[100] border border-[var(--border-primary)] animate-fade-in-up`}
                 >
                     <div className="py-1">
                         {childrenWithCloseAction}
@@ -303,9 +313,6 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                 )}
                 {hasActions ? (
                     <ActionsMenu>
-                    <div className="px-4 py-2 text-[8px] text-gray-400 border-b border-gray-100 uppercase font-bold">
-                        Status: {pkg.status} (M:{canModify ? 'Y' : 'N'} E:{onEdit ? 'Y' : 'N'} D:{onDelete ? 'Y' : 'N'})
-                    </div>
                     {onPrint && (
                          <button onClick={() => onPrint(pkg)} className="w-full text-left flex items-center px-4 py-2 text-sm text-[var(--text-secondary)] hover:bg-[var(--background-hover)]">
                             <IconPrinter className="w-4 h-4 mr-3" /> Imprimir Etiqueta

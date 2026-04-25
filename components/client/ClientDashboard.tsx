@@ -480,19 +480,21 @@ const ClientDashboard: React.FC = () => {
                         </div>
                     )}
                     
-                    <PackageList 
-                        packages={packages} 
-                        users={[]} 
-                        isLoading={isLoading}
-                        onSelectPackage={setSelectedPackage}
-                        onEditPackage={setEditingPackage}
-                        onDeletePackage={(pkg) => { setDeletingPackage(pkg); setIsDeletePasswordModalOpen(true); }}
-                        onPrintLabel={(pkg) => setPrintingPackages([pkg])}
-                        hideDriverName={true}
-                        selectedPackages={selectedPackages}
-                        onSelectionChange={handleSelectionChange}
-                        onSelectAll={handleSelectAll}
-                    />
+                    <div className="min-height-[300px]">
+                        <PackageList 
+                            packages={packages} 
+                            users={[]} 
+                            isLoading={isLoading}
+                            onSelectPackage={setSelectedPackage}
+                            onEditPackage={setEditingPackage}
+                            onDeletePackage={(pkg) => { setDeletingPackage(pkg); setIsDeletePasswordModalOpen(true); }}
+                            onPrintLabel={(pkg) => setPrintingPackages([pkg])}
+                            hideDriverName={true}
+                            selectedPackages={selectedPackages}
+                            onSelectionChange={handleSelectionChange}
+                            onSelectAll={handleSelectAll}
+                        />
+                    </div>
                     
                     {totalPackages > 0 && (
                         <div className="p-4 border-t border-[var(--border-primary)] flex items-center justify-between">
