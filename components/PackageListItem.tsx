@@ -107,7 +107,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
     }
   }, [pkg.createdAt]);
 
-  const canModify = pkg.status === PackageStatus.Pending;
+  const canModify = pkg.status === PackageStatus.Pending || String(pkg.status || '').trim().toUpperCase() === 'PENDIENTE';
   const canReassign = onAssign && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned;
   const canMarkForReturn = onMarkForReturn && pkg.status === PackageStatus.Problem;
   const hasActions = onPrint || (canModify && (onEdit || onDelete)) || canReassign || canMarkForReturn;
