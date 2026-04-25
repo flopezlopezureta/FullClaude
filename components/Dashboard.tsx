@@ -377,8 +377,13 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const drivers = users.filter(u => u.role === Role.Driver && u.status === UserStatus.Approved);
-  const clients = users.filter(u => u.role === Role.Client && u.status === UserStatus.Approved);
+  const drivers = users
+    .filter(u => u.role === Role.Driver && u.status === UserStatus.Approved)
+    .sort((a, b) => a.name.localeCompare(b.name));
+    
+  const clients = users
+    .filter(u => u.role === Role.Client && u.status === UserStatus.Approved)
+    .sort((a, b) => a.name.localeCompare(b.name));
 
   const uniqueCommunes = useMemo(() => {
     if (!Array.isArray(packages)) return [];
