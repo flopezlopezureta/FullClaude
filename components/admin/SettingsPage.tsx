@@ -36,6 +36,7 @@ interface SettingsState {
     labelFormat: LabelFormat;
     circuitExportEnabled: boolean;
     timeFormat: '12h' | '24h';
+    allowRedelivery: boolean;
 }
 
 const SettingsPage: React.FC = () => {
@@ -55,6 +56,7 @@ const SettingsPage: React.FC = () => {
         labelFormat: LabelFormat.CompactThermal,
         circuitExportEnabled: false,
         timeFormat: '12h',
+        allowRedelivery: false,
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -87,6 +89,7 @@ const SettingsPage: React.FC = () => {
                 labelFormat: auth.systemSettings.labelFormat || LabelFormat.CompactThermal,
                 circuitExportEnabled: auth.systemSettings.circuitExportEnabled ?? false,
                 timeFormat: auth.systemSettings.timeFormat || '12h',
+                allowRedelivery: auth.systemSettings.allowRedelivery ?? false,
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
