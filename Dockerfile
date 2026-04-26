@@ -18,6 +18,10 @@ RUN npm run build
 # Stage 2: Production runtime
 FROM node:22-alpine AS runner
 
+# Set timezone to Chile
+RUN apk add --no-cache tzdata
+ENV TZ=America/Santiago
+
 WORKDIR /app
 
 # Copy package files and install only production deps

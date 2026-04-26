@@ -143,7 +143,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
   // VISUAL SEPARATION LOGIC
   const primaryText = isReturnFlow 
       ? `${pkg.status === PackageStatus.Returned ? 'DEVUELTO A' : 'DEVOLUCIÓN A'}: ${creatorName || 'Cliente'}` 
-      : (pkg.recipientName || 'Sin Nombre');
+      : (creatorName || 'Sin Cliente (Seller)');
       
   const addressText = isReturnFlow 
       ? (pkg.origin || 'Sin Origen') 
@@ -252,10 +252,10 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                         </div>
 
                         {/* Additional Info */}
-                        {creatorName && !isReturnFlow && (
+                        {!isReturnFlow && (
                             <div className="flex items-center gap-1 text-[10px] text-[var(--text-muted)] pt-0.5">
                                 <IconUser className="w-3 h-3" />
-                                <span className="truncate">Cliente: {creatorName}</span>
+                                <span className="truncate">Comprador: {pkg.recipientName || 'Sin Nombre'}</span>
                             </div>
                         )}
                         {pkg.sourceAccountName && (
