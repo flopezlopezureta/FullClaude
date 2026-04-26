@@ -25,6 +25,8 @@ interface PackageFiltersProps {
   onEndDateChange: (date: string) => void;
   flexFilter: 'all' | 'flexed' | 'not_flexed';
   onFlexFilterChange: (filter: 'all' | 'flexed' | 'not_flexed') => void;
+  sourceFilter: 'all' | 'ml' | 'web';
+  onSourceFilterChange: (filter: 'all' | 'ml' | 'web') => void;
   quickFilter: 'all' | 'closed' | 'cancelled' | 'rescheduled';
   onQuickFilterChange: (filter: 'all' | 'closed' | 'cancelled' | 'rescheduled') => void;
   clients: User[];
@@ -55,6 +57,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onEndDateChange,
   flexFilter,
   onFlexFilterChange,
+  sourceFilter,
+  onSourceFilterChange,
   quickFilter,
   onQuickFilterChange,
   clients,
@@ -256,6 +260,14 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                     </div>
                 </div>
             )}
+        </div>
+        <div className="flex-shrink-0 w-32">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Origen</label>
+          <select id="source-filter" value={sourceFilter} onChange={(e) => onSourceFilterChange(e.target.value as any)} className={`${selectClasses} font-bold text-xs !py-1.5`} aria-label="Filtrar por origen">
+            <option value="all">TODOS</option>
+            <option value="ml">MERCADO LIBRE</option>
+            <option value="web">WEB / MANUAL</option>
+          </select>
         </div>
         <div className="flex-shrink-0 w-32">
           <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Flex</label>

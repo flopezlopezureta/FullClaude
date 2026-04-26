@@ -49,6 +49,7 @@ router.get('/', authMiddleware, async (req, res) => {
             endDate,
             flexFilter,
             quickFilter,
+            sourceFilter,
             isAssigned,
             accountId,
             sortOrder = 'desc',
@@ -139,6 +140,14 @@ router.get('/', authMiddleware, async (req, res) => {
                 whereClauses.push(`p."isFlexed" = true`);
             } else if (flexFilter === 'not_flexed') {
                 whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
+            }
+        }
+
+        if (sourceFilter) {
+            if (sourceFilter === 'ml') {
+                whereClauses.push(`p.source = 'MERCADO_LIBRE'`);
+            } else if (sourceFilter === 'web') {
+                whereClauses.push(`p.source != 'MERCADO_LIBRE'`);
             }
         }
 

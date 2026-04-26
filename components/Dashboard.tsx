@@ -102,6 +102,7 @@ const Dashboard: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
+  const [sourceFilter, setSourceFilter] = useState<'all' | 'ml' | 'web'>('all');
   const [quickFilter, setQuickFilter] = useState<'all' | 'closed' | 'cancelled' | 'rescheduled'>('all');
   const [driverFilter, setDriverFilter] = useState<string>('');
   const [clientFilter, setClientFilter] = useState<string>('');
@@ -224,6 +225,7 @@ const Dashboard: React.FC = () => {
             endDate,
             flexFilter,
             quickFilter,
+            sourceFilter,
             sortOrder,
         };
         const [packagesResult, allUsers] = await Promise.all([
@@ -243,7 +245,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, sortOrder]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder]);
 
   useEffect(() => {
     fetchData();
@@ -263,6 +265,7 @@ const Dashboard: React.FC = () => {
       setSearchQuery('');
       setStatusFilter([]);
       setFlexFilter('all');
+      setSourceFilter('all');
       setQuickFilter('all');
       setDriverFilter('');
       setClientFilter('');
@@ -657,6 +660,8 @@ const Dashboard: React.FC = () => {
             onEndDateChange={setEndDate}
             flexFilter={flexFilter}
             onFlexFilterChange={setFlexFilter}
+            sourceFilter={sourceFilter}
+            onSourceFilterChange={setSourceFilter}
             quickFilter={quickFilter}
             onQuickFilterChange={setQuickFilter}
             isSyncing={isLoading}
