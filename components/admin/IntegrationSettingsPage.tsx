@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { api } from '../../services/api';
 import type { IntegrationSettings } from '../../types';
-import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload, IconWoocommerce, IconFalabella, IconMail, IconJumpseller } from '../Icon';
+import { IconCheckCircle, IconLoader, IconAlertTriangle, IconPlugConnected, IconEye, IconEyeOff, IconShopify, IconMercadoLibre, IconGithub, IconDownload, IconWoocommerce, IconFalabella, IconMail, IconJumpseller, IconInfo } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 
 const IntegrationSettingsPage: React.FC = () => {
@@ -455,26 +455,103 @@ const IntegrationSettingsPage: React.FC = () => {
         <div className="max-w-3xl space-y-8 pb-12">
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">Configuración de Integraciones</h1>
 
-            {/* Manuales Section */}
-            <div className="bg-gradient-to-r from-sky-600 to-sky-700 rounded-xl p-6 shadow-lg text-white">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            {/* Help & Manuals Section */}
+            <div className="bg-white shadow-md rounded-lg border border-[var(--border-primary)] p-6 mb-6">
+                <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                        <IconInfo className="w-5 h-5" />
+                    </div>
                     <div>
-                        <h2 className="text-xl font-bold mb-1 flex items-center gap-2">
-                            <span className="text-2xl">📚</span> Manuales y Recursos de Ayuda
-                        </h2>
-                        <p className="text-sky-100 text-sm">Documentación técnica para configurar las integraciones globales del sistema.</p>
+                        <h3 className="font-bold text-gray-800">Centro de Ayuda</h3>
+                        <p className="text-xs text-gray-500">Descarga los manuales paso a paso para tus integraciones.</p>
                     </div>
-                    <div className="flex flex-wrap gap-2">
-                        <a 
-                            href="/manuals/shopify_guide.html?v=2026.4.19.1" 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="bg-white/20 hover:bg-white/30 backdrop-blur-md px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 transition-all border border-white/30"
-                        >
-                            <IconShopify className="w-4 h-4" />
-                            Guía Shopify (PDF)
-                        </a>
-                    </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                    <a 
+                        href="/manuals/meli_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-yellow-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                                <IconMercadoLibre className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Meli</h4>
+                                <p className="text-[10px] text-gray-400">Estrategia Multi-Cuenta</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-yellow-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/shopify_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-green-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                <IconShopify className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Shopify</h4>
+                                <p className="text-[10px] text-gray-400">Configuración OAuth 2.0</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-green-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/falabella_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-lime-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-lime-50 text-lime-600 rounded-xl group-hover:bg-lime-600 group-hover:text-white transition-colors">
+                                <IconFalabella className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Falabella</h4>
+                                <p className="text-[10px] text-gray-400">Credenciales API Key</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-lime-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/woocommerce_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-purple-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                <IconWoocommerce className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía WooCommerce</h4>
+                                <p className="text-[10px] text-gray-400">Instalación del Plugin</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-purple-500" />
+                    </a>
+
+                    <a 
+                        href="/manuals/jumpseller_guide.html" 
+                        target="_blank" 
+                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-sky-500 hover:shadow-md transition-all flex items-center justify-between"
+                    >
+                        <div className="flex items-center gap-3">
+                            <div className="p-2 bg-sky-50 text-sky-600 rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                                <IconJumpseller className="w-6 h-6" />
+                            </div>
+                            <div>
+                                <h4 className="text-sm font-bold text-gray-700">Guía Jumpseller</h4>
+                                <p className="text-[10px] text-gray-400">Configuración de Webhooks</p>
+                            </div>
+                        </div>
+                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-sky-500" />
+                    </a>
                 </div>
             </div>
 
