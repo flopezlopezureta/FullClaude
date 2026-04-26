@@ -310,10 +310,10 @@ const SettingsPage: React.FC = () => {
                                 </div>
                              </div>
                         </div>
-                    </div>
-                    <div>
-                        <label htmlFor="requiredPhotos" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fotos requeridas por Entrega</label>
-                        <input type="number" id="requiredPhotos" name="requiredPhotos" value={settings.requiredPhotos} onChange={handleSettingsChange} min="1" max="5" required className={`${inputClasses} text-[var(--text-primary)]`}/>
+                        <div>
+                            <label htmlFor="requiredPhotos" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Fotos requeridas por Entrega</label>
+                            <input type="number" id="requiredPhotos" name="requiredPhotos" value={settings.requiredPhotos} onChange={handleSettingsChange} min="1" max="5" required className={`${inputClasses} text-[var(--text-primary)]`}/>
+                        </div>
                     </div>
 
                     <div className="pt-4 border-t border-[var(--border-primary)] bg-[var(--brand-muted)] p-6 rounded-2xl shadow-inner border-2 border-dashed border-black">
