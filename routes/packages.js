@@ -951,8 +951,8 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         // --- NEW MELI VALIDATION (STRICT) ---
         if (meliFlexValidation) {
             try {
-                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId" FROM packages WHERE id = $1', [id]);
-                if (pkgRows.length > 0 && pkgRows[0].meliFlexCode) {
+                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId", source FROM packages WHERE id = $1', [id]);
+                if (pkgRows.length > 0 && pkgRows[0].meliFlexCode && pkgRows[0].source === 'MERCADO_LIBRE') {
                     const { meliFlexCode, creatorId } = pkgRows[0];
 
                     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
@@ -1039,9 +1039,12 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { reason, photosBase64 } = req.body;
     try {
+        const isReschedule = reason.toLowerCase().includes('reagendar') || reason.toLowerCase().includes('reprogramar');
+        const targetStatus = isReschedule ? 'REPROGRAMADO' : 'PROBLEMA';
+
         const { rows } = await db.query(
             'UPDATE packages SET status = $1, "deliveryPhotosBase64" = $2, "updatedAt" = $3 WHERE id = $4 RETURNING *',
-            ['PROBLEMA', JSON.stringify(photosBase64), new Date(), id]
+            [targetStatus, JSON.stringify(photosBase64), new Date(), id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         await addTrackingEvent(id, 'PROBLEMA', rows[0].recipientAddress, `Problema reportado: ${reason}`);
@@ -1050,7 +1053,7 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
         updatedPackage.history = await getHistory(id);
 
         // Notify recipient
-        NotificationService.notifyRecipient(id, 'PROBLEMA');
+        NotificationService.notifyRecipient(id, targetStatus);
 
         res.json(updatedPackage);
     } catch (err) {

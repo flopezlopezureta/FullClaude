@@ -22,7 +22,7 @@ import { api } from '../services/api';
 
 export default function DeliveryDetailScreen({ route, navigation }: any) {
   const { pkg } = route.params;
-  const isCompleted = pkg.status === 'ENTREGADO' || pkg.status === 'PROBLEMA';
+  const isCompleted = ['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'].includes(pkg.status);
   
   const [receiverName, setReceiverName] = useState(pkg.receiverName || pkg.recipientName);
   const [receiverId, setReceiverId] = useState(pkg.receiverId || '');
@@ -166,6 +166,16 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {(pkg.status === 'CANCELADO' || pkg.status === 'REPROGRAMADO') && (
+          <View style={[styles.warningBanner, { backgroundColor: pkg.status === 'CANCELADO' ? '#fee2e2' : '#fef3c7' }]}>
+            <Icon name="alert-circle" size={24} color={pkg.status === 'CANCELADO' ? '#991b1b' : '#92400e'} />
+            <Text style={[styles.warningText, { color: pkg.status === 'CANCELADO' ? '#991b1b' : '#92400e' }]}>
+              {pkg.status === 'CANCELADO' 
+                ? 'ESTE PEDIDO HA SIDO CANCELADO. NO REALIZAR LA ENTREGA.' 
+                : 'ESTE PEDIDO HA SIDO REPROGRAMADO POR EL CLIENTE.'}
+            </Text>
+          </View>
+        )}
         <View style={styles.infoCard}>
           <View style={styles.statusRow}>
              <View style={styles.idBadge}>
@@ -702,6 +712,21 @@ const styles = StyleSheet.create({
   modalConfirmBtnText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '800',
+  },
+  warningBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 16,
+    marginBottom: 16,
+    gap: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 14,
     fontWeight: '800',
   },
 });

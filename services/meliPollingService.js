@@ -259,7 +259,7 @@ async function pollMeliPackages() {
                     } else if ((mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed') && pkg.status !== 'REPROGRAMADO') {
                         newStatus = 'REPROGRAMADO';
                         eventStatus = 'Reprogramado';
-                        eventDetails = 'El envío ha sido REPROGRAMADO por Mercado Libre.';
+                        eventDetails = 'El envío ha sido REPROGRAMADO por el cliente (vía Mercado Libre).';
                     } else if (mlStatus === 'not_delivered' && pkg.status !== 'PROBLEMA') {
                         newStatus = 'PROBLEMA';
                         eventStatus = 'Problema';
@@ -410,7 +410,7 @@ async function syncPackage(packageId) {
         } else if ((mlStatus === 'rescheduled' || mlSubstatus === 'rescheduled' || mlSubstatus === 'reprogrammed') && pkg.status !== 'REPROGRAMADO') {
             newStatus = 'REPROGRAMADO';
             eventStatus = 'Reprogramado';
-            eventDetails = 'Sincronización manual: El envío figura como REPROGRAMADO en Mercado Libre.';
+            eventDetails = 'Sincronización manual: El envío figura como REPROGRAMADO por el cliente en Mercado Libre.';
         } else if (mlStatus === 'not_delivered' && pkg.status !== 'PROBLEMA') {
             newStatus = 'PROBLEMA';
             eventStatus = 'Problema';

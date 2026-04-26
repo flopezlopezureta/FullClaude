@@ -61,11 +61,12 @@ export default function DeliveriesScreen({ navigation }: any) {
   };
 
   const filteredPackages = useMemo(() => {
+    const CLOSED_STATUSES = ['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'];
     let result = packages;
     if (activeTab === 'pending') {
-      result = packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA');
+      result = packages.filter(p => !CLOSED_STATUSES.includes(p.status));
     } else {
-      result = packages.filter(p => p.status === 'ENTREGADO' || p.status === 'PROBLEMA');
+      result = packages.filter(p => CLOSED_STATUSES.includes(p.status));
     }
 
     if (searchQuery.trim() !== '') {
@@ -118,9 +119,25 @@ export default function DeliveriesScreen({ navigation }: any) {
       onPress={() => navigation.navigate('DeliveryDetail', { pkg: item })}
     >
       <View style={styles.cardHeader}>
-        <View style={[styles.statusBadge, { backgroundColor: item.status === 'ENTREGADO' ? '#dcfce7' : '#f1f5f9' }]}>
-          <Text style={[styles.statusText, { color: item.status === 'ENTREGADO' ? '#166534' : '#475569' }]}>
-            {item.status}
+        <View style={[
+            styles.statusBadge, 
+            { backgroundColor: 
+                item.status === 'ENTREGADO' ? '#dcfce7' : 
+                item.status === 'CANCELADO' ? '#fee2e2' :
+                item.status === 'REPROGRAMADO' ? '#fef3c7' :
+                '#f1f5f9' 
+            }
+        ]}>
+          <Text style={[
+              styles.statusText, 
+              { color: 
+                  item.status === 'ENTREGADO' ? '#166534' : 
+                  item.status === 'CANCELADO' ? '#991b1b' :
+                  item.status === 'REPROGRAMADO' ? '#92400e' :
+                  '#475569' 
+              }
+          ]}>
+            {item.status === 'CANCELADO' ? 'CANCELADO - NO VISITAR' : item.status}
           </Text>
         </View>
         <Text style={styles.idText}>#{item.id.slice(-6)}</Text>
@@ -165,7 +182,7 @@ export default function DeliveriesScreen({ navigation }: any) {
           onPress={() => setActiveTab('pending')}
         >
           <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-            Pendientes ({packages.filter(p => p.status !== 'ENTREGADO' && p.status !== 'PROBLEMA').length})
+            Pendientes ({packages.filter(p => !['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'].includes(p.status)).length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -173,7 +190,7 @@ export default function DeliveriesScreen({ navigation }: any) {
           onPress={() => setActiveTab('closed')}
         >
           <Text style={[styles.tabText, activeTab === 'closed' && styles.activeTabText]}>
-            Cerrados ({packages.filter(p => p.status === 'ENTREGADO' || p.status === 'PROBLEMA').length})
+            Cerrados ({packages.filter(p => ['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'].includes(p.status)).length})
           </Text>
         </TouchableOpacity>
       </View>
