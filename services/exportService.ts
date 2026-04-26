@@ -20,7 +20,7 @@ const mapStatus = (status: PackageStatus): string => {
     }
 };
 
-export const exportToExcel = async (packages: Package[], filename: string, users: User[] = []) => {
+export const exportToExcel = async (packages: Package[], filename: string, users: User[] = [], timeFormat: '12h' | '24h' = '12h') => {
     const workbook = new ExcelJS.Workbook();
     const worksheet = workbook.addWorksheet('BASE');
 
@@ -33,7 +33,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
         { header: 'PEDIDO', key: 'pedido', width: 15 },
         { header: 'CLIENTE', key: 'sellerName', width: 20 },
         { header: 'ID_CLIENTE', key: 'sellerId', width: 15 },
-        { header: 'FECHA DE PEDIDO', key: 'fecha', width: 20 },
+        { header: 'FECHA DE PEDIDO', key: 'fecha', width: 25 },
         { header: 'DESTINATARIO', key: 'destinatario', width: 25 },
         { header: 'TELEFONO', key: 'telefono', width: 15 },
         { header: 'DIRECCION', key: 'direccion', width: 35 },
@@ -51,7 +51,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
             pedido: pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
             sellerName: pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
             sellerId: pkg.creatorId ? (clientIdMap.get(pkg.creatorId) || 'N/A') : 'N/A',
-            fecha: new Date(pkg.createdAt).toLocaleDateString('es-CL').replace(/\//g, '-'),
+            fecha: new Date(pkg.createdAt).toLocaleString('es-CL', { hour12: timeFormat === '12h' }).replace(/\//g, '-'),
             destinatario: pkg.recipientName,
             telefono: pkg.recipientPhone,
             direccion: pkg.recipientAddress,

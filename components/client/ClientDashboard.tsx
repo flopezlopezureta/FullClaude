@@ -245,7 +245,7 @@ const ClientDashboard: React.FC = () => {
         const dateStr = new Date().toISOString().split('T')[0];
 
         if (format === 'excel') {
-            await exportToExcel(packagesToExport, `Mis_Paquetes_${dateStr}.xlsx`);
+            await exportToExcel(packagesToExport, `Mis_Paquetes_${dateStr}.xlsx`, [], auth?.systemSettings?.timeFormat || '12h');
         } else {
             exportToCSV(packagesToExport, `Mis_Paquetes_${dateStr}.csv`);
         }

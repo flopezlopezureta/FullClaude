@@ -461,7 +461,7 @@ const Dashboard: React.FC = () => {
         const dateStr = new Date().toISOString().split('T')[0];
 
         if (format === 'excel') {
-            await exportToExcel(packagesToExport, `Reporte_Paquetes_${dateStr}.xlsx`, users);
+            await exportToExcel(packagesToExport, `Reporte_Paquetes_${dateStr}.xlsx`, users, auth?.systemSettings?.timeFormat || '12h');
         } else {
             exportToCSV(packagesToExport, `Reporte_Paquetes_${dateStr}.csv`, users);
         }
