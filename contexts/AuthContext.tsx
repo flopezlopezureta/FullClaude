@@ -60,6 +60,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     isRutRequired: true,
     labelFormat: LabelFormat.CompactThermal,
     circuitExportEnabled: false,
+    timeFormat: '12h',
   });
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);

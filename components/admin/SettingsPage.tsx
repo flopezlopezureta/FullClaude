@@ -35,6 +35,7 @@ interface SettingsState {
     flexDiscrepancyReportEnabled: boolean;
     labelFormat: LabelFormat;
     circuitExportEnabled: boolean;
+    timeFormat: '12h' | '24h';
 }
 
 const SettingsPage: React.FC = () => {
@@ -53,6 +54,7 @@ const SettingsPage: React.FC = () => {
         flexDiscrepancyReportEnabled: true,
         labelFormat: LabelFormat.CompactThermal,
         circuitExportEnabled: false,
+        timeFormat: '12h',
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -84,6 +86,7 @@ const SettingsPage: React.FC = () => {
                 flexDiscrepancyReportEnabled: auth.systemSettings.flexDiscrepancyReportEnabled ?? true,
                 labelFormat: auth.systemSettings.labelFormat || LabelFormat.CompactThermal,
                 circuitExportEnabled: auth.systemSettings.circuitExportEnabled ?? false,
+                timeFormat: auth.systemSettings.timeFormat || '12h',
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -145,6 +148,7 @@ const SettingsPage: React.FC = () => {
                 flexDiscrepancyReportEnabled: settings.flexDiscrepancyReportEnabled,
                 labelFormat: settings.labelFormat,
                 circuitExportEnabled: settings.circuitExportEnabled,
+                timeFormat: settings.timeFormat,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -251,7 +255,8 @@ const SettingsPage: React.FC = () => {
             settings.isRutRequired !== originalSettings.isRutRequired ||
             settings.flexDiscrepancyReportEnabled !== originalSettings.flexDiscrepancyReportEnabled ||
             settings.labelFormat !== originalSettings.labelFormat ||
-            settings.circuitExportEnabled !== originalSettings.circuitExportEnabled
+            settings.circuitExportEnabled !== originalSettings.circuitExportEnabled ||
+            settings.timeFormat !== originalSettings.timeFormat
         );
     }, [settings, originalSettings]);
 
@@ -287,13 +292,26 @@ const SettingsPage: React.FC = () => {
                         </div>
                         <div>
                              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Hora Local del Sistema</label>
-                             <div className="relative">
+                             <div className="flex items-center gap-2">
                                 <input 
                                     type="text" 
                                     disabled 
-                                    value={currentTime.toLocaleString('es-CL')} 
-                                    className={`${inputClasses} bg-[var(--background-muted)] text-[var(--brand-primary)] font-mono font-black text-center`} 
+                                    value={currentTime.toLocaleString('es-CL', { hour12: settings.timeFormat === '12h' })} 
+                                    className={`${inputClasses} bg-[var(--background-muted)] text-[var(--brand-primary)] font-mono font-black text-center flex-1`} 
                                 />
+                                <div className="flex border border-[var(--border-secondary)] rounded-md overflow-hidden shrink-0">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setSettings(prev => ({ ...prev, timeFormat: '12h' }))}
+                                        className={`px-3 py-2 text-sm font-bold ${settings.timeFormat === '12h' ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--background-secondary)] text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
+                                    >12 hrs</button>
+                                    <div className="w-px bg-[var(--border-secondary)]"></div>
+                                    <button 
+                                        type="button"
+                                        onClick={() => setSettings(prev => ({ ...prev, timeFormat: '24h' }))}
+                                        className={`px-3 py-2 text-sm font-bold ${settings.timeFormat === '24h' ? 'bg-[var(--brand-primary)] text-white' : 'bg-[var(--background-secondary)] text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
+                                    >24 hrs</button>
+                                </div>
                              </div>
                         </div>
                         <div>

@@ -42,6 +42,7 @@ export interface SystemSettings {
     flexDiscrepancyReportEnabled?: boolean;
     labelFormat?: LabelFormat;
     circuitExportEnabled?: boolean;
+    timeFormat?: '12h' | '24h';
 }
 
 export interface ZonePricing {

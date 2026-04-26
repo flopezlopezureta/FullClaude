@@ -443,6 +443,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (jumpsellerAutoImport):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "timeFormat" TEXT DEFAULT \'12h\'');
+            console.log('MIGRATION APPLIED: Column "timeFormat" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (timeFormat):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
