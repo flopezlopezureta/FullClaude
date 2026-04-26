@@ -449,6 +449,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (timeFormat):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "allowRedelivery" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "allowRedelivery" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (allowRedelivery):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');

@@ -20,9 +20,10 @@ interface PackageDetailModalProps {
   creator?: User | null;
   onUpdatePackage?: (updatedPkg: Package) => void;
   onEdit?: (pkg: Package) => void;
+  onRedelivery?: (pkg: Package) => void;
 }
 
-const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator, onUpdatePackage, onEdit }) => {
+const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, onStartDelivery, onReportProblem, onStartReturn, isFullScreen = false, companyName = "", creatorForReturn, creator, onUpdatePackage, onEdit, onRedelivery }) => {
   const auth = useContext(AuthContext);
   const [isQrModalOpen, setIsQrModalOpen] = useState(false);
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
@@ -390,6 +391,22 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                         >
                             <IconAlertTriangle className="w-4 h-4"/>
                             Reportar un Problema
+                        </button>
+                    </div>
+                </div>
+              )}
+
+              {/* Redelivery Actions Card */}
+              {pkg.status === PackageStatus.Problem && auth?.user?.role === 'DRIVER' && auth?.systemSettings?.allowRedelivery && onRedelivery && (
+                <div className="bg-orange-50 p-4 rounded-lg shadow-sm border border-orange-200">
+                    <h4 className="text-sm font-semibold text-orange-800 mb-3 text-center">Paquete con Problemas</h4>
+                    <div className="space-y-3">
+                        <button 
+                            onClick={() => onRedelivery(pkg)}
+                            className="w-full px-4 py-3 text-base font-semibold text-white bg-orange-600 rounded-lg hover:bg-orange-700 transition-all shadow-sm flex items-center justify-center gap-2"
+                        >
+                            <IconTruck className="w-5 h-5"/>
+                            Reintentar Entrega
                         </button>
                     </div>
                 </div>

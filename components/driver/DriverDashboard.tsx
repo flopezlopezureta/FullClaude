@@ -227,6 +227,22 @@ const DriverDashboard: React.FC = () => {
         throw error;
     }
   };
+
+  const handleRedelivery = async (pkg: Package) => {
+    if (!window.confirm("¿Estás seguro de que deseas reintentar la entrega de este paquete? Se volverá a poner en tu lista de 'En Tránsito'.")) return;
+    
+    try {
+        const updatedPackage = await api.updatePackage(pkg.id, { status: PackageStatus.InTransit });
+        setMyPackages(prev => prev.map(p => p.id === pkg.id ? updatedPackage : p));
+        setSelectedPackage(null); // Close modal
+        
+        // Add a success notification or toast if needed
+        alert("Paquete devuelto a 'En Tránsito'.");
+    } catch (error: any) {
+        console.error("Failed to set redelivery", error);
+        alert("Error al intentar reentrega: " + (error.message || "Error desconocido"));
+    }
+  };
   
   const handleExportRoute = async () => {
     if (!auth?.user || pendingPackages.length === 0 || isExporting) return;
@@ -488,6 +504,7 @@ const DriverDashboard: React.FC = () => {
                 setSelectedPackage(null);
                 handleReportProblem(pkg);
             }}
+            onRedelivery={handleRedelivery}
         />
       )}
 

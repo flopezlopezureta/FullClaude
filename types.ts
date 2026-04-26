@@ -43,6 +43,7 @@ export interface SystemSettings {
     labelFormat?: LabelFormat;
     circuitExportEnabled?: boolean;
     timeFormat?: '12h' | '24h';
+    allowRedelivery?: boolean;
 }
 
 export interface ZonePricing {
