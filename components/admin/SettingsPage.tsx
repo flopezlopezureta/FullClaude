@@ -319,7 +319,7 @@ const SettingsPage: React.FC = () => {
                     <div className="pt-4 border-t border-[var(--border-primary)] bg-[var(--brand-muted)] p-6 rounded-2xl shadow-inner border-2 border-dashed border-black">
                         <h3 className="text-xl font-black text-black flex items-center gap-2 mb-2">
                              🎨 SISTEMA DE DISEÑO DE INFORMACIÓN
-                             <span className="text-[10px] bg-black text-white px-3 py-1 rounded-full animate-bounce">ACTIVO v2.4.0</span>
+                             <span className="text-[10px] bg-black text-white px-3 py-1 rounded-full animate-bounce">ACTIVO v2.4.8</span>
                         </h3>
                         <p className="text-sm text-gray-500 mb-6 italic">Selecciona cómo quieres que se organicen los datos en tus etiquetas. Este ajuste afectará a todas las impresiones por defecto.</p>
                         
