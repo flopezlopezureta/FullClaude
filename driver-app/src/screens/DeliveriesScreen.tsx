@@ -61,7 +61,7 @@ export default function DeliveriesScreen({ navigation }: any) {
   };
 
   const filteredPackages = useMemo(() => {
-    const CLOSED_STATUSES = ['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'];
+    const CLOSED_STATUSES = ['ENTREGADO', 'DEVUELTO'];
     let result = packages;
     if (activeTab === 'pending') {
       result = packages.filter(p => !CLOSED_STATUSES.includes(p.status));
@@ -182,7 +182,7 @@ export default function DeliveriesScreen({ navigation }: any) {
           onPress={() => setActiveTab('pending')}
         >
           <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-            Pendientes ({packages.filter(p => !['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'].includes(p.status)).length})
+            Pendientes ({packages.filter(p => !['ENTREGADO', 'DEVUELTO'].includes(p.status)).length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -190,7 +190,7 @@ export default function DeliveriesScreen({ navigation }: any) {
           onPress={() => setActiveTab('closed')}
         >
           <Text style={[styles.tabText, activeTab === 'closed' && styles.activeTabText]}>
-            Cerrados ({packages.filter(p => ['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'].includes(p.status)).length})
+            Cerrados ({packages.filter(p => ['ENTREGADO', 'DEVUELTO'].includes(p.status)).length})
           </Text>
         </TouchableOpacity>
       </View>

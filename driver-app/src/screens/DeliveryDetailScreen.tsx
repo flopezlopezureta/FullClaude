@@ -166,13 +166,37 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
-        {(pkg.status === 'CANCELADO' || pkg.status === 'REPROGRAMADO') && (
-          <View style={[styles.warningBanner, { backgroundColor: pkg.status === 'CANCELADO' ? '#fee2e2' : '#fef3c7' }]}>
-            <Icon name="alert-circle" size={24} color={pkg.status === 'CANCELADO' ? '#991b1b' : '#92400e'} />
-            <Text style={[styles.warningText, { color: pkg.status === 'CANCELADO' ? '#991b1b' : '#92400e' }]}>
+        {(pkg.status === 'CANCELADO' || pkg.status === 'REPROGRAMADO' || pkg.status === 'PROBLEMA') && (
+          <View style={[
+            styles.warningBanner, 
+            { backgroundColor: 
+                pkg.status === 'CANCELADO' ? '#fee2e2' : 
+                pkg.status === 'REPROGRAMADO' ? '#fef3c7' : 
+                '#f1f5f9' 
+            }
+          ]}>
+            <Icon 
+              name="alert-circle" 
+              size={24} 
+              color={
+                pkg.status === 'CANCELADO' ? '#991b1b' : 
+                pkg.status === 'REPROGRAMADO' ? '#92400e' : 
+                '#475569'
+              } 
+            />
+            <Text style={[
+              styles.warningText, 
+              { color: 
+                  pkg.status === 'CANCELADO' ? '#991b1b' : 
+                  pkg.status === 'REPROGRAMADO' ? '#92400e' : 
+                  '#475569'
+              }
+            ]}>
               {pkg.status === 'CANCELADO' 
                 ? 'ESTE PEDIDO HA SIDO CANCELADO. NO REALIZAR LA ENTREGA.' 
-                : 'ESTE PEDIDO HA SIDO REPROGRAMADO POR EL CLIENTE.'}
+                : pkg.status === 'REPROGRAMADO'
+                ? 'ESTE PEDIDO HA SIDO REPROGRAMADO. ESPERE INSTRUCCIONES.'
+                : 'SE HA REPORTADO UN PROBLEMA CON ESTE PEDIDO.'}
             </Text>
           </View>
         )}

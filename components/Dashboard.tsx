@@ -96,6 +96,7 @@ const Dashboard: React.FC = () => {
   const [itemsPerPage, setItemsPerPage] = useState(25);
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
   const [isForcingClose, setIsForcingClose] = useState(false);
+  const [criticalAlerts, setCriticalAlerts] = useState<Package[]>([]);
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -182,6 +183,30 @@ const Dashboard: React.FC = () => {
 
     return () => clearInterval(timer);
   }, [pollingStatus, shopifyPollingStatus]);
+
+  const fetchCriticalAlerts = useCallback(async () => {
+    try {
+      // Get today's range
+      const now = new Date();
+      const todayStr = now.toISOString().split('T')[0];
+      
+      const { packages: cancelled } = await api.getPackages({ statusFilter: 'CANCELADO', startDate: todayStr, limit: 10 });
+      const { packages: rescheduled } = await api.getPackages({ statusFilter: 'REPROGRAMADO', startDate: todayStr, limit: 10 });
+      
+      const merged = [...cancelled, ...rescheduled].sort((a, b) => 
+        new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
+      );
+      setCriticalAlerts(merged);
+    } catch (err) {
+      console.error('Error fetching critical alerts:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchCriticalAlerts();
+    const interval = setInterval(fetchCriticalAlerts, 45000);
+    return () => clearInterval(interval);
+  }, [fetchCriticalAlerts]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -538,6 +563,78 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
+      {/* --- CRITICAL ALERTS CENTER --- */}
+      {criticalAlerts.length > 0 && (
+        <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up">
+           <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-amber-600">
+              <div className="flex items-center gap-3">
+                 <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg backdrop-blur-md">
+                    <IconRefresh className="w-5 h-5 text-white animate-spin-slow" />
+                 </div>
+                 <h2 className="text-sm font-black text-white uppercase tracking-[0.2em]">Centro de Alertas Críticas (Hoy)</h2>
+                 <span className="px-3 py-1 text-[10px] font-black text-red-600 bg-white rounded-full">
+                    {criticalAlerts.length} EVENTOS
+                 </span>
+              </div>
+              <button 
+                onClick={fetchCriticalAlerts}
+                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                title="Refrescar alertas"
+              >
+                <IconRefresh className="w-4 h-4" />
+              </button>
+           </div>
+           
+           <div className="flex overflow-x-auto p-4 gap-4 scrollbar-hide bg-gray-50/50">
+              {criticalAlerts.map(pkg => (
+                <div 
+                  key={pkg.id}
+                  onClick={() => setSelectedPackage(pkg)}
+                  className={`flex-shrink-0 w-80 p-4 border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
+                    pkg.status === 'CANCELADO' 
+                      ? 'bg-white border-red-100 hover:border-red-300' 
+                      : 'bg-white border-amber-100 hover:border-amber-300'
+                  }`}
+                >
+                   <div className="flex items-center justify-between mb-3">
+                      <span className={`px-2.5 py-1 text-[9px] font-black rounded-lg uppercase tracking-wider ${
+                        pkg.status === 'CANCELADO' 
+                          ? 'bg-red-100 text-red-700' 
+                          : 'bg-amber-100 text-amber-700'
+                      }`}>
+                        {pkg.status}
+                      </span>
+                      <span className="text-[10px] font-bold text-gray-400">
+                        {new Date(pkg.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                   </div>
+                   
+                   <h3 className="text-sm font-bold text-gray-900 truncate mb-1">{pkg.recipientName}</h3>
+                   <div className="flex items-center gap-2 mb-3">
+                      <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center">
+                         <IconMercadoLibre className="w-2.5 h-2.5 text-gray-500" />
+                      </div>
+                      <p className="text-[11px] text-gray-500 font-medium truncate">{pkg.recipientAddress}</p>
+                   </div>
+                   
+                   <div className="flex items-center justify-between pt-3 border-t border-gray-50">
+                      <div className="flex flex-col">
+                         <span className="text-[8px] font-bold text-gray-400 uppercase tracking-tighter">Conductor</span>
+                         <span className="text-[10px] font-black text-gray-700">
+                            {users.find(u => u.id === pkg.driverId)?.name || 'Sin asignar'}
+                         </span>
+                      </div>
+                      <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 rounded-lg">
+                         <span className="text-[9px] font-black text-white uppercase tracking-wider">Informar</span>
+                         <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                      </div>
+                   </div>
+                </div>
+              ))}
+           </div>
+        </div>
+      )}
+
       <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
         <PackageFilters
             onOpenCreateModal={() => setIsCreateModalOpen(true)}
