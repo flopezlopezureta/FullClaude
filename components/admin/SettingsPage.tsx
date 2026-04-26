@@ -63,6 +63,7 @@ const SettingsPage: React.FC = () => {
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isDeleteDbModalOpen, setIsDeleteDbModalOpen] = useState(false);
     const [resetType, setResetType] = useState<ResetType>('all');
+    const [currentTime, setCurrentTime] = useState<Date>(new Date());
     const auth = useContext(AuthContext);
     const { theme, setTheme } = useTheme();
 
@@ -88,6 +89,13 @@ const SettingsPage: React.FC = () => {
             setOriginalSettings(loadedSettings);
         }
     }, [auth?.systemSettings]);
+    
+    useEffect(() => {
+        const timer = setInterval(() => {
+            setCurrentTime(new Date());
+        }, 1000);
+        return () => clearInterval(timer);
+    }, []);
     
     const showSuccess = (message: string) => {
         setSuccessMessage(message);
@@ -276,6 +284,17 @@ const SettingsPage: React.FC = () => {
                         <div>
                             <label htmlFor="companyName" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nombre de la Empresa</label>
                             <input type="text" id="companyName" name="companyName" value={settings.companyName} onChange={handleSettingsChange} required className={`${inputClasses} text-[var(--text-primary)]`}/>
+                        </div>
+                        <div>
+                             <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Hora Local del Sistema</label>
+                             <div className="relative">
+                                <input 
+                                    type="text" 
+                                    disabled 
+                                    value={currentTime.toLocaleString('es-CL')} 
+                                    className={`${inputClasses} bg-[var(--background-muted)] text-[var(--brand-primary)] font-mono font-black text-center`} 
+                                />
+                             </div>
                         </div>
                         <div>
                              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Versión del Sistema</label>

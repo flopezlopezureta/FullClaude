@@ -30,10 +30,14 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   const [recipientCity, setRecipientCity] = useState(initialData?.recipientCity || 'Santiago');
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [trackingId, setTrackingId] = useState(initialData?.trackingId || '');
+  const getLocalDateString = (dateObj: Date = new Date()) => {
+      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
+  };
+
   const [estimatedDelivery, setEstimatedDelivery] = useState(
     initialData?.estimatedDelivery 
       ? new Date(initialData.estimatedDelivery).toISOString().split('T')[0] 
-      : new Date().toISOString().split('T')[0]
+      : getLocalDateString()
   );
   const [shippingType, setShippingType] = useState<ShippingType>(initialData?.shippingType || ShippingType.SameDay);
 
@@ -83,7 +87,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
     }
   };
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = getLocalDateString();
   const inputClasses = "w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)]";
 
   return (
