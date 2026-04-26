@@ -149,6 +149,7 @@ const SettingsPage: React.FC = () => {
                 labelFormat: settings.labelFormat,
                 circuitExportEnabled: settings.circuitExportEnabled,
                 timeFormat: settings.timeFormat,
+                allowRedelivery: settings.allowRedelivery,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
