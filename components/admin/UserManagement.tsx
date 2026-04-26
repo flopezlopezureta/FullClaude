@@ -416,7 +416,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                     )}
                 </div>
                 <p className="text-sm text-[var(--text-muted)] mt-1">{user.email}</p>
-                {user.plainPassword && auth?.user?.email === 'admin' && (
+                {user.plainPassword && auth?.user?.role === Role.Admin && (
                     <p className="text-sm font-mono text-[var(--brand-primary)] mt-1">
                         Contraseña: {user.plainPassword}
                     </p>
