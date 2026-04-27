@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { PackageStatus } from '../../constants';
+import { PackageStatus, IntegrationAccount } from '../../types';
 import { IconSearch, IconCalendar, IconChevronDown } from '../Icon';
 
 interface ClientPackageFiltersProps {
@@ -20,7 +20,7 @@ interface ClientPackageFiltersProps {
   onItemsPerPageChange: (limit: number) => void;
   accountId: string;
   onAccountIdChange: (id: string) => void;
-  accounts: any[];
+  accounts: IntegrationAccount[];
 }
 
 const statusOptions: { label: string; value: PackageStatus | null }[] = [

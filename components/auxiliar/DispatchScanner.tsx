@@ -39,17 +39,22 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
     const scannedInSession = useRef(new Set<string>());
     const [lastScannedPhoto, setLastScannedPhoto] = useState<string | null>(null);
     const [lastScannedRaw, setLastScannedRaw] = useState<string>('');
+    const [manualId, setManualId] = useState('');
+    const [isManualProcessing, setIsManualProcessing] = useState(false);
 
     const currentDriver = allDrivers.find(d => d.id === currentDriverId) || initialDriver;
 
-    const handleScan = useCallback(async (rawCode: string) => {
+    const handleScan = useCallback(async (rawCode: string, isManual = false) => {
         const cleanRawCode = rawCode.trim();
-        setLastScannedRaw(cleanRawCode);
+        if (!isManual) setLastScannedRaw(cleanRawCode);
         
-        // Capture photo from canvas
-        const canvas = canvasRef.current;
-        const photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.8) : undefined;
-        setLastScannedPhoto(photoBase64 || null);
+        // Capture photo from canvas if not manual
+        let photoBase64: string | undefined;
+        if (!isManual) {
+            const canvas = canvasRef.current;
+            photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.8) : undefined;
+            setLastScannedPhoto(photoBase64 || null);
+        }
 
         let extractedId: string | null = null;
 
@@ -81,32 +86,51 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         
         const codeToUse = extractedId || cleanRawCode;
 
-        if (!isScanning || scannedInSession.current.has(codeToUse) || scannedInSession.current.has(rawCode)) return;
+        if (!isManual && (!isScanning || scannedInSession.current.has(codeToUse) || scannedInSession.current.has(rawCode))) return;
 
-        setIsScanning(false);
-        scannedInSession.current.add(codeToUse);
-        scannedInSession.current.add(rawCode);
+        if (!isManual) setIsScanning(false);
+        else setIsManualProcessing(true);
+
+        if (!isManual) {
+            scannedInSession.current.add(codeToUse);
+            scannedInSession.current.add(rawCode);
+        }
 
         try {
           await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode, photoBase64);
           playBeep();
           setScannedCount(prev => prev + 1);
           setScanResult({ type: 'success', message: `Paquete ${codeToUse} asignado a ${currentDriver.name}` });
+          if (isManual) setManualId('');
+          
           setTimeout(() => {
               setScanResult(null);
-              setIsScanning(true);
-              setLastScannedPhoto(null);
+              if (!isManual) {
+                  setIsScanning(true);
+                  setLastScannedPhoto(null);
+              } else {
+                  setIsManualProcessing(false);
+              }
           }, 1500);
         } catch (error: any) {
-          scannedInSession.current.delete(codeToUse);
-          scannedInSession.current.delete(rawCode);
+          if (!isManual) {
+            scannedInSession.current.delete(codeToUse);
+            scannedInSession.current.delete(rawCode);
+          }
           setScanResult({ type: 'error', message: error.message || 'Error al procesar el paquete.' });
           setTimeout(() => {
             setScanResult(null);
-            setIsScanning(true);
+            if (!isManual) setIsScanning(true);
+            else setIsManualProcessing(false);
           }, 4000);
         }
     }, [isScanning, currentDriverId, scannedCount, currentDriver.name]);
+
+    const handleManualSubmit = (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!manualId.trim() || isManualProcessing) return;
+        handleScan(manualId, true);
+    };
     
     const scanLoop = useCallback(() => {
         if (!isScanning) return;
@@ -177,6 +201,27 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
                 <canvas ref={canvasRef} className="hidden" />
                 <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center p-8 pointer-events-none"><div className="w-full h-full border-4 border-dashed border-white/50 rounded-lg"/></div>
             </div>
+
+            <form onSubmit={handleManualSubmit} className="mb-4">
+                <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Ingreso Manual (Si el QR no es legible)</label>
+                <div className="flex gap-2">
+                    <input 
+                        type="text"
+                        placeholder="Ingresa ID o Código de Envío..."
+                        value={manualId}
+                        onChange={(e) => setManualId(e.target.value)}
+                        className="flex-1 px-4 py-2.5 bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <button 
+                        type="submit"
+                        disabled={!manualId.trim() || isManualProcessing}
+                        className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+                    >
+                        {isManualProcessing ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconChevronRight className="w-4 h-4" />}
+                        Asignar
+                    </button>
+                </div>
+            </form>
             
             <div className="text-center my-4 p-3 bg-[var(--background-muted)] rounded-lg flex justify-between items-center px-6">
                 <div className="text-left">

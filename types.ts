@@ -129,11 +129,27 @@ export interface DriverPermissions {
   canColecta: boolean;
 }
 
+export interface IntegrationAccount {
+  id: string;
+  type: 'MERCADO_LIBRE' | 'SHOPIFY' | 'WOOCOMMERCE' | 'FALABELLA' | 'JUMPSELLER';
+  nickname: string;
+  credentials: any;
+  settings: {
+    autoImport: boolean;
+    syncInterval: number;
+    lastSync?: string;
+  };
+  connectedAt: string;
+  status?: 'CONNECTED' | 'ERROR';
+}
+
 export interface IntegrationSettings {
     meliAppId?: string;
     meliClientSecret?: string;
     shopifyShopUrl?: string;
     shopifyAccessToken?: string;
+    shopifyClientId?: string;
+    shopifyClientSecret?: string;
     shopifyAutoImport?: boolean;
     shopifySyncInterval?: number;
     shopifyWebhookSecret?: string;
@@ -216,6 +232,7 @@ export interface User {
 
   // Integrations
   integrations?: {
+    accounts?: IntegrationAccount[];
     meli?: MeliIntegration;
     woocommerce?: WooCommerceIntegration;
     shopify?: ShopifyIntegration;

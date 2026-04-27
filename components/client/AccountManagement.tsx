@@ -22,8 +22,10 @@ import {
     IconFalabella
 } from '../Icon';
 
+import { IntegrationAccount } from '../../types';
+
 const AccountManagement: React.FC = () => {
-    const [accounts, setAccounts] = useState<any[]>([]);
+    const [accounts, setAccounts] = useState<IntegrationAccount[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isSaving, setIsSaving] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);

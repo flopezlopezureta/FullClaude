@@ -15,6 +15,8 @@ const IntegrationSettingsPage: React.FC = () => {
         shopifyAutoImport: false,
         shopifySyncInterval: 5,
         shopifyWebhookSecret: '',
+        shopifyClientId: '',
+        shopifyClientSecret: '',
         githubToken: '',
         githubRepo: '',
         githubOwner: '',
@@ -38,6 +40,7 @@ const IntegrationSettingsPage: React.FC = () => {
     const [passwordVisibility, setPasswordVisibility] = useState({
         meliClientSecret: false,
         shopifyAccessToken: false,
+        shopifyClientSecret: false,
         shopifyWebhookSecret: false,
         githubToken: false,
         wooConsumerSecret: false,
@@ -153,6 +156,8 @@ const IntegrationSettingsPage: React.FC = () => {
             await api.updateIntegrationSettings({
                 shopifyShopUrl: settings.shopifyShopUrl,
                 shopifyAccessToken: settings.shopifyAccessToken,
+                shopifyClientId: settings.shopifyClientId,
+                shopifyClientSecret: settings.shopifyClientSecret,
                 shopifyAutoImport: settings.shopifyAutoImport,
                 shopifySyncInterval: settings.shopifySyncInterval,
                 shopifyWebhookSecret: settings.shopifyWebhookSecret
@@ -718,6 +723,23 @@ const IntegrationSettingsPage: React.FC = () => {
                                         className={inputClasses}
                                         placeholder="Ingresa el Client ID de tu App Pública de Shopify"
                                     />
+                                </div>
+                                <div>
+                                    <label htmlFor="shopifyClientSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client Secret (OAuth 2026)</label>
+                                    <div className="relative">
+                                        <input
+                                            type={passwordVisibility.shopifyClientSecret ? 'text' : 'password'}
+                                            id="shopifyClientSecret"
+                                            name="shopifyClientSecret"
+                                            value={settings.shopifyClientSecret || ''}
+                                            onChange={handleChange}
+                                            className={`${inputClasses} pr-10`}
+                                            placeholder="Ingresa el Client Secret de tu App Pública de Shopify"
+                                        />
+                                        <button type="button" onClick={() => togglePasswordVisibility('shopifyClientSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            {passwordVisibility.shopifyClientSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                        </button>
+                                    </div>
                                 </div>
                                 <div>
                                     <label htmlFor="shopifyWebhookSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
