@@ -123,17 +123,31 @@ router.get('/', authMiddleware, async (req, res) => {
         
         // Relax date filtering if searching by query to find historical packages
         const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
+        const useUpdatedDateForFiltering = driverFilter || quickFilter === 'closed';
 
-        if (startDate && !isHistoricalSearch) {
-            whereClauses.push(`p."createdAt" >= $${paramIndex++}`);
-            queryParams.push(startDate);
-        }
-
-        if (endDate && !isHistoricalSearch) {
+        if (startDate && endDate && !isHistoricalSearch && useUpdatedDateForFiltering) {
             const end = new Date(endDate);
-            end.setDate(end.getDate() + 1); // Make it inclusive of the end day
-            whereClauses.push(`p."createdAt" < $${paramIndex++}`);
-            queryParams.push(end.toISOString().split('T')[0]);
+            end.setDate(end.getDate() + 1);
+            const endStr = end.toISOString().split('T')[0];
+            
+            whereClauses.push(`(
+                (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
+                (p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1})
+            )`);
+            queryParams.push(startDate, endStr);
+            paramIndex += 2;
+        } else {
+            if (startDate && !isHistoricalSearch) {
+                whereClauses.push(`p."createdAt" >= $${paramIndex++}`);
+                queryParams.push(startDate);
+            }
+
+            if (endDate && !isHistoricalSearch) {
+                const end = new Date(endDate);
+                end.setDate(end.getDate() + 1);
+                whereClauses.push(`p."createdAt" < $${paramIndex++}`);
+                queryParams.push(end.toISOString().split('T')[0]);
+            }
         }
 
         if (flexFilter) {
