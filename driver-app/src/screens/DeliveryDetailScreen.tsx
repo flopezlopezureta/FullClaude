@@ -63,14 +63,14 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
       result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsEditing: false, 
-        quality: 0.4,
+        quality: 0.3,
         base64: true,
       });
     } else {
       result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
         allowsMultipleSelection: true,
-        quality: 0.4,
+        quality: 0.3,
         base64: true,
       });
     }

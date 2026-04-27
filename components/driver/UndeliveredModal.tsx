@@ -155,8 +155,8 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
       try {
           const file = files[0]; // Seleccionamos solo uno para máxima estabilidad
           
-          if (file.size > 15 * 1024 * 1024) {
-               setError("Archivo demasiado grande (máximo 15MB).");
+          if (file.size > 50 * 1024 * 1024) {
+               setError("Archivo demasiado grande (máximo 50MB).");
                return;
           }
           
@@ -213,7 +213,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
               setPhotosBase64(prev => [...prev, base64]);
           } catch (err) {
               console.error("Critical error processing image in UndeliveredModal", err);
-              if (file.size < 5 * 1024 * 1024) {
+              if (file.size < 20 * 1024 * 1024) {
                   const reader = new FileReader();
                   const base64: string = await new Promise((resolve, reject) => {
                       reader.onloadend = () => resolve(reader.result as string);
@@ -222,7 +222,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                   });
                   setPhotosBase64(prev => [...prev, base64]);
               } else {
-                  setError("Error al comprimir la imagen.");
+                  setError("No se pudo optimizar la imagen y el archivo original es demasiado grande (máximo 20MB para fotos sin comprimir).");
               }
           }
       } catch (err) {

@@ -242,8 +242,8 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       try {
           const file = files[0]; // Seleccionamos solo uno para máxima estabilidad nativa
           
-          if (file.size > 15 * 1024 * 1024) {
-               setError("La imagen es demasiado grande (máximo 15MB).");
+          if (file.size > 50 * 1024 * 1024) {
+               setError("La imagen es demasiado grande (máximo 50MB).");
                return;
           }
           
@@ -304,7 +304,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
           } catch (err) {
               console.error("Critical error processing image", err);
               // Ultimate fallback: if everything fails, try to use the original file if it's not huge
-              if (file.size < 5 * 1024 * 1024) {
+              if (file.size < 20 * 1024 * 1024) {
                   const reader = new FileReader();
                   const base64: string = await new Promise((resolve, reject) => {
                       reader.onloadend = () => resolve(reader.result as string);
@@ -313,7 +313,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                   });
                   setPhotosBase64(prev => [...prev, base64]);
               } else {
-                  setError("Error al procesar la imagen y el archivo es demasiado grande.");
+                  setError("No se pudo optimizar la imagen y el archivo original es demasiado grande (máximo 20MB para fotos sin comprimir).");
               }
           }
       } catch (err) {

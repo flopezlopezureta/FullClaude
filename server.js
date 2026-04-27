@@ -22,7 +22,7 @@ app.use((req, res, next) => {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Allow larger payloads for photo uploads
+app.use(express.json({ limit: '50mb' })); // Allow larger payloads for photo uploads
 
 const PORT = process.env.PORT || 3000;
 
