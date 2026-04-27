@@ -54,6 +54,7 @@ router.get('/', authMiddleware, async (req, res) => {
             accountId,
             sortOrder = 'desc',
             assignmentFilter, // 'all', 'first', 'reassigned'
+            excludeChecked, // 'true' or 'false'
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -193,6 +194,10 @@ router.get('/', authMiddleware, async (req, res) => {
             whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
         } else if (assignmentFilter === 'all_assigned') {
             whereClauses.push(`p."driverId" IS NOT NULL`);
+        }
+        
+        if (excludeChecked === 'true') {
+            whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -1460,6 +1465,28 @@ router.post('/bulk-update-status', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al actualizar paquetes masivamente.' });
+    }
+});
+
+// POST /api/packages/:id/check-alert
+router.post('/:id/check-alert', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { checked } = req.body; // true or false
+        
+        const result = await db.query(
+            'UPDATE packages SET "alertChecked" = $1, "alertCheckedAt" = $2 WHERE id = $3 RETURNING *',
+            [checked, checked ? new Date() : null, id]
+        );
+        
+        if (result.rowCount === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        await logAction(req.user.id, req.user.name, 'CHECK_ALERT', { packageId: id, checked });
+        
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al marcar alerta como revisada.' });
     }
 });
 

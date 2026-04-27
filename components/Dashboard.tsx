@@ -192,8 +192,8 @@ const Dashboard: React.FC = () => {
       const now = new Date();
       const todayStr = now.toISOString().split('T')[0];
       
-      const { packages: cancelled } = await api.getPackages({ statusFilter: 'CANCELADO', startDate: todayStr, limit: 10 });
-      const { packages: rescheduled } = await api.getPackages({ statusFilter: 'REPROGRAMADO', startDate: todayStr, limit: 10 });
+      const { packages: cancelled } = await api.getPackages({ statusFilter: 'CANCELADO', startDate: todayStr, limit: 10, excludeChecked: true });
+      const { packages: rescheduled } = await api.getPackages({ statusFilter: 'REPROGRAMADO', startDate: todayStr, limit: 10, excludeChecked: true });
       
       const merged = [...cancelled, ...rescheduled].sort((a, b) => 
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -373,9 +373,21 @@ const Dashboard: React.FC = () => {
   const handleRefreshAll = async () => {
     try {
         await fetchData();
+        await fetchCriticalAlerts();
     } catch (error: any) {
         console.error("Failed to refresh all data", error);
         alert("Error al refrescar los datos: " + (error.message || "Error desconocido"));
+    }
+  };
+
+  const handleCheckAlert = async (pkgId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+        await api.checkAlert(pkgId, true);
+        await fetchCriticalAlerts();
+    } catch (error: any) {
+        console.error("Failed to check alert", error);
+        alert("Error al marcar alerta: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -629,10 +641,19 @@ const Dashboard: React.FC = () => {
                             {users.find(u => u.id === pkg.driverId)?.name || 'Sin asignar'}
                          </span>
                       </div>
-                      <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 rounded-lg">
-                         <span className="text-[9px] font-black text-white uppercase tracking-wider">Informar</span>
-                         <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                      </div>
+                       <div className="flex items-center gap-2">
+                          <button 
+                            onClick={(e) => handleCheckAlert(pkg.id, e)}
+                            className="p-1.5 bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors"
+                            title="Marcar como revisado"
+                          >
+                            <IconCheckCircle className="w-3.5 h-3.5" />
+                          </button>
+                          <div className="flex items-center gap-2 px-3 py-1.5 bg-gray-900 rounded-lg">
+                             <span className="text-[9px] font-black text-white uppercase tracking-wider">Informar</span>
+                             <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                          </div>
+                       </div>
                    </div>
                 </div>
               ))}

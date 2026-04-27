@@ -283,6 +283,8 @@ export interface Package {
   recipientEmail?: string;
   sourceAccountId?: string;
   sourceAccountName?: string;
+  alertChecked?: boolean;
+  alertCheckedAt?: Date;
 }
 
 export interface Notification {

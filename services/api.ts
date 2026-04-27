@@ -299,6 +299,7 @@ export const api = {
   markPackageAsPickedUp: (packageId: string, flexCode?: string) => post<Package>(`/packages/${packageId}/pickup`, { flexCode }),
   confirmBulkPickup: (clientId: string) => post<{count: number, message: string}>('/packages/bulk-pickup-client', { clientId }),
   scanPackageByAdmin: (packageId: string) => post<{message: string}>(`/packages/${packageId}/scan-admin`, {}),
+  checkAlert: (packageId: string, checked: boolean) => post<Package>(`/packages/${packageId}/check-alert`, { checked }),
 
   // Settings
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
