@@ -52,7 +52,8 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         let photoBase64: string | undefined;
         if (!isManual) {
             const canvas = canvasRef.current;
-            photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.8) : undefined;
+            // Reducimos calidad para mayor velocidad de despacho (0.5 es suficiente para QR/Etiquetas)
+            photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.5) : undefined;
             setLastScannedPhoto(photoBase64 || null);
         }
 
