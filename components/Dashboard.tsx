@@ -110,7 +110,7 @@ const Dashboard: React.FC = () => {
   const [cityFilter, setCityFilter] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'first' | 'reassigned'>('all');
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'all_assigned' | 'first' | 'reassigned'>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   
 

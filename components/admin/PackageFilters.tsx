@@ -33,8 +33,8 @@ interface PackageFiltersProps {
   clientFilter: string;
   onClientChange: (clientId: string) => void;
   onOpenQuickStatus: () => void;
-  assignmentFilter: 'all' | 'first' | 'reassigned';
-  onAssignmentFilterChange: (filter: 'all' | 'first' | 'reassigned') => void;
+  assignmentFilter: 'all' | 'all_assigned' | 'first' | 'reassigned';
+  onAssignmentFilterChange: (filter: 'all' | 'all_assigned' | 'first' | 'reassigned') => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -365,7 +365,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             className={`${selectClasses} font-bold text-xs !py-1.5`} 
             aria-label="Filtrar por tipo de asignación"
           >
-            <option value="all">TODOS (ASIG. Y REASIG.)</option>
+            <option value="all">MOSTRAR TODO (CON PENDIENTES)</option>
+            <option value="all_assigned">TODOS LOS ASIGNADOS</option>
             <option value="first">PRIMERA ASIGNACIÓN</option>
             <option value="reassigned">SOLO REASIGNADOS</option>
           </select>

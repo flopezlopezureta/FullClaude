@@ -174,9 +174,11 @@ router.get('/', authMiddleware, async (req, res) => {
         }
         
         if (assignmentFilter === 'first') {
-            whereClauses.push(`(p."isReassigned" IS NULL OR p."isReassigned" = false)`);
+            whereClauses.push(`p."driverId" IS NOT NULL AND (p."isReassigned" IS NULL OR p."isReassigned" = false)`);
         } else if (assignmentFilter === 'reassigned') {
-            whereClauses.push(`p."isReassigned" = true`);
+            whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
+        } else if (assignmentFilter === 'all_assigned') {
+            whereClauses.push(`p."driverId" IS NOT NULL`);
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
