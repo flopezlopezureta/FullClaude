@@ -64,6 +64,7 @@ let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
+let lastImportCount = 0;
 
 async function pollShopifyPackages() {
     if (isPolling) {
@@ -131,6 +132,7 @@ const ensureMultiAccountStructure = (integrations) => {
 
 async function autoImportShopifyPackages() {
     console.log('[ShopifyPolling] Starting auto-import cycle...');
+    let importedThisCycle = 0;
     try {
         // 1. Get all users with Shopify integration (new or old format)
         const { rows: users } = await db.query(`
@@ -233,6 +235,7 @@ async function autoImportShopifyPackages() {
                             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                                 [newPackage.id, 'Creado', newPackage.origin, `Auto-importado vía Shopify (${account.nickname}).`, nowImport]);
                             
+                            importedThisCycle++;
                             console.log(`[ShopifyPolling] Auto-imported order ${orderId} for client ${clientId} (${account.nickname})`);
                             
                         } catch (orderErr) {
@@ -249,6 +252,8 @@ async function autoImportShopifyPackages() {
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[ShopifyPolling] Fatal error in auto-import cycle:', err);
+    } finally {
+        lastImportCount = importedThisCycle;
     }
 }
 
@@ -288,7 +293,8 @@ function getStatus() {
         isPolling,
         pollingStartTime,
         lastPollTime,
-        nextPollTime: nextScheduledTime
+        nextPollTime: nextScheduledTime,
+        lastImportCount
     };
 }
 

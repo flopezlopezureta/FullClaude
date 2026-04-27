@@ -303,8 +303,8 @@ export const api = {
   // Settings
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
   updateSystemSettings: (data: Partial<SystemSettings>) => put<SystemSettings>('/settings/system', data),
-  getMeliPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number; totalPackages?: number; processedPackages?: number }>('/settings/meli-polling-status'),
-  getShopifyPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number }>('/settings/shopify-polling-status'),
+  getMeliPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number; totalPackages?: number; processedPackages?: number; lastImportCount?: number }>('/settings/meli-polling-status'),
+  getShopifyPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number; lastImportCount?: number }>('/settings/shopify-polling-status'),
   syncMeliPackages: () => post<{ message: string }>('/settings/sync-meli', {}),
   syncShopifyPackages: () => post<{ message: string }>('/settings/sync-shopify', {}),
   resetDatabase: (password: string) => post<{message: string}>('/settings/reset-database', { password }),

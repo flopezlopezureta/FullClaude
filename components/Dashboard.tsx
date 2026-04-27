@@ -703,7 +703,7 @@ const Dashboard: React.FC = () => {
                                         ? (pollingStatus.totalPackages && pollingStatus.totalPackages > 0 
                                             ? `ML: ${pollingStatus.processedPackages}/${pollingStatus.totalPackages}` 
                                             : 'ML: Sincronizando...') 
-                                        : `ML: ${timeLeft}s`) 
+                                        : `ML: ${timeLeft}s${pollingStatus.lastImportCount !== undefined ? ` - ${pollingStatus.lastImportCount}S` : ''}`) 
                                     : 'ML: Inactivo'}
                             </span>
                             {(pollingStatus.isPolling || isSyncingMeli) && <IconLoader className="w-3 h-3 animate-spin" />}
@@ -725,7 +725,7 @@ const Dashboard: React.FC = () => {
                             <IconShopify className={`w-4 h-4 ${auth?.systemSettings?.shopifyAutoImport ? 'text-emerald-600' : 'text-gray-400'}`} />
                             <span className="whitespace-nowrap">
                                 {auth?.systemSettings?.shopifyAutoImport 
-                                    ? (shopifyPollingStatus.isPolling ? 'Shopify: Sincronizando' : `Shopify: ${shopifyTimeLeft}s`) 
+                                    ? (shopifyPollingStatus.isPolling ? 'Shopify: Sincronizando' : `Shopify: ${shopifyTimeLeft}s${shopifyPollingStatus.lastImportCount !== undefined ? ` - ${shopifyPollingStatus.lastImportCount}S` : ''}`) 
                                     : 'Shopify: Inactivo'}
                             </span>
                             {(shopifyPollingStatus.isPolling || isSyncingShopify) && <IconLoader className="w-3 h-3 animate-spin" />}

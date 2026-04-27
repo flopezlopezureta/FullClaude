@@ -152,8 +152,10 @@ let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
+let timeoutId = null;
 let totalPackagesCount = 0;
 let processedPackagesCount = 0;
+let lastImportCount = 0;
 
 // Helper function for limited concurrency
 async function runWithLimit(concurrency, items, fn) {
@@ -447,6 +449,7 @@ async function syncPackage(packageId) {
 
 async function autoImportMeliPackages() {
     console.log('[MeliPolling] Starting auto-import cycle...');
+    let importedThisCycle = 0;
     try {
         // 1. Get all customers with ML integrations (new or old format)
         const { rows: users } = await db.query(`
@@ -553,11 +556,16 @@ async function autoImportMeliPackages() {
                             // 5. Region Check
                             let stateName = shipment.receiver_address?.state?.name || 'Santiago';
                             const lowerState = stateName.toLowerCase();
-                            const isRM = lowerState.includes('metropolitana') || lowerState.includes('santiago') || lowerState === 'rm';
+                            // Robust RM detection including 'r.m.'
+                            const isRM = lowerState.includes('metropolitana') || 
+                                         lowerState.includes('santiago') || 
+                                         lowerState === 'rm' ||
+                                         lowerState.includes('r.m.');
                             
                             if (isRM) {
                                 stateName = 'Región Metropolitana';
                             } else {
+                                console.log(`[MeliPolling] Skipping order ${orderId} - Outside RM (${stateName})`);
                                 continue; 
                             }
 
@@ -596,6 +604,7 @@ async function autoImportMeliPackages() {
                             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                                 [newPackage.id, 'Creado', newPackage.origin, 'Auto-importado vía integración ML.', now]);
                             
+                            importedThisCycle++;
                             console.log(`[MeliPolling] Auto-imported order ${orderId} for client ${clientId} (Account: ${account.nickname})`);
                             
                             if (!newPackage.trackingId) {
@@ -611,9 +620,12 @@ async function autoImportMeliPackages() {
             }
         }
         
+        // Trigger background geocoding after import
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[MeliPolling] Fatal error in auto-import cycle:', err);
+    } finally {
+        lastImportCount = importedThisCycle;
     }
 }
 
@@ -629,10 +641,11 @@ async function cleanupOutOfZonePackages() {
                LOWER("recipientCommune") LIKE '%loncoche%' OR
                (
                  source = 'MERCADO_LIBRE' AND 
-                 LOWER("recipientCity") NOT LIKE '%metropolitana%' AND 
-                 LOWER("recipientCity") NOT LIKE '%santiago%' AND 
-                 LOWER("recipientCity") != 'rm' AND
-                 "recipientCity" != 'Región Metropolitana'
+                  (LOWER("recipientCity") NOT LIKE '%metropolitana%' AND 
+                   LOWER("recipientCity") NOT LIKE '%santiago%' AND 
+                   LOWER("recipientCity") != 'rm' AND
+                   LOWER("recipientCity") NOT LIKE '%r.m.%' AND
+                   "recipientCity" != 'Región Metropolitana')
                )
         `;
         const { rows: toDelete } = await db.query(queryFind);
@@ -811,7 +824,8 @@ function getStatus() {
         pollingStartTime,
         intervalMs: currentIntervalMs,
         totalPackages: totalPackagesCount,
-        processedPackages: processedPackagesCount
+        processedPackages: processedPackagesCount,
+        lastImportCount
     };
 }
 
