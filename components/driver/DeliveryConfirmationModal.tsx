@@ -255,17 +255,66 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
           };
           
           try {
-              const compressedFile = await imageCompression(file, options);
+              let processedBlob: Blob | File;
+              try {
+                  processedBlob = await imageCompression(file, options);
+              } catch (err) {
+                  console.warn("[DeliveryModal] Library compression failed, using canvas fallback", err);
+                  // Canvas fallback: native browser way to resize
+                  processedBlob = await new Promise<Blob>((resolve, reject) => {
+                      const img = new Image();
+                      const url = URL.createObjectURL(file);
+                      img.onload = () => {
+                          URL.revokeObjectURL(url);
+                          const canvas = document.createElement('canvas');
+                          let width = img.width;
+                          let height = img.height;
+                          const maxDim = 1280;
+                          if (width > maxDim || height > maxDim) {
+                              if (width > height) {
+                                  height *= maxDim / width;
+                                  width = maxDim;
+                              } else {
+                                  width *= maxDim / height;
+                                  height = maxDim;
+                              }
+                          }
+                          canvas.width = width;
+                          canvas.height = height;
+                          const ctx = canvas.getContext('2d');
+                          if (!ctx) return reject(new Error("Canvas context null"));
+                          ctx.drawImage(img, 0, 0, width, height);
+                          canvas.toBlob(b => b ? resolve(b) : reject(new Error("Blob null")), 'image/jpeg', 0.7);
+                      };
+                      img.onerror = () => {
+                          URL.revokeObjectURL(url);
+                          reject(new Error("Img load error"));
+                      };
+                      img.src = url;
+                  });
+              }
+
               const reader = new FileReader();
               const base64: string = await new Promise((resolve, reject) => {
                   reader.onloadend = () => resolve(reader.result as string);
                   reader.onerror = reject;
-                  reader.readAsDataURL(compressedFile);
+                  reader.readAsDataURL(processedBlob);
               });
               setPhotosBase64(prev => [...prev, base64]);
           } catch (err) {
-              console.error("Error comprimiendo imagen", err);
-              setError("Error al comprimir la imagen.");
+              console.error("Critical error processing image", err);
+              // Ultimate fallback: if everything fails, try to use the original file if it's not huge
+              if (file.size < 5 * 1024 * 1024) {
+                  const reader = new FileReader();
+                  const base64: string = await new Promise((resolve, reject) => {
+                      reader.onloadend = () => resolve(reader.result as string);
+                      reader.onerror = reject;
+                      reader.readAsDataURL(file);
+                  });
+                  setPhotosBase64(prev => [...prev, base64]);
+              } else {
+                  setError("Error al procesar la imagen y el archivo es demasiado grande.");
+              }
           }
       } catch (err) {
           setError("Error al procesar la imagen.");
