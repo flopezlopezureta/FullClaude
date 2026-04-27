@@ -152,7 +152,6 @@ let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
-let timeoutId = null;
 let totalPackagesCount = 0;
 let processedPackagesCount = 0;
 let lastImportCount = 0;
