@@ -89,6 +89,12 @@ async function getValidMeliToken(clientId, accountId = null) {
     if (accountId) {
         if (!integrations.accounts) integrations = ensureMultiAccountStructure(integrations);
         accountIndex = integrations.accounts.findIndex(acc => acc.id === accountId);
+        
+        // [FIX] Fallback si el ID no coincide debido a la generación dinámica de UUIDs en memoria
+        if (accountIndex === -1) {
+            accountIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE');
+        }
+        
         if (accountIndex === -1) return null;
         meliIntegration = integrations.accounts[accountIndex].credentials;
     } else {
