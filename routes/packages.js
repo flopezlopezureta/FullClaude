@@ -602,7 +602,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
             driverName = driverRows[0].name;
         }
         
-        const placeholders = packageIds.map((_, i) => `$${i + 5}`).join(', ');
+        const placeholders = packageIds.map((_, i) => `$${i + 6}`).join(', ');
 
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
         const targetStatus = isUnassigning ? 'RETIRADO' : 'ASIGNADO';
@@ -622,12 +622,16 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
             WHERE id IN (${placeholders})
         `;
         
+        // Fetch current states before update to detect reassignments
+        const searchPlaceholders = packageIds.map((_, i) => `$${i + 1}`).join(', ');
+        const { rows: currentStates } = await client.query(`SELECT id, "driverId" FROM packages WHERE id IN (${searchPlaceholders})`, packageIds);
+        
         await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, finalDriverId ? new Date() : null, ...packageIds]);
 
         // Create tracking events for all updated packages
         const eventPromises = packageIds.map(async (packageId) => {
-            const { rows: currentPkg } = await client.query('SELECT "driverId" FROM packages WHERE id = $1', [packageId]);
-            const isActuallyReassigning = !isUnassigning && currentPkg[0]?.driverId && currentPkg[0]?.driverId !== driverId;
+            const pkgBefore = currentStates.find(p => p.id === packageId);
+            const isActuallyReassigning = !isUnassigning && pkgBefore?.driverId && pkgBefore?.driverId !== driverId;
             
             const eventStatus = isUnassigning ? 'Creado' : (isActuallyReassigning ? 'Reasignado' : 'Asignado');
             const details = isUnassigning 
