@@ -207,6 +207,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
         canViewHistory: true,
         canBulkPickup: false,
         canColecta: false,
+        canAuxiliar: false,
     };
 
     const newPermissions = {
@@ -423,7 +424,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                 )}
                 {roleFilter === Role.Driver && (
                     (() => {
-                        const permissions = user.driverPermissions || { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false };
+                        const permissions = user.driverPermissions || { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false, canAuxiliar: false };
                         const permissionItems: { key: keyof DriverPermissions, label: string, icon: React.ReactNode }[] = [
                             { key: 'canDeliver', label: 'Entregar', icon: <IconTruck className="w-4 h-4"/> },
                             { key: 'canPickup', label: 'Retirar', icon: <IconQrcode className="w-4 h-4"/> },
@@ -431,6 +432,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                             { key: 'canBulkPickup', label: 'Retiro Masivo', icon: <IconChecklist className="w-4 h-4"/> },
                             { key: 'canDispatch', label: 'Despachar', icon: <IconPackage className="w-4 h-4"/> },
                             { key: 'canReturn', label: 'Devoluciones', icon: <IconArrowUturnLeft className="w-4 h-4"/> },
+                            { key: 'canAuxiliar', label: 'Auxiliar', icon: <IconUsers className="w-4 h-4"/> },
                             { key: 'canViewHistory', label: 'Historial', icon: <IconHistory className="w-4 h-4"/> },
                         ];
                         return (

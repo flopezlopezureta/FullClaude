@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useContext, useMemo, useCallback } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconHistory, IconLogOut, IconUser, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube, IconX, IconCheck, IconZap } from '../Icon';
+import { IconHistory, IconLogOut, IconUser, IconUsers, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube, IconX, IconCheck, IconZap } from '../Icon';
 import DriverDashboard from './DriverDashboard';
 import ScanDispatchPage from './ScanDispatchPage';
 import DeliveryHistoryPage from './DeliveryHistoryPage';
@@ -9,16 +9,18 @@ import ReturnsDashboard from './ReturnsDashboard';
 import ScanPickupPage from './ScanPickupPage';
 import ColectaPage from './ColectaPage';
 import MeliFlexTestScanner from './MeliFlexTestScanner';
+import DispatchScanner from '../auxiliar/DispatchScanner';
 import { DriverPermissions, Notification } from '../../types';
 import { api } from '../../services/api';
 
-type DriverView = 'my-packages' | 'scan-dispatch' | 'scan-pickups' | 'colectas' | 'returns' | 'delivery-history' | 'meli-flex-test';
+type DriverView = 'my-packages' | 'scan-dispatch' | 'scan-dispatch-auxiliar' | 'scan-pickups' | 'colectas' | 'returns' | 'delivery-history' | 'meli-flex-test';
 
 const menuItems: { id: DriverView; label: string; subtitle?: string; icon: React.ReactNode; color: string, permission?: keyof DriverPermissions }[] = [
     { id: 'my-packages', label: '1. Entregas', subtitle: 'RUTA DE HOY', icon: <IconTruck />, color: 'bg-blue-600', permission: 'canDeliver' },
     { id: 'scan-pickups', label: '2. Retiros', subtitle: 'CLIENTES ASIG.', icon: <IconArchive />, color: 'bg-purple-600', permission: 'canPickup' },
     { id: 'colectas', label: '3. Colecta', subtitle: 'INGRESAR BULTOS', icon: <IconPlus />, color: 'bg-indigo-600', permission: 'canColecta' },
-    { id: 'scan-dispatch', label: '4. Despacho', subtitle: 'CARGA RUTA', icon: <IconChecklist />, color: 'bg-teal-600', permission: 'canDispatch' },
+    { id: 'scan-dispatch', label: '4. Mi Despacho', subtitle: 'CARGA PROPIA', icon: <IconChecklist />, color: 'bg-teal-600', permission: 'canDispatch' },
+    { id: 'scan-dispatch-auxiliar', label: '4. Auxiliar', subtitle: 'DESPACHAR OTROS', icon: <IconUsers />, color: 'bg-emerald-600', permission: 'canAuxiliar' },
     { id: 'returns', label: '5. Devoluciones', subtitle: 'LOGÍSTICA INVERSA', icon: <IconArrowUturnLeft />, color: 'bg-orange-500', permission: 'canReturn' },
     { id: 'delivery-history', label: '6. Historial', subtitle: 'MIS ENTREGAS', icon: <IconHistory />, color: 'bg-slate-600', permission: 'canViewHistory' },
     { id: 'meli-flex-test', label: 'Test ML Flex', subtitle: 'PRUEBA LECTURA', icon: <IconZap />, color: 'bg-yellow-500' },
@@ -107,6 +109,7 @@ const DriverMobileLayout: React.FC = () => {
             canViewHistory: true,
             canBulkPickup: false,
             canColecta: false,
+            canAuxiliar: false,
         };
     }, [user]);
 
@@ -143,6 +146,7 @@ const DriverMobileLayout: React.FC = () => {
             case 'scan-pickups': return <ScanPickupPage />;
             case 'colectas': return <ColectaPage />;
             case 'scan-dispatch': return <ScanDispatchPage />;
+            case 'scan-dispatch-auxiliar': return <DispatchScanner />;
             case 'returns': return <ReturnsDashboard />;
             case 'delivery-history': return <DeliveryHistoryPage />;
             case 'meli-flex-test': return <MeliFlexTestScanner onBack={() => setActiveView('menu')} />;

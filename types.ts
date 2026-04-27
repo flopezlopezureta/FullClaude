@@ -127,6 +127,7 @@ export interface DriverPermissions {
   canViewHistory: boolean;
   canBulkPickup: boolean;
   canColecta: boolean;
+  canAuxiliar: boolean;
 }
 
 export interface IntegrationAccount {
