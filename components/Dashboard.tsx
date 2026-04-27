@@ -110,6 +110,7 @@ const Dashboard: React.FC = () => {
   const [cityFilter, setCityFilter] = useState<string>('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'first' | 'reassigned'>('all');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   
 
@@ -227,6 +228,7 @@ const Dashboard: React.FC = () => {
             quickFilter,
             sourceFilter,
             sortOrder,
+            assignmentFilter: assignmentFilter !== 'all' ? assignmentFilter : null,
         };
         const [packagesResult, allUsers] = await Promise.all([
             api.getPackages(params),
@@ -245,7 +247,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder, assignmentFilter]);
 
   useEffect(() => {
     fetchData();
@@ -665,10 +667,11 @@ const Dashboard: React.FC = () => {
             quickFilter={quickFilter}
             onQuickFilterChange={setQuickFilter}
             isSyncing={isLoading}
-            clients={clients}
             clientFilter={clientFilter}
             onClientChange={setClientFilter}
             onOpenQuickStatus={() => setIsQuickStatusModalOpen(true)}
+            assignmentFilter={assignmentFilter}
+            onAssignmentFilterChange={setAssignmentFilter}
         />
       </div>
 

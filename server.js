@@ -274,7 +274,8 @@ async function initializeDatabase() {
                 'recipientRut TEXT',
                 'recipientEmail TEXT',
                 'jumpsellerOrderId TEXT',
-                'assignedAt TIMESTAMPTZ'
+                'assignedAt TIMESTAMPTZ',
+                'isReassigned BOOLEAN DEFAULT false'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];

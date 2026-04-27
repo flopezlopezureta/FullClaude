@@ -29,10 +29,11 @@ interface PackageFiltersProps {
   onSourceFilterChange: (filter: 'all' | 'ml' | 'web') => void;
   quickFilter: 'all' | 'closed' | 'cancelled' | 'rescheduled';
   onQuickFilterChange: (filter: 'all' | 'closed' | 'cancelled' | 'rescheduled') => void;
-  clients: User[];
   clientFilter: string;
   onClientChange: (clientId: string) => void;
   onOpenQuickStatus: () => void;
+  assignmentFilter: 'all' | 'first' | 'reassigned';
+  onAssignmentFilterChange: (filter: 'all' | 'first' | 'reassigned') => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -61,10 +62,11 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onSourceFilterChange,
   quickFilter,
   onQuickFilterChange,
-  clients,
   clientFilter,
   onClientChange,
   onOpenQuickStatus,
+  assignmentFilter,
+  onAssignmentFilterChange,
 }) => {
   const [isClientSearchOpen, setIsClientSearchOpen] = React.useState(false);
   const [clientSearchTerm, setClientSearchTerm] = React.useState('');
@@ -351,6 +353,20 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                     </div>
                 </div>
             )}
+        </div>
+        <div className="flex-shrink-0 w-44">
+          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Tipo de Asignación</label>
+          <select 
+            id="assignment-filter" 
+            value={assignmentFilter} 
+            onChange={(e) => onAssignmentFilterChange(e.target.value as any)} 
+            className={`${selectClasses} font-bold text-xs !py-1.5`} 
+            aria-label="Filtrar por tipo de asignación"
+          >
+            <option value="all">TODOS (ASIG. Y REASIG.)</option>
+            <option value="first">PRIMERA ASIGNACIÓN</option>
+            <option value="reassigned">SOLO REASIGNADOS</option>
+          </select>
         </div>
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
             <button

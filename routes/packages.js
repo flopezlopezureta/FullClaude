@@ -53,6 +53,7 @@ router.get('/', authMiddleware, async (req, res) => {
             isAssigned,
             accountId,
             sortOrder = 'desc',
+            assignmentFilter, // 'all', 'first', 'reassigned'
         } = req.query;
 
         const offset = (page - 1) * limit;
@@ -170,6 +171,12 @@ router.get('/', authMiddleware, async (req, res) => {
         if (accountId) {
             whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
             queryParams.push(accountId);
+        }
+        
+        if (assignmentFilter === 'first') {
+            whereClauses.push(`(p."isReassigned" IS NULL OR p."isReassigned" = false)`);
+        } else if (assignmentFilter === 'reassigned') {
+            whereClauses.push(`p."isReassigned" = true`);
         }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
@@ -582,7 +589,15 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 
         const updateQuery = `
             UPDATE packages 
-            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4, "assignedAt" = $5
+            SET "driverId" = $1, 
+                "estimatedDelivery" = $2, 
+                "updatedAt" = $3, 
+                status = $4, 
+                "assignedAt" = $5,
+                "isReassigned" = CASE 
+                    WHEN $1 IS NULL THEN false 
+                    ELSE "isReassigned" OR ("driverId" IS NOT NULL AND "driverId" != $1) 
+                END
             WHERE id IN (${placeholders})
         `;
         
@@ -726,7 +741,7 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
     const { driverId, newDeliveryDate } = req.body;
     try {
         // [MOD] Reassignment logic: check current state
-        const { rows: currentPkgRows } = await db.query('SELECT "driverId", status FROM packages WHERE id = $1', [id]);
+        const { rows: currentPkgRows } = await db.query('SELECT "driverId", status, "isReassigned" FROM packages WHERE id = $1', [id]);
         if (currentPkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
         const oldDriverId = currentPkgRows[0].driverId;
@@ -736,8 +751,8 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
         const targetStatus = driverId ? 'ASIGNADO' : 'RETIRADO';
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4, "assignedAt" = $5 WHERE id = $6 RETURNING *',
-            [driverId, newDeliveryDate, new Date(), targetStatus, driverId ? new Date() : null, id]
+            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4, "assignedAt" = $5, "isReassigned" = $6 WHERE id = $7 RETURNING *',
+            [driverId, newDeliveryDate, new Date(), targetStatus, driverId ? new Date() : null, isReassigning ? true : (isUnassigning ? false : (currentPkgRows[0].isReassigned || false)), id]
         );
         
         const driverName = !isUnassigning ? (await db.query('SELECT name FROM users WHERE id = $1', [driverId])).rows[0]?.name : 'Nadie';
