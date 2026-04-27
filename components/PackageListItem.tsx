@@ -272,13 +272,17 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                         )}
                     </div>
 
-                    {/* DATES SECTION (Simplified: Only Creation) */}
+                    {/* DATES SECTION (Creation or Assignment) */}
                     <div className="hidden lg:flex flex-col justify-center px-4 border-l border-r border-gray-100 min-w-[140px]">
                         <div className="flex flex-col">
-                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">Creación</span>
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-wider">
+                                {pkg.assignedAt ? 'Asignación' : 'Creación'}
+                            </span>
                             <span className="text-[11px] font-bold text-slate-600 whitespace-nowrap">
-                                {new Date(pkg.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' })}
-                                <span className="text-gray-400 ml-1 font-medium">{new Date(pkg.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</span>
+                                {new Date(pkg.assignedAt || pkg.createdAt).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit', year: '2-digit' })}
+                                <span className="text-gray-400 ml-1 font-medium">
+                                    {new Date(pkg.assignedAt || pkg.createdAt).toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
                             </span>
                         </div>
                     </div>

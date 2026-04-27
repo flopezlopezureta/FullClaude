@@ -345,6 +345,20 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                           <p className="text-sm">{typeConfig.text}</p>
                        </div>
                   </div>
+                  {pkg.assignedAt && (
+                    <div className="flex items-start text-[var(--text-secondary)] mt-3">
+                        <IconClock className="w-5 h-5 mt-0.5 mr-2 text-[var(--text-muted)] flex-shrink-0" />
+                        <div>
+                            <p className="font-medium text-sm">Última Asignación/Reasignación</p>
+                            <p className="text-sm">
+                                {new Date(pkg.assignedAt).toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                                <span className="text-gray-400 ml-1">
+                                    {new Date(pkg.assignedAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                                </span>
+                            </p>
+                        </div>
+                    </div>
+                  )}
               </div>
 
               {/* Proof of Delivery / Problem Card */}

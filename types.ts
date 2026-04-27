@@ -258,6 +258,7 @@ export interface Package {
   estimatedDelivery: Date;
   createdAt: Date;
   updatedAt: Date;
+  assignedAt?: Date;
   history: TrackingEvent[];
   driverId: string | null;
   creatorId: string | null;

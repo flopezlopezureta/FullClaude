@@ -582,18 +582,27 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 
         const updateQuery = `
             UPDATE packages 
-            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4
+            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4, "assignedAt" = $5
             WHERE id IN (${placeholders})
         `;
         
-        await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, ...packageIds]);
+        await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, finalDriverId ? new Date() : null, ...packageIds]);
 
         // Create tracking events for all updated packages
-        const eventPromises = packageIds.map(packageId => {
-            const details = `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        const eventPromises = packageIds.map(async (packageId) => {
+            const { rows: currentPkg } = await client.query('SELECT "driverId" FROM packages WHERE id = $1', [packageId]);
+            const isActuallyReassigning = !isUnassigning && currentPkg[0]?.driverId && currentPkg[0]?.driverId !== driverId;
+            
+            const eventStatus = isUnassigning ? 'Creado' : (isActuallyReassigning ? 'Reasignado' : 'Asignado');
+            const details = isUnassigning 
+                ? 'Paquete puesto en disponibilidad (desasignado).' 
+                : (isActuallyReassigning 
+                    ? `Reasignado al conductor ${driverName}. Fecha de reasignación actualizada.` 
+                    : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`);
+
             return client.query(
                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [packageId, isUnassigning ? 'Creado' : 'Asignado', 'Centro de Distribución', isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`, new Date()]
+                [packageId, eventStatus, 'Centro de Distribución', details, new Date()]
             );
         });
         
@@ -716,18 +725,31 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { driverId, newDeliveryDate } = req.body;
     try {
+        // [MOD] Reassignment logic: check current state
+        const { rows: currentPkgRows } = await db.query('SELECT "driverId", status FROM packages WHERE id = $1', [id]);
+        if (currentPkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        const oldDriverId = currentPkgRows[0].driverId;
+        const isReassigning = driverId && oldDriverId && driverId !== oldDriverId;
+        const isUnassigning = !driverId || driverId === 'none';
+
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
         const targetStatus = driverId ? 'ASIGNADO' : 'RETIRADO';
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4 WHERE id = $5 RETURNING *',
-            [driverId, newDeliveryDate, new Date(), targetStatus, id]
+            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4, "assignedAt" = $5 WHERE id = $6 RETURNING *',
+            [driverId, newDeliveryDate, new Date(), targetStatus, driverId ? new Date() : null, id]
         );
-        if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
-        const isUnassigning = !driverId || driverId === 'none';
         const driverName = !isUnassigning ? (await db.query('SELECT name FROM users WHERE id = $1', [driverId])).rows[0]?.name : 'Nadie';
-        const statusForEvent = isUnassigning ? 'Creado' : 'Asignado';
-        const detailsForEvent = isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        
+        let statusForEvent = isUnassigning ? 'Creado' : 'Asignado';
+        let detailsForEvent = isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        
+        if (isReassigning) {
+            statusForEvent = 'Reasignado';
+            detailsForEvent = `Reasignado al conductor ${driverName}. Fecha de reasignación actualizada.`;
+        }
+
         await addTrackingEvent(id, statusForEvent, 'Centro de Distribución', detailsForEvent);
         
         const updatedPackage = rows[0];

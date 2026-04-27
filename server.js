@@ -273,7 +273,8 @@ async function initializeDatabase() {
                 'flexLabelPhotoBase64 TEXT',
                 'recipientRut TEXT',
                 'recipientEmail TEXT',
-                'jumpsellerOrderId TEXT'
+                'jumpsellerOrderId TEXT',
+                'assignedAt TIMESTAMPTZ'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
