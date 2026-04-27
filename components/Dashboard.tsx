@@ -667,6 +667,7 @@ const Dashboard: React.FC = () => {
             quickFilter={quickFilter}
             onQuickFilterChange={setQuickFilter}
             isSyncing={isLoading}
+            clients={clients}
             clientFilter={clientFilter}
             onClientChange={setClientFilter}
             onOpenQuickStatus={() => setIsQuickStatusModalOpen(true)}

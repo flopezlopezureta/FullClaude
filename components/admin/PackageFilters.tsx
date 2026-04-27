@@ -29,6 +29,7 @@ interface PackageFiltersProps {
   onSourceFilterChange: (filter: 'all' | 'ml' | 'web') => void;
   quickFilter: 'all' | 'closed' | 'cancelled' | 'rescheduled';
   onQuickFilterChange: (filter: 'all' | 'closed' | 'cancelled' | 'rescheduled') => void;
+  clients: User[];
   clientFilter: string;
   onClientChange: (clientId: string) => void;
   onOpenQuickStatus: () => void;
@@ -62,6 +63,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onSourceFilterChange,
   quickFilter,
   onQuickFilterChange,
+  clients,
   clientFilter,
   onClientChange,
   onOpenQuickStatus,
