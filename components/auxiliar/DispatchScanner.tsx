@@ -132,7 +132,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         handleScan(manualId, true);
     };
     
-    const scanLoop = useCallback(() => {
+    const scanLoop = useCallback(async () => {
         if (!isScanning) return;
         const video = videoRef.current;
         const canvas = canvasRef.current;
@@ -141,8 +141,26 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
             const context = canvas.getContext('2d');
             canvas.height = video.videoHeight;
             canvas.width = video.videoWidth;
-            context?.drawImage(video, 0, 0, canvas.width, canvas.height);
-            const imageData = context?.getImageData(0, 0, canvas.width, canvas.height);
+            if (!context) return;
+            context.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // --- Strategy 1: Native BarcodeDetector (Supports linear barcodes + QR) ---
+            if ('BarcodeDetector' in window) {
+                try {
+                    // @ts-ignore - BarcodeDetector might not be in types yet
+                    const detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'qr_code', 'code_39', 'pdf417'] });
+                    const barcodes = await detector.detect(canvas);
+                    if (barcodes.length > 0) {
+                        handleScan(barcodes[0].rawValue);
+                        return; // Found something, stop this frame
+                    }
+                } catch (e) {
+                    console.error("BarcodeDetector error", e);
+                }
+            }
+
+            // --- Strategy 2: jsQR Fallback (QR only) ---
+            const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
             if (imageData) {
                 const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
                 if (code) handleScan(code.data);
