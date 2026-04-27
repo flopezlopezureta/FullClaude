@@ -5,7 +5,7 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcode, IconPencil, IconInfo, IconChecklist, IconTrash, IconAlertTriangle, IconTruck } from '../Icon';
 import { useTheme } from '../../contexts/ThemeContext';
 import DeleteDatabaseModal, { ResetType } from '../modals/DeleteDatabaseModal';
-import { MessagingPlan, PickupMode, LabelFormat } from '../../constants';
+import { MessagingPlan, PickupMode, LabelFormat, Role } from '../../constants';
 
 const messagingPlanConfig = {
     [MessagingPlan.None]: { name: 'Sin Mensajería', description: 'No se envían notificaciones automáticas a clientes.' },
@@ -509,7 +509,7 @@ const SettingsPage: React.FC = () => {
                         </label>
                     </div>
 
-                    {auth?.user?.email === 'admin' && (
+                    {auth?.user?.role === Role.Admin && (
                         <div className="pt-4 border-t border-[var(--border-primary)]">
                             <label className="flex items-center justify-between cursor-pointer">
                                 <div>

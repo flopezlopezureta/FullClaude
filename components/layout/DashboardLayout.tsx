@@ -53,7 +53,7 @@ const DashboardLayout: React.FC = () => {
     }
   }, [notification, clearNotification]);
   
-  const isSuperUser = user?.email === 'admin';
+  const isSuperUser = user?.email === 'admin' || user?.email === 'admin@admin.cl';
 
   if (user?.role === Role.Driver) {
     return <DriverMobileLayout />;
