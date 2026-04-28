@@ -232,66 +232,34 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       setError(null);
       
       const fileList = Array.from(files);
-      const processedImages: string[] = [];
       
       try {
+          const compressionOptions = {
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1280,
+              useWebWorker: true,
+              initialQuality: 0.8
+          };
+
           for (const file of fileList) {
-              if (file.size > 50 * 1024 * 1024) {
-                  setError(`La imagen "${file.name}" es muy grande para cargar en sistema.`);
-                  continue;
+              try {
+                  const compressedFile = await imageCompression(file, compressionOptions);
+                  
+                  const base64 = await new Promise<string>((resolve, reject) => {
+                      const reader = new FileReader();
+                      reader.onloadend = () => resolve(reader.result as string);
+                      reader.onerror = () => reject(new Error("Error al leer archivo comprimido"));
+                      reader.readAsDataURL(compressedFile);
+                  });
+
+                  setPhotosBase64(prev => [...prev, base64]);
+              } catch (innerErr: any) {
+                  console.error(`Error procesando archivo ${file.name}:`, innerErr);
               }
-
-              const maxDim = 1280;
-              const processedBase64 = await new Promise<string>((resolve, reject) => {
-                  const img = new Image();
-                  const url = URL.createObjectURL(file);
-                  
-                  img.onload = () => {
-                      URL.revokeObjectURL(url);
-                      const canvas = document.createElement('canvas');
-                      let width = img.width;
-                      let height = img.height;
-                      
-                      if (width > maxDim || height > maxDim) {
-                          if (width > height) {
-                              height *= maxDim / width;
-                              width = maxDim;
-                          } else {
-                              width *= maxDim / height;
-                              height = maxDim;
-                          }
-                      }
-                      
-                      canvas.width = width;
-                      canvas.height = height;
-                      const ctx = canvas.getContext('2d');
-                      if (!ctx) return reject(new Error("Error de sistema al crear lienzo de imagen"));
-                      
-                      ctx.imageSmoothingEnabled = true;
-                      ctx.imageSmoothingQuality = 'high';
-                      ctx.drawImage(img, 0, 0, width, height);
-                      
-                      const base64 = canvas.toDataURL('image/jpeg', 0.8);
-                      resolve(base64);
-                  };
-                  
-                  img.onerror = () => {
-                      URL.revokeObjectURL(url);
-                      reject(new Error(`Error al leer el archivo "${file.name}". Por favor intenta con otra foto.`));
-                  };
-                  
-                  img.src = url;
-              });
-
-              processedImages.push(processedBase64);
-          }
-
-          if (processedImages.length > 0) {
-              setPhotosBase64(prev => [...prev, ...processedImages]);
           }
       } catch (err: any) {
           console.error("Image processing error [DeliveryModal]:", err);
-          setError(err.message || 'Error al procesar las imágenes.');
+          setError('Ocurrió un error al procesar las imágenes seleccionadas.');
       } finally {
           setIsCompressing(false);
           if (e.target) e.target.value = '';
