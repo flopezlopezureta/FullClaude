@@ -764,6 +764,14 @@ async function initializeDatabase() {
         `);
         console.log('Table "system_logs" is ready.');
 
+        // [OPTIMIZACIÓN] Crear índices para búsquedas rápidas de duplicados y seguimiento
+        await db.query('CREATE INDEX IF NOT EXISTS idx_packages_meli_order ON packages("meliOrderId")');
+        await db.query('CREATE INDEX IF NOT EXISTS idx_packages_meli_flex ON packages("meliFlexCode")');
+        await db.query('CREATE INDEX IF NOT EXISTS idx_packages_tracking ON packages("trackingId")');
+        await db.query('CREATE INDEX IF NOT EXISTS idx_packages_shopify_order ON packages("shopifyOrderId")');
+        await db.query('CREATE INDEX IF NOT EXISTS idx_packages_jumpseller_order ON packages("jumpsellerOrderId")');
+        console.log('Performance indexes are ready.');
+
         console.log('Database schema initialization complete.');
     } catch (err) {
         console.error('FATAL: Could not initialize database schema.', err);

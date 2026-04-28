@@ -39,7 +39,6 @@ router.get('/', authMiddleware, async (req, res) => {
         const {
             page = 1,
             limit = 25,
-            searchQuery,
             statusFilter,
             driverFilter,
             clientFilter,
@@ -57,6 +56,9 @@ router.get('/', authMiddleware, async (req, res) => {
             excludeChecked, // 'true' or 'false'
             dateType = 'created', // 'created' or 'egress'
         } = req.query;
+
+        // [MEJORADO] Limpiamos espacios en blanco de la búsqueda para evitar fallos por copy-paste
+        const searchQuery = req.query.searchQuery ? req.query.searchQuery.trim() : null;
 
         const offset = (page - 1) * limit;
         let whereClauses = [];
@@ -82,6 +84,7 @@ router.get('/', authMiddleware, async (req, res) => {
                 OR p."recipientPhone" ILIKE $${paramIndex}
                 OR p."recipientEmail" ILIKE $${paramIndex}
                 OR p."meliFlexCode" ILIKE $${paramIndex} 
+                OR p.notes ILIKE $${paramIndex}
                 OR u.name ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
@@ -125,6 +128,8 @@ router.get('/', authMiddleware, async (req, res) => {
         
         // Relax date filtering if searching by query to find historical packages
         const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
+        
+        // Determinar qué columna usar para el filtro de fecha
         const dateColumn = dateType === 'egress' ? 'assignedAt' : 'createdAt';
 
         if (startDate && endDate && !isHistoricalSearch) {
@@ -135,6 +140,7 @@ router.get('/', authMiddleware, async (req, res) => {
             if (dateType === 'egress') {
                 whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
             } else {
+                // Para búsqueda general de creación, incluimos updatedAt y estimatedDelivery para mayor cobertura
                 whereClauses.push(`(
                     (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
                     (p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1}) OR
@@ -143,8 +149,9 @@ router.get('/', authMiddleware, async (req, res) => {
             }
             queryParams.push(startDate, endStr);
             paramIndex += 2;
-        } else {
-            if (startDate && !isHistoricalSearch) {
+        } else if (!isHistoricalSearch) {
+            // Filtros individuales si no hay un rango completo
+            if (startDate) {
                 if (dateType === 'egress') {
                     whereClauses.push(`p."assignedAt" >= $${paramIndex}`);
                 } else {
@@ -154,7 +161,7 @@ router.get('/', authMiddleware, async (req, res) => {
                 paramIndex++;
             }
 
-            if (endDate && !isHistoricalSearch) {
+            if (endDate) {
                 const end = new Date(endDate);
                 end.setDate(end.getDate() + 1);
                 if (dateType === 'egress') {

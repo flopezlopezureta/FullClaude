@@ -146,25 +146,29 @@ async function autoImportJumpsellerPackages() {
                     if (settings.autoImport === false) continue;
 
                     // --- PER-ACCOUNT INTERVAL CHECK ---
-                    const syncIntervalMin = settings.syncInterval || 10; 
+                    // [MEJORADO] Reducimos a 2 min por defecto
+                    const syncIntervalMin = settings.syncInterval !== undefined ? settings.syncInterval : 2; 
                     const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
                     const now = Date.now();
                     
                     if (now - lastSync < (syncIntervalMin * 60 * 1000)) continue;
 
-                    // Update lastSync timestamp for this account
-                    const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
-                    if (accountIndex > -1) {
-                        integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
-                        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
-                    }
+                    // [ESTABILIDAD] Timeout de 45 seg por cuenta
+                    await Promise.race([
+                        (async () => {
+                            // Update lastSync timestamp for this account
+                            const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
+                            if (accountIndex > -1) {
+                                integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
+                                await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
+                            }
 
-                // 2. Fetch recent orders
-                const orders = await makeJumpsellerRequest(jumpseller.login, jumpseller.token, '/orders.json?status=all&limit=50');
-                
-                if (!orders || orders.length === 0) {
-                    continue;
-                }
+                            // 2. Fetch recent orders
+                            const orders = await makeJumpsellerRequest(jumpseller.login, jumpseller.token, '/orders.json?status=all&limit=50');
+                            
+                            if (!orders || orders.length === 0) {
+                                return;
+                            }
 
                 console.log(`[JumpsellerPolling] Found ${orders.length} orders for client ${clientId}`);
 
@@ -182,23 +186,31 @@ async function autoImportJumpsellerPackages() {
                         const { rows: existing } = await db.query('SELECT id FROM packages WHERE "jumpsellerOrderId" = $1', [orderId]);
                         if (existing.length > 0) continue;
 
-                        // 5. Region Check (Santiago/RM) - Optional but consistent with Shopify
+                        // 5. Region Check (Santiago/RM) [MEJORADO]
                         const shipping = order.shipping_address || {};
                         const municipality = (shipping.municipality || '').toLowerCase();
                         const city = (shipping.city || '').toLowerCase();
                         
                         const isRM = municipality.includes('metropolitana') || 
                                      municipality.includes('santiago') || 
-                                     municipality === 'rm' ||
-                                     city.includes('santiago') ||
+                                     municipality.includes('rm') ||
+                                     municipality.includes('r.m.') ||
                                      city.includes('metropolitana') ||
-                                     city.includes('santiago de chile');
+                                     city.includes('santiago') ||
+                                     city.includes('rm') ||
+                                     [
+                                        'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+                                        'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+                                        'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+                                        'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+                                        'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+                                        'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+                                        'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+                                        'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+                                     ].includes(municipality);
                         
-                        // If not RM, we might still import but log it, or skip if business rule says RM only
-                        // For now we'll import all but prioritize RM if needed.
-                        // Based on codebase, we usually skip for automatic polling if not RM to avoid cluttering.
                         if (!isRM && municipality !== '' && city !== '') {
-                             console.log(`[JumpsellerPolling] Skipping order ${orderId} - Outside RM (${municipality}, ${city})`);
+                             console.log(`[JumpsellerPolling] Skipping order ${orderId} - Outside RM (Municipality: ${municipality}, City: ${city})`);
                              continue;
                         }
 
@@ -239,12 +251,15 @@ async function autoImportJumpsellerPackages() {
                         
                         console.log(`[JumpsellerPolling] Auto-imported order ${orderId} for client ${clientId} (Account: ${account.nickname})`);
                         
-                        } catch (orderErr) {
-                            console.error(`[JumpsellerPolling] Error processing order ${o?.order?.id}:`, orderErr.message);
-                        }
-                    }
+                        })(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_ACCOUNT')), 45000))
+                    ]);
                 } catch (apiErr) {
-                    console.error(`[JumpsellerPolling] Error fetching orders for client ${clientId}:`, apiErr.body || apiErr);
+                    if (apiErr.message === 'TIMEOUT_ACCOUNT') {
+                        console.error(`[JumpsellerPolling] Polling timed out after 45s for account ${account.nickname} (${clientId})`);
+                    } else {
+                        console.error(`[JumpsellerPolling] Error fetching orders for account ${account.nickname}:`, apiErr.body || apiErr.message || apiErr);
+                    }
                 }
             }
         }

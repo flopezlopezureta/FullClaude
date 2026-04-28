@@ -231,6 +231,12 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                                     {pkg.recipientCommune || 'Sin Comuna'}
                                 </span>
                             )}
+                            {/* [NUEVO] Mostrar ID de Referencia / Mercado Libre para identificación rápida */}
+                            {(pkg.meliOrderId || pkg.meliFlexCode) && (
+                                <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                                    REF: {pkg.meliOrderId || pkg.meliFlexCode}
+                                </span>
+                            )}
                             <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
                                 {pkg.source && sourceIcons[pkg.source]}
                                 {pkg.recipientEmail && <IconMail title={`Email: ${pkg.recipientEmail}`} className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}

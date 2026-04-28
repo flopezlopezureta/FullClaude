@@ -161,23 +161,27 @@ async function autoImportShopifyPackages() {
                     if (settings.autoImport !== true) continue;
 
                     // --- PER-ACCOUNT INTERVAL CHECK ---
-                    const syncIntervalMin = settings.syncInterval || 5; 
+                    // [MEJORADO] Reducimos a 2 min por defecto
+                    const syncIntervalMin = settings.syncInterval !== undefined ? settings.syncInterval : 2; 
                     const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
                     const now = Date.now();
                     
                     if (now - lastSync < (syncIntervalMin * 60 * 1000)) continue;
 
-                    // Update lastSync for this account
-                    const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
-                    if (accountIndex > -1) {
-                        integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
-                        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
-                    }
+                    // [ESTABILIDAD] Timeout de 45 seg por cuenta
+                    await Promise.race([
+                        (async () => {
+                            // Update lastSync for this account
+                            const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
+                            if (accountIndex > -1) {
+                                integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
+                                await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
+                            }
 
-                    // 2. Fetch recent paid orders
-                    const ordersData = await makeShopifyRequest(shopify.shopUrl, shopify.accessToken, '/orders.json?status=open&financial_status=paid&limit=50');
-                    
-                    if (!ordersData.orders || ordersData.orders.length === 0) continue;
+                            // 2. Fetch recent paid orders
+                            const ordersData = await makeShopifyRequest(shopify.shopUrl, shopify.accessToken, '/orders.json?status=open&financial_status=paid&limit=50');
+                            
+                            if (!ordersData.orders || ordersData.orders.length === 0) return;
 
                     console.log(`[ShopifyPolling] Found ${ordersData.orders.length} paid orders for client ${clientId} (${account.nickname})`);
 
@@ -189,19 +193,33 @@ async function autoImportShopifyPackages() {
                             const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1 OR "id" = $2', [orderId, orderId]);
                             if (existing.length > 0) continue;
 
-                            // 4. Region Check (Santiago/RM)
+                            // 4. Region Check (Santiago/RM) [MEJORADO]
                             const address = order.shipping_address || order.billing_address || {};
                             const province = (address.province || '').toLowerCase();
                             const city = (address.city || '').toLowerCase();
                             
                             const isRM = province.includes('metropolitana') || 
                                          province.includes('santiago') || 
-                                         province === 'rm' ||
+                                         province.includes('rm') ||
                                          province.includes('r.m.') ||
                                          city.includes('santiago') ||
-                                         city.includes('metropolitana');
+                                         city.includes('metropolitana') ||
+                                         city.includes('rm') ||
+                                         [
+                                            'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+                                            'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+                                            'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+                                            'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+                                            'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+                                            'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+                                            'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+                                            'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+                                         ].includes(city);
                             
-                            if (!isRM) continue;
+                            if (!isRM) {
+                                console.log(`[ShopifyPolling] Skipping order ${orderId} - Outside RM (Province: ${province}, City: ${city})`);
+                                continue;
+                            }
 
                             // 5. Import Package
                             const nowImport = new Date();
@@ -238,12 +256,15 @@ async function autoImportShopifyPackages() {
                             importedThisCycle++;
                             console.log(`[ShopifyPolling] Auto-imported order ${orderId} for client ${clientId} (${account.nickname})`);
                             
-                        } catch (orderErr) {
-                            console.error(`[ShopifyPolling] Error processing order ${order.id}:`, orderErr.message);
-                        }
-                    }
+                        })(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_ACCOUNT')), 45000))
+                    ]);
                 } catch (apiErr) {
-                    console.error(`[ShopifyPolling] Error fetching orders for ${account.nickname}:`, apiErr.body || apiErr);
+                    if (apiErr.message === 'TIMEOUT_ACCOUNT') {
+                        console.error(`[ShopifyPolling] Polling timed out after 45s for account ${account.nickname} (${clientId})`);
+                    } else {
+                        console.error(`[ShopifyPolling] Error fetching orders for ${account.nickname}:`, apiErr.body || apiErr.message || apiErr);
+                    }
                 }
             }
         }
