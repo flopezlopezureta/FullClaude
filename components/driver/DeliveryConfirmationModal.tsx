@@ -316,13 +316,25 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                   setError("No se pudo optimizar la imagen y el archivo original es demasiado grande (máximo 20MB para fotos sin comprimir).");
               }
           }
-      } catch (err: any) {
-          console.error("Outermost catch error:", err);
-          setError(`Error al procesar la imagen: ${err.message || String(err)}`);
-      } finally {
-          setIsCompressing(false);
-          if (e.target) e.target.value = '';
-      }
+        } catch (err: any) {
+          console.error("Outermost catch error [DeliveryConfirmationModal]:", err);
+          let errorMsg = "Error desconocido";
+          if (err instanceof Error) {
+            errorMsg = err.message;
+          } else if (typeof err === 'object' && err !== null) {
+            try {
+              errorMsg = JSON.stringify(err);
+            } catch (e) {
+              errorMsg = "Objeto de error no serializable (posible ProgressEvent o similar)";
+            }
+          } else {
+            errorMsg = String(err);
+          }
+          setError(`Error al procesar la imagen: ${errorMsg}`);
+        } finally {
+            setIsCompressing(false);
+            if (e.target) e.target.value = '';
+        }
     }
   };
   
