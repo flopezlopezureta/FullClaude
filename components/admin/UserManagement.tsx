@@ -60,8 +60,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
-      const allUsers = await api.getUsers();
-      const filteredUsers = allUsers.filter(u => u.role === roleFilter);
+      const filteredUsers = allUsers.filter(u => {
+        if (roleFilter === Role.Driver) {
+          // Si estamos filtrando conductores, mostrar Conductores Y Administradores
+          return u.role === Role.Driver || u.role === Role.Admin;
+        }
+        return u.role === roleFilter;
+      });
       
       filteredUsers.sort((a, b) => {
         if (a.status === UserStatus.Pending && b.status !== UserStatus.Pending) return -1;

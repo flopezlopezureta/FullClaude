@@ -423,7 +423,7 @@ const Dashboard: React.FC = () => {
   };
 
   const drivers = users
-    .filter(u => u.role === Role.Driver && u.status === UserStatus.Approved)
+    .filter(u => (u.role === Role.Driver || u.role === Role.Admin) && u.status === UserStatus.Approved)
     .sort((a, b) => a.name.localeCompare(b.name));
     
   const clients = users
