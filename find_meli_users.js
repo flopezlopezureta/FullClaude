@@ -1,24 +1,15 @@
-const db = require('./db');
 require('dotenv').config();
+const db = require('./db');
 
 async function findMeliUsers() {
     try {
-        const { rows } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL LIMIT 5");
-        console.log('\n--- Clientes con Integración Mercado Libre ---\n');
-        if (rows.length === 0) {
-            console.log('No se encontraron clientes con integración ML activa.');
-        } else {
-            rows.forEach(user => {
-                console.log(`Nombre: ${user.name}`);
-                console.log(`ID: ${user.id}`);
-                console.log(`URL de Diagnóstico: https://dev.selcom.cl/api/integrations/debug-poll/${user.id}?secret=fullenvios_debug`);
-                console.log('-------------------------------------------\n');
-            });
-        }
+        const { rows } = await db.query("SELECT id, name, integrations FROM users WHERE role = 'CLIENT'");
+        const meliUsers = rows.filter(u => u.integrations && (u.integrations.meli || u.integrations.accounts));
+        console.log('Meli Users:', JSON.stringify(meliUsers, null, 2));
+        process.exit(0);
     } catch (err) {
-        console.error('Error querying DB:', err.message);
-    } finally {
-        process.exit();
+        console.error(err);
+        process.exit(1);
     }
 }
 

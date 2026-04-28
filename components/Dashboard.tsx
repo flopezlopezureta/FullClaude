@@ -448,10 +448,26 @@ const Dashboard: React.FC = () => {
     .filter(u => u.role === Role.Client && u.status === UserStatus.Approved)
     .sort((a, b) => a.name.localeCompare(b.name));
 
+  const RM_COMMUNES = [
+    'SANTIAGO', 'CERRILLOS', 'CERRO NAVIA', 'CONCHALÍ', 'EL BOSQUE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 
+    'LA CISTERNA', 'LA FLORIDA', 'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 
+    'LO PRADO', 'MACUL', 'MAIPÚ', 'ÑUÑOA', 'PEDRO AGUIRRE CERDA', 'PEÑALOLÉN', 'PROVIDENCIA', 'PUDAHUEL', 'QUILICURA', 
+    'QUINTA NORMAL', 'RECOLETA', 'RENCA', 'SAN JOAQUÍN', 'SAN MIGUEL', 'SAN RAMÓN', 'VITACURA', 'PUENTE ALTO', 'PIRQUE', 
+    'SAN JOSÉ DE MAIPO', 'SAN BERNARDO', 'BUIN', 'CALERA DE TANGO', 'PAINE', 'MELIPILLA', 'ALHUÉ', 'CURACAVÍ', 
+    'MARÍA PINTO', 'SAN PEDRO', 'TALAGANTE', 'EL MONTE', 'ISLA DE MAIPO', 'PADRE HURTADO', 'PEÑAFLOR', 'COLINA', 'LAMPA', 'TILTIL'
+  ];
+
   const uniqueCommunes = useMemo(() => {
-    if (!Array.isArray(packages)) return [];
-    const communes = new Set(packages.map(p => p.recipientCommune).filter(Boolean));
-    return Array.from(communes).sort((a: string, b: string) => a.localeCompare(b));
+    // 1. Obtener comunas de los paquetes actuales, normalizadas
+    const packageCommunes = Array.isArray(packages) 
+        ? packages.map(p => p.recipientCommune?.trim().toUpperCase()).filter(Boolean)
+        : [];
+    
+    // 2. Combinar con la lista completa de la RM
+    const combined = new Set([...RM_COMMUNES, ...packageCommunes]);
+    
+    // 3. Convertir a array y ordenar alfabéticamente
+    return Array.from(combined).sort((a: string, b: string) => a.localeCompare(b));
   }, [packages]);
   
   const uniqueCities = useMemo(() => {

@@ -29,6 +29,9 @@ function getPool() {
             max: 20, 
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 20000, 
+            ssl: {
+                rejectUnauthorized: false
+            }
         });
         
         console.log("PostgreSQL pool created successfully.");
