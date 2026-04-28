@@ -181,10 +181,11 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
       setIsCompressing(true);
       setError(null);
       try {
-          const file = files[0]; // Uno por uno por estabilidad nativa
+          const file = files[0];
           
           if (file.size > 50 * 1024 * 1024) {
-               setError("Imagen demasiado grande (máximo 50MB).");
+               setError("Imagen muy grande para cargar en sistema, por favor reducir resolución de fotos o capturar con cámara.");
+               setIsCompressing(false);
                return;
           }
           
@@ -214,11 +215,11 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
                   ctx.imageSmoothingEnabled = true;
                   ctx.imageSmoothingQuality = 'high';
                   ctx.drawImage(img, 0, 0, width, height);
-                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Blob null")), 'image/jpeg', 0.8);
+                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Error al convertir imagen")), 'image/jpeg', 0.8);
               };
               img.onerror = () => {
                   URL.revokeObjectURL(url);
-                  reject(new Error("Error al cargar la imagen en memoria"));
+                  reject(new Error("Imagen muy grande para cargar en sistema, por favor reducir resolución de fotos o capturar con cámara."));
               };
               img.src = url;
           });
@@ -226,25 +227,13 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
           const reader = new FileReader();
           const base64: string = await new Promise((resolve, reject) => {
               reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = () => reject(new Error("Error al leer el archivo procesado"));
+              reader.onerror = () => reject(new Error("Error al leer archivo"));
               reader.readAsDataURL(processedBlob);
           });
           setPhotosBase64(prev => [...prev, base64]);
       } catch (err: any) {
-          console.error("Outermost catch error [ReturnConfirmationModal]:", err);
-          let errorMsg = "Error desconocido";
-          if (err instanceof Error) {
-            errorMsg = err.message;
-          } else if (typeof err === 'object' && err !== null) {
-            try {
-              errorMsg = JSON.stringify(err);
-            } catch (e) {
-              errorMsg = "Objeto de error no serializable (posible ProgressEvent o similar)";
-            }
-          } else {
-            errorMsg = String(err);
-          }
-          setError(`Error al procesar la imagen: ${errorMsg}`);
+          console.error("Image processing error [ReturnModal]:", err);
+          setError(err.message || "Error al procesar la imagen.");
       } finally {
           setIsCompressing(false);
           if (e.target) e.target.value = '';
