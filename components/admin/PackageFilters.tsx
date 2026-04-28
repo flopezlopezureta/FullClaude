@@ -35,6 +35,8 @@ interface PackageFiltersProps {
   onOpenQuickStatus: () => void;
   assignmentFilter: 'all' | 'all_assigned' | 'first' | 'reassigned';
   onAssignmentFilterChange: (filter: 'all' | 'all_assigned' | 'first' | 'reassigned') => void;
+  dateType: 'created' | 'egress';
+  onDateTypeChange: (type: 'created' | 'egress') => void;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -69,6 +71,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onOpenQuickStatus,
   assignmentFilter,
   onAssignmentFilterChange,
+  dateType,
+  onDateTypeChange,
 }) => {
   const [isClientSearchOpen, setIsClientSearchOpen] = React.useState(false);
   const [clientSearchTerm, setClientSearchTerm] = React.useState('');
@@ -357,7 +361,6 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             )}
         </div>
         <div className="flex-shrink-0 w-44">
-          <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Tipo de Asignación</label>
           <select 
             id="assignment-filter" 
             value={assignmentFilter} 
@@ -370,6 +373,25 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             <option value="first">PRIMERA ASIGNACIÓN</option>
             <option value="reassigned">SOLO REASIGNADOS</option>
           </select>
+        </div>
+
+        {/* --- NEW DATE TYPE FILTER --- */}
+        <div className="flex-shrink-0">
+            <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1 block">Filtro por Fecha</label>
+            <div className="flex bg-white border border-gray-200 rounded-lg p-0.5 shadow-sm h-[38px] items-center">
+                <button
+                    onClick={() => onDateTypeChange('created')}
+                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-tighter rounded-md transition-all h-full ${dateType === 'created' ? 'bg-[#007bff] text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                    Creación
+                </button>
+                <button
+                    onClick={() => onDateTypeChange('egress')}
+                    className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-tighter rounded-md transition-all h-full ${dateType === 'egress' ? 'bg-[#007bff] text-white shadow-sm' : 'text-gray-400 hover:text-gray-600'}`}
+                >
+                    Egreso
+                </button>
+            </div>
         </div>
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
             <button

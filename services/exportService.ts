@@ -41,6 +41,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
         { header: 'CORREO', key: 'correo', width: 25 },
         { header: 'ESTADO_PICK', key: 'estado', width: 15 },
         { header: 'BULTOS', key: 'bultos', width: 10 },
+        { header: 'FECHA DE EGRESO', key: 'fechaEgreso', width: 25 },
         { header: 'CONDUCTOR', key: 'conductor', width: 20 },
     ];
 
@@ -63,6 +64,7 @@ export const exportToExcel = async (packages: Package[], filename: string, users
             correo: '',
             estado: mapStatus(pkg.status),
             bultos: 1,
+            fechaEgreso: pkg.assignedAt ? new Date(pkg.assignedAt).toLocaleString('es-CL', { hour12: timeFormat === '12h' }).replace(/\//g, '-') : 'Pendiente',
             conductor: pkg.driverId ? (userMap.get(pkg.driverId) || 'No encontrado') : 'No asignado'
         });
     });
@@ -141,6 +143,7 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
         'Comuna',
         'Ciudad',
         'Tipo Envío',
+        'Fecha de Egreso',
         'Conductor'
     ];
 
@@ -161,6 +164,7 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
         pkg.recipientCommune,
         pkg.recipientCity,
         pkg.shippingType,
+        pkg.assignedAt ? new Date(pkg.assignedAt).toLocaleString('es-CL') : 'Pendiente',
         pkg.driverId ? (userMap.get(pkg.driverId) || 'No encontrado') : 'No asignado'
     ].map(escapeCSV).join(','));
 

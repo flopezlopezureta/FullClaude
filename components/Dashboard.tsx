@@ -111,6 +111,7 @@ const Dashboard: React.FC = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'all_assigned' | 'first' | 'reassigned'>('all');
+  const [dateType, setDateType] = useState<'created' | 'egress'>('created');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
   
 
@@ -229,6 +230,7 @@ const Dashboard: React.FC = () => {
             sourceFilter,
             sortOrder,
             assignmentFilter: assignmentFilter !== 'all' ? assignmentFilter : null,
+            dateType,
         };
         const [packagesResult, allUsers] = await Promise.all([
             api.getPackages(params),
@@ -247,7 +249,7 @@ const Dashboard: React.FC = () => {
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder, assignmentFilter]);
+  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder, assignmentFilter, dateType]);
 
   useEffect(() => {
     fetchData();
@@ -275,6 +277,7 @@ const Dashboard: React.FC = () => {
       setCityFilter('');
       setStartDate('');
       setEndDate('');
+      setDateType('created');
       setCurrentPage(1);
   };
 
@@ -456,7 +459,8 @@ const Dashboard: React.FC = () => {
             startDate, 
             endDate,
             flexFilter,
-            quickFilter
+            quickFilter,
+            dateType
         });
 
         let packagesToExport: Package[] = [];
@@ -493,7 +497,7 @@ const Dashboard: React.FC = () => {
   useEffect(() => {
     setCurrentPage(1);
     setSelectedPackages(new Set());
-  }, [searchQuery, statusFilter, driverFilter, communeFilter, cityFilter, clientFilter, itemsPerPage, startDate, endDate, flexFilter, quickFilter]);
+  }, [searchQuery, statusFilter, driverFilter, communeFilter, cityFilter, clientFilter, itemsPerPage, startDate, endDate, flexFilter, quickFilter, dateType]);
 
   const handleSelectPackage = (pkg: Package) => {
     setSelectedPackages(prev => {
@@ -694,6 +698,8 @@ const Dashboard: React.FC = () => {
             onOpenQuickStatus={() => setIsQuickStatusModalOpen(true)}
             assignmentFilter={assignmentFilter}
             onAssignmentFilterChange={setAssignmentFilter}
+            dateType={dateType}
+            onDateTypeChange={setDateType}
         />
       </div>
 
