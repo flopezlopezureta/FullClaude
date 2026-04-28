@@ -654,7 +654,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error in POST /api/packages/batch-assign-driver:', err);
-        res.status(500).json({ message: 'Error del servidor al asignar los paquetes.' });
+        res.status(500).json({ message: 'Error del servidor al asignar los paquetes: ' + (err.message || String(err)) });
     } finally {
         client.release();
     }

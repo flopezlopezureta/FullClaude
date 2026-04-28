@@ -354,9 +354,9 @@ const Dashboard: React.FC = () => {
         fetchData(); // Refetch data to show changes
         setSelectedPackages(new Set()); // Clear selection
         setIsBulkAssignModalOpen(false); // Close modal
-    } catch (error) {
+    } catch (error: any) {
         console.error("Failed to bulk assign driver", error);
-        alert("Ocurrió un error al asignar los paquetes.");
+        alert("Ocurrió un error al asignar los paquetes: " + (error.message || "Error desconocido"));
     }
   };
 
