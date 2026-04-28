@@ -22,8 +22,11 @@ import { api } from '../services/api';
 
 export default function DeliveryDetailScreen({ route, navigation }: any) {
   const { pkg } = route.params;
-  const isCompleted = ['ENTREGADO', 'PROBLEMA', 'CANCELADO', 'REPROGRAMADO', 'DEVUELTO'].includes(pkg.status);
+  const isCompleted = ['ENTREGADO', 'CANCELADO', 'DEVUELTO'].includes(pkg.status);
+  const isFailedAttempt = ['PROBLEMA', 'REPROGRAMADO'].includes(pkg.status);
   
+  const [currentStatus, setCurrentStatus] = useState(pkg.status);
+  const [isRetrying, setIsRetrying] = useState(false);
   const [receiverName, setReceiverName] = useState(pkg.receiverName || pkg.recipientName);
   const [receiverId, setReceiverId] = useState(pkg.receiverId || '');
   const [photos, setPhotos] = useState<string[]>(pkg.photos || []);
@@ -195,9 +198,20 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
               {pkg.status === 'CANCELADO' 
                 ? 'ESTE PEDIDO HA SIDO CANCELADO. NO REALIZAR LA ENTREGA.' 
                 : pkg.status === 'REPROGRAMADO'
-                ? 'ESTE PEDIDO HA SIDO REPROGRAMADO. ESPERE INSTRUCCIONES.'
+                ? 'ESTE PEDIDO HA SIDO REPROGRAMADO.'
                 : 'SE HA REPORTADO UN PROBLEMA CON ESTE PEDIDO.'}
             </Text>
+            {isFailedAttempt && !isRetrying && (
+              <TouchableOpacity 
+                style={styles.retryBtn} 
+                onPress={() => {
+                  setIsRetrying(true);
+                  Alert.alert("Modo Reintento", "Ahora puedes editar los datos y finalizar la entrega.");
+                }}
+              >
+                <Text style={styles.retryBtnText}>REINTENTAR</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
         <View style={styles.infoCard}>
@@ -237,10 +251,10 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Nombre completo</Text>
             <TextInput 
-              style={[styles.input, isCompleted && styles.disabledInput]}
+              style={[styles.input, (isCompleted || (isFailedAttempt && !isRetrying)) && styles.disabledInput]}
               value={receiverName}
               onChangeText={setReceiverName}
-              editable={!isCompleted}
+              editable={!isCompleted && (!isFailedAttempt || isRetrying)}
               placeholder="Ej: Juan Pérez"
             />
           </View>
@@ -248,10 +262,10 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>RUT / Cédula {settings?.isRutRequired ? '(Obligatorio)' : '(Opcional/Recomendado)'}</Text>
             <TextInput 
-              style={[styles.input, isCompleted && styles.disabledInput]}
+              style={[styles.input, (isCompleted || (isFailedAttempt && !isRetrying)) && styles.disabledInput]}
               value={receiverId}
               onChangeText={setReceiverId}
-              editable={!isCompleted}
+              editable={!isCompleted && (!isFailedAttempt || isRetrying)}
               placeholder="12.345.678-k"
             />
           </View>
@@ -272,7 +286,7 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
               </View>
             ))}
             
-            {!isCompleted && (
+            {(!isCompleted && (!isFailedAttempt || isRetrying)) && (
               <View style={styles.photoActions}>
                 <TouchableOpacity style={styles.addPhotoBtn} onPress={() => pickImage(true)}>
                   <Icon name="camera-plus" size={32} color="#94a3b8" />
@@ -303,7 +317,7 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
-      {!isCompleted && (
+      {(!isCompleted && (!isFailedAttempt || isRetrying)) && (
         <View style={styles.footer}>
           <TouchableOpacity 
             style={[styles.problemBtn, loading && styles.disabledBtn]}
@@ -751,6 +765,17 @@ const styles = StyleSheet.create({
   warningText: {
     flex: 1,
     fontSize: 14,
+    fontWeight: '800',
+  },
+  retryBtn: {
+    backgroundColor: '#0f172a',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  retryBtnText: {
+    color: '#fff',
+    fontSize: 11,
     fontWeight: '800',
   },
 });

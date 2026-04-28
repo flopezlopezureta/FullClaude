@@ -15,6 +15,7 @@ import { api } from '../services/api';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 export default function HistoryScreen({ navigation }: any) {
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -22,10 +23,9 @@ export default function HistoryScreen({ navigation }: any) {
 
   const fetchHistory = async () => {
     try {
-      const data = await api.getDriverPackages(user.id);
-      // Filtrar por cerrados (Entregado o Problema)
-      const closed = data.filter((p: any) => p.status === 'ENTREGADO' || p.status === 'PROBLEMA');
-      setPackages(closed);
+      const dateStr = selectedDate.toISOString().split('T')[0];
+      const data = await api.getDriverPackages(user.id, dateStr, dateStr);
+      setPackages(data);
     } catch (error) {
       console.error("Error fetching history", error);
     } finally {
@@ -36,7 +36,13 @@ export default function HistoryScreen({ navigation }: any) {
 
   useEffect(() => {
     fetchHistory();
-  }, []);
+  }, [selectedDate]);
+
+  const changeDate = (days: number) => {
+    const newDate = new Date(selectedDate);
+    newDate.setDate(newDate.getDate() + days);
+    setSelectedDate(newDate);
+  };
 
   const renderItem = ({ item }: { item: any }) => (
     <View style={styles.card}>
@@ -75,6 +81,19 @@ export default function HistoryScreen({ navigation }: any) {
         <View style={{ width: 28 }} />
       </View>
 
+      <View style={styles.dateSelector}>
+        <TouchableOpacity onPress={() => changeDate(-1)} style={styles.dateBtn}>
+          <Icon name="chevron-left" size={24} color="#2563eb" />
+        </TouchableOpacity>
+        <View style={styles.dateDisplay}>
+          <Icon name="calendar" size={18} color="#64748b" style={{ marginRight: 8 }} />
+          <Text style={styles.dateTextMain}>{selectedDate.toLocaleDateString()}</Text>
+        </View>
+        <TouchableOpacity onPress={() => changeDate(1)} style={styles.dateBtn}>
+          <Icon name="chevron-right" size={24} color="#2563eb" />
+        </TouchableOpacity>
+      </View>
+
       <FlatList
         data={packages}
         renderItem={renderItem}
@@ -108,6 +127,29 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     borderBottomWidth: 1,
     borderBottomColor: '#f1f5f9',
+  },
+  dateSelector: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#f1f5f9',
+  },
+  dateBtn: {
+    padding: 8,
+    backgroundColor: '#eff6ff',
+    borderRadius: 10,
+  },
+  dateDisplay: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  dateTextMain: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#1e293b',
   },
   headerTitle: {
     fontSize: 18,

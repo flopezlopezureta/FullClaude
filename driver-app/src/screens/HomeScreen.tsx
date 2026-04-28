@@ -51,6 +51,13 @@ const MENU_ITEMS = [
     color: '#475569' 
   },
   { 
+    id: 'Closure', 
+    title: '7. Cierre', 
+    subtitle: 'FIN DE RUTA', 
+    icon: 'check-all', 
+    color: '#000000' 
+  },
+  { 
     id: 'TestML', 
     title: 'Test ML Flex', 
     subtitle: 'PRUEBA LECTURA', 
@@ -137,6 +144,7 @@ export default function HomeScreen({ navigation }: any) {
               case 'Dispatch': return perms.canDispatch;
               case 'Returns': return perms.canReturn;
               case 'History': return perms.canViewHistory;
+              case 'Closure': return true; // Always allow closure
               default: return true;
             }
           }).map(renderCard)}

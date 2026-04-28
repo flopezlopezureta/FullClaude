@@ -153,11 +153,71 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
             [id, 'ENTREGADO', 'Destino Final', 'Entrega cerrada desde App Móvil.', now]
         );
-
         res.json({ message: 'Entrega cerrada con éxito.', id });
     } catch (err) {
         console.error('Error en POST /api/cerrar-entrega:', err);
         res.status(500).json({ message: 'Error al cerrar la entrega.' });
+    }
+});
+
+/**
+ * GET /api/closures/summary
+ * Obtiene un resumen de la carga de hoy para el cierre de ruta.
+ */
+router.get('/closures/summary', authMiddleware, async (req, res) => {
+    try {
+        const driverId = req.user.id;
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+
+        const { rows } = await db.query(`
+            SELECT 
+                COUNT(*) as total,
+                COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
+                COUNT(*) FILTER (WHERE status = 'PROBLEMA' OR status = 'REPROGRAMADO') as problems,
+                COUNT(*) FILTER (WHERE status = 'CANCELADO') as cancelled,
+                COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')) as pending
+            FROM packages 
+            WHERE "driverId" = $1 
+            AND ("createdAt"::date = $2 OR "assignedAt"::date = $2)
+        `, [driverId, today]);
+
+        res.json(rows[0]);
+    } catch (err) {
+        console.error('Error en GET /api/closures/summary:', err);
+        res.status(500).json({ message: 'Error al obtener resumen de cierre.' });
+    }
+});
+
+/**
+ * POST /api/closures
+ * Registra el cierre de jornada del conductor.
+ */
+router.post('/closures', authMiddleware, async (req, res) => {
+    const { total, delivered, problems, cancelled, pending, notes } = req.body;
+    const driverId = req.user.id;
+    const driverName = req.user.name;
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+
+    try {
+        await db.query(`
+            INSERT INTO daily_closures 
+            ("driverId", "driverName", date, "totalPackages", "deliveredCount", "pendingCount", "problemCount", "cancelledCount", notes)
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+            ON CONFLICT ("driverId", date) 
+            DO UPDATE SET 
+                "totalPackages" = EXCLUDED."totalPackages",
+                "deliveredCount" = EXCLUDED."deliveredCount",
+                "pendingCount" = EXCLUDED."pendingCount",
+                "problemCount" = EXCLUDED."problemCount",
+                "cancelledCount" = EXCLUDED."cancelledCount",
+                notes = EXCLUDED.notes,
+                "closedAt" = NOW()
+        `, [driverId, driverName, today, total, delivered, pending, problems, cancelled, notes]);
+
+        res.json({ message: 'Cierre de jornada registrado con éxito.' });
+    } catch (err) {
+        console.error('Error en POST /api/closures:', err);
+        res.status(500).json({ message: 'Error al registrar el cierre.' });
     }
 });
 

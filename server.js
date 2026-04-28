@@ -812,6 +812,24 @@ async function initializeDatabase() {
             );
         `);
         console.log('Table "system_logs" is ready.');
+        
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS daily_closures (
+                id SERIAL PRIMARY KEY,
+                "driverId" TEXT NOT NULL,
+                "driverName" TEXT,
+                date DATE NOT NULL,
+                "totalPackages" INTEGER DEFAULT 0,
+                "deliveredCount" INTEGER DEFAULT 0,
+                "pendingCount" INTEGER DEFAULT 0,
+                "problemCount" INTEGER DEFAULT 0,
+                "cancelledCount" INTEGER DEFAULT 0,
+                "closedAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                notes TEXT,
+                UNIQUE("driverId", date)
+            );
+        `);
+        console.log('Table "daily_closures" is ready.');
 
         console.log('Database schema initialization complete.');
     } catch (err) {

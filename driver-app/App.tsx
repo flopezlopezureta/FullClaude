@@ -9,6 +9,7 @@ import DispatchScreen from './src/screens/DispatchScreen';
 import PickupsScreen from './src/screens/PickupsScreen';
 import ReturnsScreen from './src/screens/ReturnsScreen';
 import HistoryScreen from './src/screens/HistoryScreen';
+import ClosureScreen from './src/screens/ClosureScreen';
 import TestMLScreen from './src/screens/TestMLScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
 import DeliveryDetailScreen from './src/screens/DeliveryDetailScreen';
@@ -40,6 +41,7 @@ function Navigation() {
             <Stack.Screen name="Dispatch" component={DispatchScreen} />
             <Stack.Screen name="Returns" component={ReturnsScreen} />
             <Stack.Screen name="History" component={HistoryScreen} />
+            <Stack.Screen name="Closure" component={ClosureScreen} />
             <Stack.Screen name="TestML" component={TestMLScreen} />
             <Stack.Screen name="Scanner" component={ScannerScreen} />
             <Stack.Screen name="DeliveryDetail" component={DeliveryDetailScreen} />

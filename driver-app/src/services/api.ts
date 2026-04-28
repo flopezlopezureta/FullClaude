@@ -40,9 +40,11 @@ export const api = {
   },
 
   // Packages (Conductor)
-  getDriverPackages: async (driverId: string) => {
-    const today = new Date().toISOString().split('T')[0];
-    const response = await apiInstance.get(`/packages?driverFilter=${driverId}&startDate=${today}&endDate=${today}&limit=0`);
+  getDriverPackages: async (driverId: string, startDate?: string, endDate?: string) => {
+    // Si no se envían fechas, por defecto usamos hoy (pero permitimos pasar otras para el historial)
+    const start = startDate || new Date().toISOString().split('T')[0];
+    const end = endDate || start;
+    const response = await apiInstance.get(`/packages?driverFilter=${driverId}&startDate=${start}&endDate=${end}&limit=0`);
     return response.data.packages;
   },
 
@@ -58,6 +60,17 @@ export const api = {
 
   syncLocation: async (driverId: string, latitude: number, longitude: number) => {
     return apiInstance.post('/geo/update-location', { driverId, latitude, longitude });
+  },
+
+  // Cierres de Jornada
+  getClosureSummary: async () => {
+    const response = await apiInstance.get('/closures/summary');
+    return response.data;
+  },
+
+  submitClosure: async (closureData: any) => {
+    const response = await apiInstance.post('/closures', closureData);
+    return response.data;
   },
 
   // Obtener todos los usuarios (para mapear creadores)
