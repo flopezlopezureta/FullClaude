@@ -180,60 +180,68 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
     if (files && files.length > 0) {
       setIsCompressing(true);
       setError(null);
+      
+      const fileList = Array.from(files);
+      const processedImages: string[] = [];
+      
       try {
-          const file = files[0];
-          
-          if (file.size > 50 * 1024 * 1024) {
-               setError("Imagen muy grande para cargar en sistema, por favor reducir resolución de fotos o capturar con cámara.");
-               setIsCompressing(false);
-               return;
-          }
-          
-          const maxDim = 1280;
-          const processedBlob = await new Promise<Blob>((resolve, reject) => {
-              const img = new Image();
-              const url = URL.createObjectURL(file);
-              img.onload = () => {
-                  URL.revokeObjectURL(url);
-                  const canvas = document.createElement('canvas');
-                  let width = img.width;
-                  let height = img.height;
-                  
-                  if (width > maxDim || height > maxDim) {
-                      if (width > height) {
-                          height *= maxDim / width;
-                          width = maxDim;
-                      } else {
-                          width *= maxDim / height;
-                          height = maxDim;
-                      }
-                  }
-                  canvas.width = width;
-                  canvas.height = height;
-                  const ctx = canvas.getContext('2d');
-                  if (!ctx) return reject(new Error("Canvas context null"));
-                  ctx.imageSmoothingEnabled = true;
-                  ctx.imageSmoothingQuality = 'high';
-                  ctx.drawImage(img, 0, 0, width, height);
-                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Error al convertir imagen")), 'image/jpeg', 0.8);
-              };
-              img.onerror = () => {
-                  URL.revokeObjectURL(url);
-                  reject(new Error("Imagen muy grande para cargar en sistema, por favor reducir resolución de fotos o capturar con cámara."));
-              };
-              img.src = url;
-          });
+          for (const file of fileList) {
+              if (file.size > 50 * 1024 * 1024) {
+                  setError(`La imagen "${file.name}" es muy grande para cargar en sistema.`);
+                  continue;
+              }
 
-          const reader = new FileReader();
-          const base64: string = await new Promise((resolve, reject) => {
-              reader.onloadend = () => resolve(reader.result as string);
-              reader.onerror = () => reject(new Error("Error al leer archivo"));
-              reader.readAsDataURL(processedBlob);
-          });
-          setPhotosBase64(prev => [...prev, base64]);
+              const maxDim = 1280;
+              const processedBase64 = await new Promise<string>((resolve, reject) => {
+                  const img = new Image();
+                  const url = URL.createObjectURL(file);
+                  
+                  img.onload = () => {
+                      URL.revokeObjectURL(url);
+                      const canvas = document.createElement('canvas');
+                      let width = img.width;
+                      let height = img.height;
+                      
+                      if (width > maxDim || height > maxDim) {
+                          if (width > height) {
+                              height *= maxDim / width;
+                              width = maxDim;
+                          } else {
+                              width *= maxDim / height;
+                              height = maxDim;
+                          }
+                      }
+                      
+                      canvas.width = width;
+                      canvas.height = height;
+                      const ctx = canvas.getContext('2d');
+                      if (!ctx) return reject(new Error("Error de sistema al crear lienzo de imagen"));
+                      
+                      ctx.imageSmoothingEnabled = true;
+                      ctx.imageSmoothingQuality = 'high';
+                      ctx.drawImage(img, 0, 0, width, height);
+                      
+                      const base64 = canvas.toDataURL('image/jpeg', 0.8);
+                      resolve(base64);
+                  };
+                  
+                  img.onerror = () => {
+                      URL.revokeObjectURL(url);
+                      reject(new Error(`Error al leer el archivo "${file.name}". Por favor intenta con otra foto.`));
+                  };
+                  
+                  img.src = url;
+              });
+
+              processedImages.push(processedBase64);
+          }
+
+          if (processedImages.length > 0) {
+              setPhotosBase64(prev => [...prev, ...processedImages]);
+          }
       } catch (err: any) {
           console.error("Image processing error [ReturnModal]:", err);
-          setError(err.message || "Error al procesar la imagen.");
+          setError(err.message || 'Error al procesar las imágenes.');
       } finally {
           setIsCompressing(false);
           if (e.target) e.target.value = '';
