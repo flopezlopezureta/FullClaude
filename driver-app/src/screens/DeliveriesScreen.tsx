@@ -61,10 +61,20 @@ export default function DeliveriesScreen({ navigation }: any) {
   };
 
   const filteredPackages = useMemo(() => {
-    const CLOSED_STATUSES = ['ENTREGADO', 'DEVUELTO'];
+    const CLOSED_STATUSES = ['ENTREGADO', 'DEVUELTO', 'CANCELADO'];
+    const today = new Date().toISOString().split('T')[0];
+    
     let result = packages;
     if (activeTab === 'pending') {
-      result = packages.filter(p => !CLOSED_STATUSES.includes(p.status));
+      // Mostrar solo lo que no esté cerrado Y que sea de hoy (o que esté explícitamente en ruta)
+      result = packages.filter(p => {
+        const isClosed = CLOSED_STATUSES.includes(p.status);
+        const isToday = p.createdAt && p.createdAt.startsWith(today);
+        const isActiveStatus = ['PENDIENTE', 'EN CAMINO', 'REPROGRAMADO'].includes(p.status);
+        
+        // Regla: No cerrado Y (Es de hoy O es un estado activo que requiere atención)
+        return !isClosed && (isToday || isActiveStatus);
+      });
     } else {
       result = packages.filter(p => CLOSED_STATUSES.includes(p.status));
     }

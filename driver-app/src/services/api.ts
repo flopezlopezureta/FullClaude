@@ -41,7 +41,8 @@ export const api = {
 
   // Packages (Conductor)
   getDriverPackages: async (driverId: string) => {
-    const response = await apiInstance.get(`/packages?driverFilter=${driverId}&limit=0`);
+    const today = new Date().toISOString().split('T')[0];
+    const response = await apiInstance.get(`/packages?driverFilter=${driverId}&startDate=${today}&endDate=${today}&limit=0`);
     return response.data.packages;
   },
 

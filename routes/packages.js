@@ -44,8 +44,6 @@ router.get('/', authMiddleware, async (req, res) => {
             clientFilter,
             communeFilter,
             cityFilter,
-            startDate,
-            endDate,
             flexFilter,
             quickFilter,
             sourceFilter,
@@ -56,6 +54,15 @@ router.get('/', authMiddleware, async (req, res) => {
             excludeChecked, // 'true' or 'false'
             dateType = 'created', // 'created' or 'egress'
         } = req.query;
+
+        let { startDate, endDate } = req.query;
+
+        // [SEGURIDAD] Si es un conductor y no especificó fechas, forzamos que vea solo HOY para evitar descuadres
+        if (req.user.role === 'DRIVER' && !startDate && !endDate) {
+            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+            startDate = todayStr;
+            endDate = todayStr;
+        }
 
         // [MEJORADO] Limpiamos espacios en blanco de la búsqueda para evitar fallos por copy-paste
         // Soportamos tanto 'search' como 'searchQuery' para compatibilidad total con el frontend
