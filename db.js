@@ -30,11 +30,15 @@ function getPool() {
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 20000, 
             ssl: {
-                rejectUnauthorized: false
+                rejectUnauthorized: false 
             }
         });
         
-        console.log("PostgreSQL pool created successfully.");
+        // Test connection immediately
+        pool.query('SELECT 1')
+            .then(() => console.log("✅ PostgreSQL connection verified successfully."))
+            .catch(err => console.error("❌ CRITICAL: PostgreSQL connection test failed:", err.message));
+
         return pool;
 
     } catch (error) {
