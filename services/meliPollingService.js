@@ -654,14 +654,6 @@ async function autoImportMeliPackages() {
                     }
                 }
             }
-                        } catch (orderErr) {
-                            console.error(`[MeliPolling] Error processing order ${order.id}:`, orderErr.message);
-                        }
-                    }
-                } catch (accErr) {
-                    console.error(`[MeliPolling] Error in account ${account.nickname} for client ${clientId}:`, accErr.message);
-                }
-            }
         }
         
         // Trigger background geocoding after import
