@@ -248,14 +248,17 @@ async function pollMeliPackages() {
                     let eventDetails = '';
                     let eventStatus = '';
 
-                    // Logic matches original sequential code
+                    /* 
+                    // [DESACTIVADO] No cerramos automáticamente para forzar que el conductor suba fotos
                     if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
                         if ((pkg.status === 'EN_TRANSITO' || pkg.status === 'EN_RUTA' || pkg.isFlexed) && pkg.driverId) {
                             newStatus = 'ENTREGADO';
                             eventStatus = 'Entregado';
                             eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
                         }
-                    } else if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
+                    } else 
+                    */
+                    if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
                         newStatus = 'EN_TRANSITO';
                         eventStatus = 'En Tránsito';
                         eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
@@ -406,11 +409,15 @@ async function syncPackage(packageId) {
         let eventDetails = '';
         let eventStatus = '';
 
+        /* 
+        // [DESACTIVADO] No cerramos automáticamente para forzar que el conductor suba fotos
         if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
             newStatus = 'ENTREGADO';
             eventStatus = 'Entregado';
             eventDetails = 'Sincronización manual: El envío figura como ENTREGADO en Mercado Libre.';
-        } else if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
+        } else 
+        */
+        if (mlStatus === 'cancelled' && pkg.status !== 'CANCELADO') {
             newStatus = 'CANCELADO';
             eventStatus = 'Cancelado';
             eventDetails = 'Sincronización manual: El envío figura como CANCELADO en Mercado Libre.';
