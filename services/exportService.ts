@@ -51,7 +51,11 @@ export const exportToExcel = async (packages: Package[], filename: string, users
             pedido: pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
             sellerName: pkg.creatorId ? (userMap.get(pkg.creatorId) || 'No encontrado') : 'N/A',
             sellerId: pkg.creatorId ? (clientIdMap.get(pkg.creatorId) || 'N/A') : 'N/A',
-            fecha: new Date(pkg.createdAt).toLocaleString('es-CL', { hour12: timeFormat === '12h' }).replace(/\//g, '-'),
+            fecha: new Date(
+                (pkg.status === PackageStatus.Delivered || pkg.status === PackageStatus.Returned) 
+                ? pkg.updatedAt 
+                : pkg.createdAt
+            ).toLocaleString('es-CL', { hour12: timeFormat === '12h' }).replace(/\//g, '-'),
             destinatario: pkg.recipientName,
             telefono: pkg.recipientPhone,
             direccion: pkg.recipientAddress,
