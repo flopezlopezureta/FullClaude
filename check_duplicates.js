@@ -1,24 +1,21 @@
+require('dotenv').config();
 const db = require('./db');
 
 async function checkDuplicates() {
     try {
-        const { rows } = await db.query(`
-            SELECT 
-                integrations->'meli'->>'userId' as meliUserId, 
-                COUNT(*), 
-                ARRAY_AGG(id) as userIds,
-                ARRAY_AGG(name) as userNames
-            FROM users 
-            WHERE integrations->'meli' IS NOT NULL 
-            GROUP BY integrations->'meli'->>'userId' 
-            HAVING COUNT(*) > 1
-        `);
-        console.log("Duplicate Meli User IDs found:");
-        console.log(JSON.stringify(rows, null, 2));
+        const { rows: meli } = await db.query('SELECT "meliOrderId", COUNT(*) FROM packages WHERE "meliOrderId" IS NOT NULL GROUP BY "meliOrderId" HAVING COUNT(*) > 1');
+        console.log('Meli Duplicates:', meli);
+        
+        const { rows: shopify } = await db.query('SELECT "shopifyOrderId", COUNT(*) FROM packages WHERE "shopifyOrderId" IS NOT NULL GROUP BY "shopifyOrderId" HAVING COUNT(*) > 1');
+        console.log('Shopify Duplicates:', shopify);
+
+        const { rows: jump } = await db.query('SELECT "jumpsellerOrderId", COUNT(*) FROM packages WHERE "jumpsellerOrderId" IS NOT NULL GROUP BY "jumpsellerOrderId" HAVING COUNT(*) > 1');
+        console.log('Jumpseller Duplicates:', jump);
+        
+        process.exit(0);
     } catch (err) {
         console.error(err);
-    } finally {
-        process.exit();
+        process.exit(1);
     }
 }
 

@@ -157,11 +157,8 @@ async function autoImportShopifyPackages() {
                     const settings = account.settings || {};
 
                     if (!shopify.shopUrl || !shopify.accessToken) continue;
-
                     if (settings.autoImport !== true) continue;
 
-                    // --- PER-ACCOUNT INTERVAL CHECK ---
-                    // [MEJORADO] Reducimos a 2 min por defecto
                     const syncIntervalMin = settings.syncInterval !== undefined ? settings.syncInterval : 2; 
                     const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
                     const now = Date.now();
@@ -183,79 +180,74 @@ async function autoImportShopifyPackages() {
                             
                             if (!ordersData.orders || ordersData.orders.length === 0) return;
 
-                    console.log(`[ShopifyPolling] Found ${ordersData.orders.length} paid orders for client ${clientId} (${account.nickname})`);
+                            console.log(`[ShopifyPolling] Found ${ordersData.orders.length} paid orders for client ${clientId} (${account.nickname})`);
 
-                    for (const order of ordersData.orders) {
-                        try {
-                            const orderId = order.id.toString();
-                            
-                            // 3. Check if already imported
-                            const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1 OR "id" = $2', [orderId, orderId]);
-                            if (existing.length > 0) continue;
+                            for (const order of ordersData.orders) {
+                                try {
+                                    const orderId = order.id.toString();
+                                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1 OR "id" = $2', [orderId, orderId]);
+                                    if (existing.length > 0) continue;
 
-                            // 4. Region Check (Santiago/RM) [MEJORADO]
-                            const address = order.shipping_address || order.billing_address || {};
-                            const province = (address.province || '').toLowerCase();
-                            const city = (address.city || '').toLowerCase();
-                            
-                            const isRM = province.includes('metropolitana') || 
-                                         province.includes('santiago') || 
-                                         province.includes('rm') ||
-                                         province.includes('r.m.') ||
-                                         city.includes('santiago') ||
-                                         city.includes('metropolitana') ||
-                                         city.includes('rm') ||
-                                         [
-                                            'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                                            'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                                            'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                                            'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                                            'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                                            'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                                            'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                                            'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                                         ].includes(city);
-                            
-                            if (!isRM) {
-                                console.log(`[ShopifyPolling] Skipping order ${orderId} - Outside RM (Province: ${province}, City: ${city})`);
-                                continue;
+                                    const address = order.shipping_address || order.billing_address || {};
+                                    const province = (address.province || '').toLowerCase();
+                                    const city = (address.city || '').toLowerCase();
+                                    
+                                    const isRM = province.includes('metropolitana') || 
+                                                 province.includes('santiago') || 
+                                                 province.includes('rm') ||
+                                                 province.includes('r.m.') ||
+                                                 city.includes('santiago') ||
+                                                 city.includes('metropolitana') ||
+                                                 city.includes('rm') ||
+                                                 [
+                                                    'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+                                                    'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+                                                    'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+                                                    'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+                                                    'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+                                                    'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+                                                    'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+                                                    'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+                                                 ].includes(city);
+                                    
+                                    if (!isRM) continue;
+
+                                    const nowImport = new Date();
+                                    const newPackage = {
+                                        id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
+                                        recipientName: `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'N/A',
+                                        recipientPhone: address.phone || 'N/A',
+                                        recipientEmail: order.email || '',
+                                        status: 'PENDIENTE',
+                                        shippingType: 'SAME_DAY',
+                                        origin: 'Centro de Distribución',
+                                        recipientAddress: `${address.address1 || ''} ${address.address2 || ''}`.trim() || 'N/A',
+                                        recipientCommune: address.city || 'N/A',
+                                        recipientCity: 'Región Metropolitana',
+                                        notes: `Auto-Import Shopify Order: ${order.name || orderId}`,
+                                        estimatedDelivery: nowImport,
+                                        createdAt: nowImport,
+                                        updatedAt: nowImport,
+                                        creatorId: clientId,
+                                        source: 'SHOPIFY',
+                                        shopifyOrderId: orderId,
+                                        sourceAccountId: account.id,
+                                        sourceAccountName: account.nickname
+                                    };
+
+                                    const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+                                    const values = Object.values(newPackage).map(v => v === undefined ? null : v);
+                                    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+                                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders}) ON CONFLICT ("shopifyOrderId") DO NOTHING`, values);
+                                    await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                                        [newPackage.id, 'Creado', newPackage.origin, `Auto-importado vía Shopify (${account.nickname}).`, nowImport]);
+                                    
+                                    importedThisCycle++;
+                                } catch (orderErr) {
+                                    // Ignorar error individual
+                                }
                             }
-
-                            // 5. Import Package
-                            const nowImport = new Date();
-                            const newPackage = {
-                                id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
-                                recipientName: `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'N/A',
-                                recipientPhone: address.phone || 'N/A',
-                                recipientEmail: order.email || '',
-                                status: 'PENDIENTE',
-                                shippingType: 'SAME_DAY',
-                                origin: 'Centro de Distribución',
-                                recipientAddress: `${address.address1 || ''} ${address.address2 || ''}`.trim() || 'N/A',
-                                recipientCommune: address.city || 'N/A',
-                                recipientCity: 'Región Metropolitana',
-                                notes: `Auto-Import Shopify Order: ${order.name || orderId}`,
-                                estimatedDelivery: nowImport,
-                                createdAt: nowImport,
-                                updatedAt: nowImport,
-                                creatorId: clientId,
-                                source: 'SHOPIFY',
-                                shopifyOrderId: orderId,
-                                sourceAccountId: account.id, // Guardar el ID de la cuenta
-                                sourceAccountName: account.nickname // Guardar el nombre de la cuenta
-                            };
-
-                            const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                            const values = Object.values(newPackage).map(v => v === undefined ? null : v);
-                            const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
-                            await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-                            await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                                [newPackage.id, 'Creado', newPackage.origin, `Auto-importado vía Shopify (${account.nickname}).`, nowImport]);
-                            
-                            importedThisCycle++;
-                            console.log(`[ShopifyPolling] Auto-imported order ${orderId} for client ${clientId} (${account.nickname})`);
-                            
                         })(),
                         new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_ACCOUNT')), 45000))
                     ]);
@@ -268,8 +260,6 @@ async function autoImportShopifyPackages() {
                 }
             }
         }
-        
-        // Trigger background geocoding after import
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[ShopifyPolling] Fatal error in auto-import cycle:', err);

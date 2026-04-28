@@ -629,7 +629,7 @@ async function autoImportMeliPackages() {
                                     const values = Object.values(newPackage).map(v => v === undefined ? null : v);
                                     const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
 
-                                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders}) ON CONFLICT ("meliOrderId") DO NOTHING`, values);
                                     await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
                                         [newPackage.id, 'Creado', newPackage.origin, 'Auto-importado vía integración ML.', now]);
                                     
@@ -656,7 +656,7 @@ async function autoImportMeliPackages() {
             }
         }
         
-        // Trigger background geocoding after import
+        // Trigger background geocoding
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[MeliPolling] Fatal error in auto-import cycle:', err);

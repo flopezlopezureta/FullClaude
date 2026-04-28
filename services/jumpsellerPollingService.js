@@ -115,8 +115,11 @@ async function pollJumpsellerPackages() {
     }
 }
 
+let lastImportCount = 0;
+
 async function autoImportJumpsellerPackages() {
     console.log('[JumpsellerPolling] Starting auto-import cycle...');
+    let importedThisCycle = 0;
     try {
         // 1. Get all users with Jumpseller integration (old or new format)
         const { rows: users } = await db.query(`
@@ -141,116 +144,101 @@ async function autoImportJumpsellerPackages() {
                     const settings = account.settings || {};
 
                     if (!jumpseller.login || !jumpseller.token) continue;
-
-                    // Check if the individual client has auto-import disabled
                     if (settings.autoImport === false) continue;
 
-                    // --- PER-ACCOUNT INTERVAL CHECK ---
-                    // [MEJORADO] Reducimos a 2 min por defecto
                     const syncIntervalMin = settings.syncInterval !== undefined ? settings.syncInterval : 2; 
                     const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
                     const now = Date.now();
                     
                     if (now - lastSync < (syncIntervalMin * 60 * 1000)) continue;
 
-                    // [ESTABILIDAD] Timeout de 45 seg por cuenta
                     await Promise.race([
                         (async () => {
-                            // Update lastSync timestamp for this account
                             const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
                             if (accountIndex > -1) {
                                 integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
                                 await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
                             }
 
-                            // 2. Fetch recent orders
                             const orders = await makeJumpsellerRequest(jumpseller.login, jumpseller.token, '/orders.json?status=all&limit=50');
                             
-                            if (!orders || orders.length === 0) {
-                                return;
+                            if (!orders || orders.length === 0) return;
+
+                            console.log(`[JumpsellerPolling] Found ${orders.length} orders for client ${clientId}`);
+
+                            for (const o of orders) {
+                                try {
+                                    const order = o.order;
+                                    if (!order) continue;
+                                    if (order.status !== 'Paid' && order.status !== 'Ready') continue;
+
+                                    const orderId = order.id.toString();
+                                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "jumpsellerOrderId" = $1', [orderId]);
+                                    if (existing.length > 0) continue;
+
+                                    const shipping = order.shipping_address || {};
+                                    const municipality = (shipping.municipality || '').toLowerCase();
+                                    const city = (shipping.city || '').toLowerCase();
+                                    
+                                    const isRM = municipality.includes('metropolitana') || 
+                                                 municipality.includes('santiago') || 
+                                                 municipality.includes('rm') ||
+                                                 municipality.includes('r.m.') ||
+                                                 city.includes('metropolitana') ||
+                                                 city.includes('santiago') ||
+                                                 city.includes('rm') ||
+                                                 [
+                                                    'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+                                                    'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+                                                    'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+                                                    'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+                                                    'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+                                                    'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+                                                    'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+                                                    'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+                                                 ].includes(municipality);
+                                    
+                                    if (!isRM && municipality !== '' && city !== '') continue;
+
+                                    const importNow = new Date();
+                                    const origin = user.pickupAddress || user.address || 'Centro de Distribución';
+                                    const customer = order.customer || {};
+
+                                    const newPackage = {
+                                        id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
+                                        recipientName: shipping.fullname || customer.fullname || 'N/A',
+                                        recipientPhone: shipping.phone || customer.phone || 'N/A',
+                                        recipientEmail: customer.email || '',
+                                        status: 'PENDIENTE',
+                                        shippingType: 'SAME_DAY',
+                                        origin: origin,
+                                        recipientAddress: shipping.address || 'N/A',
+                                        recipientCommune: shipping.municipality || 'N/A',
+                                        recipientCity: shipping.city || 'Santiago',
+                                        notes: `Auto-Import Jumpseller Order: ${order.id}`,
+                                        estimatedDelivery: importNow,
+                                        createdAt: importNow,
+                                        updatedAt: importNow,
+                                        creatorId: clientId,
+                                        source: 'JUMPSELLER',
+                                        jumpsellerOrderId: orderId,
+                                        sourceAccountId: account.id,
+                                        sourceAccountName: account.nickname
+                                    };
+
+                                    const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+                                    const vals = Object.values(newPackage);
+                                    const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
+
+                                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders}) ON CONFLICT ("jumpsellerOrderId") DO NOTHING`, vals);
+                                    await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                                        [newPackage.id, 'Creado', origin, `Auto-importado vía Jumpseller (${account.nickname}).`, importNow]);
+                                    
+                                    importedThisCycle++;
+                                } catch (orderErr) {
+                                    // Ignorar error individual
+                                }
                             }
-
-                console.log(`[JumpsellerPolling] Found ${orders.length} orders for client ${clientId}`);
-
-                for (const o of orders) {
-                    try {
-                        const order = o.order;
-                        if (!order) continue;
-                        
-                        // 3. Status Check: Only Paid or Ready
-                        if (order.status !== 'Paid' && order.status !== 'Ready') continue;
-
-                        const orderId = order.id.toString();
-                        
-                        // 4. Check if already imported
-                        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "jumpsellerOrderId" = $1', [orderId]);
-                        if (existing.length > 0) continue;
-
-                        // 5. Region Check (Santiago/RM) [MEJORADO]
-                        const shipping = order.shipping_address || {};
-                        const municipality = (shipping.municipality || '').toLowerCase();
-                        const city = (shipping.city || '').toLowerCase();
-                        
-                        const isRM = municipality.includes('metropolitana') || 
-                                     municipality.includes('santiago') || 
-                                     municipality.includes('rm') ||
-                                     municipality.includes('r.m.') ||
-                                     city.includes('metropolitana') ||
-                                     city.includes('santiago') ||
-                                     city.includes('rm') ||
-                                     [
-                                        'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                                        'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                                        'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                                        'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                                        'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                                        'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                                        'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                                        'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                                     ].includes(municipality);
-                        
-                        if (!isRM && municipality !== '' && city !== '') {
-                             console.log(`[JumpsellerPolling] Skipping order ${orderId} - Outside RM (Municipality: ${municipality}, City: ${city})`);
-                             continue;
-                        }
-
-                        // 6. Import Package
-                        const importNow = new Date();
-                        const origin = user.pickupAddress || user.address || 'Centro de Distribución';
-                        const customer = order.customer || {};
-
-                        const newPackage = {
-                            id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
-                            recipientName: shipping.fullname || customer.fullname || 'N/A',
-                            recipientPhone: shipping.phone || customer.phone || 'N/A',
-                            recipientEmail: customer.email || '',
-                            status: 'PENDIENTE',
-                            shippingType: 'SAME_DAY',
-                            origin: origin,
-                            recipientAddress: shipping.address || 'N/A',
-                            recipientCommune: shipping.municipality || 'N/A',
-                            recipientCity: shipping.city || 'Santiago',
-                            notes: `Auto-Import Jumpseller Order: ${order.id}`,
-                            estimatedDelivery: importNow,
-                            createdAt: importNow,
-                            updatedAt: importNow,
-                            creatorId: clientId,
-                            source: 'JUMPSELLER',
-                            jumpsellerOrderId: orderId,
-                            sourceAccountId: account.id,
-                            sourceAccountName: account.nickname
-                        };
-
-                        const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                        const vals = Object.values(newPackage);
-                        const placeholders = vals.map((_, i) => `$${i + 1}`).join(', ');
-
-                        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, vals);
-                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                            [newPackage.id, 'Creado', origin, `Auto-importado vía Jumpseller (${account.nickname}).`, importNow]);
-                        
-                        console.log(`[JumpsellerPolling] Auto-imported order ${orderId} for client ${clientId} (Account: ${account.nickname})`);
-                        
                         })(),
                         new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_ACCOUNT')), 45000))
                     ]);
@@ -263,11 +251,11 @@ async function autoImportJumpsellerPackages() {
                 }
             }
         }
-        
-        // Trigger background geocoding after import
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[JumpsellerPolling] Fatal error in auto-import cycle:', err);
+    } finally {
+        lastImportCount = importedThisCycle;
     }
 }
 
@@ -305,7 +293,8 @@ function getStatus() {
         isPolling,
         pollingStartTime,
         lastPollTime,
-        nextPollTime: nextScheduledTime
+        nextPollTime: nextScheduledTime,
+        lastImportCount
     };
 }
 

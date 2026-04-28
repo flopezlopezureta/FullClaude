@@ -39,7 +39,6 @@ router.get('/', authMiddleware, async (req, res) => {
         const {
             page = 1,
             limit = 25,
-            searchQuery,
             statusFilter,
             driverFilter,
             clientFilter,
@@ -49,9 +48,19 @@ router.get('/', authMiddleware, async (req, res) => {
             endDate,
             flexFilter,
             quickFilter,
+            sourceFilter,
             isAssigned,
+            accountId,
             sortOrder = 'desc',
+            assignmentFilter, // 'all', 'first', 'reassigned'
+            excludeChecked, // 'true' or 'false'
+            dateType = 'created', // 'created' or 'egress'
         } = req.query;
+
+        // [MEJORADO] Limpiamos espacios en blanco de la búsqueda para evitar fallos por copy-paste
+        // Soportamos tanto 'search' como 'searchQuery' para compatibilidad total con el frontend
+        const rawSearch = req.query.searchQuery || req.query.search || '';
+        const searchQuery = rawSearch.toString().trim() || null;
 
         const offset = (page - 1) * limit;
         let whereClauses = [];
@@ -64,7 +73,21 @@ router.get('/', authMiddleware, async (req, res) => {
         }
 
         if (searchQuery) {
-            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} OR p."recipientAddress" ILIKE $${paramIndex} OR p."recipientCity" ILIKE $${paramIndex} OR p."recipientCommune" ILIKE $${paramIndex} OR p.id ILIKE $${paramIndex} OR p."meliOrderId" ILIKE $${paramIndex} OR p."shopifyOrderId" ILIKE $${paramIndex} OR p."wooOrderId" ILIKE $${paramIndex} OR p."jumpsellerOrderId" ILIKE $${paramIndex} OR p."trackingId" ILIKE $${paramIndex} OR p."meliFlexCode" ILIKE $${paramIndex} OR u.name ILIKE $${paramIndex})`);
+            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} 
+                OR p."recipientAddress" ILIKE $${paramIndex} 
+                OR p."recipientCity" ILIKE $${paramIndex} 
+                OR p."recipientCommune" ILIKE $${paramIndex} 
+                OR p.id ILIKE $${paramIndex} 
+                OR p."meliOrderId" ILIKE $${paramIndex} 
+                OR p."shopifyOrderId" ILIKE $${paramIndex} 
+                OR p."wooOrderId" ILIKE $${paramIndex} 
+                OR p."jumpsellerOrderId" ILIKE $${paramIndex} 
+                OR p."trackingId" ILIKE $${paramIndex} 
+                OR p."recipientPhone" ILIKE $${paramIndex}
+                OR p."recipientEmail" ILIKE $${paramIndex}
+                OR p."meliFlexCode" ILIKE $${paramIndex} 
+                OR p.notes ILIKE $${paramIndex}
+                OR u.name ILIKE $${paramIndex})`);
             queryParams.push(`%${searchQuery}%`);
             paramIndex++;
         }
@@ -105,16 +128,52 @@ router.get('/', authMiddleware, async (req, res) => {
             queryParams.push(cityFilter);
         }
         
-        if (startDate) {
-            whereClauses.push(`p."createdAt" >= $${paramIndex++}`);
-            queryParams.push(startDate);
-        }
+        // Relax date filtering if searching by query to find historical packages
+        const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
+        
+        // Determinar qué columna usar para el filtro de fecha
+        const dateColumn = dateType === 'egress' ? 'assignedAt' : 'createdAt';
 
-        if (endDate) {
+        if (startDate && endDate && !isHistoricalSearch) {
             const end = new Date(endDate);
-            end.setDate(end.getDate() + 1); // Make it inclusive of the end day
-            whereClauses.push(`p."createdAt" < $${paramIndex++}`);
-            queryParams.push(end.toISOString().split('T')[0]);
+            end.setDate(end.getDate() + 1);
+            const endStr = end.toISOString().split('T')[0];
+            
+            if (dateType === 'egress') {
+                whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
+            } else {
+                // Para búsqueda general de creación, incluimos updatedAt y estimatedDelivery para mayor cobertura
+                whereClauses.push(`(
+                    (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
+                    (p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1}) OR
+                    (p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1})
+                )`);
+            }
+            queryParams.push(startDate, endStr);
+            paramIndex += 2;
+        } else if (!isHistoricalSearch) {
+            // Filtros individuales si no hay un rango completo
+            if (startDate) {
+                if (dateType === 'egress') {
+                    whereClauses.push(`p."assignedAt" >= $${paramIndex}`);
+                } else {
+                    whereClauses.push(`(p."createdAt" >= $${paramIndex} OR p."updatedAt" >= $${paramIndex} OR p."estimatedDelivery" >= $${paramIndex})`);
+                }
+                queryParams.push(startDate);
+                paramIndex++;
+            }
+
+            if (endDate) {
+                const end = new Date(endDate);
+                end.setDate(end.getDate() + 1);
+                if (dateType === 'egress') {
+                    whereClauses.push(`p."assignedAt" < $${paramIndex}`);
+                } else {
+                    whereClauses.push(`(p."createdAt" < $${paramIndex} OR p."updatedAt" < $${paramIndex} OR p."estimatedDelivery" < $${paramIndex})`);
+                }
+                queryParams.push(end.toISOString().split('T')[0]);
+                paramIndex++;
+            }
         }
 
         if (flexFilter) {
@@ -122,6 +181,14 @@ router.get('/', authMiddleware, async (req, res) => {
                 whereClauses.push(`p."isFlexed" = true`);
             } else if (flexFilter === 'not_flexed') {
                 whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
+            }
+        }
+
+        if (sourceFilter) {
+            if (sourceFilter === 'ml') {
+                whereClauses.push(`p.source = 'MERCADO_LIBRE'`);
+            } else if (sourceFilter === 'web') {
+                whereClauses.push(`p.source != 'MERCADO_LIBRE'`);
             }
         }
 
@@ -140,6 +207,23 @@ router.get('/', authMiddleware, async (req, res) => {
         } else if (isAssigned === 'false') {
             whereClauses.push(`p."driverId" IS NULL`);
         }
+        
+        if (accountId) {
+            whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
+            queryParams.push(accountId);
+        }
+        
+        if (assignmentFilter === 'first') {
+            whereClauses.push(`p."driverId" IS NOT NULL AND (p."isReassigned" IS NULL OR p."isReassigned" = false)`);
+        } else if (assignmentFilter === 'reassigned') {
+            whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
+        } else if (assignmentFilter === 'all_assigned') {
+            whereClauses.push(`p."driverId" IS NOT NULL`);
+        }
+        
+        if (excludeChecked === 'true') {
+            whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
+        }
 
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
@@ -156,11 +240,11 @@ router.get('/', authMiddleware, async (req, res) => {
         const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         const packageQuery = `
-            SELECT p.*, u.name as "clientName" 
+            SELECT p.*, u.name as "clientName"
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
-            ORDER BY p."createdAt" ${orderDirection}
+            ORDER BY p."updatedAt" ${orderDirection}
             ${limitClause}
         `;
         
@@ -446,7 +530,8 @@ router.post('/batch', authMiddleware, async (req, res) => {
                 const coords = { lat: null, lng: null };
 
                 const now = new Date();
-                const packageId = trackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
+                const cleanTrackingId = trackingId ? String(trackingId).trim() : null;
+                const packageId = cleanTrackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
 
                 const newPackage = {
                     id: packageId,
@@ -469,7 +554,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     shopifyOrderId, 
                     wooOrderId, 
                     jumpsellerOrderId,
-                    trackingId,
+                    trackingId: cleanTrackingId,
                     recipientEmail,
                     destLatitude: coords.lat,
                     destLongitude: coords.lng
@@ -541,7 +626,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
             driverName = driverRows[0].name;
         }
         
-        const placeholders = packageIds.map((_, i) => `$${i + 5}`).join(', ');
+        const placeholders = packageIds.map((_, i) => `$${i + 6}`).join(', ');
 
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
         const targetStatus = isUnassigning ? 'RETIRADO' : 'ASIGNADO';
@@ -549,18 +634,39 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 
         const updateQuery = `
             UPDATE packages 
-            SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4
+            SET "driverId" = $1, 
+                "estimatedDelivery" = $2, 
+                "updatedAt" = $3, 
+                status = $4, 
+                "assignedAt" = $5,
+                "isReassigned" = CASE 
+                    WHEN $1::text IS NULL THEN false 
+                    ELSE COALESCE("isReassigned", false) OR ("driverId" IS NOT NULL AND "driverId" != $1::text) 
+                END
             WHERE id IN (${placeholders})
         `;
         
-        await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, ...packageIds]);
+        // Fetch current states before update to detect reassignments
+        const searchPlaceholders = packageIds.map((_, i) => `$${i + 1}`).join(', ');
+        const { rows: currentStates } = await client.query(`SELECT id, "driverId" FROM packages WHERE id IN (${searchPlaceholders})`, packageIds);
+        
+        await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, finalDriverId ? new Date() : null, ...packageIds]);
 
         // Create tracking events for all updated packages
-        const eventPromises = packageIds.map(packageId => {
-            const details = `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        const eventPromises = packageIds.map(async (packageId) => {
+            const pkgBefore = currentStates.find(p => p.id === packageId);
+            const isActuallyReassigning = !isUnassigning && pkgBefore?.driverId && pkgBefore?.driverId !== driverId;
+            
+            const eventStatus = isUnassigning ? 'Creado' : (isActuallyReassigning ? 'Reasignado' : 'Asignado');
+            const details = isUnassigning 
+                ? 'Paquete puesto en disponibilidad (desasignado).' 
+                : (isActuallyReassigning 
+                    ? `Reasignado al conductor ${driverName}. Fecha de reasignación actualizada.` 
+                    : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`);
+
             return client.query(
                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [packageId, isUnassigning ? 'Creado' : 'Asignado', 'Centro de Distribución', isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`, new Date()]
+                [packageId, eventStatus, 'Centro de Distribución', details, new Date()]
             );
         });
         
@@ -572,7 +678,7 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
     } catch (err) {
         await client.query('ROLLBACK');
         console.error('Error in POST /api/packages/batch-assign-driver:', err);
-        res.status(500).json({ message: 'Error del servidor al asignar los paquetes.' });
+        res.status(500).json({ message: 'Error del servidor al asignar los paquetes: ' + (err.message || String(err)) });
     } finally {
         client.release();
     }
@@ -637,6 +743,34 @@ router.put('/:id', authMiddleware, async (req, res) => {
 router.delete('/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
+        const { password } = req.body;
+
+        if (!password) {
+            return res.status(400).json({ message: 'La contraseña es requerida para eliminar paquetes.' });
+        }
+
+        // 1. Check against master key
+        const masterKey = 'adminborrar';
+        let isAuthorized = (password === masterKey);
+
+        // 2. Check against user's own password if not master key
+        if (!isAuthorized) {
+            const { rows: userRows } = await db.query('SELECT password FROM users WHERE id = $1', [req.user.id]);
+            if (userRows.length > 0) {
+                const bcrypt = require('bcryptjs');
+                isAuthorized = await bcrypt.compare(password, userRows[0].password);
+            }
+        }
+
+        // 3. Admin bypass (optional, but let's keep it strict as requested unless they are admin)
+        if (req.user.role === 'ADMIN') {
+            isAuthorized = true;
+        }
+
+        if (!isAuthorized) {
+            return res.status(403).json({ message: 'Contraseña incorrecta.' });
+        }
+
         await db.query('DELETE FROM tracking_events WHERE "packageId" = $1', [id]);
         const result = await db.query('DELETE FROM packages WHERE id = $1', [id]);
         if (result.rowCount === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -655,18 +789,31 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { driverId, newDeliveryDate } = req.body;
     try {
+        // [MOD] Reassignment logic: check current state
+        const { rows: currentPkgRows } = await db.query('SELECT "driverId", status, "isReassigned" FROM packages WHERE id = $1', [id]);
+        if (currentPkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        const oldDriverId = currentPkgRows[0].driverId;
+        const isReassigning = driverId && oldDriverId && driverId !== oldDriverId;
+        const isUnassigning = !driverId || driverId === 'none';
+
         // Force status to ASIGNADO only if driverId is provided, otherwise RETIRADO (Available)
         const targetStatus = driverId ? 'ASIGNADO' : 'RETIRADO';
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4 WHERE id = $5 RETURNING *',
-            [driverId, newDeliveryDate, new Date(), targetStatus, id]
+            'UPDATE packages SET "driverId" = $1, "estimatedDelivery" = $2, "updatedAt" = $3, status = $4, "assignedAt" = $5, "isReassigned" = $6 WHERE id = $7 RETURNING *',
+            [driverId, newDeliveryDate, new Date(), targetStatus, driverId ? new Date() : null, isReassigning ? true : (isUnassigning ? false : (currentPkgRows[0].isReassigned || false)), id]
         );
-        if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         
-        const isUnassigning = !driverId || driverId === 'none';
         const driverName = !isUnassigning ? (await db.query('SELECT name FROM users WHERE id = $1', [driverId])).rows[0]?.name : 'Nadie';
-        const statusForEvent = isUnassigning ? 'Creado' : 'Asignado';
-        const detailsForEvent = isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        
+        let statusForEvent = isUnassigning ? 'Creado' : 'Asignado';
+        let detailsForEvent = isUnassigning ? 'Paquete puesto en disponibilidad (desasignado).' : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`;
+        
+        if (isReassigning) {
+            statusForEvent = 'Reasignado';
+            detailsForEvent = `Reasignado al conductor ${driverName}. Fecha de reasignación actualizada.`;
+        }
+
         await addTrackingEvent(id, statusForEvent, 'Centro de Distribución', detailsForEvent);
         
         const updatedPackage = rows[0];
@@ -689,26 +836,28 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             [id]
         );
         
-        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time)
-        // Si el paquete no se encuentra, intentamos buscarlo directamente en Mercado Libre a través de nuestros clientes integrados
+        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time) - OPTIMIZADA (Paralela)
+        // Si el paquete no se encuentra, intentamos buscarlo en paralelo en todas las integraciones activas
         if (pkgRows.length === 0) {
-            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting JIT Discovery loop...`);
+            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting Optimized JIT Discovery...`);
             const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
-            console.log(`[Dispatch] Found ${meliUsers.length} potential MELI clients to check.`);
             
-            for (const u of meliUsers) {
-                try {
-                    console.log(`[Dispatch] Checking ML client ${u.name} (ID: ${u.id}) for shipment ${id}...`);
-                    // IMPORTANT: We pass TRUE for skipRegionFilter because a driver is physically holding the package
-                    const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id, true);
-                    if (importedId) {
-                        console.log(`[Dispatch] SUCCESS! Shipment ${id} found for client ${u.name}. Linked as ${importedId}.`);
-                        const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [importedId]);
-                        pkgRows = reCheck;
-                        break;
+            if (meliUsers.length > 0) {
+                // Ejecutar todas las búsquedas en paralelo
+                const results = await Promise.all(meliUsers.map(async (u) => {
+                    try {
+                        const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id, true);
+                        return importedId ? { importedId, user: u } : null;
+                    } catch (err) {
+                        return null;
                     }
-                } catch (meliErr) {
-                    console.error(`[Dispatch] JIT check failed for client ${u.name}:`, meliErr.message);
+                }));
+
+                const success = results.find(r => r !== null);
+                if (success) {
+                    console.log(`[Dispatch] SUCCESS! Shipment ${id} found and linked as ${success.importedId}.`);
+                    const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [success.importedId]);
+                    pkgRows = reCheck;
                 }
             }
         }
@@ -839,7 +988,23 @@ router.post('/sync-meli-all', authMiddleware, async (req, res) => {
         res.json({ message: 'Sincronización masiva completada.', result });
     } catch (err) {
         console.error('Error in POST /api/packages/sync-meli-all:', err);
-        res.status(500).json({ message: err.message || 'Error al sincronizar paquetes con Mercado Libre.' });
+        res.status(500).json({ message: err.message || 'Error al actualizar paquetes.' });
+    }
+});
+
+// [LEGACY/DEBUG] GET /api/packages/sys/status
+router.get('/sys/status', authMiddleware, async (req, res) => {
+    try {
+        const meliStatus = meliPollingService.getStatus ? meliPollingService.getStatus() : { status: 'unknown' };
+        res.json({ 
+            success: true, 
+            serverTime: new Date(),
+            services: {
+                meli: meliStatus
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 
@@ -899,8 +1064,8 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         // --- NEW MELI VALIDATION (STRICT) ---
         if (meliFlexValidation) {
             try {
-                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId" FROM packages WHERE id = $1', [id]);
-                if (pkgRows.length > 0 && pkgRows[0].meliFlexCode) {
+                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId", source FROM packages WHERE id = $1', [id]);
+                if (pkgRows.length > 0 && pkgRows[0].meliFlexCode && pkgRows[0].source === 'MERCADO_LIBRE') {
                     const { meliFlexCode, creatorId } = pkgRows[0];
 
                     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
@@ -987,9 +1152,12 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { reason, photosBase64 } = req.body;
     try {
+        const isReschedule = reason.toLowerCase().includes('reagendar') || reason.toLowerCase().includes('reprogramar');
+        const targetStatus = isReschedule ? 'REPROGRAMADO' : 'PROBLEMA';
+
         const { rows } = await db.query(
             'UPDATE packages SET status = $1, "deliveryPhotosBase64" = $2, "updatedAt" = $3 WHERE id = $4 RETURNING *',
-            ['PROBLEMA', JSON.stringify(photosBase64), new Date(), id]
+            [targetStatus, JSON.stringify(photosBase64), new Date(), id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         await addTrackingEvent(id, 'PROBLEMA', rows[0].recipientAddress, `Problema reportado: ${reason}`);
@@ -998,7 +1166,7 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
         updatedPackage.history = await getHistory(id);
 
         // Notify recipient
-        NotificationService.notifyRecipient(id, 'PROBLEMA');
+        NotificationService.notifyRecipient(id, targetStatus);
 
         res.json(updatedPackage);
     } catch (err) {
@@ -1343,6 +1511,28 @@ router.post('/bulk-update-status', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al actualizar paquetes masivamente.' });
+    }
+});
+
+// POST /api/packages/:id/check-alert
+router.post('/:id/check-alert', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { checked } = req.body; // true or false
+        
+        const result = await db.query(
+            'UPDATE packages SET "alertChecked" = $1, "alertCheckedAt" = $2 WHERE id = $3 RETURNING *',
+            [checked, checked ? new Date() : null, id]
+        );
+        
+        if (result.rowCount === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        
+        await logAction(req.user.id, req.user.name, 'CHECK_ALERT', { packageId: id, checked });
+        
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ message: 'Error al marcar alerta como revisada.' });
     }
 });
 

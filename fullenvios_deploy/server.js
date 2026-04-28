@@ -22,7 +22,13 @@ app.use((req, res, next) => {
 });
 
 app.use(cors());
-app.use(express.json({ limit: '10mb' })); // Allow larger payloads for photo uploads
+app.use(express.json({ limit: '50mb' })); // Allow larger payloads for photo uploads
+
+// [DEBUG] Log all API requests to help diagnose 404/HTML issues
+app.use('/api', (req, res, next) => {
+  console.log(`[API Request] ${req.method} ${req.originalUrl}`);
+  next();
+});
 
 const PORT = process.env.PORT || 3000;
 
@@ -41,23 +47,31 @@ async function startServer() {
     app.get('/api/health', (req, res) => {
       res.json({ status: 'ok', message: 'Backend is running' });
     });
-    const authRoute = tryRequireRoute('./routes/auth.js'); if (authRoute) app.use('/api/auth', authRoute);
-    const googleAuthRoute = tryRequireRoute('./routes/googleAuth.js'); if (googleAuthRoute) app.use('/api/auth/google', googleAuthRoute);
-    const usersRoute = tryRequireRoute('./routes/users.js'); if (usersRoute) app.use('/api/users', usersRoute);
-    const packagesRoute = tryRequireRoute('./routes/packages.js'); if (packagesRoute) app.use('/api/packages', packagesRoute);
-    const settingsRoute = tryRequireRoute('./routes/settings.js'); if (settingsRoute) app.use('/api/settings', settingsRoute);
-    const zonesRoute = tryRequireRoute('./routes/zones.js'); if (zonesRoute) app.use('/api/zones', zonesRoute);
+
+    // Critical routes: use direct require so startup fails visibly if there are errors
+    // --- Core Routes (Mandatory) ---
+    app.use('/api/auth', require('./routes/auth.js'));
+    app.use('/api/users', require('./routes/users.js'));
+    app.use('/api/packages', require('./routes/packages.js'));
+    app.use('/api/settings', require('./routes/settings.js'));
+    
+    // --- Optional/Integration Routes ---
     const invoicesRoute = tryRequireRoute('./routes/invoices.js'); if (invoicesRoute) app.use('/api/invoices', invoicesRoute);
     const billingRoute = tryRequireRoute('./routes/billing.js'); if (billingRoute) app.use('/api/billing', billingRoute);
     const integrationsRoute = tryRequireRoute('./routes/integrations.js'); if (integrationsRoute) app.use('/api/integrations', integrationsRoute);
     const geoRoute = tryRequireRoute('./routes/geo.js'); if (geoRoute) app.use('/api/geo', geoRoute);
     const logsRoute = tryRequireRoute('./routes/logs.js'); if (logsRoute) app.use('/api/logs', logsRoute);
-    // Montar rutas de pickups directamente
     const pickupsRoute = tryRequireRoute('./routes/pickups.js'); if (pickupsRoute) app.use('/api/pickups', pickupsRoute);
     const assignmentsRoute = tryRequireRoute('./routes/assignments.js'); if (assignmentsRoute) app.use('/api/assignments', assignmentsRoute);
     const mobileRoute = tryRequireRoute('./routes/mobile.js'); if (mobileRoute) app.use('/api', mobileRoute);
     const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
+    const googleAuthRoute = tryRequireRoute('./routes/googleAuth.js'); if (googleAuthRoute) app.use('/api/auth/google', googleAuthRoute);
     const notificationsRoute = tryRequireRoute('./routes/notifications.js'); if (notificationsRoute) app.use('/api/notifications', notificationsRoute);
+
+    // API Catch-all: prevent falling back to HTML for missing /api routes
+    app.all('/api/*', (req, res) => {
+        res.status(404).json({ error: 'API Endpoint not found', path: req.path });
+    });
 
 
     // --- Frontend Serving & SPA Fallback ---
@@ -264,16 +278,24 @@ async function initializeDatabase() {
                 'billed BOOLEAN DEFAULT false',
                 'source TEXT',
                 'shopifyOrderId TEXT',
-                'trackingId TEXT',
+                'wooOrderId TEXT',
+                'jumpsellerOrderId TEXT',
+                'meliOrderId TEXT',
+                'meliSellerId TEXT',
                 'meliFlexCode TEXT',
+                'trackingId TEXT',
+                'recipientEmail TEXT',
                 'isFlexed BOOLEAN DEFAULT false',
                 'flexedAt TIMESTAMPTZ',
                 'destLatitude REAL',
                 'destLongitude REAL',
                 'flexLabelPhotoBase64 TEXT',
                 'recipientRut TEXT',
-                'recipientEmail TEXT',
-                'jumpsellerOrderId TEXT'
+                'assignedAt TIMESTAMPTZ',
+                'isReassigned BOOLEAN DEFAULT false',
+                'sourceAccountId TEXT',
+                'sourceAccountName TEXT',
+                'alertChecked BOOLEAN DEFAULT false'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
@@ -295,6 +317,44 @@ async function initializeDatabase() {
             }
         };
         await ensurePackageColumns();
+
+        // --- PREVENT DUPLICATES: Cleanup and Unique Constraints ---
+        const ensureUniqueIndexes = async () => {
+            const indexConfigs = [
+                { col: 'meliOrderId', label: 'Mercado Libre' },
+                { col: 'shopifyOrderId', label: 'Shopify' },
+                { col: 'jumpsellerOrderId', label: 'Jumpseller' },
+                { col: 'wooOrderId', label: 'WooCommerce' }
+            ];
+
+            for (const { col, label } of indexConfigs) {
+                try {
+                    // 1. Cleanup duplicates (keep the latest one)
+                    await db.query(`
+                        DELETE FROM packages 
+                        WHERE id IN (
+                            SELECT id FROM (
+                                SELECT id, ROW_NUMBER() OVER (PARTITION BY "${col}" ORDER BY "createdAt" DESC) as row_num
+                                FROM packages
+                                WHERE "${col}" IS NOT NULL
+                            ) t WHERE row_num > 1
+                        )
+                    `);
+
+                    // 2. Add Unique Constraint
+                    const constraintName = `uq_${col.toLowerCase()}`;
+                    await db.query(`ALTER TABLE packages ADD CONSTRAINT ${constraintName} UNIQUE ("${col}")`);
+                    
+                    console.log(`STABILITY: Unique constraint for ${label} orders is active.`);
+                } catch (err) {
+                    // Ignore if constraint already exists
+                    if (err.code !== '42710') {
+                        console.error(`Error ensuring uniqueness for ${label}:`, err.message);
+                    }
+                }
+            }
+        };
+        await ensureUniqueIndexes();
 
         await db.query(`
             CREATE TABLE IF NOT EXISTS tracking_events (
@@ -442,6 +502,18 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "jumpsellerAutoImport" was added to "system_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (jumpsellerAutoImport):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "timeFormat" TEXT DEFAULT \'12h\'');
+            console.log('MIGRATION APPLIED: Column "timeFormat" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (timeFormat):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "allowRedelivery" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "allowRedelivery" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (allowRedelivery):', err); }
         }
         // --- END MIGRATION SCRIPT ---
 
@@ -724,6 +796,10 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during pickup_assignments migration (packagesPickedUp):', err); }
         }
+
+        try {
+            await db.query('ALTER TABLE system_logs ADD COLUMN "userId" TEXT');
+        } catch(e) {}
 
         await db.query(`
             CREATE TABLE IF NOT EXISTS system_logs (

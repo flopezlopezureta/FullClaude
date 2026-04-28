@@ -33,4 +33,56 @@ router.get('/db-check', async (req, res) => {
     }
 });
 
+
+router.get('/meli-check/:id', async (req, res) => {
+    const shipmentId = req.params.id;
+    const https = require('https');
+    const meliPollingService = require('../services/meliPollingService');
+
+    const makeMeliRequest = (path, accessToken) => {
+        return new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'api.mercadolibre.com',
+                path,
+                method: 'GET',
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            };
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', (chunk) => { data += chunk; });
+                res.on('end', () => {
+                    try { resolve(JSON.parse(data)); } catch (e) { reject(e); }
+                });
+            });
+            req.on('error', (e) => reject(e));
+            req.end();
+        });
+    };
+
+    try {
+        const { rows: users } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
+        let results = [];
+        
+        for (const user of users) {
+            try {
+                const token = await meliPollingService.getValidMeliToken(user.id);
+                if (!token) continue;
+                
+                const shipment = await makeMeliRequest(`/shipments/${shipmentId}`, token);
+                results.push({
+                    client: user.name,
+                    clientId: user.id,
+                    found: !!shipment.id,
+                    details: shipment.id ? shipment : shipment.message || shipment
+                });
+            } catch (err) {
+                results.push({ client: user.name, error: err.message });
+            }
+        }
+        res.json({ shipmentId, results });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;

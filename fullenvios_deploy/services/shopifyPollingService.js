@@ -64,6 +64,7 @@ let pollingStartTime = null;
 let lastPollTime = Date.now();
 let currentIntervalMs = 5 * 60 * 1000;
 let nextScheduledTime = lastPollTime + currentIntervalMs;
+let lastImportCount = 0;
 
 async function pollShopifyPackages() {
     if (isPolling) {
@@ -103,121 +104,167 @@ async function pollShopifyPackages() {
     }
 }
 
+const ensureMultiAccountStructure = (integrations) => {
+    if (!integrations) integrations = { accounts: [] };
+    if (!integrations.accounts) {
+        const accounts = [];
+        if (integrations.shopify) {
+            accounts.push({
+                id: `shopify-${uuidv4()}`,
+                type: 'SHOPIFY',
+                nickname: 'Shopify (Principal)',
+                credentials: { 
+                    shopUrl: integrations.shopify.shopUrl,
+                    accessToken: integrations.shopify.accessToken
+                },
+                settings: { 
+                    autoImport: integrations.shopify.autoImport || false, 
+                    syncInterval: integrations.shopify.syncInterval || 5,
+                    lastSync: integrations.shopify.lastSync
+                },
+                connectedAt: integrations.shopify.connectedAt || new Date().toISOString()
+            });
+        }
+        integrations.accounts = accounts;
+    }
+    return integrations;
+};
+
 async function autoImportShopifyPackages() {
     console.log('[ShopifyPolling] Starting auto-import cycle...');
+    let importedThisCycle = 0;
     try {
-        // 1. Get all users with Shopify integration
-        const { rows: users } = await db.query("SELECT id, integrations, \"clientIdentifier\" FROM users WHERE integrations->'shopify' IS NOT NULL");
+        // 1. Get all users with Shopify integration (new or old format)
+        const { rows: users } = await db.query(`
+            SELECT id, integrations, "clientIdentifier" 
+            FROM users 
+            WHERE role = 'CLIENT' 
+            AND (integrations->'shopify' IS NOT NULL OR integrations->'accounts' IS NOT NULL)
+        `);
         
         for (const user of users) {
             const clientId = user.id;
             const clientIdentifier = user.clientIdentifier || 'CLI';
-            const shopify = user.integrations.shopify;
-
-            if (!shopify.shopUrl || !shopify.accessToken) continue;
-
-            // Check if the individual client has auto-import disabled
-            // If it's undefined, we can default to true for backward compatibility or false if we want strictly opt-in.
-            // According to user request "seleccionar si será manual o automatica", we'll check if it's explicitly true.
-            if (shopify.autoImport !== true) {
-                console.log(`[ShopifyPolling] Skipping client ${clientId} - Auto-import is currently set to MANUAL.`);
-                continue;
-            }
-
-            // --- PER-USER INTERVAL CHECK ---
-            const syncIntervalMin = shopify.syncInterval || 5; // Default to 5 mins
-            const lastSync = shopify.lastSync ? new Date(shopify.lastSync).getTime() : 0;
-            const now = Date.now();
             
-            if (now - lastSync < (syncIntervalMin * 60 * 1000)) {
-                // Not enough time has passed yet
-                continue;
-            }
+            let integrations = ensureMultiAccountStructure(user.integrations);
+            const shopifyAccounts = integrations.accounts.filter(acc => acc.type === 'SHOPIFY');
 
-            try {
-                // Update lastSync timestamp in DB immediately to prevent concurrent triggers if poller is slow
-                await db.query(`UPDATE users SET integrations = jsonb_set(integrations, '{shopify,lastSync}', $1) WHERE id = $2`, [JSON.stringify(new Date().toISOString()), clientId]);
+            if (shopifyAccounts.length === 0) continue;
 
-                // 2. Fetch recent paid orders
-                // status=open & financial_status=paid
-                const ordersData = await makeShopifyRequest(shopify.shopUrl, shopify.accessToken, '/orders.json?status=open&financial_status=paid&limit=50');
-                
-                if (!ordersData.orders || ordersData.orders.length === 0) {
-                    continue;
-                }
+            for (const account of shopifyAccounts) {
+                try {
+                    const shopify = account.credentials;
+                    const settings = account.settings || {};
 
-                console.log(`[ShopifyPolling] Found ${ordersData.orders.length} paid orders for client ${clientId} (${shopify.shopUrl})`);
+                    if (!shopify.shopUrl || !shopify.accessToken) continue;
+                    if (settings.autoImport !== true) continue;
 
-                for (const order of ordersData.orders) {
-                    try {
-                        const orderId = order.id.toString();
-                        
-                        // 3. Check if already imported
-                        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1 OR "id" = $2', [orderId, orderId]);
-                        if (existing.length > 0) continue;
+                    const syncIntervalMin = settings.syncInterval !== undefined ? settings.syncInterval : 2; 
+                    const lastSync = settings.lastSync ? new Date(settings.lastSync).getTime() : 0;
+                    const now = Date.now();
+                    
+                    if (now - lastSync < (syncIntervalMin * 60 * 1000)) continue;
 
-                        // 4. Region Check (Santiago/RM)
-                        const address = order.shipping_address || order.billing_address || {};
-                        const province = (address.province || '').toLowerCase();
-                        const city = (address.city || '').toLowerCase();
-                        
-                        const isRM = province.includes('metropolitana') || 
-                                     province.includes('santiago') || 
-                                     province === 'rm' ||
-                                     province.includes('r.m.') ||
-                                     city.includes('santiago') ||
-                                     city.includes('metropolitana');
-                        
-                        if (!isRM) {
-                            console.log(`[ShopifyPolling] Skipping order ${orderId} - Outside RM (${province}, ${city})`);
-                            continue;
-                        }
+                    // [ESTABILIDAD] Timeout de 45 seg por cuenta
+                    await Promise.race([
+                        (async () => {
+                            // Update lastSync for this account
+                            const accountIndex = integrations.accounts.findIndex(acc => acc.id === account.id);
+                            if (accountIndex > -1) {
+                                integrations.accounts[accountIndex].settings.lastSync = new Date().toISOString();
+                                await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
+                            }
 
-                        // 5. Import Package
-                        const now = new Date();
-                        const newPackage = {
-                            id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
-                            recipientName: `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'N/A',
-                            recipientPhone: address.phone || 'N/A',
-                            recipientEmail: order.email || '',
-                            status: 'PENDIENTE',
-                            shippingType: 'SAME_DAY',
-                            origin: 'Centro de Distribución',
-                            recipientAddress: `${address.address1 || ''} ${address.address2 || ''}`.trim() || 'N/A',
-                            recipientCommune: address.city || 'N/A',
-                            recipientCity: 'Región Metropolitana',
-                            notes: `Auto-Import Shopify Order: ${order.name || orderId}`,
-                            estimatedDelivery: now,
-                            createdAt: now,
-                            updatedAt: now,
-                            creatorId: clientId,
-                            source: 'SHOPIFY',
-                            shopifyOrderId: orderId
-                        };
+                            // 2. Fetch recent paid orders
+                            const ordersData = await makeShopifyRequest(shopify.shopUrl, shopify.accessToken, '/orders.json?status=open&financial_status=paid&limit=50');
+                            
+                            if (!ordersData.orders || ordersData.orders.length === 0) return;
 
-                        const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                        const values = Object.values(newPackage).map(v => v === undefined ? null : v);
-                        const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+                            console.log(`[ShopifyPolling] Found ${ordersData.orders.length} paid orders for client ${clientId} (${account.nickname})`);
 
-                        await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-                        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                            [newPackage.id, 'Creado', newPackage.origin, 'Auto-importado vía Shopify.', now]);
-                        
-                        console.log(`[ShopifyPolling] Auto-imported order ${orderId} for client ${clientId}`);
-                        
-                    } catch (orderErr) {
-                        console.error(`[ShopifyPolling] Error processing order ${order.id}:`, orderErr.message);
+                            for (const order of ordersData.orders) {
+                                try {
+                                    const orderId = order.id.toString();
+                                    const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1 OR "id" = $2', [orderId, orderId]);
+                                    if (existing.length > 0) continue;
+
+                                    const address = order.shipping_address || order.billing_address || {};
+                                    const province = (address.province || '').toLowerCase();
+                                    const city = (address.city || '').toLowerCase();
+                                    
+                                    const isRM = province.includes('metropolitana') || 
+                                                 province.includes('santiago') || 
+                                                 province.includes('rm') ||
+                                                 province.includes('r.m.') ||
+                                                 city.includes('santiago') ||
+                                                 city.includes('metropolitana') ||
+                                                 city.includes('rm') ||
+                                                 [
+                                                    'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+                                                    'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+                                                    'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+                                                    'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+                                                    'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+                                                    'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+                                                    'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+                                                    'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+                                                 ].includes(city);
+                                    
+                                    if (!isRM) continue;
+
+                                    const nowImport = new Date();
+                                    const newPackage = {
+                                        id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
+                                        recipientName: `${address.first_name || ''} ${address.last_name || ''}`.trim() || 'N/A',
+                                        recipientPhone: address.phone || 'N/A',
+                                        recipientEmail: order.email || '',
+                                        status: 'PENDIENTE',
+                                        shippingType: 'SAME_DAY',
+                                        origin: 'Centro de Distribución',
+                                        recipientAddress: `${address.address1 || ''} ${address.address2 || ''}`.trim() || 'N/A',
+                                        recipientCommune: address.city || 'N/A',
+                                        recipientCity: 'Región Metropolitana',
+                                        notes: `Auto-Import Shopify Order: ${order.name || orderId}`,
+                                        estimatedDelivery: nowImport,
+                                        createdAt: nowImport,
+                                        updatedAt: nowImport,
+                                        creatorId: clientId,
+                                        source: 'SHOPIFY',
+                                        shopifyOrderId: orderId,
+                                        sourceAccountId: account.id,
+                                        sourceAccountName: account.nickname
+                                    };
+
+                                    const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
+                                    const values = Object.values(newPackage).map(v => v === undefined ? null : v);
+                                    const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+
+                                    await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders}) ON CONFLICT ("shopifyOrderId") DO NOTHING`, values);
+                                    await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
+                                        [newPackage.id, 'Creado', newPackage.origin, `Auto-importado vía Shopify (${account.nickname}).`, nowImport]);
+                                    
+                                    importedThisCycle++;
+                                } catch (orderErr) {
+                                    // Ignorar error individual
+                                }
+                            }
+                        })(),
+                        new Promise((_, reject) => setTimeout(() => reject(new Error('TIMEOUT_ACCOUNT')), 45000))
+                    ]);
+                } catch (apiErr) {
+                    if (apiErr.message === 'TIMEOUT_ACCOUNT') {
+                        console.error(`[ShopifyPolling] Polling timed out after 45s for account ${account.nickname} (${clientId})`);
+                    } else {
+                        console.error(`[ShopifyPolling] Error fetching orders for ${account.nickname}:`, apiErr.body || apiErr.message || apiErr);
                     }
                 }
-            } catch (apiErr) {
-                console.error(`[ShopifyPolling] Error fetching orders for ${shopify.shopUrl}:`, apiErr.body || apiErr);
             }
         }
-        
-        // Trigger background geocoding after import
         setTimeout(() => triggerBackgroundGeocoding(), 2000);
     } catch (err) {
         console.error('[ShopifyPolling] Fatal error in auto-import cycle:', err);
+    } finally {
+        lastImportCount = importedThisCycle;
     }
 }
 
@@ -257,7 +304,8 @@ function getStatus() {
         isPolling,
         pollingStartTime,
         lastPollTime,
-        nextPollTime: nextScheduledTime
+        nextPollTime: nextScheduledTime,
+        lastImportCount
     };
 }
 

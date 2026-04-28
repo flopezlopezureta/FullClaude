@@ -58,7 +58,9 @@ router.get('/', authMiddleware, async (req, res) => {
         } = req.query;
 
         // [MEJORADO] Limpiamos espacios en blanco de la búsqueda para evitar fallos por copy-paste
-        const searchQuery = req.query.searchQuery ? req.query.searchQuery.trim() : null;
+        // Soportamos tanto 'search' como 'searchQuery' para compatibilidad total con el frontend
+        const rawSearch = req.query.searchQuery || req.query.search || '';
+        const searchQuery = rawSearch.toString().trim() || null;
 
         const offset = (page - 1) * limit;
         let whereClauses = [];
@@ -986,7 +988,23 @@ router.post('/sync-meli-all', authMiddleware, async (req, res) => {
         res.json({ message: 'Sincronización masiva completada.', result });
     } catch (err) {
         console.error('Error in POST /api/packages/sync-meli-all:', err);
-        res.status(500).json({ message: err.message || 'Error al sincronizar paquetes con Mercado Libre.' });
+        res.status(500).json({ message: err.message || 'Error al actualizar paquetes.' });
+    }
+});
+
+// [LEGACY/DEBUG] GET /api/packages/sys/status
+router.get('/sys/status', authMiddleware, async (req, res) => {
+    try {
+        const meliStatus = meliPollingService.getStatus ? meliPollingService.getStatus() : { status: 'unknown' };
+        res.json({ 
+            success: true, 
+            serverTime: new Date(),
+            services: {
+                meli: meliStatus
+            }
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
     }
 });
 

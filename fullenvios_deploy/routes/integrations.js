@@ -9,6 +9,165 @@ const bcrypt = require('bcryptjs');
 
 const meliPollingService = require('../services/meliPollingService');
 
+// --- MULTI-ACCOUNT HELPERS ---
+const ensureMultiAccountStructure = (integrations) => {
+    if (!integrations) integrations = { accounts: [] };
+    if (!integrations.accounts) {
+        const accounts = [];
+        
+        // Migrate old 'meli' structure
+        if (integrations.meli) {
+            accounts.push({
+                id: `meli-${integrations.meli.userId || uuidv4()}`,
+                type: 'MERCADO_LIBRE',
+                nickname: 'Mercado Libre (Principal)',
+                credentials: { ...integrations.meli },
+                settings: { 
+                    autoImport: true, 
+                    syncInterval: 30,
+                    lastSync: integrations.meli.lastSync 
+                },
+                connectedAt: integrations.meli.connectedAt || new Date().toISOString()
+            });
+        }
+        
+        // Migrate old 'shopify' structure
+        if (integrations.shopify) {
+            accounts.push({
+                id: `shopify-${uuidv4()}`,
+                type: 'SHOPIFY',
+                nickname: 'Shopify (Principal)',
+                credentials: { 
+                    shopUrl: integrations.shopify.shopUrl,
+                    accessToken: integrations.shopify.accessToken
+                },
+                settings: { 
+                    autoImport: integrations.shopify.autoImport || false, 
+                    syncInterval: integrations.shopify.syncInterval || 5,
+                    lastSync: integrations.shopify.lastSync
+                },
+                connectedAt: integrations.shopify.connectedAt || new Date().toISOString()
+            });
+        }
+
+        // Migrate old 'woocommerce' structure
+        if (integrations.woocommerce) {
+            accounts.push({
+                id: `woo-${uuidv4()}`,
+                type: 'WOOCOMMERCE',
+                nickname: 'WooCommerce (Principal)',
+                credentials: { ...integrations.woocommerce },
+                settings: { 
+                    autoImport: integrations.woocommerce.autoImport || false, 
+                    syncInterval: integrations.woocommerce.syncInterval || 30 
+                },
+                connectedAt: new Date().toISOString()
+            });
+        }
+
+        // Migrate old 'jumpseller' structure
+        if (integrations.jumpseller) {
+            accounts.push({
+                id: `jump-${uuidv4()}`,
+                type: 'JUMPSELLER',
+                nickname: 'Jumpseller (Principal)',
+                credentials: { ...integrations.jumpseller },
+                settings: { 
+                    autoImport: integrations.jumpseller.autoImport || false, 
+                    syncInterval: integrations.jumpseller.syncInterval || 10 
+                },
+                connectedAt: new Date().toISOString()
+            });
+        }
+
+        integrations.accounts = accounts;
+        // We keep old keys for a while to avoid breaking other parts until they are updated,
+        // but we prioritize 'accounts' in the logic.
+    }
+    return integrations;
+};
+
+// GET /api/integrations/accounts - List all linked accounts
+router.get('/accounts', authMiddleware, async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        
+        const integrations = ensureMultiAccountStructure(rows[0].integrations);
+        
+        // Return accounts without sensitive credential details (optional, but safer)
+        const safeAccounts = integrations.accounts.map(acc => ({
+            id: acc.id,
+            type: acc.type,
+            nickname: acc.nickname,
+            settings: acc.settings,
+            connectedAt: acc.connectedAt,
+            // Only return identifying info, not tokens
+            identifier: acc.type === 'SHOPIFY' ? acc.credentials.shopUrl : (acc.type === 'MERCADO_LIBRE' ? acc.credentials.userId : null)
+        }));
+
+        res.json(safeAccounts);
+    } catch (err) {
+        console.error('[GetAccounts] Error:', err);
+        res.status(500).json({ message: 'Error al obtener cuentas vinculadas' });
+    }
+});
+
+// PATCH /api/integrations/accounts/:accountId - Update account nickname or settings
+router.patch('/accounts/:accountId', authMiddleware, async (req, res) => {
+    const { accountId } = req.params;
+    const { nickname, settings } = req.body;
+
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        
+        const integrations = ensureMultiAccountStructure(rows[0].integrations);
+        const accountIndex = integrations.accounts.findIndex(acc => acc.id === accountId);
+        
+        if (accountIndex === -1) return res.status(404).json({ message: 'Cuenta no encontrada' });
+        
+        if (nickname !== undefined) integrations.accounts[accountIndex].nickname = nickname;
+        if (settings !== undefined) {
+            integrations.accounts[accountIndex].settings = {
+                ...integrations.accounts[accountIndex].settings,
+                ...settings
+            };
+        }
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), req.user.id]);
+        res.json({ message: 'Cuenta actualizada correctamente', account: integrations.accounts[accountIndex] });
+    } catch (err) {
+        console.error('[UpdateAccount] Error:', err);
+        res.status(500).json({ message: 'Error al actualizar cuenta' });
+    }
+});
+
+// DELETE /api/integrations/accounts/:accountId - Remove a linked account
+router.delete('/accounts/:accountId', authMiddleware, async (req, res) => {
+    const { accountId } = req.params;
+
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [req.user.id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
+        
+        const integrations = ensureMultiAccountStructure(rows[0].integrations);
+        const newAccounts = integrations.accounts.filter(acc => acc.id !== accountId);
+        
+        if (newAccounts.length === integrations.accounts.length) {
+            return res.status(404).json({ message: 'Cuenta no encontrada' });
+        }
+        
+        integrations.accounts = newAccounts;
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), req.user.id]);
+        res.json({ message: 'Cuenta eliminada correctamente' });
+    } catch (err) {
+        console.error('[DeleteAccount] Error:', err);
+        res.status(500).json({ message: 'Error al eliminar cuenta' });
+    }
+});
+
 // TEMP DEBUG: List all clients and IDs
 router.get('/list-clients-debug', async (req, res) => {
     const { secret } = req.query;
@@ -38,13 +197,13 @@ router.get('/debug-poll/:clientId', async (req, res) => {
             }
             
             const meliIntegration = user.integrations?.meli;
-            if (!meliIntegration) return res.status(400).json({ message: 'Usuario no tiene integración ML', debugLogs });
+            if (!meliIntegration) return res.status(400).json({ message: 'Usuario no tiene integraciÃ³n ML', debugLogs });
 
             log('Getting access token...');
             const accessToken = await meliPollingService.getValidMeliToken(clientId);
             if (!accessToken) {
                 log('FAILED to get access token. Check integration_settings or refresh token.');
-                return res.status(401).json({ message: 'Error de autenticación ML', debugLogs });
+                return res.status(401).json({ message: 'Error de autenticaciÃ³n ML', debugLogs });
             }
             log('Access token obtained successfully');
 
@@ -154,7 +313,7 @@ router.get('/meli-tracking/:packageId', authMiddleware, async (req, res) => {
 
         // Otherwise fetch fresh from ML API
         if (!pkg.meliFlexCode) {
-            return res.status(400).json({ message: 'El paquete no tiene ID de envío ML' });
+            return res.status(400).json({ message: 'El paquete no tiene ID de envÃ­o ML' });
         }
 
         const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
@@ -203,7 +362,7 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
         if (pkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado' });
 
         const pkg = pkgRows[0];
-        if (!pkg.meliFlexCode) return res.status(400).json({ message: 'El paquete no tiene ID de envío ML' });
+        if (!pkg.meliFlexCode) return res.status(400).json({ message: 'El paquete no tiene ID de envÃ­o ML' });
 
         const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId);
         if (!accessToken) return res.status(401).json({ message: 'Token ML no disponible' });
@@ -244,7 +403,7 @@ router.get('/meli-label/:packageId', authMiddleware, async (req, res) => {
 
         } catch (fetchError) {
             console.error('[MeliLabel] Fetch Error:', fetchError);
-            res.status(500).json({ message: 'Error de conexión con ML' });
+            res.status(500).json({ message: 'Error de conexiÃ³n con ML' });
         }
 
     } catch (err) {
@@ -263,7 +422,7 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
     }
 
     if (!password) {
-        return res.status(400).json({ message: 'La contraseña de administrador es requerida.' });
+        return res.status(400).json({ message: 'La contraseÃ±a de administrador es requerida.' });
     }
 
     try {
@@ -273,7 +432,7 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
         const isMatch = await bcrypt.compare(password, admin.password);
         
         if (!isMatch) {
-            return res.status(401).json({ message: 'Contraseña de administrador incorrecta.' });
+            return res.status(401).json({ message: 'ContraseÃ±a de administrador incorrecta.' });
         }
 
         // 2. Remove integration from user
@@ -287,10 +446,10 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
 
         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
 
-        res.json({ message: `Integración ${source} eliminada con éxito.` });
+        res.json({ message: `IntegraciÃ³n ${source} eliminada con Ã©xito.` });
     } catch (err) {
         console.error(err);
-        res.status(500).json({ message: 'Error al eliminar la integración.' });
+        res.status(500).json({ message: 'Error al eliminar la integraciÃ³n.' });
     }
 });
 
@@ -429,36 +588,65 @@ const makeMeliPostRequest = (path, postData) => makeMeliRequest({
     }
 }, postData);
 
-const getValidMeliIntegration = async (clientId) => {
+const getValidMeliIntegration = async (clientId, accountId = null) => {
     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
     if (userRows.length === 0) throw new Error('Cliente no encontrado.');
     
-    let meliIntegration = userRows[0].integrations?.meli;
+    let integrations = userRows[0].integrations || {};
+    let meliIntegration = null;
+    let accountIndex = -1;
+
+    if (accountId) {
+        if (!integrations.accounts) integrations = ensureMultiAccountStructure(integrations);
+        accountIndex = integrations.accounts.findIndex(acc => acc.id === accountId);
+        if (accountIndex === -1) throw new Error('Cuenta de Mercado Libre no encontrada.');
+        meliIntegration = integrations.accounts[accountIndex].credentials;
+    } else {
+        meliIntegration = integrations.meli;
+        if (!meliIntegration && integrations.accounts) {
+            accountIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE');
+            if (accountIndex > -1) {
+                meliIntegration = integrations.accounts[accountIndex].credentials;
+                accountId = integrations.accounts[accountIndex].id;
+            }
+        }
+    }
+
     if (!meliIntegration) throw new Error('El cliente no tiene Mercado Libre conectado.');
 
     // Refresh Token if needed
     if (Date.now() >= meliIntegration.expiresAt) {
         const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-        if (settingsRows.length === 0) throw new Error('Configuración de Mercado Libre no encontrada en el servidor.');
+        if (settingsRows.length === 0) throw new Error('ConfiguraciÃ³n de app ML no encontrada.');
+        
         const { meli_app_id, meli_client_secret } = settingsRows[0];
-        
-        const refreshData = new URLSearchParams({
-            grant_type: 'refresh_token', client_id: meli_app_id, client_secret: meli_client_secret, refresh_token: meliIntegration.refreshToken,
+        const postData = new URLSearchParams({
+            grant_type: 'refresh_token',
+            client_id: meli_app_id,
+            client_secret: meli_client_secret,
+            refresh_token: meliIntegration.refreshToken
         }).toString();
-        
-        const refreshed = await makeMeliPostRequest('/oauth/token', refreshData);
+
+        const tokenData = await makeMeliPostRequest('/oauth/token', postData);
         meliIntegration = {
             ...meliIntegration,
-            accessToken: refreshed.access_token,
-            refreshToken: refreshed.refresh_token,
-            expiresAt: Date.now() + (refreshed.expires_in * 1000),
+            accessToken: tokenData.access_token,
+            refreshToken: tokenData.refresh_token,
+            expiresAt: Date.now() + (tokenData.expires_in * 1000)
         };
-        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), clientId]);
+
+        if (accountId && accountIndex > -1) {
+            integrations.accounts[accountIndex].credentials = meliIntegration;
+        } else {
+            integrations.meli = meliIntegration;
+        }
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
     }
     return meliIntegration;
 };
 
-// [TEMPORAL] Ruta administrativa para limpiar pedidos fuera de zona (Auditoría profunda)
+// [TEMPORAL] Ruta administrativa para limpiar pedidos fuera de zona (AuditorÃ­a profunda)
 router.get('/admin/cleanup-deep', async (req, res) => {
     const { secret, target } = req.query;
     if (secret !== 'cleanup_2026') return res.status(403).send('Forbidden');
@@ -521,7 +709,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
         
         // 3. Create local package
         const now = new Date();
-        // [NUEVO] Validación estricta de Región (Solo Santiago / RM)
+        // [NUEVO] ValidaciÃ³n estricta de RegiÃ³n (Solo Santiago / RM)
         let stateName = shipment.receiver_address?.state?.name || 'Santiago';
         const lowerState = stateName.toLowerCase();
         const isRM = lowerState.includes('metropolitana') || 
@@ -530,9 +718,9 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
                      lowerState.includes('r.m.');
 
         if (!isRM) {
-            return res.status(400).json({ message: `No se puede importar: El destino (${stateName}) está fuera de la Región Metropolitana.` });
+            return res.status(400).json({ message: `No se puede importar: El destino (${stateName}) estÃ¡ fuera de la RegiÃ³n Metropolitana.` });
         }
-        stateName = 'Región Metropolitana';
+        stateName = 'RegiÃ³n Metropolitana';
 
         const newPackage = {
             id: `${userRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`,
@@ -540,7 +728,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
-            origin: 'Centro de Distribución',
+            origin: 'Centro de DistribuciÃ³n',
             recipientAddress: shipment.receiver_address?.address_line || 'N/A',
             recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
             recipientCity: stateName,
@@ -548,7 +736,7 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
             estimatedDelivery: now,
             createdAt: now,
             updatedAt: now,
-            creatorId: clientId,
+            creatorId: req.user.id,
             source: 'MERCADO_LIBRE',
             meliOrderId: scannedId,
             meliFlexCode: flexCode || scannedId,
@@ -561,9 +749,9 @@ router.post('/import/meli-scanned', authMiddleware, async (req, res) => {
 
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
         await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-            [newPackage.id, 'Creado', newPackage.origin, 'Importado vía escaneo ML.', now]);
+            [newPackage.id, 'Creado', newPackage.origin, 'Importado vÃ­a escaneo ML.', now]);
 
-        // [NUEVO] Sincronizar trackingId original de forma asíncrona
+        // [NUEVO] Sincronizar trackingId original de forma asÃ­ncrona
         meliPollingService.syncTrackingId(newPackage.id);
 
         res.status(201).json({ message: `Paquete para ${newPackage.recipientName} importado!`, pkg: newPackage });
@@ -598,43 +786,60 @@ router.get('/status/:shipmentId', authMiddleware, async (req, res) => {
 router.get('/:clientId/meli/orders', authMiddleware, async (req, res) => {
     const { clientId } = req.params;
 
-    // Security check: only admin or the client themselves can fetch orders
     if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
         return res.status(403).json({ message: 'No tienes permiso para ver estos pedidos.' });
     }
 
     try {
-        const meliIntegration = await getValidMeliIntegration(clientId);
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
         
-        // Fetch recent orders (last 2 days) that are paid and not shipped yet
-        // ML API: /orders/search?seller=${seller_id}&order.status=paid
-        // Added sort=date_desc to get the most recent orders first
-        const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, meliIntegration.accessToken);
-        
-        const orders = await Promise.all(ordersData.results.map(async (order) => {
-            // For each order, we need shipment details to get the address
-            const shipmentId = order.shipping?.id;
-            let shipment = null;
-            if (shipmentId) {
-                try {
-                    shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
-                } catch (e) {
-                    console.error(`Error fetching shipment ${shipmentId} for order ${order.id}`);
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations);
+        const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
+
+        if (meliAccounts.length === 0) {
+            return res.json([]);
+        }
+
+        let allOrders = [];
+        for (const account of meliAccounts) {
+            try {
+                const meliIntegration = await getValidMeliIntegration(clientId, account.id);
+                const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=30`, meliIntegration.accessToken);
+                
+                if (ordersData && ordersData.results) {
+                    const mappedOrders = await Promise.all(ordersData.results.map(async (order) => {
+                        const shipmentId = order.shipping?.id;
+                        let shipment = null;
+                        if (shipmentId) {
+                            try {
+                                shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
+                            } catch (e) {
+                                console.error(`Error fetching shipment ${shipmentId} for account ${account.nickname}`);
+                            }
+                        }
+
+                        return {
+                            id: order.id.toString(),
+                            recipientName: shipment?.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
+                            address: shipment?.receiver_address?.address_line || 'N/A',
+                            commune: shipment?.receiver_address?.city?.name || 'N/A',
+                            city: shipment?.receiver_address?.state?.name || 'N/A',
+                            notes: `ML Order: ${order.id} (${account.nickname})`,
+                            shipmentId: shipmentId,
+                            sourceAccountId: account.id,
+                            sourceAccountName: account.nickname
+                        };
+                    }));
+                    allOrders = [...allOrders, ...mappedOrders];
                 }
+            } catch (accErr) {
+                console.error(`Error fetching orders for account ${account.nickname}:`, accErr.message);
+                // Continue with next account
             }
+        }
 
-            return {
-                id: order.id.toString(),
-                recipientName: shipment?.receiver_address?.receiver_name || order.buyer?.nickname || 'N/A',
-                address: shipment?.receiver_address?.address_line || 'N/A',
-                commune: shipment?.receiver_address?.city?.name || 'N/A',
-                city: shipment?.receiver_address?.state?.name || 'N/A',
-                notes: `ML Order: ${order.id}`,
-                shipmentId: shipmentId
-            };
-        }));
-
-        res.json(orders);
+        res.json(allOrders);
     } catch (err) {
         console.error("Meli Fetch Orders Error:", err.body || err);
         res.status(500).json({ message: err.message || 'Error al obtener pedidos de Mercado Libre.' });
@@ -644,46 +849,68 @@ router.get('/:clientId/meli/orders', authMiddleware, async (req, res) => {
 // POST /api/integrations/:clientId/meli/import
 router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
     const { clientId } = req.params;
-    const { orderIds } = req.body;
+    const { orderIds, orderAccountMap } = req.body; // orderAccountMap is optional: { orderId: accountId }
 
     if (req.user.role !== 'ADMIN' && req.user.id !== clientId) {
         return res.status(403).json({ message: 'No tienes permiso para importar estos pedidos.' });
     }
 
     try {
-        const meliIntegration = await getValidMeliIntegration(clientId);
-        const { rows: userRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [clientId]);
+        const { rows: userRows } = await db.query('SELECT integrations, "clientIdentifier" FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Cliente no encontrado.' });
+        
         const clientIdentifier = userRows[0].clientIdentifier;
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations);
+        const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
 
         const results = [];
         for (const orderId of orderIds) {
             try {
+                // Determine which account to use
+                let accountToUse = null;
+                const explicitAccountId = orderAccountMap ? orderAccountMap[orderId] : null;
+                
+                if (explicitAccountId) {
+                    accountToUse = meliAccounts.find(acc => acc.id === explicitAccountId);
+                }
+
+                // If not found or not provided, try to find by fetching order details (expensive but safe fallback)
+                if (!accountToUse) {
+                    for (const acc of meliAccounts) {
+                        try {
+                            const testIntegration = await getValidMeliIntegration(clientId, acc.id);
+                            const orderTest = await makeMeliGetRequest(`/orders/${orderId}`, testIntegration.accessToken);
+                            if (orderTest && orderTest.id) {
+                                accountToUse = acc;
+                                break;
+                            }
+                        } catch (e) { continue; }
+                    }
+                }
+
+                if (!accountToUse) {
+                    results.push({ orderId, status: 'error', message: 'No se encontrÃ³ la cuenta vinculada para este pedido.' });
+                    continue;
+                }
+
+                const meliIntegration = await getValidMeliIntegration(clientId, accountToUse.id);
+                
                 // 1. Get Order Details
                 const order = await makeMeliGetRequest(`/orders/${orderId}`, meliIntegration.accessToken);
                 const shipmentId = order.shipping?.id;
-                const sellerId = order.seller?.id?.toString() || meliIntegration.userId;
-
-                // Safety Check: Ensure the seller ID matches the user's integration
-                if (sellerId !== meliIntegration.userId) {
-                    console.warn(`[MeliImport] Skipping order ${orderId} - Seller ID mismatch (${sellerId} vs ${meliIntegration.userId})`);
-                    results.push({ orderId, status: 'error', message: 'Este pedido no pertenece a tu cuenta de Mercado Libre.' });
-                    continue;
-                }
                 
                 if (!shipmentId) {
-                    results.push({ orderId, status: 'error', message: 'No shipment ID found for this order.' });
+                    results.push({ orderId, status: 'error', message: 'No se encontrÃ³ un ID de envÃ­o para este pedido.' });
                     continue;
                 }
 
                 // 2. Get Shipment Details
                 const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
-                console.log(`[MeliImport] Shipment details for ${shipmentId}:`, JSON.stringify(shipment.receiver_address));
 
                 // 3. Check if already imported
                 const { rows: existing } = await db.query('SELECT id FROM packages WHERE "meliOrderId" = $1 OR "meliFlexCode" = $2', [orderId.toString(), shipmentId.toString()]);
                 if (existing.length > 0) {
-                    console.log(`[MeliImport] Order ${orderId} already imported (ID: ${existing[0].id}), skipping.`);
-                    results.push({ orderId, status: 'skipped', message: 'Already imported.' });
+                    results.push({ orderId, status: 'skipped', message: 'Ya importado.' });
                     continue;
                 }
 
@@ -699,11 +926,10 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                              lowerState.includes('r.m.');
 
                 if (!isRM) {
-                    console.warn(`[MeliImport] Skipping order ${orderId} - Outside RM (${stateName})`);
-                    results.push({ orderId, status: 'error', message: `El destino (${stateName}) está fuera de la Región Metropolitana.` });
+                    results.push({ orderId, status: 'error', message: `El destino (${stateName}) estÃ¡ fuera de la RegiÃ³n Metropolitana.` });
                     continue;
                 }
-                stateName = 'Región Metropolitana';
+                stateName = 'RegiÃ³n Metropolitana';
 
                 const newPackage = {
                     id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
@@ -711,7 +937,7 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                     recipientPhone: shipment.receiver_address?.receiver_phone || 'N/A',
                     status: 'PENDIENTE',
                     shippingType: 'SAME_DAY',
-                    origin: 'Centro de Distribución',
+                    origin: 'Centro de DistribuciÃ³n',
                     recipientAddress: shipment.receiver_address?.address_line || 'N/A',
                     recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
                     recipientCity: stateName,
@@ -720,34 +946,36 @@ router.post('/:clientId/meli/import', authMiddleware, async (req, res) => {
                     createdAt: now,
                     updatedAt: now,
                     creatorId: clientId,
-                    source: 'MERCADO_LIBRE',
                     meliOrderId: orderId.toString(),
                     meliFlexCode: shipmentId.toString(),
-                    trackingId: shipment?.tracking_id ? String(shipment.tracking_id) : null
+                    meliSellerId: meliIntegration.userId.toString(),
+                    sourceAccountId: accountToUse.id,
+                    isFlex: shipment.logistic_type === 'self_service',
+                    source: 'MERCADO_LIBRE'
                 };
 
                 const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
-                const values = Object.values(newPackage).map(v => v === undefined ? null : v);
-                const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
+                const placeholders = Object.keys(newPackage).map((_, i) => `$${i + 1}`).join(', ');
+                const values = Object.values(newPackage);
 
-                await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
+                const { rows: inserted } = await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders}) RETURNING id`, values);
+                
+                // Add tracking event
                 await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-                    [newPackage.id, 'Creado', newPackage.origin, 'Importado vía integración ML.', now]);
+                    [inserted[0].id, 'Creado', newPackage.origin, 'Importado desde Mercado Libre.', now]);
 
-                // [NUEVO] Sincronizar trackingId original de forma asíncrona
-                meliPollingService.syncTrackingId(newPackage.id);
+                results.push({ orderId, status: 'success', packageId: inserted[0].id });
 
-                results.push({ orderId, status: 'success' });
-            } catch (e) {
-                console.error(`Error importing order ${orderId}:`, e.body || e);
-                results.push({ orderId, status: 'error', message: e.message || 'Unknown error' });
+            } catch (err) {
+                console.error(`[MeliImport] Error importing order ${orderId}:`, err.message);
+                results.push({ orderId, status: 'error', message: err.message || 'Error desconocido.' });
             }
         }
 
-        res.json({ results });
+        res.json(results);
     } catch (err) {
-        console.error("Meli Import Orders Error:", err.body || err);
-        res.status(500).json({ message: err.message || 'Error al importar pedidos de Mercado Libre.' });
+        console.error("Meli Import Error:", err);
+        res.status(500).json({ message: 'Error interno al importar pedidos.' });
     }
 });
 
@@ -775,7 +1003,7 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
         }
 
         if (!hostname) {
-            return reject(new Error('URL de tienda inválida. Por favor usa el formato "tienda.myshopify.com".'));
+            return reject(new Error('URL de tienda invÃ¡lida. Por favor usa el formato "tienda.myshopify.com".'));
         }
 
         const options = {
@@ -908,7 +1136,7 @@ router.post('/test/shopify', authMiddleware, async (req, res) => {
         // Test by fetching shop info
         const shopData = await makeShopifyRequest(shopifyShopUrl, shopifyAccessToken, '/shop.json');
         res.json({ 
-            message: 'Conexión exitosa con Shopify.',
+            message: 'ConexiÃ³n exitosa con Shopify.',
             shopName: shopData?.shop?.name
         });
     } catch (err) {
@@ -923,7 +1151,7 @@ router.post('/test/shopify', authMiddleware, async (req, res) => {
             } else if (err.statusCode === 404) {
                 errorMsg = 'No encontrado. Verifica que la URL de la tienda sea correcta.';
             } else if (err.statusCode === 403) {
-                errorMsg = 'Acceso prohibido. El token no tiene permisos para acceder a la información de la tienda.';
+                errorMsg = 'Acceso prohibido. El token no tiene permisos para acceder a la informaciÃ³n de la tienda.';
             }
         }
 
@@ -952,7 +1180,7 @@ router.post('/test/woocommerce', authMiddleware, async (req, res) => {
     try {
         // Test by fetching system status or just a simple endpoint
         await makeWooCommerceRequest(wooUrl, wooConsumerKey, wooConsumerSecret, '/system_status');
-        res.json({ message: 'Conexión exitosa con WooCommerce.' });
+        res.json({ message: 'ConexiÃ³n exitosa con WooCommerce.' });
     } catch (err) {
         console.error("WooCommerce Test Connection Error:", err.body || err);
         let errorMsg = 'Error al conectar con WooCommerce.';
@@ -963,7 +1191,7 @@ router.post('/test/woocommerce', authMiddleware, async (req, res) => {
             if (err.statusCode === 401) {
                 errorMsg = 'No autorizado. Verifica que el Consumer Key y Consumer Secret sean correctos.';
             } else if (err.statusCode === 404) {
-                errorMsg = 'No encontrado. Verifica que la URL sea correcta y la API REST esté habilitada.';
+                errorMsg = 'No encontrado. Verifica que la URL sea correcta y la API REST estÃ© habilitada.';
             }
         }
 
@@ -989,7 +1217,7 @@ router.post('/test/falabella', authMiddleware, async (req, res) => {
         // Placeholder for Falabella test
         // In a real scenario, we would call a "ping" or "status" endpoint.
         // For now, we'll simulate a successful connection if the fields are provided.
-        res.json({ message: 'Configuración de Falabella guardada (Prueba de conexión pendiente de implementación exacta).' });
+        res.json({ message: 'ConfiguraciÃ³n de Falabella guardada (Prueba de conexiÃ³n pendiente de implementaciÃ³n exacta).' });
     } catch (err) {
         console.error("Falabella Test Connection Error:", err);
         res.status(500).json({ message: 'Error al conectar con Falabella: ' + (err.message || 'Error desconocido') });
@@ -1129,7 +1357,7 @@ router.post('/shopify/webhook', async (req, res) => {
 
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
         await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', 
-            [newPackage.id, 'Creado', newPackage.origin, 'Importado automáticamente vía Webhook de Shopify.', now]);
+            [newPackage.id, 'Creado', newPackage.origin, 'Importado automÃ¡ticamente vÃ­a Webhook de Shopify.', now]);
 
         console.log(`[ShopifyWebhook] Order ${orderId} imported successfully as package ${newPackage.id}`);
         res.status(201).send('Order Imported');
@@ -1201,28 +1429,51 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/integrations/meli/auth
+// Inicia el flujo de OAuth con Mercado Libre
+router.get('/meli/auth', authMiddleware, async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT meli_app_id FROM integration_settings WHERE id = 1');
+        if (rows.length === 0 || !rows[0].meli_app_id) {
+            return res.status(500).json({ message: 'El administrador no ha configurado el App ID de Mercado Libre.' });
+        }
+
+        const clientId = rows[0].meli_app_id;
+        const host = req.get('host');
+        // Usamos https por defecto ya que producciÃ³n exige SSL, localhost se maneja por proxy o directamente
+        const protocol = host.includes('localhost') ? 'http' : 'https';
+        const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/meli/callback`);
+        
+        // El 'state' es fundamental para saber a quÃ© usuario asignar la cuenta al volver
+        const authUrl = `https://auth.mercadolibre.cl/authorization?response_type=code&client_id=${clientId}&redirect_uri=${redirectUri}&state=${req.user.id}`;
+        
+        res.redirect(authUrl);
+    } catch (err) {
+        console.error('[MeliAuth] Error:', err);
+        res.status(500).json({ message: 'Error interno al iniciar autenticaciÃ³n con ML' });
+    }
+});
+
 // GET /api/integrations/meli/callback
-// This is the public callback URL for Mercado Libre OAuth
+// Recibe el cÃ³digo de ML y guarda la cuenta en el array de integraciones del usuario
 router.get('/meli/callback', async (req, res) => {
     const { code, state: userId } = req.query;
 
     if (!code || !userId) {
-        return res.status(400).send('Faltan parámetros de autorización (code o state).');
+        return res.status(400).send('Faltan parÃ¡metros de autorizaciÃ³n (code o state).');
     }
 
     try {
-        // 1. Get App Credentials
+        // 1. Obtener credenciales de la App
         const { rows: settingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-        if (settingsRows.length === 0) {
-            return res.status(500).send('Configuración de Mercado Libre no encontrada en el servidor.');
-        }
-        const { meli_app_id, meli_client_secret } = settingsRows[0];
-
-        // 2. Exchange Code for Tokens
-        // Force https as the app is running behind a proxy that handles SSL
-        const host = req.get('host');
-        const redirectUri = `https://${host}/api/integrations/meli/callback`;
+        if (settingsRows.length === 0) return res.status(500).send('ConfiguraciÃ³n de ML no encontrada.');
         
+        const { meli_app_id, meli_client_secret } = settingsRows[0];
+        const host = req.get('host');
+        const protocol = host.includes('localhost') ? 'http' : 'https';
+        const redirectUri = `${protocol}://${host}/api/integrations/meli/callback`;
+        
+        // 2. Intercambiar cÃ³digo por tokens
         const postData = new URLSearchParams({
             grant_type: 'authorization_code',
             client_id: meli_app_id,
@@ -1234,28 +1485,114 @@ router.get('/meli/callback', async (req, res) => {
         const tokenData = await makeMeliPostRequest('/oauth/token', postData);
         const meliUserId = tokenData.user_id.toString();
 
-        // 3. Check if this Meli account is already connected to another user
-        const { rows: duplicateRows } = await db.query(
-            "SELECT id, name FROM users WHERE integrations->'meli'->>'userId' = $1 AND id != $2",
-            [meliUserId, userId]
-        );
+        // 3. Obtener informaciÃ³n bÃ¡sica del vendedor (nickname)
+        let nickname = `Mercado Libre (${meliUserId})`;
+        try {
+            const userData = await makeMeliGetRequest(`/users/${meliUserId}`, tokenData.access_token);
+            if (userData && userData.nickname) nickname = userData.nickname;
+        } catch (e) { console.error('Error fetching ML user info:', e); }
+
+        // 4. Verificar duplicados (Â¿EstÃ¡ esta cuenta de ML en otro usuario?)
+        // Buscamos tanto en la estructura vieja como en el nuevo array 'accounts'
+        const duplicateCheckQuery = `
+            SELECT id, name FROM users 
+            WHERE (
+                integrations->'meli'->>'userId' = $1 
+                OR integrations->'accounts' @> $3
+            ) 
+            AND id != $2
+        `;
+        const accountMatchJson = JSON.stringify([{ type: 'MERCADO_LIBRE', credentials: { userId: meliUserId } }]);
+        const { rows: duplicateRows } = await db.query(duplicateCheckQuery, [meliUserId, userId, accountMatchJson]);
 
         if (duplicateRows.length > 0) {
             return res.status(400).send(`
-                <html>
-                    <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6; text-align: center;">
-                        <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); max-width: 400px;">
-                            <h2 style="color: #dc2626;">Error de Conexión</h2>
-                            <p>Esta cuenta de Mercado Libre ya está vinculada al cliente: <strong>${duplicateRows[0].name}</strong>.</p>
-                            <p>Para evitar duplicidad de paquetes, una cuenta de Mercado Libre solo puede estar vinculada a un cliente en el sistema.</p>
-                            <button onclick="window.close()" style="background: #ef4444; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer; margin-top: 1rem;">Cerrar Ventana</button>
-                        </div>
-                    </body>
+                <!DOCTYPE html>
+                <html lang="es">
+                <head>
+                    <meta charset="UTF-8">
+                    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                    <title>Cuenta ya vinculada | Full EnvÃ­os</title>
+                    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+                    <style>
+                        :root {
+                            --brand-primary: #6366f1;
+                            --error: #ef4444;
+                            --bg: #0f172a;
+                        }
+                        body {
+                            margin: 0;
+                            font-family: 'Outfit', sans-serif;
+                            background: var(--bg);
+                            color: white;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            height: 100vh;
+                            overflow: hidden;
+                        }
+                        .container {
+                            background: rgba(30, 41, 59, 0.7);
+                            backdrop-filter: blur(12px);
+                            border: 1px solid rgba(255, 255, 255, 0.1);
+                            padding: 3rem;
+                            border-radius: 2rem;
+                            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                            max-width: 450px;
+                            text-align: center;
+                            animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                        }
+                        @keyframes slideUp {
+                            from { opacity: 0; transform: translateY(30px); }
+                            to { opacity: 1; transform: translateY(0); }
+                        }
+                        .icon-circle {
+                            width: 80px;
+                            height: 80px;
+                            background: rgba(239, 68, 68, 0.1);
+                            color: var(--error);
+                            border-radius: 50%;
+                            display: flex;
+                            align-items: center;
+                            justify-content: center;
+                            font-size: 2.5rem;
+                            margin: 0 auto 2rem;
+                            border: 2px solid rgba(239, 68, 68, 0.2);
+                        }
+                        h2 { margin: 0 0 1rem; font-weight: 700; font-size: 1.75rem; background: linear-gradient(to right, #ff4d4d, #f97316); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                        p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+                        .highlight { color: white; font-weight: 600; }
+                        .btn {
+                            background: linear-gradient(135deg, #ef4444 0%, #b91c1c 100%);
+                            color: white;
+                            border: none;
+                            padding: 1rem 2rem;
+                            border-radius: 1rem;
+                            font-weight: 700;
+                            cursor: pointer;
+                            transition: all 0.3s;
+                            box-shadow: 0 10px 15px -3px rgba(239, 68, 68, 0.3);
+                            text-transform: uppercase;
+                            letter-spacing: 1px;
+                            font-size: 0.875rem;
+                        }
+                        .btn:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(239, 68, 68, 0.4); }
+                    </style>
+                </head>
+                <body>
+                    <div class="container">
+                        <div class="icon-circle">âœ•</div>
+                        <h2>Cuenta ya vinculada</h2>
+                        <p>La tienda <span class="highlight">${nickname}</span> ya pertenece al cliente <span class="highlight">${duplicateRows[0].name}</span>.</p>
+                        <p style="font-size: 0.85rem;">Por seguridad, una cuenta de plataforma solo puede estar asociada a un Ãºnico usuario en Full EnvÃ­os.</p>
+                        <button onclick="window.close()" class="btn">Cerrar Ventana</button>
+                    </div>
+                </body>
                 </html>
             `);
         }
 
-        // 4. Store Tokens in User record
+        // 5. Preparar objeto de cuenta
         const meliIntegration = {
             accessToken: tokenData.access_token,
             refreshToken: tokenData.refresh_token,
@@ -1265,35 +1602,133 @@ router.get('/meli/callback', async (req, res) => {
         };
 
         const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
-        const currentIntegrations = userRows[0]?.integrations || {};
+        if (userRows.length === 0) return res.status(404).send('Usuario no encontrado.');
         
-        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [
-            JSON.stringify({ ...currentIntegrations, meli: meliIntegration }),
-            userId
-        ]);
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        
+        const newAccount = {
+            id: `meli-${meliUserId}`,
+            type: 'MERCADO_LIBRE',
+            nickname: nickname,
+            credentials: meliIntegration,
+            settings: { autoImport: true, syncInterval: 30 },
+            connectedAt: new Date().toISOString()
+        };
 
-        // 4. Redirect back to the frontend with success
+        // Actualizar si existe, o aÃ±adir si es nueva
+        const existingIndex = integrations.accounts.findIndex(acc => acc.type === 'MERCADO_LIBRE' && acc.credentials.userId === meliUserId);
+        if (existingIndex > -1) {
+            integrations.accounts[existingIndex] = {
+                ...integrations.accounts[existingIndex],
+                credentials: meliIntegration,
+                nickname: nickname // Actualizar nickname por si cambiÃ³
+            };
+        } else {
+            integrations.accounts.push(newAccount);
+        }
+
+        // Mantener compatibilidad con el campo viejo si es la primera cuenta
+        if (!integrations.meli || integrations.meli.userId === meliUserId) {
+            integrations.meli = meliIntegration;
+        }
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
+
         res.send(`
-            <html>
-                <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6;">
-                    <div style="background: white; padding: 2rem; border-radius: 1rem; shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);">
-                        <h2 style="color: #059669;">¡Conexión Exitosa!</h2>
-                        <p>Mercado Libre se ha conectado correctamente a tu cuenta de Full Envios.</p>
-                        <p>Puedes cerrar esta ventana y refrescar el panel de administración.</p>
-                        <button onclick="window.close()" style="background: #10b981; color: white; border: none; padding: 0.5rem 1rem; border-radius: 0.5rem; cursor: pointer;">Cerrar Ventana</button>
-                    </div>
-                    <script>
-                        setTimeout(() => {
-                            window.close();
-                        }, 5000);
-                    </script>
-                </body>
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>Â¡Ã‰xito! | Full EnvÃ­os</title>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+                <style>
+                    :root {
+                        --success: #10b981;
+                        --bg: #0f172a;
+                    }
+                    body {
+                        margin: 0;
+                        font-family: 'Outfit', sans-serif;
+                        background: var(--bg);
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        overflow: hidden;
+                    }
+                    .container {
+                        background: rgba(30, 41, 59, 0.7);
+                        backdrop-filter: blur(12px);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        padding: 3rem;
+                        border-radius: 2rem;
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                        max-width: 450px;
+                        text-align: center;
+                        animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+                    }
+                    @keyframes popIn {
+                        0% { opacity: 0; transform: scale(0.8); }
+                        100% { opacity: 1; transform: scale(1); }
+                    }
+                    .icon-circle {
+                        width: 80px;
+                        height: 80px;
+                        background: rgba(16, 185, 129, 0.1);
+                        color: var(--success);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        font-size: 2.5rem;
+                        margin: 0 auto 2rem;
+                        border: 2px solid rgba(16, 185, 129, 0.2);
+                        animation: checkmark 0.8s ease-in-out forwards;
+                    }
+                    @keyframes checkmark {
+                        0% { transform: scale(0); }
+                        50% { transform: scale(1.2); }
+                        100% { transform: scale(1); }
+                    }
+                    h2 { margin: 0 0 1rem; font-weight: 700; font-size: 1.75rem; background: linear-gradient(to right, #10b981, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                    p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+                    .highlight { color: white; font-weight: 600; }
+                    .btn {
+                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        color: white;
+                        border: none;
+                        padding: 1rem 2rem;
+                        border-radius: 1rem;
+                        font-weight: 700;
+                        cursor: pointer;
+                        transition: all 0.3s;
+                        box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
+                        text-transform: uppercase;
+                        letter-spacing: 1px;
+                        font-size: 0.875rem;
+                    }
+                    .btn:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.4); }
+                    .timer { font-size: 0.75rem; color: #64748b; margin-top: 1.5rem; }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon-circle">âœ“</div>
+                    <h2>Â¡ConexiÃ³n Exitosa!</h2>
+                    <p>La tienda <span class="highlight">${nickname}</span> se ha vinculado correctamente a Full EnvÃ­os.</p>
+                    <button onclick="window.close()" class="btn">Listo, Volver</button>
+                    <div class="timer">Esta ventana se cerrarÃ¡ automÃ¡ticamente...</div>
+                </div>
+                <script>setTimeout(() => window.close(), 4000);</script>
+            </body>
             </html>
         `);
 
     } catch (err) {
-        console.error("Meli Callback Error:", err.body || err);
-        res.status(500).send(`Error al procesar la conexión con Mercado Libre: ${JSON.stringify(err.body || err)}`);
+        console.error('[MeliCallback] Error:', err);
+        res.status(500).send('Error al procesar la vinculaciÃ³n con Mercado Libre.');
     }
 });
 
@@ -1306,41 +1741,48 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         // 1. Search in ML across all clients that have ML integration
         // We prioritize ML search as requested: "LA HERRAMIENTA DEBE BUSCAR EL ENVIO EN ml Y NO EN EL SISTEMA"
         const { rows: clients } = await db.query(
-            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE role = 'CLIENT' AND integrations->'meli' IS NOT NULL"
+            "SELECT id, integrations, \"clientIdentifier\" FROM users WHERE role = 'CLIENT' AND (integrations->'meli' IS NOT NULL OR integrations->'accounts' IS NOT NULL)"
         );
 
         if (clients.length === 0) {
-            return res.status(404).json({ message: 'No hay clientes con integración de Mercado Libre configurada.' });
+            return res.status(404).json({ message: 'No hay clientes con integraciÃ³n de Mercado Libre configurada.' });
         }
 
         let foundShipment = null;
         let clientUsed = null;
+        let accountUsed = null;
 
         // Try each client until we find the shipment in ML
         for (const client of clients) {
-            try {
-                const meliIntegration = await getValidMeliIntegration(client.id);
-                const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
-                
-                if (shipment && shipment.id) {
-                    // Verify that the shipment's seller matches the client's Meli User ID
-                    const sellerId = shipment.sender_id?.toString() || meliIntegration.userId;
-                    if (sellerId !== meliIntegration.userId) {
-                        console.warn(`[SyncShipment] Seller mismatch for client ${client.id} (Expected ${meliIntegration.userId}, got ${sellerId})`);
-                        continue;
+            const integrations = ensureMultiAccountStructure(client.integrations);
+            const meliAccounts = integrations.accounts.filter(acc => acc.type === 'MERCADO_LIBRE');
+
+            for (const account of meliAccounts) {
+                try {
+                    const meliIntegration = await getValidMeliIntegration(client.id, account.id);
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
+                    
+                    if (shipment && shipment.id) {
+                        // Verify that the shipment's seller matches the account's Meli User ID
+                        const sellerId = shipment.sender_id?.toString() || meliIntegration.userId;
+                        if (sellerId !== meliIntegration.userId.toString()) {
+                            console.warn(`[SyncShipment] Seller mismatch for client ${client.id} account ${account.id} (Expected ${meliIntegration.userId}, got ${sellerId})`);
+                            continue;
+                        }
+                        foundShipment = shipment;
+                        clientUsed = client;
+                        accountUsed = account;
+                        break;
                     }
-                    foundShipment = shipment;
-                    clientUsed = client;
-                    break;
+                } catch (err) {
+                    continue;
                 }
-            } catch (err) {
-                // Skip if not found for this client
-                continue;
             }
+            if (foundShipment) break;
         }
 
         if (!foundShipment) {
-            return res.status(404).json({ message: 'No se encontró el envío en Mercado Libre con ninguna de las cuentas conectadas.' });
+            return res.status(404).json({ message: 'No se encontrÃ³ el envÃ­o en Mercado Libre con ninguna de las cuentas conectadas.' });
         }
 
         // 2. Check if it already exists locally to return the full local record if available
@@ -1379,7 +1821,7 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             recipientPhone: foundShipment.receiver_address?.receiver_phone || 'N/A',
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
-            origin: 'Centro de Distribución',
+            origin: 'Centro de DistribuciÃ³n',
             recipientAddress: foundShipment.receiver_address?.address_line || 'N/A',
             recipientCommune: foundShipment.receiver_address?.city?.name || 'N/A',
             recipientCity: foundShipment.receiver_address?.state?.name || 'Santiago',
@@ -1390,6 +1832,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             creatorId: clientUsed.id,
             meliOrderId: foundShipment.order_id?.toString(),
             meliFlexCode: foundShipment.id?.toString(),
+            meliSellerId: foundShipment.sender_id?.toString() || (accountUsed?.credentials?.userId?.toString()),
+            sourceAccountId: accountUsed?.id,
             isFlex: true,
             source: 'MERCADO_LIBRE'
         };
@@ -1399,8 +1843,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
                 id, "recipientName", "recipientPhone", status, "shippingType", origin, 
                 "recipientAddress", "recipientCommune", "recipientCity", notes, 
                 "estimatedDelivery", "createdAt", "updatedAt", "creatorId", 
-                "meliOrderId", "meliFlexCode", "isFlex", source
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+                "meliOrderId", "meliFlexCode", "meliSellerId", "sourceAccountId", "isFlex", source
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING *
         `;
         const values = [
@@ -1408,7 +1852,8 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
             newPackage.shippingType, newPackage.origin, newPackage.recipientAddress,
             newPackage.recipientCommune, newPackage.recipientCity, newPackage.notes,
             newPackage.estimatedDelivery, newPackage.createdAt, newPackage.updatedAt,
-            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, newPackage.isFlex,
+            newPackage.creatorId, newPackage.meliOrderId, newPackage.meliFlexCode, 
+            newPackage.meliSellerId, newPackage.sourceAccountId, newPackage.isFlex,
             newPackage.source
         ];
 
@@ -1417,14 +1862,14 @@ router.post('/sync-shipment/:id', authMiddleware, async (req, res) => {
         // Add tracking event
         await db.query(
             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-            [insertedRows[0].id, 'Creado', 'Centro de Distribución', 'Sincronizado manualmente desde Mercado Libre.', now]
+            [insertedRows[0].id, 'Creado', 'Centro de DistribuciÃ³n', 'Sincronizado manualmente desde Mercado Libre.', now]
         );
 
         res.json(insertedRows[0]);
 
     } catch (err) {
         console.error("Sync Shipment Error:", err);
-        res.status(500).json({ message: 'Error interno al sincronizar el envío.' });
+        res.status(500).json({ message: 'Error interno al sincronizar el envÃ­o.' });
     }
 });
 
@@ -1437,7 +1882,7 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
     const { shop } = req.query; // e.g. "mi-tienda.myshopify.com"
 
     if (!shop) {
-        return res.status(400).json({ message: 'El parámetro "shop" es obligatorio. Debe ser el dominio de tu tienda Shopify.' });
+        return res.status(400).json({ message: 'El parÃ¡metro "shop" es obligatorio. Debe ser el dominio de tu tienda Shopify.' });
     }
 
     try {
@@ -1450,7 +1895,7 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
         const scopes = 'read_orders,write_orders,read_customers,read_fulfillments,write_fulfillments';
         const host = req.get('host');
         
-        // Determinar el protocolo dinámicamente: localhost permite http, servidores reales exigen https
+        // Determinar el protocolo dinÃ¡micamente: localhost permite http, servidores reales exigen https
         const protocol = host.includes('localhost') || host.includes('127.0.0.1') ? 'http' : 'https';
         const redirectUri = encodeURIComponent(`${protocol}://${host}/api/integrations/shopify/callback`);
         const formattedShop = shop.replace(/^https?:\/\//, '').split('/')[0].trim();
@@ -1459,10 +1904,10 @@ router.get('/shopify/install', authMiddleware, async (req, res) => {
         const state = encodeURIComponent(userId);
         
         const installUrl = `https://${formattedShop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${redirectUri}&state=${state}`;
-        res.json({ redirectUrl: installUrl });
+        res.redirect(installUrl);
     } catch (err) {
         console.error("Shopify Install Error:", err);
-        res.status(500).json({ message: 'Error interno del servidor al iniciar la instalación de Shopify.' });
+        res.status(500).json({ message: 'Error interno del servidor al iniciar la instalaciÃ³n de Shopify.' });
     }
 });
 
@@ -1472,13 +1917,13 @@ router.get('/shopify/callback', async (req, res) => {
     const { code, shop, state: userId, hmac } = req.query;
 
     if (!code || !shop || !userId) {
-        return res.status(400).send('Faltan parámetros obligatorios en la respuesta de Shopify.');
+        return res.status(400).send('Faltan parÃ¡metros obligatorios en la respuesta de Shopify.');
     }
 
     try {
         const { rows: settingsRows } = await db.query('SELECT shopify_client_id, shopify_client_secret FROM integration_settings WHERE id = 1');
         if (settingsRows.length === 0 || !settingsRows[0].shopify_client_id || !settingsRows[0].shopify_client_secret) {
-            return res.status(500).send('Configuración global de Shopify faltante.');
+            return res.status(500).send('ConfiguraciÃ³n global de Shopify faltante.');
         }
 
         const clientId = settingsRows[0].shopify_client_id;
@@ -1510,22 +1955,40 @@ router.get('/shopify/callback', async (req, res) => {
                     if (resApi.statusCode >= 200 && resApi.statusCode < 300 && response.access_token) {
                         const accessToken = response.access_token;
                         
-                        // Guardar en la base de datos del usuario específico (userId = state)
+                        // Guardar en la base de datos del usuario especÃ­fico (userId = state)
                         const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
                         if (userRows.length === 0) {
                             return res.status(404).send('Usuario propietario no encontrado.');
                         }
                         
                         const currentIntegrations = userRows[0].integrations || {};
-                        const shopifyIntegration = {
-                            shopUrl: shop,
-                            accessToken: accessToken, // El famoso código shpat_
-                            autoImport: false, // Por defecto apagado por precaución
+                        const integrations = ensureMultiAccountStructure(currentIntegrations);
+                        
+                        const shopifyAccount = {
+                            id: `shopify-${uuidv4()}`,
+                            type: 'SHOPIFY',
+                            nickname: `Shopify (${shop})`,
+                            credentials: {
+                                shopUrl: shop,
+                                accessToken: accessToken
+                            },
+                            settings: {
+                                autoImport: false,
+                                syncInterval: 5
+                            },
                             connectedAt: new Date().toISOString()
                         };
 
+                        // Check if this specific shop is already connected
+                        const existingIndex = integrations.accounts.findIndex(acc => acc.type === 'SHOPIFY' && acc.credentials.shopUrl === shop);
+                        if (existingIndex > -1) {
+                            integrations.accounts[existingIndex] = shopifyAccount;
+                        } else {
+                            integrations.accounts.push(shopifyAccount);
+                        }
+
                         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [
-                            JSON.stringify({ ...currentIntegrations, shopify: shopifyIntegration }),
+                            JSON.stringify(integrations),
                             userId
                         ]);
 
@@ -1534,8 +1997,8 @@ router.get('/shopify/callback', async (req, res) => {
                             <html>
                                 <body style="font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; background-color: #f3f4f6;">
                                     <div style="background: white; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); text-align: center;">
-                                        <h2 style="color: #059669;">¡Tienda Conectada Correctamente!</h2>
-                                        <p>Se ha configurado la aplicación Full Envios en <strong>${shop}</strong> y obtenido el token seguro.</p>
+                                        <h2 style="color: #059669;">Â¡Tienda Conectada Correctamente!</h2>
+                                        <p>Se ha configurado la aplicaciÃ³n Full Envios en <strong>${shop}</strong> y obtenido el token seguro.</p>
                                         <p>Ya puedes cerrar esta ventana y regresar a tu panel.</p>
                                         <button onclick="window.close()" style="margin-top: 15px; padding: 10px 20px; background-color: #10b981; color: white; border: none; border-radius: 5px; cursor: pointer;">Cerrar Ventana</button>
                                     </div>
@@ -1544,10 +2007,10 @@ router.get('/shopify/callback', async (req, res) => {
                             </html>
                         `);
                     } else {
-                        return res.status(400).send(`Error de Autenticación con Shopify: ${JSON.stringify(response)}`);
+                        return res.status(400).send(`Error de AutenticaciÃ³n con Shopify: ${JSON.stringify(response)}`);
                     }
                 } catch (e) {
-                    return res.status(500).send('Respuesta inválida de Shopify durante el intercambio de token.');
+                    return res.status(500).send('Respuesta invÃ¡lida de Shopify durante el intercambio de token.');
                 }
             });
         });
@@ -1614,10 +2077,10 @@ router.post('/test/jumpseller', authMiddleware, async (req, res) => {
     const { jumpsellerLogin, jumpsellerToken } = req.body;
     try {
         const response = await makeJumpsellerRequest(jumpsellerLogin, jumpsellerToken, '/store/info.json');
-        res.json({ message: `Conexión exitosa con tienda: ${response.store?.name || 'Jumpseller'}` });
+        res.json({ message: `ConexiÃ³n exitosa con tienda: ${response.store?.name || 'Jumpseller'}` });
     } catch (err) {
         console.error("Jumpseller Test Error:", err.body || err);
-        res.status(err.statusCode || 500).json({ message: 'Error de conexión con Jumpseller. Verifica tus credenciales.', error: err.body || err.message });
+        res.status(err.statusCode || 500).json({ message: 'Error de conexiÃ³n con Jumpseller. Verifica tus credenciales.', error: err.body || err.message });
     }
 });
 
@@ -1667,96 +2130,124 @@ router.get('/:clientId/jumpseller/orders', authMiddleware, async (req, res) => {
     }
 });
 
+
+
 // POST /api/integrations/jumpseller/webhook - Handle Jumpseller webhooks (e.g., order_paid)
 router.post('/jumpseller/webhook', async (req, res) => {
-    // Jumpseller doesn't sign webhooks with a secret in the same way Shopify does by default, 
-    // unless configured. For now, we'll process it and recommend IP or token validation in production.
     const orderData = req.body;
-    
-    // Webhook structure: { "id": 123, "status": "Paid", ... } or { "order": { ... } }
     const order = orderData.order || orderData;
-    
-    if (!order || !order.id) {
-        return res.status(400).send('Invalid webhook data');
-    }
-
-    console.log(`[JumpsellerWebhook] Received webhook for order ${order.id} (Status: ${order.status})`);
-
-    // We only import if status is Paid or Ready
-    if (order.status !== 'Paid' && order.status !== 'Ready') {
-        return res.status(200).send('Order status not eligible for import');
-    }
+    if (!order || !order.id) return res.status(400).send('Invalid webhook data');
+    if (order.status !== 'Paid' && order.status !== 'Ready') return res.status(200).send('Order status not eligible');
 
     try {
-        // Find the client associated with this store
-        // Since Jumpseller webhooks don't send the store identifier in a standard header, 
-        // we might need a custom parameter in the webhook URL: /webhook?clientId=XYZ
         const { clientId } = req.query;
-        if (!clientId) {
-            console.error('[JumpsellerWebhook] No clientId provided in webhook URL');
-            return res.status(400).send('Missing clientId');
-        }
-
-        const { rows: userRows } = await db.query('SELECT id, "clientIdentifier", address, "pickupAddress" FROM users WHERE id = $1', [clientId]);
+        const { rows: userRows } = await db.query('SELECT id, "clientIdentifier", address, "pickupAddress", integrations FROM users WHERE id = $1', [clientId]);
         if (userRows.length === 0) return res.status(404).send('Client not found');
-        
         const client = userRows[0];
-        
-        // Check if already exists
-        const { rows: existing } = await db.query('SELECT id FROM packages WHERE "jumpsellerOrderId" = $1', [order.id.toString()]);
-        if (existing.length > 0) {
-            return res.status(200).send('Order already imported');
+
+        let sourceAccountId = null;
+        let sourceAccountName = null;
+        if (client.integrations && client.integrations.accounts) {
+            const jumpsellerAcc = client.integrations.accounts.find(a => a.type === 'JUMPSELLER');
+            if (jumpsellerAcc) {
+                sourceAccountId = jumpsellerAcc.id;
+                sourceAccountName = jumpsellerAcc.nickname;
+            }
         }
 
         const shipping = order.shipping_address || {};
-        const customer = order.customer || {};
-        
         const now = new Date();
         const packageId = `${client.clientIdentifier}-${uuidv4().split('-')[0]}`;
-        const destination = shipping.address || 'N/A';
-        const commune = shipping.municipality || 'N/A';
-        const city = shipping.city || 'Santiago';
         const origin = client.pickupAddress || client.address || 'Centro de Distribución';
 
         const newPackage = {
             id: packageId,
-            recipientName: shipping.fullname || customer.fullname || 'N/A',
-            recipientPhone: shipping.phone || customer.phone || 'N/A',
-            recipientEmail: customer.email || '',
+            recipientName: shipping.fullname || order.customer?.fullname || 'N/A',
+            recipientPhone: shipping.phone || order.customer?.phone || 'N/A',
+            recipientEmail: order.customer?.email || '',
             status: 'PENDIENTE',
             shippingType: 'SAME_DAY',
             origin: origin,
-            destination: destination,
-            recipientAddress: destination,
-            recipientCommune: commune,
-            recipientCity: city,
+            destination: shipping.address || 'N/A',
+            recipientAddress: shipping.address || 'N/A',
+            recipientCommune: shipping.municipality || 'N/A',
+            recipientCity: shipping.city || 'Santiago',
             notes: `Auto-Import Jumpseller Order: ${order.id}`,
             estimatedDelivery: now,
             createdAt: now,
             updatedAt: now,
             creatorId: clientId,
             source: 'JUMPSELLER',
-            jumpsellerOrderId: order.id.toString()
+            jumpsellerOrderId: order.id.toString(),
+            sourceAccountId,
+            sourceAccountName
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
         const values = Object.values(newPackage);
         const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-
         await db.query(`INSERT INTO packages (${columns}) VALUES (${placeholders})`, values);
-        
-        // Add tracking event
-        await db.query(
-            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-            [packageId, 'Creado', origin, 'Auto-importado vía Webhook de Jumpseller.', now]
-        );
-
-        console.log(`[JumpsellerWebhook] Order ${order.id} imported successfully as ${packageId}`);
+        await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)', [packageId, 'Creado', origin, 'Auto-importado vía Webhook.', now]);
         res.status(200).send('OK');
-
     } catch (err) {
-        console.error('[JumpsellerWebhook] Error processing webhook:', err);
-        res.status(500).send('Error internal');
+        console.error('[JumpsellerWebhook] Error:', err);
+        res.status(500).send('Error');
+    }
+});
+
+
+
+// POST /api/integrations/accounts - Link a new account manually (Jumpseller, Falabella, WooCommerce)
+router.post('/accounts', authMiddleware, async (req, res) => {
+    const userId = req.user.id;
+    const { type, nickname, credentials } = req.body;
+
+    if (!type || !credentials) {
+        return res.status(400).json({ message: 'Tipo de cuenta y credenciales son obligatorios.' });
+    }
+
+    try {
+        const { rows } = await db.query('SELECT integrations FROM users WHERE id = $1', [userId]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado.' });
+
+        let integrations = ensureMultiAccountStructure(rows[0].integrations);
+
+        let identifier = '';
+        if (type === 'JUMPSELLER') identifier = credentials.shopUrl || credentials.login;
+        if (type === 'FALABELLA') identifier = credentials.falabellaSellerId;
+        if (type === 'WOOCOMMERCE') identifier = credentials.wooUrl;
+
+        const existing = integrations.accounts.find(acc => acc.type === type && (
+            (type === 'JUMPSELLER' && (acc.credentials.shopUrl === identifier || acc.credentials.login === identifier)) ||
+            (type === 'FALABELLA' && acc.credentials.falabellaSellerId === identifier) ||
+            (type === 'WOOCOMMERCE' && acc.credentials.wooUrl === identifier)
+        ));
+
+        if (existing) {
+            return res.status(400).json({ message: 'Esta cuenta ya está vinculada a tu perfil.' });
+        }
+
+        const newAccount = {
+            id: `${type.toLowerCase()}-${uuidv4()}`,
+            type: type,
+            nickname: nickname || `${type} Account`,
+            credentials: credentials,
+            settings: {
+                autoImport: true,
+                syncInterval: 30
+            },
+            connectedAt: new Date().toISOString(),
+            status: 'CONNECTED'
+        };
+
+        integrations.accounts.push(newAccount);
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
+
+        res.status(201).json(newAccount);
+    } catch (err) {
+        console.error("Create Integration Account Error:", err);
+        res.status(500).json({ message: 'Error interno al crear la cuenta de integración.' });
     }
 });
 
