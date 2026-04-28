@@ -66,21 +66,52 @@ const MENU_ITEMS = [
   },
 ];
 
+import { OfflineManager } from '../services/OfflineManager';
+
 export default function HomeScreen({ navigation }: any) {
   const { user, logout } = useContext(AuthContext);
   const [settings, setSettings] = useState<any>(null);
+  const [isOnline, setIsOnline] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
-    const fetchSettings = async () => {
+    const initHomeScreen = async () => {
+      // 1. Check network status
+      const online = await OfflineManager.isConnected();
+      setIsOnline(online);
+
+      // 2. Fetch settings
       try {
         const data = await api.getSystemSettings();
         setSettings(data);
       } catch (error) {
         console.error("Error fetching settings", error);
       }
+
+      // 3. Sync if online
+      if (online) {
+        setSyncing(true);
+        const count = await api.syncPendingActions();
+        if (count > 0) {
+          console.log(`Sincronizadas ${count} acciones pendientes.`);
+        }
+        setSyncing(false);
+      }
     };
-    fetchSettings();
-  }, []);
+    
+    initHomeScreen();
+
+    // Check connection periodically or on focus
+    const interval = setInterval(async () => {
+      const online = await OfflineManager.isConnected();
+      if (online !== isOnline) setIsOnline(online);
+      if (online && !syncing) {
+        api.syncPendingActions();
+      }
+    }, 10000);
+
+    return () => clearInterval(interval);
+  }, [isOnline]);
 
   const renderCard = (item: any) => (
     <TouchableOpacity 
@@ -126,6 +157,12 @@ export default function HomeScreen({ navigation }: any) {
       </View>
 
       <ScrollView contentContainerStyle={styles.content}>
+        {!isOnline && (
+          <View style={styles.offlineBanner}>
+            <Icon name="wifi-off" size={20} color="#fff" />
+            <Text style={styles.offlineText}>Modo Sin Conexión - Usando datos locales</Text>
+          </View>
+        )}
         <View style={styles.banner}>
           <View style={styles.bannerText}>
             <Text style={styles.bannerLabel}>EMPRESA</Text>
@@ -217,6 +254,21 @@ const styles = StyleSheet.create({
   },
   content: {
     padding: 20,
+  },
+  offlineBanner: {
+    backgroundColor: '#f59e0b',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 10,
+    borderRadius: 12,
+    marginBottom: 16,
+    gap: 8,
+  },
+  offlineText: {
+    color: '#fff',
+    fontSize: 13,
+    fontWeight: '700',
   },
   banner: {
     backgroundColor: '#2563eb',

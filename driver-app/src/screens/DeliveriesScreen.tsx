@@ -17,20 +17,25 @@ import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
+import { OfflineManager } from '../services/OfflineManager';
 import { COLORS } from '../constants';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 
 export default function DeliveriesScreen({ navigation }: any) {
+  const { user } = useContext(AuthContext);
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [activeTab, setActiveTab] = useState<'pending' | 'closed'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [settings, setSettings] = useState<any>(null);
-  const { user } = useContext(AuthContext);
+  const [isOnline, setIsOnline] = useState(true);
 
   const fetchPackages = async () => {
+    setLoading(true);
     try {
+      const online = await OfflineManager.isConnected();
+      setIsOnline(online);
       const data = await api.getDriverPackages(user.id);
       setPackages(data);
     } catch (error) {

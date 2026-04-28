@@ -2,6 +2,8 @@ export const API_URL = 'https://fullenvios.selcom.cl/api'; // Cambiar por la URL
 export const STORAGE_KEYS = {
   TOKEN: 'auth_token',
   USER: 'auth_user',
+  PACKAGES_CACHE: 'packages_cache',
+  PENDING_SYNC: 'pending_sync_queue',
 };
 
 export const COLORS = {

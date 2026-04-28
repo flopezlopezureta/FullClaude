@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { API_URL, STORAGE_KEYS } from '../constants';
+import { OfflineManager } from './OfflineManager';
 
 const apiInstance = axios.create({
   baseURL: API_URL,
@@ -39,26 +40,64 @@ export const api = {
     return response.data;
   },
 
-  // Packages (Conductor)
+  // Packages (Conductor) con Cache Offline
   getDriverPackages: async (driverId: string, startDate?: string, endDate?: string) => {
-    // Si no se envían fechas, por defecto usamos hoy (pero permitimos pasar otras para el historial)
-    const start = startDate || new Date().toISOString().split('T')[0];
-    const end = endDate || start;
-    const response = await apiInstance.get(`/packages?driverFilter=${driverId}&startDate=${start}&endDate=${end}&limit=0`);
-    return response.data.packages;
+    try {
+      const isOnline = await OfflineManager.isConnected();
+      if (!isOnline) {
+        console.log('Modo Offline: Cargando paquetes desde cache');
+        return await OfflineManager.getPackagesFromCache();
+      }
+
+      const start = startDate || new Date().toISOString().split('T')[0];
+      const end = endDate || start;
+      const response = await apiInstance.get(`/packages?driverFilter=${driverId}&startDate=${start}&endDate=${end}&limit=0`);
+      
+      // Guardamos en cache para la próxima vez
+      if (response.data.packages) {
+        await OfflineManager.savePackagesToCache(response.data.packages);
+      }
+      
+      return response.data.packages;
+    } catch (error) {
+      console.log('Error de red: Intentando cargar desde cache');
+      return await OfflineManager.getPackagesFromCache();
+    }
   },
 
   confirmDelivery: async (pkgId: string, data: any) => {
-    const response = await apiInstance.post(`/packages/${pkgId}/deliver`, data);
-    return response.data;
+    try {
+      const isOnline = await OfflineManager.isConnected();
+      if (!isOnline) {
+        await OfflineManager.queueAction('DELIVER', { pkgId, data });
+        return { message: 'Entrega guardada localmente. Se sincronizará al recuperar internet.', offline: true };
+      }
+      const response = await apiInstance.post(`/packages/${pkgId}/deliver`, data);
+      return response.data;
+    } catch (error) {
+      await OfflineManager.queueAction('DELIVER', { pkgId, data });
+      return { message: 'Error de red. Entrega guardada localmente.', offline: true };
+    }
   },
 
   markAsProblem: async (pkgId: string, reason: string, photos: string[]) => {
-    const response = await apiInstance.post(`/packages/${pkgId}/problem`, { reason, photosBase64: photos });
-    return response.data;
+    try {
+      const isOnline = await OfflineManager.isConnected();
+      if (!isOnline) {
+        await OfflineManager.queueAction('PROBLEM', { pkgId, reason, photos });
+        return { message: 'Problema guardado localmente.', offline: true };
+      }
+      const response = await apiInstance.post(`/packages/${pkgId}/problem`, { reason, photosBase64: photos });
+      return response.data;
+    } catch (error) {
+      await OfflineManager.queueAction('PROBLEM', { pkgId, reason, photos });
+      return { message: 'Error de red. Guardado localmente.', offline: true };
+    }
   },
 
   syncLocation: async (driverId: string, latitude: number, longitude: number) => {
+    const isOnline = await OfflineManager.isConnected();
+    if (!isOnline) return null; // Skip location sync if offline
     return apiInstance.post('/geo/update-location', { driverId, latitude, longitude });
   },
 
@@ -71,6 +110,34 @@ export const api = {
   submitClosure: async (closureData: any) => {
     const response = await apiInstance.post('/closures', closureData);
     return response.data;
+  },
+
+  // Sincronización de Cola Offline
+  syncPendingActions: async () => {
+    const isOnline = await OfflineManager.isConnected();
+    if (!isOnline) return 0;
+
+    const pending = await OfflineManager.getPendingActions();
+    if (pending.length === 0) return 0;
+
+    let successCount = 0;
+    for (const action of pending) {
+      try {
+        if (action.type === 'DELIVER') {
+          await apiInstance.post(`/packages/${action.data.pkgId}/deliver`, action.data.data);
+        } else if (action.type === 'PROBLEM') {
+          await apiInstance.post(`/packages/${action.data.pkgId}/problem`, { 
+            reason: action.data.reason, 
+            photosBase64: action.data.photos 
+          });
+        }
+        await OfflineManager.removeActionFromQueue(action.id);
+        successCount++;
+      } catch (e) {
+        console.error('Error syncing action', action.id, e);
+      }
+    }
+    return successCount;
   },
 
   // Obtener todos los usuarios (para mapear creadores)
