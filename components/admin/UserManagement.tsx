@@ -60,6 +60,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
+      const allUsers = await api.getUsers();
       const filteredUsers = allUsers.filter(u => {
         if (roleFilter === Role.Driver) {
           // Si estamos filtrando conductores, mostrar Conductores Y Administradores
