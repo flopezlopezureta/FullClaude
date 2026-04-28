@@ -225,8 +225,9 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                   setError("No se pudo optimizar la imagen y el archivo original es demasiado grande (máximo 20MB para fotos sin comprimir).");
               }
           }
-      } catch (err) {
-          setError("Error al procesar la imagen.");
+      } catch (err: any) {
+          console.error("Outermost catch error:", err);
+          setError(`Error al procesar la imagen: ${err.message || String(err)}`);
       } finally {
           setIsCompressing(false);
           if (e.target) e.target.value = '';
