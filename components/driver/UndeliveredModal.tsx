@@ -156,7 +156,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
           const file = files[0];
           
           if (file.size > 50 * 1024 * 1024) {
-               setError("Archivo demasiado grande (máximo 50MB).");
+               setError("Imagen muy grande para cargar en sistema, por favor reducir resolución de fotos o capturar con cámara.");
                setIsCompressing(false);
                return;
           }
@@ -187,11 +187,11 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                   ctx.imageSmoothingEnabled = true;
                   ctx.imageSmoothingQuality = 'high';
                   ctx.drawImage(img, 0, 0, width, height);
-                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Blob conversion failed")), 'image/jpeg', 0.8);
+                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Error al procesar imagen")), 'image/jpeg', 0.8);
               };
               img.onerror = () => {
                   URL.revokeObjectURL(url);
-                  reject(new Error("Error al cargar la imagen en memoria"));
+                  reject(new Error("Imagen muy grande para cargar en sistema, por favor reducir resolución de fotos o capturar con cámara."));
               };
               img.src = url;
           });
@@ -205,7 +205,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
           setPhotosBase64(prev => [...prev, base64]);
       } catch (err: any) {
           console.error("Image processing error [UndeliveredModal]:", err);
-          setError(`Error al procesar la imagen: ${err.message || 'Error desconocido'}`);
+          setError(err.message || 'Error al procesar la imagen.');
       } finally {
           setIsCompressing(false);
           if (e.target) e.target.value = '';
