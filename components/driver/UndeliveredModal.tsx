@@ -153,10 +153,11 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
       setIsCompressing(true);
       setError('');
       try {
-          const file = files[0]; // Seleccionamos solo uno para máxima estabilidad
+          const file = files[0];
           
           if (file.size > 50 * 1024 * 1024) {
                setError("Archivo demasiado grande (máximo 50MB).");
+               setIsCompressing(false);
                return;
           }
           
@@ -186,7 +187,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                   ctx.imageSmoothingEnabled = true;
                   ctx.imageSmoothingQuality = 'high';
                   ctx.drawImage(img, 0, 0, width, height);
-                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Blob null")), 'image/jpeg', 0.8);
+                  canvas.toBlob(b => b ? resolve(b) : reject(new Error("Blob conversion failed")), 'image/jpeg', 0.8);
               };
               img.onerror = () => {
                   URL.revokeObjectURL(url);
@@ -203,20 +204,8 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
           });
           setPhotosBase64(prev => [...prev, base64]);
       } catch (err: any) {
-          console.error("Outermost catch error [UndeliveredModal]:", err);
-          let errorMsg = "Error desconocido";
-          if (err instanceof Error) {
-            errorMsg = err.message;
-          } else if (typeof err === 'object' && err !== null) {
-            try {
-              errorMsg = JSON.stringify(err);
-            } catch (e) {
-              errorMsg = "Objeto de error no serializable (posible ProgressEvent o similar)";
-            }
-          } else {
-            errorMsg = String(err);
-          }
-          setError(`Error al procesar la imagen: ${errorMsg}`);
+          console.error("Image processing error [UndeliveredModal]:", err);
+          setError(`Error al procesar la imagen: ${err.message || 'Error desconocido'}`);
       } finally {
           setIsCompressing(false);
           if (e.target) e.target.value = '';
