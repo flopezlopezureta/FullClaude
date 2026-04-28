@@ -5,7 +5,7 @@ import { PackageStatus, ShippingType, MessagingPlan } from '../constants';
 import type { Package, User } from '../types';
 import { api } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil, IconClock } from './Icon';
+import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil, IconClock, IconHistory } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageDetailModalProps {
