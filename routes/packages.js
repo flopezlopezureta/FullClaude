@@ -616,8 +616,8 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
                 status = $4, 
                 "assignedAt" = $5,
                 "isReassigned" = CASE 
-                    WHEN $1::uuid IS NULL THEN false 
-                    ELSE COALESCE("isReassigned", false) OR ("driverId" IS NOT NULL AND "driverId" != $1::uuid) 
+                    WHEN $1::text IS NULL THEN false 
+                    ELSE COALESCE("isReassigned", false) OR ("driverId" IS NOT NULL AND "driverId" != $1::text) 
                 END
             WHERE id IN (${placeholders})
         `;
