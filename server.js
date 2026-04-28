@@ -751,6 +751,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during packages migration (sourceAccountId):', err); }
         }
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "sourceAccountName" TEXT');
+            console.log('MIGRATION APPLIED: Column "sourceAccountName" added to "packages".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during packages migration (sourceAccountName):', err); }
+        }
 
         await db.query(`
             CREATE TABLE IF NOT EXISTS system_logs (

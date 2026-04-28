@@ -238,8 +238,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         const packageQuery = `
-            SELECT p.*, u.name as "clientName",
-            (SELECT acc->>'nickname' FROM jsonb_array_elements(COALESCE(u.integrations->'accounts', '[]'::jsonb)) acc WHERE acc->>'id' = p."sourceAccountId" LIMIT 1) as "sourceAccountName"
+            SELECT p.*, u.name as "clientName"
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
