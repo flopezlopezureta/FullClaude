@@ -1,7 +1,8 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useContext } from 'react';
 import { Package } from '../../types';
 import { IconX, IconAlertTriangle, IconCamera, IconPhoto, IconCheckCircle } from '../Icon';
 import imageCompression from 'browser-image-compression';
+import { AuthContext } from '../../contexts/AuthContext';
 
 interface UndeliveredModalProps {
   pkg: Package;
@@ -89,6 +90,7 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
   const [isCompressing, setIsCompressing] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const auth = useContext(AuthContext);
 
   // --- PERSISTENCE LOGIC ---
   const STORAGE_KEY_PREFIX = `undelivered_draft_${pkg.id}_`;
