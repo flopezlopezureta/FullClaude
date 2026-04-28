@@ -118,12 +118,8 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
 
   useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}reason`, reason); }, [reason, STORAGE_KEY_PREFIX]);
   useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}customReason`, customReason); }, [customReason, STORAGE_KEY_PREFIX]);
-  useEffect(() => {
-     try {
-         const json = JSON.stringify(photosBase64);
-         if (json.length < 4 * 1024 * 1024) localStorage.setItem(`${STORAGE_KEY_PREFIX}photos`, json);
-     } catch(e) {}
-  }, [photosBase64, STORAGE_KEY_PREFIX]);
+  // Photo persistence disabled to prevent localStorage quota issues in mobile
+  
 
   const finalReason = reason === "Otro motivo (especificar)" ? customReason : reason;
   const isFormValid = finalReason.trim() !== '' && photosBase64.length > 0;

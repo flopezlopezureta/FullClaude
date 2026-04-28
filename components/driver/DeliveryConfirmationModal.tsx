@@ -159,17 +159,8 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     localStorage.setItem(`${STORAGE_KEY_PREFIX}id`, receiverId);
   }, [receiverId, STORAGE_KEY_PREFIX]);
 
-  useEffect(() => {
-    try {
-        const photosJson = JSON.stringify(photosBase64);
-        // LocalStorage is typically 5MB-10MB. We only save if it's not too huge.
-        if (photosJson.length < 4 * 1024 * 1024) { 
-            localStorage.setItem(`${STORAGE_KEY_PREFIX}photos`, photosJson);
-        }
-    } catch (e) {
-        console.warn("Could not save photos to localStorage (quota exceeded)", e);
-    }
-  }, [photosBase64, STORAGE_KEY_PREFIX]);
+  // Photo persistence disabled to prevent localStorage quota issues in mobile
+  
 
   // Cleanup helper
   const clearDraft = () => {

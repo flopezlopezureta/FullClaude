@@ -132,12 +132,8 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
 
   useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}name`, receiverName); }, [receiverName, STORAGE_KEY_PREFIX]);
   useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}id`, receiverId); }, [receiverId, STORAGE_KEY_PREFIX]);
-  useEffect(() => {
-     try {
-         const json = JSON.stringify(photosBase64);
-         if (json.length < 4 * 1024 * 1024) localStorage.setItem(`${STORAGE_KEY_PREFIX}photos`, json);
-     } catch(e) {}
-  }, [photosBase64, STORAGE_KEY_PREFIX]);
+  // Photo persistence disabled to prevent localStorage quota issues in mobile
+  
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
   const photosRemaining = requiredPhotos - photosBase64.length;
 
