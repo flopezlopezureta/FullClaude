@@ -424,9 +424,8 @@ const Dashboard: React.FC = () => {
 
   const drivers = users
     .filter(u => {
-        const isDriver = u.role === Role.Driver && u.status === UserStatus.Approved;
-        const isAdmin = u.role === Role.Admin; // Los admins siempre se muestran para pruebas
-        return isDriver || isAdmin;
+        // Incluir si es conductor aprobado O si es cualquier administrador
+        return (u.role === Role.Driver && u.status === UserStatus.Approved) || u.role === Role.Admin;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
     

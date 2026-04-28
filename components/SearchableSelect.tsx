@@ -39,8 +39,13 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   }, [items, selectedId]);
 
   const filteredItems = useMemo(() => {
+    const normalize = (str: string) => 
+      str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    
+    const normalizedSearch = normalize(searchTerm);
+    
     return items.filter(item =>
-      item.name.toLowerCase().includes(searchTerm.toLowerCase())
+      normalize(item.name).includes(normalizedSearch)
     );
   }, [items, searchTerm]);
 
