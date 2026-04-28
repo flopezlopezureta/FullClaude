@@ -275,8 +275,8 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                     type="file" 
                     ref={fileInputRef} 
                     onChange={handleFileChange} 
-                    accept="image/jpeg,image/png,image/heic,image/heif" 
-                    multiple 
+                    accept="image/*" 
+                    capture={false}
                     className="hidden" 
                 />
                 
