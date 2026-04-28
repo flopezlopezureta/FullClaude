@@ -148,8 +148,17 @@ router.get('/', authMiddleware, async (req, res) => {
             
             if (dateType === 'egress') {
                 whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
+            } else if (driverFilter) {
+                // Para conductores, mostramos lo creado, asignado o con entrega estimada hoy.
+                // IMPORTANTE: Incluimos assignedAt para que si se le asigna un paquete viejo hoy, lo vea.
+                // Eliminamos updatedAt para evitar que paquetes cerrados reaparezcan por sync.
+                whereClauses.push(`(
+                    (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
+                    (p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}) OR
+                    (p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1})
+                )`);
             } else {
-                // Para búsqueda general de creación, incluimos updatedAt y estimatedDelivery para mayor cobertura
+                // Para búsqueda general (Admin), mantenemos todos los campos para máxima cobertura
                 whereClauses.push(`(
                     (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
                     (p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1}) OR
