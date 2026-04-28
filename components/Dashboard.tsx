@@ -424,8 +424,10 @@ const Dashboard: React.FC = () => {
 
   const drivers = users
     .filter(u => {
-        // Incluir si es conductor aprobado O si es cualquier administrador
-        return (u.role === Role.Driver && u.status === UserStatus.Approved) || u.role === Role.Admin;
+        // Ser extremadamente permisivo con los roles para asegurar que aparezcan los administradores
+        const isAdmin = u.role === Role.Admin || String(u.role).toUpperCase() === 'ADMIN';
+        const isDriverApproved = (u.role === Role.Driver || String(u.role).toUpperCase() === 'DRIVER') && u.status === UserStatus.Approved;
+        return isAdmin || isDriverApproved;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
     
