@@ -443,24 +443,71 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
               )}
 
 
-              {/* History Card */}
-              {!canInteract && !canReturnInteract && (
-                  <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
-                      <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4">Historial</h4>
-                      <div className="relative border-l-2 border-[var(--border-primary)] ml-3">
-                      {pkg.history?.map((event, index) => (
-                          <div key={event.timestamp.toString() + index} className="mb-8 ml-8">
-                          <span className={`absolute -left-[11px] flex items-center justify-center w-5 h-5 ${index === 0 ? 'bg-[var(--brand-primary)]' : 'bg-[var(--border-secondary)]'} rounded-full ring-4 ring-[var(--background-secondary)]`}></span>
-                          <h5 className="font-semibold text-[var(--text-primary)] text-sm">{(event.status || '').replace('_', ' ')}</h5>
-                          <time className="block mb-2 text-xs font-normal leading-none text-[var(--text-muted)]">
-                              {new Date(event.timestamp).toLocaleString('es-ES', { dateStyle: 'full', timeStyle: 'short' })}
-                          </time>
-                          <p className="text-sm text-[var(--text-secondary)] flex items-center"><IconMapPin className="w-4 h-4 mr-2 text-[var(--text-muted)]" /> {event.location}</p>
-                          </div>
-                      ))}
+              {/* History Card - Always Visible */}
+              <div className="bg-[var(--background-secondary)] p-4 rounded-lg shadow-sm border border-[var(--border-primary)]">
+                  <h4 className="text-sm font-semibold text-[var(--text-muted)] mb-4 flex items-center gap-2">
+                      <IconHistory className="w-4 h-4" />
+                      Historial de Movimientos
+                  </h4>
+                  <div className="relative border-l-2 border-blue-200 ml-3 space-y-6 pb-2">
+                  {pkg.history && pkg.history.length > 0 ? (
+                      [...pkg.history].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).map((event, index) => {
+                          const isLast = index === 0;
+                          return (
+                              <div key={event.timestamp.toString() + index} className="relative ml-6">
+                                  <span className={`absolute -left-[31px] top-0 flex items-center justify-center w-6 h-6 rounded-full ring-4 ring-[var(--background-secondary)] ${
+                                      isLast ? 'bg-blue-600 text-white shadow-lg' : 'bg-gray-200 text-gray-500'
+                                  }`}>
+                                      {event.status === PackageStatus.Pending ? <IconPlus className="w-3 h-3" /> :
+                                       event.status === PackageStatus.InTransit ? <IconTruck className="w-3 h-3" /> :
+                                       event.status === PackageStatus.Delivered ? <IconCheckCircle className="w-3 h-3" /> :
+                                       event.status === PackageStatus.Problem ? <IconAlertTriangle className="w-3 h-3" /> :
+                                       event.status === PackageStatus.Returned ? <IconArrowUturnLeft className="w-3 h-3" /> :
+                                       <IconClock className="w-3 h-3" />}
+                                  </span>
+                                  <div className={`p-3 rounded-lg border ${isLast ? 'bg-blue-50/50 border-blue-100' : 'bg-gray-50/30 border-gray-100'}`}>
+                                      <div className="flex justify-between items-start mb-1">
+                                          <div className="flex items-center gap-2">
+                                              <h5 className={`font-black text-[10px] uppercase tracking-wider ${isLast ? 'text-blue-700' : 'text-gray-600'}`}>
+                                                  {(event.status || '').replace('_', ' ')}
+                                              </h5>
+                                              {isLast && <span className="flex h-2 w-2 rounded-full bg-blue-600 animate-pulse"></span>}
+                                          </div>
+                                          <time className="text-[10px] font-bold text-gray-400 bg-white px-2 py-0.5 rounded-full border border-gray-100 shadow-sm">
+                                              {new Date(event.timestamp).toLocaleString('es-ES', { 
+                                                  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' 
+                                              })}
+                                          </time>
+                                      </div>
+                                      <p className="text-xs text-gray-700 font-medium leading-relaxed">
+                                          {event.details}
+                                      </p>
+                                      
+                                      <div className="mt-2 pt-2 border-t border-gray-100/50 flex flex-wrap items-center gap-x-4 gap-y-1">
+                                          <div className="flex items-center gap-1.5 text-[9px] font-black text-gray-400 uppercase tracking-tighter">
+                                              <IconMapPin className="w-3 h-3 text-gray-300" />
+                                              <span>{event.location}</span>
+                                          </div>
+                                          
+                                          {/* Detectar conductor en el texto si no hay campo específico */}
+                                          {event.details.toLowerCase().includes('conductor') && (
+                                              <div className="flex items-center gap-1.5 text-[9px] font-black text-blue-500 uppercase tracking-tighter">
+                                                  <IconTruck className="w-3 h-3" />
+                                                  <span>Responsable: {event.details.split('conductor')[1]?.split('(')[0]?.trim().replace(':', '') || 'Asignado'}</span>
+                                              </div>
+                                          )}
+                                      </div>
+                                  </div>
+                              </div>
+                          );
+                      })
+                  ) : (
+                      <div className="ml-6 py-4 text-center text-sm text-gray-400 italic">
+                          No hay eventos registrados para este paquete.
                       </div>
+                  )}
                   </div>
-              )}
+              </div>
           </div>
         </div>
         <style>{`
