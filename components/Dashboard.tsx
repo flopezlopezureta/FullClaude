@@ -716,25 +716,37 @@ const Dashboard: React.FC = () => {
                     />
                     <div className="h-6 w-px bg-[var(--border-primary)]"></div>
                     {auth?.user?.role === Role.Admin && pollingStatus && (
-                        <div 
-                            title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status - Click para sincronizar ahora"}
-                            className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
-                            onClick={(e) => { e.stopPropagation(); handleTriggerMeliSync(); }}
-                        >
-                            <div className={`w-4 h-4 rounded-full flex items-center justify-center ${auth?.systemSettings?.meliAutoImport ? 'text-blue-600' : 'text-gray-400'}`}>
-                                <IconMercadoLibre className="w-full h-full" />
+                        <div className="flex items-center gap-2">
+                            <div 
+                                title={pollingStatus.isPolling && pollingStatus.pollingStartTime ? `Iniciado hace ${Math.floor((Date.now() - pollingStatus.pollingStartTime)/1000)}s` : "Mercado Libre Status - Click para sincronizar ahora"}
+                                className={`flex items-center gap-2 px-3 py-1 bg-white border ${auth?.systemSettings?.meliAutoImport ? 'border-blue-400 text-blue-700' : 'border-gray-300 text-gray-500'} rounded-full text-[10px] font-black shadow-sm cursor-pointer hover:bg-blue-50 transition-all uppercase tracking-tighter ${auth?.systemSettings?.meliAutoImport && pollingStatus.isPolling ? 'animate-pulse-glow-blue' : ''}`}
+                                onClick={(e) => { e.stopPropagation(); handleTriggerMeliSync(); }}
+                            >
+                                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${auth?.systemSettings?.meliAutoImport ? 'text-blue-600' : 'text-gray-400'}`}>
+                                    <IconMercadoLibre className="w-full h-full" />
+                                </div>
+                                <span className="whitespace-nowrap">
+                                    {auth?.systemSettings?.meliAutoImport 
+                                        ? (pollingStatus.isPolling 
+                                            ? (pollingStatus.totalPackages && pollingStatus.totalPackages > 0 
+                                                ? `ML: ${pollingStatus.processedPackages}/${pollingStatus.totalPackages}` 
+                                                : 'ML: Sincronizando...') 
+                                            : `ML: ${timeLeft}s`) 
+                                        : 'ML: Inactivo'}
+                                </span>
+                                {(pollingStatus.isPolling || isSyncingMeli) && <IconLoader className="w-3 h-3 animate-spin" />}
+                                <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.meliAutoImport ? 'bg-blue-400 animate-pulse' : 'bg-gray-300'}`}></div>
                             </div>
-                            <span className="whitespace-nowrap">
-                                {auth?.systemSettings?.meliAutoImport 
-                                    ? (pollingStatus.isPolling 
-                                        ? (pollingStatus.totalPackages && pollingStatus.totalPackages > 0 
-                                            ? `ML: ${pollingStatus.processedPackages}/${pollingStatus.totalPackages}` 
-                                            : 'ML: Sincronizando...') 
-                                        : `ML: ${timeLeft}s${pollingStatus.lastImportCount !== undefined ? ` - ${pollingStatus.lastImportCount}S` : ''}`) 
-                                    : 'ML: Inactivo'}
-                            </span>
-                            {(pollingStatus.isPolling || isSyncingMeli) && <IconLoader className="w-3 h-3 animate-spin" />}
-                             <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.meliAutoImport ? 'bg-blue-400 animate-pulse' : 'bg-gray-300'}`}></div>
+
+                            {/* Nuevo Cuadro Azul: Cantidad Importada en última consulta */}
+                            {pollingStatus.lastImportCount !== undefined && (
+                                <div 
+                                    className="flex items-center justify-center min-w-[40px] h-[26px] px-2 bg-blue-600 text-white text-[10px] font-black rounded-lg shadow-md border border-blue-700 animate-fade-in"
+                                    title="Cantidad de paquetes en la última importación"
+                                >
+                                    {pollingStatus.lastImportCount}
+                                </div>
+                            )}
                         </div>
                     )}
 
