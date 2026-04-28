@@ -97,6 +97,8 @@ const Dashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
   const [isForcingClose, setIsForcingClose] = useState(false);
   const [criticalAlerts, setCriticalAlerts] = useState<Package[]>([]);
+  const [alertView, setAlertView] = useState<'today' | 'history'>('today');
+  const [alertDate, setAlertDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -189,12 +191,23 @@ const Dashboard: React.FC = () => {
 
   const fetchCriticalAlerts = useCallback(async () => {
     try {
-      // Get today's range
-      const now = new Date();
-      const todayStr = now.toISOString().split('T')[0];
+      const targetDate = alertView === 'today' ? new Date().toISOString().split('T')[0] : alertDate;
+      const excludeChecked = alertView === 'today'; // Only hide checked alerts in 'Today' view
       
-      const { packages: cancelled } = await api.getPackages({ statusFilter: 'CANCELADO', startDate: todayStr, limit: 10, excludeChecked: true });
-      const { packages: rescheduled } = await api.getPackages({ statusFilter: 'REPROGRAMADO', startDate: todayStr, limit: 10, excludeChecked: true });
+      const { packages: cancelled } = await api.getPackages({ 
+        statusFilter: 'CANCELADO', 
+        startDate: targetDate, 
+        endDate: targetDate,
+        limit: 50, 
+        excludeChecked 
+      });
+      const { packages: rescheduled } = await api.getPackages({ 
+        statusFilter: 'REPROGRAMADO', 
+        startDate: targetDate, 
+        endDate: targetDate,
+        limit: 50, 
+        excludeChecked 
+      });
       
       const merged = [...cancelled, ...rescheduled].sort((a, b) => 
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
@@ -203,7 +216,7 @@ const Dashboard: React.FC = () => {
     } catch (err) {
       console.error('Error fetching critical alerts:', err);
     }
-  }, []);
+  }, [alertView, alertDate]);
 
   useEffect(() => {
     fetchCriticalAlerts();
@@ -592,23 +605,52 @@ const Dashboard: React.FC = () => {
       {/* --- CRITICAL ALERTS CENTER --- */}
       {criticalAlerts.length > 0 && (
         <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up">
-           <div className="flex items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-amber-600">
+           <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-amber-600 gap-4">
               <div className="flex items-center gap-3">
                  <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg backdrop-blur-md">
                     <IconRefresh className="w-5 h-5 text-white animate-spin-slow" />
                  </div>
-                 <h2 className="text-sm font-black text-white uppercase tracking-[0.2em]">Centro de Alertas Críticas (Hoy)</h2>
+                 <div className="flex flex-col">
+                    <h2 className="text-sm font-black text-white uppercase tracking-[0.2em]">
+                        {alertView === 'today' ? 'Centro de Alertas Críticas (Hoy)' : `Historial de Alertas (${new Date(alertDate + 'T12:00:00').toLocaleDateString()})`}
+                    </h2>
+                    <div className="flex items-center gap-2 mt-1">
+                        <button 
+                            onClick={() => setAlertView('today')}
+                            className={`px-3 py-0.5 text-[9px] font-black rounded-full transition-all uppercase tracking-tighter ${alertView === 'today' ? 'bg-white text-red-600 shadow-sm' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+                        >
+                            Hoy
+                        </button>
+                        <button 
+                            onClick={() => setAlertView('history')}
+                            className={`px-3 py-0.5 text-[9px] font-black rounded-full transition-all uppercase tracking-tighter ${alertView === 'history' ? 'bg-white text-red-600 shadow-sm' : 'bg-white/10 text-white/80 hover:bg-white/20'}`}
+                        >
+                            Anteriores
+                        </button>
+                    </div>
+                 </div>
                  <span className="px-3 py-1 text-[10px] font-black text-red-600 bg-white rounded-full">
                     {criticalAlerts.length} EVENTOS
                  </span>
               </div>
-              <button 
-                onClick={fetchCriticalAlerts}
-                className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
-                title="Refrescar alertas"
-              >
-                <IconRefresh className="w-4 h-4" />
-              </button>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                 {alertView === 'history' && (
+                    <input 
+                        type="date"
+                        value={alertDate}
+                        onChange={(e) => setAlertDate(e.target.value)}
+                        className="bg-white/20 border-none text-white text-[11px] font-black rounded-lg px-3 py-1.5 focus:ring-2 focus:ring-white/50 outline-none backdrop-blur-sm placeholder-white/50"
+                    />
+                 )}
+                 <button 
+                    onClick={fetchCriticalAlerts}
+                    className="p-2 text-white/80 hover:text-white hover:bg-white/10 rounded-lg transition-all"
+                    title="Refrescar alertas"
+                 >
+                    <IconRefresh className="w-4 h-4" />
+                 </button>
+              </div>
            </div>
            
            <div className="flex overflow-x-auto p-4 gap-4 scrollbar-hide bg-gray-50/50">
