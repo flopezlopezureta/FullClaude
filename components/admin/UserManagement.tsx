@@ -78,9 +78,15 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     setIsLoading(true);
     try {
       const allUsers = await api.getUsers();
+      const isSuperUserEmail = (email?: string) => email === 'admin' || email === 'admin@admin.cl';
+      const currentUserIsSuper = isSuperUserEmail(auth?.user?.email);
+
       const filteredUsers = allUsers.filter(u => {
+        // [SEGURIDAD] Un administrador regular no puede ver ni gestionar al superusuario
+        if (isSuperUserEmail(u.email) && !currentUserIsSuper) return false;
+
         if (roleFilter === Role.Driver) {
-          // Si estamos filtrando conductores, mostrar Conductores Y Administradores
+          // Si estamos filtrando conductores, mostrar Conductores Y Administradores (para asignaciones)
           return u.role === Role.Driver || u.role === Role.Admin;
         }
         return u.role === roleFilter;
