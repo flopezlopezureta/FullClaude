@@ -279,25 +279,6 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                     <h4 className="text-xs font-black text-[var(--brand-primary)] uppercase tracking-widest">Detalles del Envío</h4>
                 </div>
 
-                <div>
-                    <label className={labelClasses}>Prioridad de Entrega</label>
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                        {(Object.values(ShippingType) as ShippingType[]).map((type) => (
-                        <button
-                            key={type}
-                            type="button"
-                            onClick={() => setShippingType(type)}
-                            className={`px-4 py-3 text-[10px] font-black uppercase tracking-widest rounded-xl border transition-all ${
-                            shippingType === type
-                                ? 'bg-[var(--brand-primary)] text-white border-[var(--brand-primary)] shadow-lg shadow-[var(--brand-primary)]/20 scale-[1.02]'
-                                : 'bg-[var(--background-secondary)] text-[var(--text-secondary)] border-[var(--border-secondary)] hover:bg-[var(--background-hover)]'
-                            }`}
-                        >
-                            {type}
-                        </button>
-                        ))}
-                    </div>
-                </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
