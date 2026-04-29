@@ -928,7 +928,7 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const now = new Date();
 
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7 WHERE id = $8 RETURNING *',
+            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7, "assignedAt" = $3 WHERE id = $8 RETURNING *',
             [driverId, 'EN_TRANSITO', now, flexCodeToSave, flexLabelPhotoBase64, isFlexed, notesUpdate, realId]
         );
 
@@ -1198,7 +1198,7 @@ router.post('/:id/pickup', authMiddleware, async (req, res) => {
     const driverId = req.user.id;
     try {
          const { rows } = await db.query(
-            'UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "meliFlexCode" = $4 WHERE id = $5 RETURNING *',
+            'UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "meliFlexCode" = $4, "assignedAt" = $3 WHERE id = $5 RETURNING *',
             ['RETIRADO', driverId, new Date(), flexCode || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -1251,9 +1251,10 @@ router.post('/bulk-pickup-client', authMiddleware, async (req, res) => {
 
         // Update all pending packages to RETIRADO
         const placeholders = packageIds.map((_, i) => `$${i + 4}`).join(', ');
+        const now = new Date();
         await client.query(
-            `UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3 WHERE id IN (${placeholders})`,
-            ['RETIRADO', driverId, new Date(), ...packageIds]
+            `UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "assignedAt" = $3 WHERE id IN (${placeholders})`,
+            ['RETIRADO', driverId, now, ...packageIds]
         );
 
         // Log events for each package
