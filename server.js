@@ -67,6 +67,25 @@ async function startServer() {
         }
     });
 
+    // [EMERGENCIA] Limpieza de precisión para el arreglo de egresos
+    app.get('/api/clean-egress-fix', async (req, res) => {
+        try {
+            const db = require('./db');
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+            // Buscamos paquetes que tengan assignedAt hoy pero que fueron creados ANTES de hoy
+            const query = `
+                UPDATE packages 
+                SET "assignedAt" = NULL 
+                WHERE "assignedAt"::text LIKE $1 
+                AND "createdAt"::text NOT LIKE $1
+            `;
+            const result = await db.query(query, [today + '%']);
+            res.json({ success: true, message: `🧹 Limpieza completada. Se han revertido ${result.rowCount} paquetes que eran de días anteriores.`, date: today });
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
     // Critical routes: use direct require so startup fails visibly if there are errors
     // --- Core Routes (Mandatory) ---
     app.use('/api/auth', require('./routes/auth.js'));
