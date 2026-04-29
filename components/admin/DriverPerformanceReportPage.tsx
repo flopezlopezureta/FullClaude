@@ -78,10 +78,16 @@ export const DriverPerformanceReportPage: React.FC = () => {
         fetchData();
     }, [startDate, endDate, selectedDriverId]);
 
-    const drivers = useMemo(() => 
-        users.filter(u => u.role === Role.Driver).sort((a, b) => a.name.localeCompare(b.name)),
-        [users]
-    );
+    const drivers = useMemo(() => {
+        console.log("[DEBUG] All users received:", users);
+        const filtered = users.filter(u => {
+            const isDriver = String(u.role).toUpperCase() === 'DRIVER';
+            console.log(`[DEBUG] User: ${u.name}, Role: ${u.role}, isDriver: ${isDriver}`);
+            return isDriver;
+        });
+        console.log("[DEBUG] Filtered drivers:", filtered);
+        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+    }, [users]);
 
     const filteredDrivers = useMemo(() => 
         drivers.filter(d => 
