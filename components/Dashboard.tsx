@@ -97,8 +97,12 @@ const Dashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
   const [isForcingClose, setIsForcingClose] = useState(false);
   const [criticalAlerts, setCriticalAlerts] = useState<Package[]>([]);
-  const [showCriticalAlerts, setShowCriticalAlerts] = useState(false);
-  const [lastAlertCount, setLastAlertCount] = useState(0);
+  const [showCriticalAlerts, setShowCriticalAlerts] = useState(() => {
+    return localStorage.getItem('criticalAlertsPanelOpen') === 'true';
+  });
+  const [lastAlertCount, setLastAlertCount] = useState(() => {
+    return parseInt(localStorage.getItem('lastCriticalAlertCount') || '0', 10);
+  });
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
   const [alertDate, setAlertDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
@@ -229,15 +233,26 @@ const Dashboard: React.FC = () => {
   // Logic to show alerts for 5 minutes when new ones arrive
   useEffect(() => {
     if (criticalAlerts.length > lastAlertCount) {
+        // NUEVA ALERTA: Mostrar automáticamente
         setShowCriticalAlerts(true);
+        localStorage.setItem('criticalAlertsPanelOpen', 'true');
+        
         const timer = setTimeout(() => {
             setShowCriticalAlerts(false);
-        }, 300000); // 5 minutes
+            localStorage.setItem('criticalAlertsPanelOpen', 'false');
+        }, 300000); // 5 minutos
+        
         setLastAlertCount(criticalAlerts.length);
+        localStorage.setItem('lastCriticalAlertCount', criticalAlerts.length.toString());
         return () => clearTimeout(timer);
     } else if (criticalAlerts.length < lastAlertCount) {
+        // Alertas disminuyeron: Actualizar contador pero no forzar visibilidad
         setLastAlertCount(criticalAlerts.length);
-        if (criticalAlerts.length === 0) setShowCriticalAlerts(false);
+        localStorage.setItem('lastCriticalAlertCount', criticalAlerts.length.toString());
+        if (criticalAlerts.length === 0) {
+            setShowCriticalAlerts(false);
+            localStorage.setItem('criticalAlertsPanelOpen', 'false');
+        }
     }
   }, [criticalAlerts.length, lastAlertCount]);
 
@@ -640,7 +655,10 @@ const Dashboard: React.FC = () => {
         <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up relative">
            {/* Close Button */}
            <button 
-              onClick={() => setShowCriticalAlerts(false)}
+              onClick={() => {
+                  setShowCriticalAlerts(false);
+                  localStorage.setItem('criticalAlertsPanelOpen', 'false');
+              }}
               className="absolute top-4 right-4 z-10 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all backdrop-blur-sm sm:hidden"
               title="Cerrar avisos"
            >
@@ -693,7 +711,10 @@ const Dashboard: React.FC = () => {
                     <IconRefresh className="w-4 h-4" />
                  </button>
                  <button 
-                    onClick={() => setShowCriticalAlerts(false)}
+                    onClick={() => {
+                        setShowCriticalAlerts(false);
+                        localStorage.setItem('criticalAlertsPanelOpen', 'false');
+                    }}
                     className="hidden sm:flex items-center justify-center p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all bg-white/5 backdrop-blur-sm"
                     title="Ocultar Centro de Alertas"
                  >
@@ -809,7 +830,11 @@ const Dashboard: React.FC = () => {
             onAssignmentFilterChange={setAssignmentFilter}
             dateType={dateType}
             onDateTypeChange={setDateType}
-            onToggleAlerts={() => setShowCriticalAlerts(prev => !prev)}
+            onToggleAlerts={() => {
+                const newState = !showCriticalAlerts;
+                setShowCriticalAlerts(newState);
+                localStorage.setItem('criticalAlertsPanelOpen', String(newState));
+            }}
             showAlerts={showCriticalAlerts}
             alertCount={criticalAlerts.length}
         />
