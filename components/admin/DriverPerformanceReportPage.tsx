@@ -3,7 +3,8 @@ import React, { useState, useEffect, useMemo, ReactNode, useRef } from 'react';
 import { api } from '../../services/api';
 import { Role, PackageStatus, ShippingType } from '../../constants';
 import type { User, Package, AssignmentEvent, PickupRun } from '../../types';
-import { IconPrinter, IconWhatsapp, IconMail, IconChecklist, IconClock, IconRoute, IconAlertTriangle, IconCalendar, IconFileSpreadsheet, IconRefresh, IconSearch } from '../Icon';
+import { IconPrinter, IconWhatsapp, IconMail, IconChecklist, IconClock, IconRoute, IconAlertTriangle, IconCalendar, IconFileSpreadsheet, IconRefresh, IconSearch, IconEye } from '../Icon';
+import DriverDeliveryDetailModal from '../modals/DriverDeliveryDetailModal';
 import { useContext } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 
@@ -34,6 +35,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const [pickupRuns, setPickupRuns] = useState<PickupRun[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
+    const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedDriverId, setSelectedDriverId] = useState<string>('');
     
     const today = new Date();
@@ -630,6 +632,12 @@ export const DriverPerformanceReportPage: React.FC = () => {
                         
                         <div className="flex flex-wrap justify-end gap-3 print:hidden">
                             <button 
+                                onClick={() => setIsDetailModalOpen(true)}
+                                className="inline-flex items-center px-4 py-2 text-sm font-black text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-md transition-all active:scale-95 uppercase tracking-wider"
+                            >
+                                <IconEye className="w-5 h-5 mr-2"/> Ver Detalle de Entregas
+                            </button>
+                            <button 
                                 onClick={handleExportCSV} 
                                 disabled={isExporting}
                                 className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
@@ -651,6 +659,14 @@ export const DriverPerformanceReportPage: React.FC = () => {
                 </div>
             )}
         </div>
+        <DriverDeliveryDetailModal 
+            isOpen={isDetailModalOpen}
+            onClose={() => setIsDetailModalOpen(false)}
+            packages={filteredPackages.filter(p => p.status === PackageStatus.Delivered)}
+            driverName={selectedDriver?.name || ''}
+            startDate={new Date(startDate + 'T00:00:00').toLocaleDateString('es-CL')}
+            endDate={new Date(endDate + 'T00:00:00').toLocaleDateString('es-CL')}
+        />
         </>
     );
 };
