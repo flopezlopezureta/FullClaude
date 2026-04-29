@@ -582,7 +582,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
                     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                         <div className="lg:col-span-2 bg-[var(--background-secondary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <h4 className="text-md font-semibold text-[var(--text-primary)] mb-4 text-center">Entregas Diarias</h4>
-                            <canvas ref={dailyDeliveriesChartRef}></canvas>
+                            <div className="h-64"><canvas ref={dailyDeliveriesChartRef}></canvas></div>
                         </div>
                         <div className="lg:col-span-1 bg-[var(--background-secondary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
                             <h4 className="text-md font-semibold text-[var(--text-primary)] mb-4 text-center">Tipos de Envío</h4>
