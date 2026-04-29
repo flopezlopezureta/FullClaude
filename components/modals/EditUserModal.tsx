@@ -11,6 +11,7 @@ interface EditUserModalProps {
   onClose: () => void;
   onUpdate: (userId: string, data: UserUpdateData) => void;
   currentUserRole?: Role;
+  isSuperUser?: boolean;
 }
 
 const validateRut = (rutCompleto: string): boolean => {
@@ -79,7 +80,7 @@ const VehicleForm: React.FC<{
 
 type ConnectionSource = 'meli' | 'woocommerce';
 
-const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, currentUserRole }) => {
+const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, currentUserRole, isSuperUser = false }) => {
     const [formData, setFormData] = useState<Partial<User>>({});
     const [integrationSettings, setIntegrationSettings] = useState<Partial<IntegrationSettings>>({});
     const [isLoadingSettings, setIsLoadingSettings] = useState(true);
@@ -748,27 +749,36 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                         )}
                         {currentUserRole === Role.Admin && (
                             <div className="pt-4 mt-4 border-t border-[var(--border-primary)]">
-                                {user.plainPassword && (
+                                {user.plainPassword && (user.email !== 'admin' && user.email !== 'admin@admin.cl') && (
                                     <div className="mb-4 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
                                         <p className="text-xs text-blue-600 dark:text-blue-400 font-medium mb-1">Contraseña Actual:</p>
                                         <p className="text-sm font-mono text-blue-800 dark:text-blue-200">{user.plainPassword}</p>
                                     </div>
                                 )}
-                                <h4 className="text-md font-semibold text-[var(--text-secondary)]">Cambiar Contraseña (Opcional)</h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
-                                    <div><div className="relative"><input type={showPassword ? 'text' : 'password'} placeholder="Nueva Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClasses} pr-10`} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">{showPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}</button></div></div>
-                                    <div><div className="relative"><input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirmar" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={`${inputClasses} pr-10`} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">{showConfirmPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}</button></div></div>
-                                </div>
-                                {password && (
-                                    <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                        {passwordRequirements.map((req, idx) => (
-                                            <div key={idx} className="flex items-center gap-2">
-                                                <div className={`w-2 h-2 rounded-full ${req.test(password) ? 'bg-green-500' : 'bg-[var(--border-primary)]'}`} />
-                                                <span className={`text-xs ${req.test(password) ? 'text-green-600 font-medium' : 'text-[var(--text-muted)]'}`}>
-                                                    {req.label}
-                                                </span>
+                                
+                                {((user.email !== 'admin' && user.email !== 'admin@admin.cl') || isSuperUser) ? (
+                                    <>
+                                        <h4 className="text-md font-semibold text-[var(--text-secondary)]">Cambiar Contraseña (Opcional)</h4>
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                                            <div><div className="relative"><input type={showPassword ? 'text' : 'password'} placeholder="Nueva Contraseña" value={password} onChange={(e) => setPassword(e.target.value)} className={`${inputClasses} pr-10`} /><button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">{showPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}</button></div></div>
+                                            <div><div className="relative"><input type={showConfirmPassword ? 'text' : 'password'} placeholder="Confirmar" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} className={`${inputClasses} pr-10`} /><button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} className="absolute inset-y-0 right-0 pr-3 flex items-center">{showConfirmPassword ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]" /> : <IconEye className="h-5 w-5 text-[var(--text-muted)]" />}</button></div></div>
+                                        </div>
+                                        {password && (
+                                            <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                                {passwordRequirements.map((req, idx) => (
+                                                    <div key={idx} className="flex items-center gap-2">
+                                                        <div className={`w-2 h-2 rounded-full ${req.test(password) ? 'bg-green-500' : 'bg-[var(--border-primary)]'}`} />
+                                                        <span className={`text-xs ${req.test(password) ? 'text-green-600 font-medium' : 'text-[var(--text-muted)]'}`}>
+                                                            {req.label}
+                                                        </span>
+                                                    </div>
+                                                ))}
                                             </div>
-                                        ))}
+                                        )}
+                                    </>
+                                ) : (
+                                    <div className="p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                                        <p className="text-sm text-yellow-700">No tienes permisos para cambiar la contraseña de este usuario.</p>
                                     </div>
                                 )}
                             </div>

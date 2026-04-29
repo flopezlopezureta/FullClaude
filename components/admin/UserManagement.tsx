@@ -451,7 +451,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                     )}
                 </div>
                 <p className="text-sm text-[var(--text-muted)] mt-1">{user.email}</p>
-                {user.plainPassword && auth?.user?.role === Role.Admin && (
+                {user.plainPassword && auth?.user?.role === Role.Admin && user.email !== 'admin' && user.email !== 'admin@admin.cl' && (
                     <p className="text-sm font-mono text-[var(--brand-primary)] mt-1">
                         Contraseña: {user.plainPassword}
                     </p>
@@ -675,6 +675,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
           onClose={() => setEditingUser(null)}
           onUpdate={handleUpdateUser}
           currentUserRole={auth?.user?.role}
+          isSuperUser={auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl'}
         />
       )}
       {deletingUser && (
