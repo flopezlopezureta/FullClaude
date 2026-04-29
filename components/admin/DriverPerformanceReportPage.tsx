@@ -49,7 +49,6 @@ export const DriverPerformanceReportPage: React.FC = () => {
             // 1. Always fetch users to populate the dropdown
             const allUsers = await api.getUsers();
             setUsers(allUsers);
-            console.log("[DEBUG] Users loaded for dropdown:", allUsers.length);
 
             // 2. Only fetch performance data if a driver is selected
             if (selectedDriverId) {
@@ -82,14 +81,9 @@ export const DriverPerformanceReportPage: React.FC = () => {
     }, [startDate, endDate, selectedDriverId]);
 
     const drivers = useMemo(() => {
-        console.log("[DEBUG] All users received:", users);
-        const filtered = users.filter(u => {
-            const isDriver = String(u.role).toUpperCase() === 'DRIVER';
-            console.log(`[DEBUG] User: ${u.name}, Role: ${u.role}, isDriver: ${isDriver}`);
-            return isDriver;
-        });
-        console.log("[DEBUG] Filtered drivers:", filtered);
-        return filtered.sort((a, b) => a.name.localeCompare(b.name));
+        return users
+            .filter(u => String(u.role).toUpperCase() === 'DRIVER')
+            .sort((a, b) => a.name.localeCompare(b.name));
     }, [users]);
 
     const filteredDrivers = useMemo(() => 

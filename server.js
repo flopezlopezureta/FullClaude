@@ -86,17 +86,6 @@ async function startServer() {
         }
     });
 
-    // [DEBUG] Prueba pública de usuarios
-    app.get('/api/users-test-public', async (req, res) => {
-        try {
-            const db = require('./db');
-            const { rows } = await db.query('SELECT id, name, role, status FROM users');
-            res.json({ count: rows.length, users: rows });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
-    });
-
     // Critical routes: use direct require so startup fails visibly if there are errors
     // --- Core Routes (Mandatory) ---
     app.use('/api/auth', require('./routes/auth.js'));
