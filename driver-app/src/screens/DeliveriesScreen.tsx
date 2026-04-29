@@ -11,7 +11,9 @@ import {
   Share,
   Alert,
   Platform,
-  TextInput
+  TextInput,
+  Animated,
+  Easing
 } from 'react-native';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
@@ -45,6 +47,27 @@ export default function DeliveriesScreen({ navigation }: any) {
       setRefreshing(false);
     }
   };
+
+  const blinkAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, {
+          toValue: 1,
+          duration: 800,
+          useNativeDriver: false,
+          easing: Easing.inOut(Easing.ease)
+        }),
+        Animated.timing(blinkAnim, {
+          toValue: 0,
+          duration: 800,
+          useNativeDriver: false,
+          easing: Easing.inOut(Easing.ease)
+        })
+      ])
+    ).start();
+  }, []);
 
   useEffect(() => {
     fetchPackages();
@@ -128,51 +151,79 @@ export default function DeliveriesScreen({ navigation }: any) {
     }
   };
 
-  const renderItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={styles.card}
-      onPress={() => navigation.navigate('DeliveryDetail', { pkg: item })}
-    >
-      <View style={styles.cardHeader}>
-        <View style={[
-            styles.statusBadge, 
-            { backgroundColor: 
-                item.status === 'ENTREGADO' ? '#dcfce7' : 
-                item.status === 'CANCELADO' ? '#fee2e2' :
-                item.status === 'REPROGRAMADO' ? '#fef3c7' :
-                '#f1f5f9' 
-            }
-        ]}>
-          <Text style={[
-              styles.statusText, 
-              { color: 
-                  item.status === 'ENTREGADO' ? '#166534' : 
-                  item.status === 'CANCELADO' ? '#991b1b' :
-                  item.status === 'REPROGRAMADO' ? '#92400e' :
-                  '#475569' 
-              }
-          ]}>
-            {item.status === 'CANCELADO' ? 'CANCELADO - NO VISITAR' : item.status}
-          </Text>
-        </View>
-        <Text style={styles.idText}>#{item.id.slice(-6)}</Text>
-      </View>
-      
-      <Text style={styles.recipientName}>{item.recipientName}</Text>
-      <View style={styles.addressContainer}>
-        <Icon name="map-marker" size={16} color="#ef4444" />
-        <Text style={styles.addressText} numberOfLines={2}>{item.recipientAddress}, {item.recipientCommune}</Text>
-      </View>
+  const renderItem = ({ item }: { item: any }) => {
+    const isCancelled = item.status === 'CANCELADO';
+    const isRescheduled = item.status === 'REPROGRAMADO';
+    const isCritical = isCancelled || isRescheduled;
 
-      <View style={styles.cardFooter}>
-         <View style={styles.metaInfo}>
-            <Icon name="clock-outline" size={14} color="#94a3b8" />
-            <Text style={styles.metaText}>Prioridad: Estándar</Text>
-         </View>
-         <Icon name="chevron-right" size={20} color="#cbd5e1" />
-      </View>
-    </TouchableOpacity>
-  );
+    const backgroundColor = isCritical ? blinkAnim.interpolate({
+      inputRange: [0, 1],
+      outputRange: isCancelled ? ['#fee2e2', '#fecaca'] : ['#fef3c7', '#fde68a']
+    }) : '#fff';
+
+    const borderColor = isCancelled ? '#ef4444' : isRescheduled ? '#f59e0b' : '#fff';
+
+    return (
+      <Animated.View style={[
+        styles.card,
+        { backgroundColor, borderColor, borderWidth: isCritical ? 2 : 0 }
+      ]}>
+        <TouchableOpacity 
+          onPress={() => navigation.navigate('DeliveryDetail', { pkg: item })}
+          activeOpacity={0.7}
+        >
+          <View style={styles.cardHeader}>
+            <View style={[
+                styles.statusBadge, 
+                { backgroundColor: 
+                    item.status === 'ENTREGADO' ? '#dcfce7' : 
+                    isCancelled ? '#991b1b' :
+                    isRescheduled ? '#92400e' :
+                    '#f1f5f9' 
+                }
+            ]}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                {isCancelled && <Icon name="close-circle" size={14} color="#fff" />}
+                {isRescheduled && <Icon name="calendar-clock" size={14} color="#fff" />}
+                <Text style={[
+                    styles.statusText, 
+                    { color: 
+                        item.status === 'ENTREGADO' ? '#166534' : 
+                        isCritical ? '#fff' :
+                        '#475569' 
+                    }
+                ]}>
+                  {isCancelled ? 'CANCELADO - NO VISITAR' : isRescheduled ? 'REPROGRAMADO' : item.status}
+                </Text>
+              </View>
+            </View>
+            <Text style={styles.idText}>#{item.id.slice(-6)}</Text>
+          </View>
+          
+          <Text style={styles.recipientName}>{item.recipientName}</Text>
+          <View style={styles.addressContainer}>
+            <Icon name="map-marker" size={16} color={isCancelled ? "#991b1b" : "#ef4444"} />
+            <Text style={[
+              styles.addressText, 
+              isCancelled && { color: '#991b1b', fontWeight: '700' }
+            ]} numberOfLines={2}>
+              {item.recipientAddress}, {item.recipientCommune}
+            </Text>
+          </View>
+
+          <View style={styles.cardFooter}>
+             <View style={styles.metaInfo}>
+                <Icon name="clock-outline" size={14} color={isCancelled ? "#991b1b" : "#94a3b8"} />
+                <Text style={[styles.metaText, isCancelled && { color: '#991b1b' }]}>
+                  {isCancelled ? 'ALERTA: Entrega cancelada' : isRescheduled ? 'ALERTA: Entrega reagendada' : 'Prioridad: Estándar'}
+                </Text>
+             </View>
+             <Icon name="chevron-right" size={20} color={isCancelled ? "#991b1b" : "#cbd5e1"} />
+          </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  };
 
   return (
     <SafeAreaView style={styles.container}>

@@ -676,8 +676,8 @@ const Dashboard: React.FC = () => {
                   onClick={() => setSelectedPackage(pkg)}
                   className={`flex-shrink-0 w-80 p-4 border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
                     pkg.status === 'CANCELADO' 
-                      ? 'bg-white border-red-100 hover:border-red-300' 
-                      : 'bg-white border-amber-100 hover:border-amber-300'
+                      ? 'bg-red-50/30 border-red-100 hover:border-red-300' 
+                      : 'bg-amber-50/30 border-amber-100 hover:border-amber-300'
                   }`}
                 >
                    <div className="flex items-center justify-between mb-3">
@@ -698,7 +698,9 @@ const Dashboard: React.FC = () => {
                       <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center">
                          <IconMercadoLibre className="w-2.5 h-2.5 text-gray-500" />
                       </div>
-                      <p className="text-[11px] text-gray-500 font-medium truncate">{pkg.recipientAddress}</p>
+                      <p className="text-[11px] text-gray-500 font-medium truncate">
+                        {pkg.recipientAddress}, <span className="font-bold text-gray-700">{pkg.recipientCommune}</span>
+                      </p>
                    </div>
                    
                    <div className="flex items-center justify-between pt-3 border-t border-gray-50">
