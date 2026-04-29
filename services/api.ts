@@ -145,6 +145,7 @@ export interface PackageUpdateData {
   destLatitude?: number;
   destLongitude?: number;
   recipientEmail?: string;
+  creatorId?: string;
 }
 
 export interface UserCreationData extends RegisterData {

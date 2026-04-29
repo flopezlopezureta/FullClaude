@@ -3,17 +3,18 @@
 import React, { useState, useEffect } from 'react';
 import { IconX } from '../Icon';
 import { PackageStatus, ShippingType } from '../../constants';
-import type { Package } from '../../types';
+import type { Package, User } from '../../types';
 import { PackageUpdateData } from '../../services/api';
 
 interface EditPackageModalProps {
   pkg: Package;
+  users?: User[];
   onClose: () => void;
   onUpdate: (pkgId: string, data: PackageUpdateData) => void;
   isClientEditing?: boolean;
 }
 
-const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, onClose, onUpdate, isClientEditing = false }) => {
+const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, users = [], onClose, onUpdate, isClientEditing = false }) => {
   const [recipientName, setRecipientName] = useState(pkg.recipientName);
   const [recipientPhone, setRecipientPhone] = useState(pkg.recipientPhone);
   const [recipientAddress, setRecipientAddress] = useState(pkg.recipientAddress);
@@ -23,6 +24,7 @@ const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, onClose, onUpd
   const [origin, setOrigin] = useState(pkg.origin);
   const [status, setStatus] = useState(pkg.status);
   const [shippingType, setShippingType] = useState(pkg.shippingType);
+  const [creatorId, setCreatorId] = useState(pkg.creatorId || '');
   const [estimatedDelivery, setEstimatedDelivery] = useState('');
 
   useEffect(() => {
@@ -49,6 +51,7 @@ const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, onClose, onUpd
       status,
       shippingType,
       estimatedDelivery: new Date(estimatedDelivery),
+      creatorId: creatorId || undefined
     });
   };
   
@@ -132,6 +135,29 @@ const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, onClose, onUpd
               <label htmlFor="edit-origin" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Origen</label>
               <input type="text" id="edit-origin" value={origin} onChange={(e) => setOrigin(e.target.value)} required className={disabledInputClasses} disabled={isClientEditing}/>
             </div>
+
+            {/* Selector de Vendedor (Solo visible si se pasan usuarios, usualmente para Admins) */}
+            {!isClientEditing && users.length > 0 && (
+                <div>
+                    <label htmlFor="edit-seller" className="block text-sm font-medium text-[var(--text-secondary)] mb-1 font-bold text-[var(--brand-primary)]">Vendedor / Dueño del Paquete</label>
+                    <select 
+                        id="edit-seller" 
+                        value={creatorId} 
+                        onChange={(e) => setCreatorId(e.target.value)} 
+                        className={`${inputClasses} border-[var(--brand-primary)] font-semibold`}
+                    >
+                        <option value="">Seleccionar Vendedor...</option>
+                        {users.filter(u => u.role === 'CLIENT').map(client => (
+                            <option key={client.id} value={client.id}>
+                                {client.name} {client.clientIdentifier ? `(${client.clientIdentifier})` : ''}
+                            </option>
+                        ))}
+                    </select>
+                    <p className="mt-1 text-[10px] text-[var(--text-muted)] italic">
+                        Cambiar el vendedor moverá este paquete a la cuenta del cliente seleccionado.
+                    </p>
+                </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                  <div>
                     <label htmlFor="edit-status" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Estado</label>

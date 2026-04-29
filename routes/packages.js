@@ -728,8 +728,13 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
+        const updateData = { ...req.body };
         updateData.updatedAt = new Date();
+
+        // Security: Only admins can change the package creator (seller)
+        if (updateData.creatorId && req.user.role !== 'ADMIN') {
+            delete updateData.creatorId;
+        }
 
         // Fetch current data to compare and for geocoding
         const { rows: currentPkgRows } = await db.query('SELECT "recipientAddress", "recipientCommune", "recipientCity" FROM packages WHERE id = $1', [id]);

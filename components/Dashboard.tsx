@@ -1175,6 +1175,7 @@ const Dashboard: React.FC = () => {
       {editingPackage && (
         <EditPackageModal
             pkg={editingPackage}
+            users={users}
             onClose={() => setEditingPackage(null)}
             onUpdate={handleUpdatePackage}
         />

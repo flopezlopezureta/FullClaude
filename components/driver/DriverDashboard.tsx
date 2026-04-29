@@ -133,7 +133,7 @@ const DriverDashboard: React.FC = () => {
     prevPackagesRef.current = myPackages;
   }, [myPackages]);
   
-  const { pendingPackages, dailyHistoryPackages, unflexedCount } = useMemo(() => {
+  const { pendingPackages, dailyHistoryPackages, unflexedCount, totalAssignedForToday } = useMemo(() => {
     const todayStr = new Date().toDateString();
     
     // Base collections

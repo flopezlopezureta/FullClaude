@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Package } from '../../types';
 import { PackageStatus } from '../../constants';
-import { IconX, IconSearch, IconEye, IconFileText, IconClock } from '../Icon';
+import { IconX, IconSearch, IconEye, IconFileText, IconClock, IconHistory } from '../Icon';
 
 interface DriverDeliveryDetailModalProps {
     isOpen: boolean;
@@ -24,6 +24,7 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
     const [searchQuery, setSearchQuery] = useState('');
 
     const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+    const [viewingHistory, setViewingHistory] = useState<Package | null>(null);
 
     if (!isOpen) return null;
 
@@ -96,6 +97,7 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Fecha/Hora Entrega</th>
                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest">Tipo Envío</th>
                                     <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Evidencia</th>
+                                    <th className="px-4 py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest text-center">Historial</th>
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-primary)] bg-white">
@@ -143,6 +145,15 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
                                                     <span className="text-[9px] font-black uppercase">Sin Foto</span>
                                                 </div>
                                             )}
+                                        </td>
+                                        <td className="px-4 py-4 text-center">
+                                            <button 
+                                                onClick={() => setViewingHistory(pkg)}
+                                                className="p-1.5 bg-white text-indigo-600 rounded-lg hover:bg-indigo-50 transition-all border border-indigo-200 shadow-sm"
+                                                title="Ver Historial Completo"
+                                            >
+                                                <IconHistory className="w-4 h-4" />
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
@@ -193,6 +204,102 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
                     className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl border-4 border-white/20 animate-in zoom-in duration-300"
                     onClick={(e) => e.stopPropagation()}
                 />
+            </div>
+        )}
+        {/* History Overlay */}
+        {viewingHistory && (
+            <div className="fixed inset-0 bg-black/80 z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300">
+                <div className="bg-white w-full max-w-lg rounded-2xl overflow-hidden flex flex-col max-h-[85vh] shadow-2xl animate-in slide-in-from-bottom-8 duration-300">
+                    <div className="px-6 py-4 bg-gradient-to-r from-indigo-600 to-indigo-800 text-white flex justify-between items-center">
+                        <div>
+                            <h3 className="font-black uppercase tracking-tight text-sm">Historial de Envío</h3>
+                            <p className="text-indigo-200 text-[10px] font-bold uppercase">{viewingHistory.id}</p>
+                        </div>
+                        <button 
+                            onClick={() => setViewingHistory(null)}
+                            className="p-1.5 hover:bg-white/10 rounded-full transition-all"
+                        >
+                            <IconX className="w-5 h-5"/>
+                        </button>
+                    </div>
+                    <div className="p-6 overflow-auto custom-scrollbar flex-1 bg-gray-50">
+                        <div className="space-y-4">
+                            {(() => {
+                                const fullHistory = [...viewingHistory.history];
+                                // Add virtual creation event if missing
+                                const hasCreationEvent = fullHistory.some(e => 
+                                    e.status.toUpperCase() === 'CREADO' || 
+                                    e.status.toUpperCase() === 'PENDIENTE'
+                                );
+                                
+                                if (!hasCreationEvent && viewingHistory.createdAt) {
+                                    fullHistory.push({
+                                        status: 'Creado',
+                                        timestamp: viewingHistory.createdAt,
+                                        details: 'Paquete registrado en el sistema.',
+                                        location: viewingHistory.origin,
+                                        packageId: viewingHistory.id
+                                    } as any);
+                                }
+
+                                // Sort chronological (ASC)
+                                const sortedHistory = fullHistory.sort((a, b) => 
+                                    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+                                );
+
+                                if (sortedHistory.length > 0) {
+                                    return sortedHistory.map((event, i) => (
+                                        <div key={i} className="flex gap-4 relative">
+                                            {/* Line indicator */}
+                                            {i !== sortedHistory.length - 1 && (
+                                                <div className="absolute left-[11px] top-6 bottom-0 w-0.5 bg-indigo-100"></div>
+                                            )}
+                                            
+                                            <div className={`z-10 w-6 h-6 rounded-full flex items-center justify-center border-2 border-white shadow-sm flex-shrink-0 ${
+                                                i === sortedHistory.length - 1 ? 'bg-indigo-600 text-white animate-pulse' : 'bg-indigo-100 text-indigo-400'
+                                            }`}>
+                                                <div className="w-1.5 h-1.5 rounded-full bg-current"></div>
+                                            </div>
+                                            
+                                            <div className="flex-1 pb-4">
+                                                <div className="flex justify-between items-start mb-1">
+                                                    <p className={`text-[11px] font-black uppercase tracking-tighter ${i === sortedHistory.length - 1 ? 'text-indigo-600' : 'text-gray-600'}`}>
+                                                        {event.status}
+                                                    </p>
+                                                    <p className="text-[9px] text-gray-400 font-bold bg-white px-1.5 py-0.5 rounded border border-gray-100">
+                                                        {new Date(event.timestamp).toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                                                    </p>
+                                                </div>
+                                                <p className="text-xs text-gray-700 font-medium leading-relaxed bg-white p-3 rounded-xl border border-gray-100 shadow-sm">
+                                                    {event.details}
+                                                </p>
+                                                {event.location && (
+                                                    <p className="text-[9px] text-gray-400 font-black mt-1 uppercase flex items-center gap-1">
+                                                        📍 {event.location}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        </div>
+                                    ));
+                                } else {
+                                    return (
+                                        <div className="text-center py-10">
+                                            <p className="text-xs font-bold text-gray-400 uppercase">Sin eventos registrados</p>
+                                        </div>
+                                    );
+                                }
+                            })()}
+                        </div>
+                    </div>
+                    <div className="p-4 bg-white border-t border-gray-100 text-center">
+                        <button 
+                            onClick={() => setViewingHistory(null)}
+                            className="w-full py-2.5 bg-gray-900 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-gray-800 transition-all"
+                        >
+                            Volver al Listado
+                        </button>
+                    </div>
+                </div>
             </div>
         )}
         </>
