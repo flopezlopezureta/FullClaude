@@ -44,6 +44,7 @@ export interface SystemSettings {
     circuitExportEnabled?: boolean;
     timeFormat?: '12h' | '24h';
     allowRedelivery?: boolean;
+    timezone?: string;
 }
 
 export interface ZonePricing {

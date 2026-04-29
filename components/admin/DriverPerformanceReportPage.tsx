@@ -125,7 +125,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
 
             if (!relevantEvent) return false;
             
-            const eventDate = new Date(relevantEvent.timestamp);
+            const eventDate = new Date(new Date(relevantEvent.timestamp).toLocaleString('en-US', { timeZone: systemSettings?.timezone || 'America/Santiago' }));
             const start = new Date(startDate.replace(/-/g, '/'));
             start.setHours(0, 0, 0, 0);
             const end = new Date(endDate.replace(/-/g, '/'));
@@ -237,7 +237,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
         deliveredPackages.forEach(pkg => {
             // Find the delivery event to get the actual date
             const deliveryEvent = pkg.history.find(e => e.status === PackageStatus.Delivered) || pkg.history[0];
-            const deliveryDateStr = new Date(deliveryEvent.timestamp).toLocaleDateString('en-CA'); // YYYY-MM-DD
+            const deliveryDateStr = new Date(deliveryEvent.timestamp).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
             initializeDate(deliveryDateStr);
             breakdown[deliveryDateStr].deliveries++;
             const payRate = pkg.shippingType === ShippingType.SameDay ? rates.sameDay : pkg.shippingType === ShippingType.Express ? rates.express : rates.nextDay;
@@ -254,7 +254,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
         );
 
         relevantLegacyEvents.forEach(event => {
-            const dateStr = new Date(event.completedAt!).toLocaleDateString('en-CA'); // YYYY-MM-DD
+            const dateStr = new Date(event.completedAt!).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
             initializeDate(dateStr);
             breakdown[dateStr].pickups++;
             const cost = event.pickupCost !== undefined && event.pickupCost !== null ? event.pickupCost : (rates.pickup || 0);
@@ -272,7 +272,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
 
         relevantNewRunPickups.forEach(a => {
             // Use the run date for the breakdown
-            const dateStr = new Date(a.runDate).toLocaleDateString('en-CA'); // YYYY-MM-DD
+            const dateStr = new Date(a.runDate).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
             // Filter again by date range just in case run.date is outside but was fetched
             const d = new Date(a.runDate);
             if (d >= start && d <= end) {

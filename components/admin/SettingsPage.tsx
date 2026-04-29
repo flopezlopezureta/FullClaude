@@ -37,6 +37,7 @@ interface SettingsState {
     circuitExportEnabled: boolean;
     timeFormat: '12h' | '24h';
     allowRedelivery: boolean;
+    timezone: string;
 }
 
 const SettingsPage: React.FC = () => {
@@ -57,6 +58,7 @@ const SettingsPage: React.FC = () => {
         circuitExportEnabled: false,
         timeFormat: '12h',
         allowRedelivery: false,
+        timezone: 'America/Santiago',
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -90,6 +92,7 @@ const SettingsPage: React.FC = () => {
                 circuitExportEnabled: auth.systemSettings.circuitExportEnabled ?? false,
                 timeFormat: auth.systemSettings.timeFormat || '12h',
                 allowRedelivery: auth.systemSettings.allowRedelivery ?? false,
+                timezone: auth.systemSettings.timezone || 'America/Santiago',
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -98,7 +101,9 @@ const SettingsPage: React.FC = () => {
     
     useEffect(() => {
         const timer = setInterval(() => {
-            setCurrentTime(new Date());
+            // Use the configured timezone for the clock display
+            const now = new Date();
+            setCurrentTime(now);
         }, 1000);
         return () => clearInterval(timer);
     }, []);
@@ -153,6 +158,7 @@ const SettingsPage: React.FC = () => {
                 circuitExportEnabled: settings.circuitExportEnabled,
                 timeFormat: settings.timeFormat,
                 allowRedelivery: settings.allowRedelivery,
+                timezone: settings.timezone,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -261,7 +267,8 @@ const SettingsPage: React.FC = () => {
             settings.labelFormat !== originalSettings.labelFormat ||
             settings.circuitExportEnabled !== originalSettings.circuitExportEnabled ||
             settings.timeFormat !== originalSettings.timeFormat ||
-            settings.allowRedelivery !== originalSettings.allowRedelivery
+            settings.allowRedelivery !== originalSettings.allowRedelivery ||
+            settings.timezone !== originalSettings.timezone
         );
     }, [settings, originalSettings]);
 
@@ -301,7 +308,10 @@ const SettingsPage: React.FC = () => {
                                 <input 
                                     type="text" 
                                     disabled 
-                                    value={currentTime.toLocaleString('es-CL', { hour12: settings.timeFormat === '12h' })} 
+                                    value={currentTime.toLocaleString('es-CL', { 
+                                        hour12: settings.timeFormat === '12h',
+                                        timeZone: settings.timezone 
+                                    })} 
                                     className={`${inputClasses} bg-[var(--background-muted)] text-[var(--brand-primary)] font-mono font-black text-center flex-1`} 
                                 />
                                 <div className="flex border border-[var(--border-secondary)] rounded-md overflow-hidden shrink-0">
@@ -318,6 +328,7 @@ const SettingsPage: React.FC = () => {
                                     >24 hrs</button>
                                 </div>
                              </div>
+                             <p className="text-[10px] text-[var(--text-muted)] mt-1 uppercase tracking-widest">Zona Horaria: {settings.timezone}</p>
                         </div>
                         <div>
                              <label className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Versión del Sistema</label>

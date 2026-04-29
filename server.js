@@ -423,7 +423,8 @@ async function initializeDatabase() {
                 "publicTrackingEnabled" BOOLEAN DEFAULT true,
                 "isRutRequired" BOOLEAN DEFAULT true,
                 "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
-                "circuitExportEnabled" BOOLEAN DEFAULT false
+                "circuitExportEnabled" BOOLEAN DEFAULT false,
+                "timezone" TEXT DEFAULT 'America/Santiago'
             );
         `);
         
@@ -553,6 +554,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (allowRedelivery):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "timezone" TEXT DEFAULT \'America/Santiago\'');
+            console.log('MIGRATION APPLIED: Column "timezone" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (timezone):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -584,7 +591,7 @@ async function initializeDatabase() {
         // --- NEW PICKUP TABLES ---
         await db.query(`
             INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE)
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago')
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`
