@@ -298,6 +298,28 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
+// [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
+router.get('/fix-egress-today', async (req, res) => {
+    try {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const query = `
+            UPDATE packages 
+            SET "assignedAt" = "updatedAt" 
+            WHERE "driverId" IS NOT NULL 
+            AND "assignedAt" IS NULL 
+            AND "updatedAt"::text LIKE $1
+        `;
+        const result = await db.query(query, [today + '%']);
+        res.json({ 
+            success: true,
+            message: `✅ Se han reparado ${result.rowCount} paquetes para el filtro de EGRESO.`, 
+            date: today 
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 
 // Helper to add a tracking event
 async function addTrackingEvent(packageId, status, location, details) {
