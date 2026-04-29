@@ -4,6 +4,8 @@ import { api } from '../../services/api';
 import { Role, PackageStatus, ShippingType } from '../../constants';
 import type { User, Package, AssignmentEvent, PickupRun } from '../../types';
 import { IconPrinter, IconWhatsapp, IconMail, IconChecklist, IconClock, IconRoute, IconAlertTriangle, IconCalendar, IconFileSpreadsheet, IconRefresh, IconSearch } from '../Icon';
+import { useContext } from 'react';
+import { AuthContext } from '../../contexts/AuthContext';
 
 // Declare Chart.js in the global scope to avoid TypeScript errors
 declare const Chart: any;
@@ -24,6 +26,8 @@ const KpiCard: React.FC<{ icon: ReactNode, title: string, value: string | number
 );
 
 export const DriverPerformanceReportPage: React.FC = () => {
+    const auth = useContext(AuthContext);
+    const systemSettings = auth?.systemSettings;
     const [packages, setPackages] = useState<Package[]>([]);
     const [users, setUsers] = useState<User[]>([]);
     const [assignmentEvents, setAssignmentEvents] = useState<AssignmentEvent[]>([]);
