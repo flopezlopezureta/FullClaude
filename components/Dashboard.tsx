@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
 import type { Package, User } from '../types';
-import { PackageStatus, Role, UserStatus } from '../constants';
+import { PackageStatus, Role, UserStatus, RM_COMMUNES } from '../constants';
 import { api, PackageCreationData, PackageUpdateData } from '../services/api';
 import PackageList from './PackageList';
 import PackageDetailModal from './PackageDetailModal';
@@ -481,15 +481,6 @@ const Dashboard: React.FC = () => {
   const clients = users
     .filter(u => u.role === Role.Client && u.status === UserStatus.Approved)
     .sort((a, b) => a.name.localeCompare(b.name));
-
-  const RM_COMMUNES = [
-    'SANTIAGO', 'CERRILLOS', 'CERRO NAVIA', 'CONCHALÍ', 'EL BOSQUE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 
-    'LA CISTERNA', 'LA FLORIDA', 'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 
-    'LO PRADO', 'MACUL', 'MAIPÚ', 'ÑUÑOA', 'PEDRO AGUIRRE CERDA', 'PEÑALOLÉN', 'PROVIDENCIA', 'PUDAHUEL', 'QUILICURA', 
-    'QUINTA NORMAL', 'RECOLETA', 'RENCA', 'SAN JOAQUÍN', 'SAN MIGUEL', 'SAN RAMÓN', 'VITACURA', 'PUENTE ALTO', 'PIRQUE', 
-    'SAN JOSÉ DE MAIPO', 'SAN BERNARDO', 'BUIN', 'CALERA DE TANGO', 'PAINE', 'MELIPILLA', 'ALHUÉ', 'CURACAVÍ', 
-    'MARÍA PINTO', 'SAN PEDRO', 'TALAGANTE', 'EL MONTE', 'ISLA DE MAIPO', 'PADRE HURTADO', 'PEÑAFLOR', 'COLINA', 'LAMPA', 'TILTIL'
-  ];
 
   const uniqueCommunes = useMemo(() => {
     // 1. Obtener comunas de los paquetes actuales, normalizadas
