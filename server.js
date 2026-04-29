@@ -45,7 +45,7 @@ async function startServer() {
     }
     // Define API routes first to ensure they are not overridden by the static file server or SPA fallback.
     app.get('/api/health', (req, res) => {
-      res.json({ status: 'ok', message: 'Backend is running' });
+      res.json({ status: 'ok', message: 'Backend is running - V3 (Fix Egress Active)' });
     });
 
     // [EMERGENCIA] Ruta directa para arreglar los egresos de hoy
