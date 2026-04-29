@@ -100,8 +100,8 @@ const Dashboard: React.FC = () => {
   const [showCriticalAlerts, setShowCriticalAlerts] = useState(() => {
     return localStorage.getItem('criticalAlertsPanelOpen') === 'true';
   });
-  const [lastAlertCount, setLastAlertCount] = useState(() => {
-    return parseInt(localStorage.getItem('lastCriticalAlertCount') || '0', 10);
+  const [lastAlertId, setLastAlertId] = useState(() => {
+    return localStorage.getItem('lastCriticalAlertId') || '';
   });
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
   const [alertDate, setAlertDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -230,31 +230,33 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchCriticalAlerts]);
 
-  // Logic to show alerts for 5 minutes when new ones arrive
+  // Logic to show alerts for 5 minutes when NEW ones arrive
   useEffect(() => {
-    if (criticalAlerts.length > lastAlertCount) {
-        // NUEVA ALERTA: Mostrar automáticamente
-        setShowCriticalAlerts(true);
-        localStorage.setItem('criticalAlertsPanelOpen', 'true');
+    if (criticalAlerts.length > 0) {
+        const newestId = criticalAlerts[0].id;
         
-        const timer = setTimeout(() => {
-            setShowCriticalAlerts(false);
-            localStorage.setItem('criticalAlertsPanelOpen', 'false');
-        }, 300000); // 5 minutos
-        
-        setLastAlertCount(criticalAlerts.length);
-        localStorage.setItem('lastCriticalAlertCount', criticalAlerts.length.toString());
-        return () => clearTimeout(timer);
-    } else if (criticalAlerts.length < lastAlertCount) {
-        // Alertas disminuyeron: Actualizar contador pero no forzar visibilidad
-        setLastAlertCount(criticalAlerts.length);
-        localStorage.setItem('lastCriticalAlertCount', criticalAlerts.length.toString());
-        if (criticalAlerts.length === 0) {
-            setShowCriticalAlerts(false);
-            localStorage.setItem('criticalAlertsPanelOpen', 'false');
+        // Solo si la alerta más reciente es realmente nueva (diferente ID)
+        if (newestId !== lastAlertId) {
+            setShowCriticalAlerts(true);
+            localStorage.setItem('criticalAlertsPanelOpen', 'true');
+            
+            const timer = setTimeout(() => {
+                setShowCriticalAlerts(false);
+                localStorage.setItem('criticalAlertsPanelOpen', 'false');
+            }, 300000); // 5 minutos
+            
+            setLastAlertId(newestId);
+            localStorage.setItem('lastCriticalAlertId', newestId);
+            return () => clearTimeout(timer);
         }
+    } else if (criticalAlerts.length === 0 && lastAlertId !== '') {
+        // No hay alertas: Limpiar y cerrar
+        setShowCriticalAlerts(false);
+        localStorage.setItem('criticalAlertsPanelOpen', 'false');
+        setLastAlertId('');
+        localStorage.setItem('lastCriticalAlertId', '');
     }
-  }, [criticalAlerts.length, lastAlertCount]);
+  }, [criticalAlerts, lastAlertId]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
