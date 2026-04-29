@@ -12,6 +12,28 @@ const meliPollingService = require('../services/meliPollingService');
 const jumpsellerPollingService = require('../services/jumpsellerPollingService');
 const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geocodingService');
 
+// [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
+router.get('/fix-egress-today', async (req, res) => {
+    try {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const query = `
+            UPDATE packages 
+            SET "assignedAt" = "updatedAt" 
+            WHERE "driverId" IS NOT NULL 
+            AND "assignedAt" IS NULL 
+            AND "updatedAt"::text LIKE $1
+        `;
+        const result = await db.query(query, [today + '%']);
+        res.json({ 
+            success: true,
+            message: `✅ Se han reparado ${result.rowCount} paquetes para el filtro de EGRESO.`, 
+            date: today 
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
+
 // Helper to get tracking history for a package
 async function getHistory(packageId) {
     const { rows: history } = await db.query(
@@ -298,27 +320,7 @@ router.get('/', authMiddleware, async (req, res) => {
     }
 });
 
-// [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
-router.get('/fix-egress-today', async (req, res) => {
-    try {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
-        const query = `
-            UPDATE packages 
-            SET "assignedAt" = "updatedAt" 
-            WHERE "driverId" IS NOT NULL 
-            AND "assignedAt" IS NULL 
-            AND "updatedAt"::text LIKE $1
-        `;
-        const result = await db.query(query, [today + '%']);
-        res.json({ 
-            success: true,
-            message: `✅ Se han reparado ${result.rowCount} paquetes para el filtro de EGRESO.`, 
-            date: today 
-        });
-    } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
-    }
-});
+
 
 
 // Helper to add a tracking event
