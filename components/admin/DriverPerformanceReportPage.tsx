@@ -44,10 +44,21 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const chartInstances = useRef<{ daily?: any; type?: any }>({});
     
     const fetchData = async () => {
+        if (!selectedDriverId) {
+            setPackages([]);
+            setIsLoading(false);
+            return;
+        }
         setIsLoading(true);
         try {
             const [packagesResponse, allUsers, allEvents, runs] = await Promise.all([
-                api.getPackages({ limit: 0 }),
+                api.getPackages({ 
+                    limit: 0, 
+                    driverFilter: selectedDriverId,
+                    startDate,
+                    endDate,
+                    statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
+                }),
                 api.getUsers(),
                 api.getAssignmentHistory(),
                 api.getPickupRuns({ startDate, endDate })
@@ -65,7 +76,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
 
     useEffect(() => {
         fetchData();
-    }, [startDate, endDate]);
+    }, [startDate, endDate, selectedDriverId]);
 
     const drivers = useMemo(() => 
         users.filter(u => u.role === Role.Driver && u.status === 'APROBADO').sort((a, b) => a.name.localeCompare(b.name)),
@@ -84,13 +95,21 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const filteredPackages = useMemo(() => {
         if (!selectedDriverId) return [];
         
+        // Since we now fetch filtered packages from API, we just need to double check
+        // but we'll use a more robust date logic: use the timestamp of the actual Delivery/Problem event
         return packages.filter(pkg => {
             if (pkg.driverId !== selectedDriverId) return false;
             
-            const finalEvent = pkg.history[0]; // Most recent event
-            if (!finalEvent) return false;
+            // Find the delivery or problem event to get the relevant date for the report
+            const relevantEvent = pkg.history.find(e => 
+                e.status === PackageStatus.Delivered || 
+                e.status === PackageStatus.Problem || 
+                e.status === PackageStatus.Returned
+            ) || pkg.history[0];
+
+            if (!relevantEvent) return false;
             
-            const eventDate = new Date(finalEvent.timestamp);
+            const eventDate = new Date(relevantEvent.timestamp);
             const start = new Date(startDate.replace(/-/g, '/'));
             start.setHours(0, 0, 0, 0);
             const end = new Date(endDate.replace(/-/g, '/'));
