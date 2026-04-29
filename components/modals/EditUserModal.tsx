@@ -394,6 +394,22 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
         }
     };
 
+    const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        let value = e.target.value;
+        const cleanValue = value.replace(/[^\d+]/g, '');
+        if (!cleanValue) {
+            setFormData(prev => ({...prev, phone: ''}));
+            return;
+        }
+        if (/^\d{8}$/.test(cleanValue)) {
+            setFormData(prev => ({...prev, phone: `+569${cleanValue}`}));
+        } else if (/^9\d{8}$/.test(cleanValue)) {
+            setFormData(prev => ({...prev, phone: `+56${cleanValue}`}));
+        } else {
+            setFormData(prev => ({...prev, phone: cleanValue}));
+        }
+    };
+
     const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
         let phoneNumber = e.target.value.replace(/\s+/g, '');
         if (phoneNumber.length === 9 && phoneNumber.startsWith('9')) {
@@ -464,7 +480,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                         <div><label htmlFor="name" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Nombre Completo</label><input type="text" id="name" name="name" value={formData.name || ''} onChange={handleChange} required className={inputClasses} /></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div><label htmlFor="email" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Correo Electrónico</label><input type="email" id="email" name="email" value={formData.email || ''} onChange={handleChange} required className={inputClasses} /></div>
-                            <div><label htmlFor="phone" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Teléfono</label><input type="tel" id="phone" name="phone" value={formData.phone || ''} onChange={handleChange} onBlur={handlePhoneBlur} required className={inputClasses} /></div>
+                            <div><label htmlFor="phone" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Teléfono</label><input type="tel" id="phone" name="phone" value={formData.phone || ''} onChange={handlePhoneChange} onBlur={handlePhoneBlur} required className={inputClasses} /></div>
                         </div>
                         {user.role === Role.Client && (
                             <>

@@ -118,6 +118,24 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    const cleanValue = value.replace(/[^\d+]/g, '');
+    
+    if (!cleanValue) {
+      setRecipientPhone('');
+      return;
+    }
+
+    if (/^\d{8}$/.test(cleanValue)) {
+      setRecipientPhone(`+569${cleanValue}`);
+    } else if (/^9\d{8}$/.test(cleanValue)) {
+      setRecipientPhone(`+56${cleanValue}`);
+    } else {
+      setRecipientPhone(cleanValue);
+    }
+  };
+
   const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const phoneNumber = e.target.value.replace(/\s+/g, '');
     if (phoneNumber.length === 9 && phoneNumber.startsWith('9')) {
@@ -218,7 +236,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="recipientPhone" className={labelClasses}>Teléfono</label>
-                        <input type="tel" id="recipientPhone" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} onBlur={handlePhoneBlur} required className={`${inputClasses} font-bold`} placeholder="+569XXXXXXXX" />
+                        <input type="tel" id="recipientPhone" value={recipientPhone} onChange={handlePhoneChange} onBlur={handlePhoneBlur} required className={`${inputClasses} font-bold`} placeholder="+569XXXXXXXX" />
                     </div>
                     <div>
                         <label htmlFor="recipientEmail" className={labelClasses}>Correo Electrónico</label>

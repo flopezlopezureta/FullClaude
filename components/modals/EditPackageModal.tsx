@@ -55,6 +55,22 @@ const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, users = [], on
     });
   };
   
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    const cleanValue = value.replace(/[^\d+]/g, '');
+    if (!cleanValue) {
+      setRecipientPhone('');
+      return;
+    }
+    if (/^\d{8}$/.test(cleanValue)) {
+      setRecipientPhone(`+569${cleanValue}`);
+    } else if (/^9\d{8}$/.test(cleanValue)) {
+      setRecipientPhone(`+56${cleanValue}`);
+    } else {
+      setRecipientPhone(cleanValue);
+    }
+  };
+
   const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const phoneNumber = e.target.value.replace(/\s+/g, '');
     if (phoneNumber.length === 9 && phoneNumber.startsWith('9')) {
@@ -93,7 +109,7 @@ const EditPackageModal: React.FC<EditPackageModalProps> = ({ pkg, users = [], on
                 </div>
                  <div>
                     <label htmlFor="edit-recipientPhone" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Teléfono</label>
-                    <input type="tel" id="edit-recipientPhone" value={recipientPhone} onChange={(e) => setRecipientPhone(e.target.value)} onBlur={handlePhoneBlur} required className={inputClasses} />
+                    <input type="tel" id="edit-recipientPhone" value={recipientPhone} onChange={handlePhoneChange} onBlur={handlePhoneBlur} required className={inputClasses} />
                 </div>
             </div>
              <div>

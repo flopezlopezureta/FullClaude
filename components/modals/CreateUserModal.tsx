@@ -176,6 +176,22 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
     }
   };
 
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    let value = e.target.value;
+    const cleanValue = value.replace(/[^\d+]/g, '');
+    if (!cleanValue) {
+      setPhone('');
+      return;
+    }
+    if (/^\d{8}$/.test(cleanValue)) {
+      setPhone(`+569${cleanValue}`);
+    } else if (/^9\d{8}$/.test(cleanValue)) {
+      setPhone(`+56${cleanValue}`);
+    } else {
+      setPhone(cleanValue);
+    }
+  };
+
   const handlePhoneBlur = (e: React.FocusEvent<HTMLInputElement>) => {
     const phoneNumber = e.target.value.replace(/\s+/g, '');
     if (phoneNumber.length === 9 && phoneNumber.startsWith('9')) {
@@ -217,7 +233,7 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
                 </div>
                 <div>
                     <label htmlFor="userPhone" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Teléfono</label>
-                    <input type="tel" id="userPhone" value={phone} onChange={(e) => setPhone(e.target.value)} onBlur={handlePhoneBlur} required className={inputClasses} placeholder="+56912345678" />
+                    <input type="tel" id="userPhone" value={phone} onChange={handlePhoneChange} onBlur={handlePhoneBlur} required className={inputClasses} placeholder="+56912345678" />
                 </div>
             </div>
              {defaultRole === Role.Driver && (
