@@ -163,11 +163,22 @@ const DriverDashboard: React.FC = () => {
     const pending = allPending.filter(filterFn);
     const history = allHistory.filter(filterFn);
 
-    const unflexed = allPending.filter(p => !p.isFlexed).length; // Note: unflexed count remains based on total pending
-    return { pendingPackages: pending, dailyHistoryPackages: history, unflexedCount: unflexed };
-  }, [myPackages, searchTerm]);
+    const unflexed = allPending.filter(p => !p.isFlexed).length; 
+    
+    // Solo contar asignados del día actual para el badge superior
+    const assignedToday = myPackages.filter(p => {
+        const dateToCheck = p.assignedAt || p.createdAt;
+        if (!dateToCheck) return false;
+        return new Date(dateToCheck).toDateString() === todayStr;
+    }).length;
 
-  const totalAssignedForDay = myPackages.length;
+    return { 
+        pendingPackages: pending, 
+        dailyHistoryPackages: history, 
+        unflexedCount: unflexed,
+        totalAssignedForToday: assignedToday
+    };
+  }, [myPackages, searchTerm]);
 
   const handleStartDelivery = (pkg: Package) => {
     setDeliveringPackage(pkg);
@@ -451,7 +462,7 @@ const DriverDashboard: React.FC = () => {
             
             <div className="bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-[10px] font-bold px-2 py-2 rounded-xl whitespace-nowrap flex flex-col items-center justify-center leading-tight shadow-sm min-w-[65px]">
                 <span className="opacity-80 text-[8px] uppercase tracking-tighter">Asignados</span>
-                <span className="text-sm">{totalAssignedForDay}</span>
+                <span className="text-sm">{totalAssignedForToday}</span>
             </div>
         </div>
       </div>
