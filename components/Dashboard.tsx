@@ -97,6 +97,8 @@ const Dashboard: React.FC = () => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
   const [isForcingClose, setIsForcingClose] = useState(false);
   const [criticalAlerts, setCriticalAlerts] = useState<Package[]>([]);
+  const [showCriticalAlerts, setShowCriticalAlerts] = useState(false);
+  const [lastAlertCount, setLastAlertCount] = useState(0);
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
   const [alertDate, setAlertDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
@@ -223,6 +225,21 @@ const Dashboard: React.FC = () => {
     const interval = setInterval(fetchCriticalAlerts, 45000);
     return () => clearInterval(interval);
   }, [fetchCriticalAlerts]);
+
+  // Logic to show alerts for 5 minutes when new ones arrive
+  useEffect(() => {
+    if (criticalAlerts.length > lastAlertCount) {
+        setShowCriticalAlerts(true);
+        const timer = setTimeout(() => {
+            setShowCriticalAlerts(false);
+        }, 300000); // 5 minutes
+        setLastAlertCount(criticalAlerts.length);
+        return () => clearTimeout(timer);
+    } else if (criticalAlerts.length < lastAlertCount) {
+        setLastAlertCount(criticalAlerts.length);
+        if (criticalAlerts.length === 0) setShowCriticalAlerts(false);
+    }
+  }, [criticalAlerts.length, lastAlertCount]);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
@@ -619,8 +636,17 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       {/* --- CRITICAL ALERTS CENTER --- */}
-      {criticalAlerts.length > 0 && (
-        <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up">
+      {criticalAlerts.length > 0 && showCriticalAlerts && (
+        <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up relative">
+           {/* Close Button */}
+           <button 
+              onClick={() => setShowCriticalAlerts(false)}
+              className="absolute top-4 right-4 z-10 p-1.5 bg-white/10 hover:bg-white/20 text-white rounded-full transition-all backdrop-blur-sm sm:hidden"
+              title="Cerrar avisos"
+           >
+              <IconX className="w-4 h-4" />
+           </button>
+
            <div className="flex flex-col sm:flex-row items-center justify-between px-6 py-4 bg-gradient-to-r from-red-600 to-amber-600 gap-4">
               <div className="flex items-center gap-3">
                  <div className="flex items-center justify-center w-8 h-8 bg-white/20 rounded-lg backdrop-blur-md">
@@ -665,6 +691,13 @@ const Dashboard: React.FC = () => {
                     title="Refrescar alertas"
                  >
                     <IconRefresh className="w-4 h-4" />
+                 </button>
+                 <button 
+                    onClick={() => setShowCriticalAlerts(false)}
+                    className="hidden sm:flex items-center justify-center p-2 text-white/80 hover:text-white hover:bg-white/20 rounded-lg transition-all bg-white/5 backdrop-blur-sm"
+                    title="Ocultar Centro de Alertas"
+                 >
+                    <IconX className="w-4 h-4" />
                  </button>
               </div>
            </div>
