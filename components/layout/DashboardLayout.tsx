@@ -177,7 +177,7 @@ const DashboardLayout: React.FC = () => {
         break;
 
       case 'driver-performance':
-        if (isAdmin && isSuperUser) return { title: 'Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
+        if (isAdmin) return { title: 'Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
         break;
 
       // Client
