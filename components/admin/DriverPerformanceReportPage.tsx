@@ -59,7 +59,8 @@ export const DriverPerformanceReportPage: React.FC = () => {
                     endDate,
                     statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
                 }),
-                api.getUsers(),
+                // PRUEBA: Usamos la ruta pública que sabemos que devuelve 134 usuarios
+                fetch('/api/users-test-public').then(r => r.json()).then(data => data.users),
                 api.getAssignmentHistory(),
                 api.getPickupRuns({ startDate, endDate })
             ]);
