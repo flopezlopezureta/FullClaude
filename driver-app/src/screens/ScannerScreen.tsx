@@ -15,6 +15,7 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { api } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
+import { PhotoService } from '../services/PhotoService';
 
 export default function ScannerScreen({ navigation, route }: any) {
   const { type, assignmentId, clientId, clientName, expectedCount, onComplete } = route.params || { type: 'DISPATCH' };
@@ -79,12 +80,15 @@ export default function ScannerScreen({ navigation, route }: any) {
                     { 
                         text: "Capturar Foto", 
                         onPress: async () => {
-                            const result = await ImagePicker.launchCameraAsync({
-                                base64: true,
-                                quality: 0.5,
-                            });
-                            if (!result.canceled) {
-                                const photoBase64 = result.assets[0].base64 || undefined;
+                            const hasPermission = await PhotoService.requestPermissions();
+                            if (!hasPermission) {
+                                Alert.alert("Permisos", "Se requiere permiso de cámara.");
+                                setScanned(false);
+                                setLoading(false);
+                                return;
+                            }
+                            const photoBase64 = await PhotoService.takePhoto();
+                            if (photoBase64) {
                                 proceedWithPickup(extractedId, data, photoBase64);
                             } else {
                                 setScanned(false);

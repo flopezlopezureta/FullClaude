@@ -19,6 +19,7 @@ import { COLORS } from '../constants';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
+import { PhotoService } from '../services/PhotoService';
 
 export default function DeliveryDetailScreen({ route, navigation }: any) {
   const { pkg } = route.params;
@@ -61,28 +62,30 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
   const pickImage = async (useCamera: boolean) => {
     if (isCompleted) return;
 
-    let result;
-    if (useCamera) {
-      result = await ImagePicker.launchCameraAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false, 
-        quality: 0.3,
-        base64: true,
-      });
-    } else {
-      result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsMultipleSelection: true,
-        quality: 0.3,
-        base64: true,
-      });
-    }
+    setLoading(true);
+    try {
+      const hasPermission = await PhotoService.requestPermissions();
+      if (!hasPermission) {
+        Alert.alert("Permisos Denegados", "Necesitamos acceso a la cámara y galería para subir evidencia.");
+        return;
+      }
 
-    if (!result.canceled) {
-      const newPhotos = result.assets
-        .filter(asset => asset.base64)
-        .map(asset => `data:image/jpeg;base64,${asset.base64}`);
-      setPhotos([...photos, ...newPhotos]);
+      if (useCamera) {
+        const photo = await PhotoService.takePhoto();
+        if (photo) {
+          setPhotos(prev => [...prev, photo]);
+        }
+      } else {
+        const newPhotos = await PhotoService.selectFromGallery(true);
+        if (newPhotos && newPhotos.length > 0) {
+          setPhotos(prev => [...prev, ...newPhotos]);
+        }
+      }
+    } catch (error) {
+      console.error(error);
+      Alert.alert("Error", "Ocurrió un problema al procesar la imagen.");
+    } finally {
+      setLoading(false);
     }
   };
 
