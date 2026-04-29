@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { User } from '../../types';
-import { IconSearch, IconPackage, IconCalendar, IconFileSpreadsheet, IconRefresh } from '../Icon';
+import { IconSearch, IconPackage, IconCalendar, IconFileSpreadsheet, IconRefresh, IconAlertTriangle } from '../Icon';
 
 interface PackageFiltersProps {
   onOpenCreateModal: () => void;
@@ -39,6 +39,9 @@ interface PackageFiltersProps {
   onAssignmentFilterChange: (filter: 'all' | 'all_assigned' | 'first' | 'reassigned') => void;
   dateType: 'created' | 'egress';
   onDateTypeChange: (type: 'created' | 'egress') => void;
+  onToggleAlerts?: () => void;
+  showAlerts?: boolean;
+  alertCount?: number;
 }
 
 const PackageFilters: React.FC<PackageFiltersProps> = ({
@@ -77,6 +80,9 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onAssignmentFilterChange,
   dateType,
   onDateTypeChange,
+  onToggleAlerts,
+  showAlerts,
+  alertCount = 0,
 }) => {
   const [isClientSearchOpen, setIsClientSearchOpen] = React.useState(false);
   const [clientSearchTerm, setClientSearchTerm] = React.useState('');
@@ -406,6 +412,20 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
             >
                 <IconRefresh className={`w-5 h-5 ${isSyncing ? 'animate-spin' : ''}`} />
             </button>
+            {onToggleAlerts && (
+                <button
+                    onClick={onToggleAlerts}
+                    className={`flex-shrink-0 inline-flex items-center justify-center p-2.5 border rounded-lg transition-all shadow-sm relative ${showAlerts ? 'bg-red-600 border-red-700 text-white' : 'bg-white border-red-200 text-red-600 hover:bg-red-50'}`}
+                    title={showAlerts ? "Ocultar Alertas" : "Ver Alertas Críticas"}
+                >
+                    <IconAlertTriangle className={`w-5 h-5 ${showAlerts ? '' : 'animate-pulse'}`} />
+                    {alertCount > 0 && !showAlerts && (
+                        <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[9px] font-black min-w-[18px] h-[18px] px-1 rounded-full flex items-center justify-center border border-white shadow-sm animate-bounce">
+                            {alertCount}
+                        </span>
+                    )}
+                </button>
+            )}
             <button
                 onClick={onOpenQuickStatus}
                 className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border border-blue-600 text-sm font-black rounded-lg shadow-sm text-white bg-blue-600 hover:bg-blue-700 hover:shadow-md transition-all uppercase tracking-wider"
