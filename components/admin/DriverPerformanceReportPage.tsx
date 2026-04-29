@@ -59,8 +59,13 @@ export const DriverPerformanceReportPage: React.FC = () => {
                     endDate,
                     statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
                 }),
-                // PRUEBA: Usamos la ruta pública que sabemos que devuelve 134 usuarios
-                fetch('/api/users-test-public').then(r => r.json()).then(data => data.users),
+                // PRUEBA EXTREMA: Logueamos todo lo que devuelve el fetch
+                fetch('/api/users-test-public').then(async r => {
+                    const data = await r.json();
+                    console.log("[DEBUG] RAW FETCH STATUS:", r.status);
+                    console.log("[DEBUG] RAW FETCH DATA:", data);
+                    return data.users || [];
+                }),
                 api.getAssignmentHistory(),
                 api.getPickupRuns({ startDate, endDate })
             ]);
