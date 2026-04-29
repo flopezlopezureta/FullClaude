@@ -44,35 +44,32 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const chartInstances = useRef<{ daily?: any; type?: any }>({});
     
     const fetchData = async () => {
-        if (!selectedDriverId) {
-            setPackages([]);
-            setIsLoading(false);
-            return;
-        }
         setIsLoading(true);
         try {
-            const [packagesResponse, allUsers, allEvents, runs] = await Promise.all([
-                api.getPackages({ 
-                    limit: 0, 
-                    driverFilter: selectedDriverId,
-                    startDate,
-                    endDate,
-                    statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
-                }),
-                // PRUEBA EXTREMA: Logueamos todo lo que devuelve el fetch
-                fetch('/api/users-test-public').then(async r => {
-                    const data = await r.json();
-                    console.log("[DEBUG] RAW FETCH STATUS:", r.status);
-                    console.log("[DEBUG] RAW FETCH DATA:", data);
-                    return data.users || [];
-                }),
-                api.getAssignmentHistory(),
-                api.getPickupRuns({ startDate, endDate })
-            ]);
-            setPackages(packagesResponse.packages);
+            // 1. Always fetch users to populate the dropdown
+            const allUsers = await api.getUsers();
             setUsers(allUsers);
-            setAssignmentEvents(allEvents);
-            setPickupRuns(runs);
+            console.log("[DEBUG] Users loaded for dropdown:", allUsers.length);
+
+            // 2. Only fetch performance data if a driver is selected
+            if (selectedDriverId) {
+                const [packagesResponse, allEvents, runs] = await Promise.all([
+                    api.getPackages({ 
+                        limit: 0, 
+                        driverFilter: selectedDriverId,
+                        startDate,
+                        endDate,
+                        statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
+                    }),
+                    api.getAssignmentHistory(),
+                    api.getPickupRuns({ startDate, endDate })
+                ]);
+                setPackages(packagesResponse.packages);
+                setAssignmentEvents(allEvents);
+                setPickupRuns(runs);
+            } else {
+                setPackages([]);
+            }
         } catch (error) {
             console.error("Failed to fetch report data", error);
         } finally {
