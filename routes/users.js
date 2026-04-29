@@ -25,12 +25,7 @@ const adminOnly = (req, res, next) => {
 // GET /api/users - Get all users
 router.get('/', authMiddleware, async (req, res) => {
     try {
-        const { rows: users } = await db.query(`
-            SELECT u.*, COUNT(p.id)::int as "packageCount"
-            FROM users u
-            LEFT JOIN packages p ON u.id = p."creatorId"
-            GROUP BY u.id
-        `);
+        const { rows: users } = await db.query('SELECT * FROM users ORDER BY name ASC');
         const safeUsers = users.map(user => {
             delete user.password;
             // Only admins can see plain passwords
