@@ -1,11 +1,11 @@
 
 
-import React, { useState, useContext } from 'react';
-import { PackageStatus, ShippingType, MessagingPlan } from '../constants';
+import React, { useState, useContext, useRef } from 'react';
+import { PackageStatus, ShippingType, MessagingPlan, Role } from '../constants';
 import type { Package, User } from '../types';
 import { api } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
-import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil, IconClock, IconHistory } from './Icon';
+import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil, IconClock, IconHistory, IconPlus, IconPhoto, IconTrash } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageDetailModalProps {
@@ -29,6 +29,78 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
   const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
   const [isFlexing, setIsFlexing] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // --- Admin Closure States ---
+  const [isAdminDelivering, setIsAdminDelivering] = useState(false);
+  const [adminReceiverName, setAdminReceiverName] = useState(pkg.recipientName || '');
+  const [adminReceiverId, setAdminReceiverId] = useState('');
+  const [adminPhotos, setAdminPhotos] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAdminPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setIsUploading(true);
+    const promises = Array.from(files).map(file => {
+      return new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+    });
+
+    Promise.all(promises)
+      .then(base64Photos => {
+        setAdminPhotos(prev => [...prev, ...base64Photos]);
+      })
+      .catch(err => {
+        console.error("Error reading files:", err);
+        alert("Error al cargar las imágenes.");
+      })
+      .finally(() => {
+        setIsUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      });
+  };
+
+  const handleRemoveAdminPhoto = (index: number) => {
+    setAdminPhotos(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleAdminConfirmDelivery = async () => {
+    if (adminPhotos.length === 0) {
+        alert("Debes añadir al menos una foto de evidencia.");
+        return;
+    }
+    if (!adminReceiverName.trim()) {
+        alert("El nombre del receptor es obligatorio.");
+        return;
+    }
+
+    setIsAdminDelivering(true);
+    try {
+        const updatedPkg = await api.confirmDelivery(pkg.id, {
+            receiverName: adminReceiverName,
+            receiverId: adminReceiverId,
+            photosBase64: adminPhotos
+        });
+        
+        if (onUpdatePackage) {
+            onUpdatePackage(updatedPkg);
+        }
+        alert("Envío cerrado con éxito.");
+    } catch (error: any) {
+        console.error("Error confirming delivery (admin):", error);
+        alert(error.message || "Error al confirmar la entrega.");
+    } finally {
+        setIsAdminDelivering(false);
+    }
+  };
+  // ----------------------------
+
 
   const isReturn = pkg.status === PackageStatus.ReturnPending && !!onStartReturn;
 
@@ -441,6 +513,97 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                     </div>
                 </div>
               )}
+
+              {/* Admin Closure Card */}
+              {(auth?.user?.role === Role.Admin || auth?.user?.role === Role.OperadorSistemas) && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned && pkg.status !== PackageStatus.Cancelled && (
+                <div className="bg-indigo-50/50 p-4 rounded-lg shadow-sm border border-indigo-100 space-y-4">
+                    <div className="flex items-center justify-center gap-2 mb-2">
+                        <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">
+                            <IconCheckCircle className="w-5 h-5" />
+                        </div>
+                        <h4 className="text-base font-black text-indigo-900 uppercase tracking-wider">Cierre Administrativo</h4>
+                    </div>
+
+                    <div className="space-y-3">
+                        <div>
+                            <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest ml-1 mb-1 block">Recibido por (Nombre)</label>
+                            <input 
+                                type="text"
+                                value={adminReceiverName}
+                                onChange={(e) => setAdminReceiverName(e.target.value)}
+                                placeholder="Nombre completo del receptor"
+                                className="w-full px-3 py-2 text-sm bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+                        <div>
+                            <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest ml-1 mb-1 block">RUT del Receptor (Opcional)</label>
+                            <input 
+                                type="text"
+                                value={adminReceiverId}
+                                onChange={(e) => setAdminReceiverId(e.target.value)}
+                                placeholder="12.345.678-k"
+                                className="w-full px-3 py-2 text-sm bg-white border border-indigo-200 rounded-lg focus:ring-2 focus:ring-indigo-500 outline-none"
+                            />
+                        </div>
+
+                        <div>
+                            <label className="text-[10px] font-bold text-indigo-700 uppercase tracking-widest ml-1 mb-2 block">Evidencia de Entrega (Fotos)</label>
+                            <div className="grid grid-cols-3 gap-2 mb-3">
+                                {adminPhotos.map((photo, index) => (
+                                    <div key={index} className="relative aspect-square rounded-lg overflow-hidden border border-indigo-200 group">
+                                        <img src={photo} alt={`Admin Evidencia ${index + 1}`} className="w-full h-full object-cover" />
+                                        <button 
+                                            onClick={() => handleRemoveAdminPhoto(index)}
+                                            className="absolute top-1 right-1 p-1 bg-red-600 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                        >
+                                            <IconTrash className="w-3 h-3" />
+                                        </button>
+                                    </div>
+                                ))}
+                                <button 
+                                    onClick={() => fileInputRef.current?.click()}
+                                    disabled={isUploading}
+                                    className="aspect-square flex flex-col items-center justify-center border-2 border-dashed border-indigo-300 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition-colors text-indigo-500"
+                                >
+                                    {isUploading ? (
+                                        <IconRefresh className="w-6 h-6 animate-spin" />
+                                    ) : (
+                                        <>
+                                            <IconPlus className="w-6 h-6" />
+                                            <span className="text-[9px] font-bold uppercase mt-1">Añadir</span>
+                                        </>
+                                    )}
+                                </button>
+                            </div>
+                            <input 
+                                type="file"
+                                ref={fileInputRef}
+                                onChange={handleAdminPhotoUpload}
+                                accept="image/*"
+                                multiple
+                                className="hidden"
+                            />
+                        </div>
+
+                        <button 
+                            onClick={handleAdminConfirmDelivery}
+                            disabled={isAdminDelivering || adminPhotos.length === 0 || !adminReceiverName}
+                            className="w-full px-4 py-3 text-sm font-black text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition-all shadow-md disabled:bg-gray-300 disabled:shadow-none flex items-center justify-center gap-2 uppercase tracking-[0.1em]"
+                        >
+                            {isAdminDelivering ? (
+                                <IconRefresh className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    <IconCheckCircle className="w-5 h-5" />
+                                    Finalizar Entrega (Admin)
+                                </>
+                            )}
+                        </button>
+                        <p className="text-[9px] text-indigo-400 text-center italic">Este proceso marcará el envío como entregado y registrará las fotos como evidencia oficial.</p>
+                    </div>
+                </div>
+              )}
+
 
 
               {/* History Card - Always Visible */}
