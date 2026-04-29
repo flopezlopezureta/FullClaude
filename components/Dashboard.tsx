@@ -249,12 +249,12 @@ const Dashboard: React.FC = () => {
             localStorage.setItem('lastCriticalAlertId', newestId);
             return () => clearTimeout(timer);
         }
-    } else if (criticalAlerts.length === 0 && lastAlertId !== '') {
-        // No hay alertas: Limpiar y cerrar
-        setShowCriticalAlerts(false);
-        localStorage.setItem('criticalAlertsPanelOpen', 'false');
-        setLastAlertId('');
-        localStorage.setItem('lastCriticalAlertId', '');
+    } else {
+        // Si no hay alertas en absoluto, simplemente nos aseguramos que esté cerrado
+        // Pero NO borramos el lastAlertId, para que al volver a cargar no crea que son nuevas
+        if (criticalAlerts.length === 0 && showCriticalAlerts && localStorage.getItem('criticalAlertsPanelOpen') !== 'true') {
+            setShowCriticalAlerts(false);
+        }
     }
   }, [criticalAlerts, lastAlertId]);
 
