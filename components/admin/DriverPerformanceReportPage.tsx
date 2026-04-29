@@ -79,7 +79,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
     }, [startDate, endDate, selectedDriverId]);
 
     const drivers = useMemo(() => 
-        users.filter(u => u.role === Role.Driver && u.status === 'APROBADO').sort((a, b) => a.name.localeCompare(b.name)),
+        users.filter(u => u.role === Role.Driver).sort((a, b) => a.name.localeCompare(b.name)),
         [users]
     );
 
