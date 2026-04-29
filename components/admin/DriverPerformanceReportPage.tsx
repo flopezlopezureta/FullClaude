@@ -56,20 +56,6 @@ export const DriverPerformanceReportPage: React.FC = () => {
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
     
-    const [isDriverSearchOpen, setIsDriverSearchOpen] = useState(false);
-    const [driverSearchTerm, setDriverSearchTerm] = useState('');
-    const driverRef = useRef<HTMLDivElement>(null);
-
-    useEffect(() => {
-        const handleClickOutside = (event: MouseEvent) => {
-            if (driverRef.current && !driverRef.current.contains(event.target as Node)) {
-                setIsDriverSearchOpen(false);
-            }
-        };
-        document.addEventListener('mousedown', handleClickOutside);
-        return () => document.removeEventListener('mousedown', handleClickOutside);
-    }, []);
-    
     const fetchData = async () => {
         setIsLoading(true);
         try {
