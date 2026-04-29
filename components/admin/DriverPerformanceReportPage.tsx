@@ -140,7 +140,10 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const reportStats = useMemo(() => {
         const delivered = filteredPackages.filter(p => p.status === PackageStatus.Delivered);
         const problems = filteredPackages.filter(p => p.status === PackageStatus.Problem);
-        const onTime = delivered.filter(p => new Date(p.history[0].timestamp) <= new Date(p.estimatedDelivery));
+        const onTime = delivered.filter(p => {
+            const deliveryEvent = p.history.find(e => e.status === PackageStatus.Delivered) || p.history[0];
+            return new Date(deliveryEvent.timestamp) <= new Date(p.estimatedDelivery);
+        });
 
         const totalDelivered = delivered.length;
         const onTimeRate = totalDelivered > 0 ? ((onTime.length / totalDelivered) * 100).toFixed(0) : '0';
@@ -184,13 +187,11 @@ export const DriverPerformanceReportPage: React.FC = () => {
         end.setHours(23, 59, 59, 999);
     
         // 1. Calculate from Legacy Assignment Events
-        const relevantLegacyEvents = assignmentEvents.filter(event => 
-            event.driverId === selectedDriverId &&
-            event.status === 'COMPLETADO' &&
-            event.completedAt &&
-            new Date(event.completedAt) >= start &&
-            new Date(event.completedAt) <= end
-        );
+        const relevantLegacyEvents = assignmentEvents.filter(event => {
+            if (event.driverId !== selectedDriverId || event.status !== 'COMPLETADO' || !event.completedAt) return false;
+            const eventDateStr = new Date(event.completedAt).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
+            return eventDateStr >= startDate && eventDateStr <= endDate;
+        });
 
         // 2. Calculate from New Pickup System
         const relevantNewPickups = pickupRuns
@@ -251,13 +252,11 @@ export const DriverPerformanceReportPage: React.FC = () => {
         });
 
         // Legacy Pickups
-        const relevantLegacyEvents = assignmentEvents.filter(event => 
-            event.driverId === selectedDriverId &&
-            event.status === 'COMPLETADO' &&
-            event.completedAt &&
-            new Date(event.completedAt) >= start &&
-            new Date(event.completedAt) <= end
-        );
+        const relevantLegacyEvents = assignmentEvents.filter(event => {
+            if (event.driverId !== selectedDriverId || event.status !== 'COMPLETADO' || !event.completedAt) return false;
+            const eventDateStr = new Date(event.completedAt).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
+            return eventDateStr >= startDate && eventDateStr <= endDate;
+        });
 
         relevantLegacyEvents.forEach(event => {
             const dateStr = new Date(event.completedAt!).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
@@ -307,25 +306,32 @@ export const DriverPerformanceReportPage: React.FC = () => {
         if (chartInstances.current.daily) chartInstances.current.daily.destroy();
         if (chartInstances.current.type) chartInstances.current.type.destroy();
 
-        if (dailyCtx && filteredPackages.length > 0) {
-            const deliveriesByDay: { [key: string]: number } = {};
-            filteredPackages.forEach(p => {
-                if (p.status === PackageStatus.Delivered) {
-                    const date = new Date(p.history[0].timestamp).toISOString().split('T')[0];
-                    deliveriesByDay[date] = (deliveriesByDay[date] || 0) + 1;
-                }
-            });
-            const sortedDates = Object.keys(deliveriesByDay).sort();
-            const labels = sortedDates.map(date => new Date(date + 'T00:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }));
-            const data = sortedDates.map(date => deliveriesByDay[date]);
+        if (dailyCtx && dailyBreakdown.length > 0) {
+            const labels = dailyBreakdown.map(day => new Date(day.date + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }));
+            const data = dailyBreakdown.map(day => day.deliveries);
             
             chartInstances.current.daily = new Chart(dailyCtx, {
                 type: 'bar',
                 data: {
                     labels,
-                    datasets: [{ label: 'Entregas por Día', data, backgroundColor: 'rgba(59, 130, 246, 0.5)', borderColor: 'rgba(59, 130, 246, 1)', borderWidth: 1 }]
+                    datasets: [{ 
+                        label: 'Entregas por Día', 
+                        data, 
+                        backgroundColor: 'rgba(59, 130, 246, 0.5)', 
+                        borderColor: 'rgba(59, 130, 246, 1)', 
+                        borderWidth: 1 
+                    }]
                 },
-                options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } }
+                options: { 
+                    scales: { 
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { stepSize: 1 } 
+                        } 
+                    },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
             });
         }
         
