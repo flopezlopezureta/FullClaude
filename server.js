@@ -48,6 +48,25 @@ async function startServer() {
       res.json({ status: 'ok', message: 'Backend is running' });
     });
 
+    // [EMERGENCIA] Ruta directa para arreglar los egresos de hoy
+    app.get('/api/fix-egress-today', async (req, res) => {
+        try {
+            const db = require('./db');
+            const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+            const query = `
+                UPDATE packages 
+                SET "assignedAt" = "updatedAt" 
+                WHERE "driverId" IS NOT NULL 
+                AND "assignedAt" IS NULL 
+                AND "updatedAt"::text LIKE $1
+            `;
+            const result = await db.query(query, [today + '%']);
+            res.json({ success: true, message: `✅ Reparados ${result.rowCount} paquetes.`, date: today });
+        } catch (err) {
+            res.status(500).json({ success: false, error: err.message });
+        }
+    });
+
     // Critical routes: use direct require so startup fails visibly if there are errors
     // --- Core Routes (Mandatory) ---
     app.use('/api/auth', require('./routes/auth.js'));
