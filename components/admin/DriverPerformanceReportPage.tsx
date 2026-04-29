@@ -129,13 +129,11 @@ export const DriverPerformanceReportPage: React.FC = () => {
 
             if (!relevantEvent) return false;
             
-            const eventDate = new Date(new Date(relevantEvent.timestamp).toLocaleString('en-US', { timeZone: systemSettings?.timezone || 'America/Santiago' }));
-            const start = new Date(startDate.replace(/-/g, '/'));
-            start.setHours(0, 0, 0, 0);
-            const end = new Date(endDate.replace(/-/g, '/'));
-            end.setHours(23, 59, 59, 999);
+            // Get the date string in the target timezone
+            const eventDateStr = new Date(relevantEvent.timestamp).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
             
-            return eventDate >= start && eventDate <= end;
+            // Compare string dates (YYYY-MM-DD)
+            return eventDateStr >= startDate && eventDateStr <= endDate;
         });
     }, [packages, selectedDriverId, startDate, endDate]);
 
@@ -225,15 +223,19 @@ export const DriverPerformanceReportPage: React.FC = () => {
         const breakdown: { [date: string]: { deliveries: number, pickups: number, deliveryPay: number, pickupPay: number } } = {};
         const rates = selectedDriver.pricing || { sameDay: 0, express: 0, nextDay: 0, pickup: 0 };
         
-        const start = new Date(startDate.replace(/-/g, '/'));
-        start.setHours(0, 0, 0, 0);
-        const end = new Date(endDate.replace(/-/g, '/'));
-        end.setHours(23, 59, 59, 999);
-
         const initializeDate = (date: string) => {
              if (!breakdown[date]) {
                 breakdown[date] = { deliveries: 0, pickups: 0, deliveryPay: 0, pickupPay: 0 };
             }
+        }
+
+        const d = new Date(startDate + 'T12:00:00'); // Use noon to avoid day shifts during increment
+        const endD = new Date(endDate + 'T12:00:00');
+        
+        while (d <= endD) {
+            const dateStr = d.toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
+            initializeDate(dateStr);
+            d.setDate(d.getDate() + 1);
         }
 
         // Calculate deliveries per day
@@ -275,11 +277,9 @@ export const DriverPerformanceReportPage: React.FC = () => {
             .filter(a => a.status === 'RETIRADO');
 
         relevantNewRunPickups.forEach(a => {
-            // Use the run date for the breakdown
-            const dateStr = new Date(a.runDate).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
-            // Filter again by date range just in case run.date is outside but was fetched
-            const d = new Date(a.runDate);
-            if (d >= start && d <= end) {
+            // runDate is already YYYY-MM-DD from API
+            const dateStr = a.runDate;
+            if (dateStr >= startDate && dateStr <= endDate) {
                 initializeDate(dateStr);
                 breakdown[dateStr].pickups++;
                 breakdown[dateStr].pickupPay += a.cost;
