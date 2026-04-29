@@ -727,6 +727,15 @@ const Dashboard: React.FC = () => {
                    </div>
                    
                    <h3 className="text-sm font-bold text-gray-900 truncate mb-1">{pkg.recipientName}</h3>
+                   
+                   {/* Seller Info */}
+                   <div className="flex items-center gap-1.5 mb-2.5 bg-blue-50 px-2 py-0.5 rounded border border-blue-100 w-fit">
+                      <span className="text-[8px] font-black text-blue-400 uppercase tracking-tighter">Seller:</span>
+                      <span className="text-[10px] font-black text-blue-800 uppercase truncate max-w-[150px]">
+                         {(pkg as any).clientName || users.find(u => u.id === pkg.creatorId)?.name || 'Externo'}
+                      </span>
+                   </div>
+
                    <div className="flex items-center gap-2 mb-3">
                       <div className="w-4 h-4 rounded-full bg-gray-100 flex items-center justify-center">
                          <IconMercadoLibre className="w-2.5 h-2.5 text-gray-500" />
