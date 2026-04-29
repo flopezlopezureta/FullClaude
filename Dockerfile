@@ -6,8 +6,13 @@ WORKDIR /app
 # Copy package files
 COPY package*.json ./
 
-# Install all dependencies (including devDeps needed for build)
-RUN npm install
+# Increase network timeout for stability
+RUN npm config set fetch-retry-maxtimeout 600000 && \
+    npm config set fetch-retry-mintimeout 100000 && \
+    npm config set fetch-retries 5
+
+# Install all dependencies using ci for reliability
+RUN npm ci
 
 # Copy source
 COPY . .
@@ -26,7 +31,10 @@ WORKDIR /app
 
 # Copy package files and install only production deps
 COPY package*.json ./
-RUN npm install --omit=dev
+RUN npm config set fetch-retry-maxtimeout 600000 && \
+    npm config set fetch-retry-mintimeout 100000 && \
+    npm config set fetch-retries 5 && \
+    npm ci --omit=dev
 
 # Copy built frontend from builder stage
 COPY --from=builder /app/dist ./dist
