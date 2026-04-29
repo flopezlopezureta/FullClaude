@@ -23,6 +23,8 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
 }) => {
     const [searchQuery, setSearchQuery] = useState('');
 
+    const [viewingPhoto, setViewingPhoto] = useState<string | null>(null);
+
     if (!isOpen) return null;
 
     const filtered = packages.filter(pkg => 
@@ -43,6 +45,7 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
     };
 
     return (
+        <>
         <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-300">
             <div className="bg-[var(--background-primary)] w-full max-w-6xl max-h-[90vh] rounded-2xl shadow-2xl overflow-hidden flex flex-col border border-[var(--border-primary)] animate-in zoom-in-95 duration-300">
                 {/* Header */}
@@ -129,7 +132,7 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
                                         <td className="px-4 py-4 text-center">
                                             {pkg.deliveryPhotosBase64 && pkg.deliveryPhotosBase64.length > 0 ? (
                                                 <button 
-                                                    onClick={() => window.open(pkg.deliveryPhotosBase64![0], '_blank')}
+                                                    onClick={() => setViewingPhoto(pkg.deliveryPhotosBase64![0])}
                                                     className="p-1.5 bg-white text-blue-600 rounded-lg hover:bg-blue-50 transition-all border border-blue-200 shadow-sm"
                                                     title="Ver Foto de Entrega"
                                                 >
@@ -171,6 +174,28 @@ const DriverDeliveryDetailModal: React.FC<DriverDeliveryDetailModalProps> = ({
                 </div>
             </div>
         </div>
+
+        {/* Photo Overlay */}
+        {viewingPhoto && (
+            <div 
+                className="fixed inset-0 bg-black/90 z-[70] flex items-center justify-center p-4 animate-in fade-in duration-300"
+                onClick={() => setViewingPhoto(null)}
+            >
+                <button
+                    onClick={() => setViewingPhoto(null)}
+                    className="absolute top-6 right-6 p-3 rounded-full text-white bg-white/10 hover:bg-white/20 backdrop-blur-md transition-all shadow-xl"
+                >
+                    <IconX className="w-8 h-8" />
+                </button>
+                <img 
+                    src={viewingPhoto} 
+                    alt="Evidencia en tamaño completo" 
+                    className="max-h-[90vh] max-w-[90vw] object-contain rounded-2xl shadow-2xl border-4 border-white/20 animate-in zoom-in duration-300"
+                    onClick={(e) => e.stopPropagation()}
+                />
+            </div>
+        )}
+        </>
     );
 };
 
