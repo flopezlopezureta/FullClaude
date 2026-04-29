@@ -9,6 +9,7 @@ import {
   PickupRun,
   AssignmentEvent,
   DriverPermissions,
+  OperatorPermissions,
   Notification
 } from '../types';
 import { PackageStatus, ShippingType, Role } from '../constants';
@@ -156,6 +157,7 @@ export interface UserCreationData extends RegisterData {
     pickupCost?: number;
     pricing?: any;
     driverPermissions?: DriverPermissions;
+    operatorPermissions?: OperatorPermissions;
 }
 
 export interface UserUpdateData extends Partial<UserCreationData> {
@@ -168,6 +170,7 @@ export interface UserUpdateData extends Partial<UserCreationData> {
     vehicles?: any[];
     integrations?: any;
     driverPermissions?: DriverPermissions;
+    operatorPermissions?: OperatorPermissions;
 }
 
 export interface DeliveryConfirmationData {

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useContext } from 'react';
 import { Role, UserStatus, PackageSource } from '../../constants';
-import type { User, DriverPermissions } from '../../types';
+import type { User, DriverPermissions, OperatorPermissions } from '../../types';
 import { api, UserCreationData, UserUpdateData, PackageCreationData } from '../../services/api';
 import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconJumpseller, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck, IconUsers } from '../Icon';
 import CreateUserModal from '../modals/CreateUserModal';
@@ -58,6 +58,23 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const auth = useContext(AuthContext);
 
   const fetchUsers = async () => {
+    const canAccess = () => {
+        if (auth?.user?.role === Role.Admin) return true;
+        if (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions) {
+            const perms = auth.user.operatorPermissions;
+            if (roleFilter === Role.Driver || roleFilter === Role.Auxiliar || roleFilter === Role.Retiros) return perms.canManageDrivers;
+            if (roleFilter === Role.Client || roleFilter === Role.Facturacion) return perms.canManageClients;
+            if (roleFilter === Role.OperadorSistemas) return perms.canManageSettings;
+        }
+        return false;
+    };
+
+    if (!canAccess()) {
+        setIsLoading(false);
+        setUsers([]);
+        return;
+    }
+
     setIsLoading(true);
     try {
       const allUsers = await api.getUsers();
@@ -310,6 +327,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
             />
             Mostrar eliminados
           </label>
+          {((auth?.user?.role === Role.Admin) || 
+            (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions && (
+              ((roleFilter === Role.Driver || roleFilter === Role.Auxiliar || roleFilter === Role.Retiros) && auth.user.operatorPermissions.canManageDrivers) ||
+              ((roleFilter === Role.Client || roleFilter === Role.Facturacion) && auth.user.operatorPermissions.canManageClients) ||
+              ((roleFilter === Role.OperadorSistemas) && auth.user.operatorPermissions.canManageSettings)
+            ))
+          ) && (
           <button
             onClick={() => setIsCreateModalOpen(true)}
             className="inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[var(--brand-primary)] hover:bg-[var(--brand-secondary)] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[var(--brand-secondary)] whitespace-nowrap"
@@ -317,6 +341,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
             <IconUserPlus className="w-5 h-5 mr-2 -ml-1"/>
             Crear Usuario
           </button>
+          )}
         </div>
       </div>
       <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
@@ -464,6 +489,39 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         )
                     })()
                 )}
+                {roleFilter === Role.OperadorSistemas && (
+                    (() => {
+                        const permissions = user.operatorPermissions || { canManageDrivers: true, canManageClients: true, canManagePackages: true, canDeletePackages: false, canManageZones: false, canManageSettings: false, canManageIntegrations: false, canViewReports: true, canBulkActions: true };
+                        const permissionItems: { key: keyof OperatorPermissions, label: string, icon: React.ReactNode }[] = [
+                            { key: 'canManageDrivers', label: 'Conductores', icon: <IconUsers className="w-4 h-4"/> },
+                            { key: 'canManageClients', label: 'Clientes', icon: <IconUsers className="w-4 h-4"/> },
+                            { key: 'canManagePackages', label: 'Envíos', icon: <IconPackage className="w-4 h-4"/> },
+                            { key: 'canDeletePackages', label: 'Eliminar', icon: <IconTrash className="w-4 h-4"/> },
+                            { key: 'canManageZones', label: 'Zonas', icon: <IconTruck className="w-4 h-4"/> },
+                            { key: 'canManageSettings', label: 'Ajustes', icon: <IconChecklist className="w-4 h-4"/> },
+                            { key: 'canManageIntegrations', label: 'Integraciones', icon: <IconMercadoLibre className="w-4 h-4"/> },
+                            { key: 'canViewReports', label: 'Reportes', icon: <IconHistory className="w-4 h-4"/> },
+                            { key: 'canBulkActions', label: 'Masivo', icon: <IconChecklist className="w-4 h-4"/> },
+                        ];
+                        return (
+                            <div className="mt-3 pt-3 border-t border-[var(--border-primary)]">
+                                <span className="text-xs font-semibold text-[var(--text-muted)] mb-2 block">Permisos de Operador:</span>
+                                <div className="flex items-center gap-2 flex-wrap">
+                                    {permissionItems.map(item => (
+                                        <div 
+                                            key={item.key}
+                                            title={item.label}
+                                            className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full ${permissions[item.key] ? 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/50 dark:text-indigo-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400'}`}
+                                        >
+                                            {item.icon}
+                                            <span>{item.label}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )
+                    })()
+                )}
               </div>
               
               {roleFilter === Role.Client && (
@@ -572,6 +630,13 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         </button>
                     </div>
                 )}
+                {((auth?.user?.role === Role.Admin) || 
+                  (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions && (
+                    ((user.role === Role.Driver || user.role === Role.Auxiliar || user.role === Role.Retiros) && auth.user.operatorPermissions.canManageDrivers) ||
+                    ((user.role === Role.Client || user.role === Role.Facturacion) && auth.user.operatorPermissions.canManageClients) ||
+                    ((user.role === Role.OperadorSistemas) && auth.user.operatorPermissions.canManageSettings)
+                  ))
+                ) && (
                 <button 
                     onClick={() => setEditingUser(user)}
                     className="p-2 text-[var(--text-muted)] hover:text-[var(--brand-primary)] hover:bg-[var(--brand-muted)] rounded-md transition-colors"
@@ -579,7 +644,8 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                 >
                     <IconPencil className="w-5 h-5" />
                 </button>
-                {user.email !== 'admin@admin.cl' && (
+                )}
+                {user.email !== 'admin@admin.cl' && auth?.user?.role === Role.Admin && (
                     <button 
                         onClick={() => setDeletingUser(user)}
                         className="p-2 text-[var(--text-muted)] hover:text-red-600 hover:bg-red-100 rounded-md transition-colors"

@@ -154,7 +154,7 @@ const Dashboard: React.FC = () => {
 
   useEffect(() => {
     const fetchPollingStatus = async () => {
-      if (auth?.user?.role !== Role.Admin) return;
+      if (auth?.user?.role !== Role.Admin && !(auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canManageIntegrations)) return;
       try {
         const [meliStatus, shopifyStatus] = await Promise.all([
             api.getMeliPollingStatus(),
@@ -767,6 +767,8 @@ const Dashboard: React.FC = () => {
         <PackageFilters
             onOpenCreateModal={() => setIsCreateModalOpen(true)}
             onOpenImportModal={() => setIsImportModalOpen(true)}
+            canCreate={auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canManagePackages)}
+            canImport={auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canBulkActions)}
             onRefresh={handleRefreshAll}
             searchQuery={searchQuery}
             onSearchChange={setSearchQuery}
@@ -1070,11 +1072,18 @@ const Dashboard: React.FC = () => {
           users={users}
           isLoading={isLoading}
           onSelectPackage={setSelectedPackage}
-          onAssignPackage={auth?.user?.role === 'ADMIN' ? setAssigningPackage : undefined}
-          onEditPackage={auth?.user?.role === 'ADMIN' ? setEditingPackage : undefined}
-          onDeletePackage={(pkg) => { setSelectedPackages(new Set([pkg.id])); setIsDeletePasswordModalOpen(true); }}
+          onAssignPackage={(auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canBulkActions)) ? setAssigningPackage : undefined}
+          onEditPackage={(auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canManagePackages)) ? setEditingPackage : undefined}
+          onDeletePackage={(pkg) => { 
+            if (auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canDeletePackages)) {
+                setSelectedPackages(new Set([pkg.id])); 
+                setIsDeletePasswordModalOpen(true); 
+            } else {
+                alert("No tienes permiso para eliminar envíos.");
+            }
+          }}
           onPrintLabel={(pkg) => setPrintingPackages([pkg])}
-          onMarkForReturn={auth?.user?.role === 'ADMIN' ? handleMarkForReturn : undefined}
+          onMarkForReturn={(auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canManagePackages)) ? handleMarkForReturn : undefined}
           isFiltering={searchQuery !== '' || statusFilter.length > 0 || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all' || quickFilter !== 'all'}
           isDateFiltering={isDateFiltering}
           selectedPackages={selectedPackages}

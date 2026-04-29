@@ -110,15 +110,15 @@ const DashboardLayout: React.FC = () => {
         return { title: 'Gestión de Paquetes', content: <Dashboard /> };
       
       case 'import-orders':
-        if (isAdmin || isOp) return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
         break;
 
       case 'assign-pickups':
-        if (isAdmin || isOp || isRetiros) return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canBulkActions) || isRetiros) return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
         break;
 
       case 'pickup-report':
-        if (isAdmin || isOp || isRetiros) return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports) || isRetiros) return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
         break;
 
       // User Management
@@ -127,57 +127,57 @@ const DashboardLayout: React.FC = () => {
         break;
       
       case 'users-operadores':
-        if (isAdmin) return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageSettings)) return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
         break;
 
       case 'users-clients':
-        if (isAdmin || isOp) return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageClients)) return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
         break;
 
       case 'users-drivers':
-        if (isAdmin || isOp) return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
         break;
 
       case 'users-auxiliares':
-        if (isAdmin || isOp) return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
         break;
 
       case 'users-retiros':
-        if (isAdmin) return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canBulkActions)) return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
         break;
 
       case 'users-facturacion':
-        if (isAdmin) return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports)) return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
         break;
 
       // Logistics
       case 'flex-discrepancies':
-        if (isAdmin || isOp || (isAdmin && isSuperUser)) return { title: 'Discrepancias de Carga', content: <DriverFlexDiscrepancyPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: 'Discrepancias de Carga', content: <DriverFlexDiscrepancyPage /> };
         break;
 
       case 'zone-settings':
-        if (isAdmin || isOp) return { title: 'Configuración de Zonas', content: <ZoneSettingsPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageZones)) return { title: 'Configuración de Zonas', content: <ZoneSettingsPage /> };
         break;
 
       case 'live-map':
-        if (isAdmin || isOp) return { title: 'Mapa en Vivo', content: <LiveMap /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Mapa en Vivo', content: <LiveMap /> };
         break;
 
       case 'geolocate':
-        if (isAdmin || isOp) return { title: '', content: <GeolocatePage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: '', content: <GeolocatePage /> };
         break;
 
       // Billing
       case 'global-billing':
-        if (isAdmin || isFact) return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports) || isFact) return { title: 'Facturación Masiva', content: <GlobalBillingPage /> };
         break;
 
       case 'billing-report':
-        if (isAdmin || isFact) return { title: 'Informe de Facturación', content: <BillingReportPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports) || isFact) return { title: 'Informe de Facturación', content: <BillingReportPage /> };
         break;
 
       case 'driver-performance':
-        if (isAdmin) return { title: 'Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports)) return { title: 'Rendimiento por Conductor', content: <DriverPerformanceReportPage /> };
         break;
 
       // Client
@@ -196,12 +196,12 @@ const DashboardLayout: React.FC = () => {
 
       // Settings
       case 'settings':
-        if (isAdmin) return { title: 'Ajustes del Sistema', content: <SettingsPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageSettings)) return { title: 'Ajustes del Sistema', content: <SettingsPage /> };
         if (isClient) return { title: 'Configuración de Mi Cuenta', content: <ClientSettingsPage /> };
         break;
 
       case 'integrations':
-        if (isAdmin) return { title: 'Configuración de Integraciones', content: <IntegrationSettingsPage /> };
+        if (isAdmin || (isOp && user?.operatorPermissions?.canManageIntegrations)) return { title: 'Configuración de Integraciones', content: <IntegrationSettingsPage /> };
         break;
 
       case 'system-logs':

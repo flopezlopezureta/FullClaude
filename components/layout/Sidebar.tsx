@@ -95,22 +95,56 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   ].filter(item => !('subItems' in item) || (item as any).subItems.length > 0);
 
   const operadorSistemasNavItems = [
-    { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
-    ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" /> }] : []),
-    { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" /> },
-    { id: 'import-orders', label: 'Importar Envíos', icon: <IconDownload className="h-6 w-6" /> },
+    { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" />, permission: 'canManagePackages' },
+    { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" />, permission: 'canViewReports' },
+    ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" />, permission: 'canManagePackages' }] : []),
+    { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" />, permission: 'canManagePackages' },
+    { id: 'import-orders', label: 'Importar Envíos', icon: <IconDownload className="h-6 w-6" />, permission: 'canManagePackages' },
     { 
       id: 'pickups',
       label: 'Retiros',
       icon: <IconUserCheck className="h-6 w-6" />,
+      permission: 'canBulkActions',
       subItems: [
         { id: 'assign-pickups', label: 'Gestión de Retiros', icon: <IconPackage className="h-5 w-5" /> },
         { id: 'pickup-report', label: 'Reporte de Retiros', icon: <IconChartBar className="h-5 w-5" /> }
       ]
     },
-    { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
-    { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" /> }
-  ];
+    { 
+      id: 'users', 
+      label: 'Gestión de Usuarios', 
+      icon: <IconUsers className="h-6 w-6" />,
+      subItems: [
+        ...(user?.operatorPermissions?.canManageClients ? [{ id: 'users-clients', label: 'Clientes', icon: <IconUser className="h-5 w-5" /> }] : []),
+        ...(user?.operatorPermissions?.canManageDrivers ? [{ id: 'users-drivers', label: 'Conductores', icon: <IconTruck className="h-5 w-5" /> }] : []),
+        ...(user?.operatorPermissions?.canManageDrivers ? [{ id: 'users-auxiliares', label: 'Auxiliares', icon: <IconUser className="h-5 w-5" /> }] : []),
+        ...(user?.operatorPermissions?.canBulkActions ? [{ id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> }] : []),
+        ...(user?.operatorPermissions?.canViewReports ? [{ id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> }] : []),
+      ]
+    },
+    { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" />, permission: 'canManageZones' },
+    { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" />, permission: 'canManageDrivers' },
+    { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" />, permission: 'canViewReports' },
+    { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" />, permission: 'canViewReports' },
+    {
+      id: 'configuration',
+      label: 'Configuración',
+      icon: <IconSettings className="h-6 w-6" />,
+      permission: 'canManageSettings',
+      subItems: [
+        { id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> },
+        ...(user?.operatorPermissions?.canManageIntegrations ? [{ id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }] : []),
+      ]
+    }
+  ].filter(item => {
+    if ((item as any).permission && user?.operatorPermissions) {
+        return (user.operatorPermissions as any)[(item as any).permission];
+    }
+    if ('subItems' in item) {
+        return (item.subItems as any[]).length > 0;
+    }
+    return true;
+  });
   const clientNavItems = [
     { id: 'my-creations', label: 'Mis Paquetes Creados', icon: <IconPackage className="h-6 w-6" /> },
     { id: 'my-performance', label: 'Rendimiento de Envíos', icon: <IconChartBar className="h-6 w-6" /> },

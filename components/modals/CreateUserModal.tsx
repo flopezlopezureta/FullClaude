@@ -2,7 +2,8 @@ import React, { useState } from 'react';
 import { IconX, IconEye, IconEyeOff } from '../Icon';
 import { UserCreationData } from '../../services/api';
 import { Role } from '../../constants';
-import type { UserPricing } from '../../types';
+import type { UserPricing, OperatorPermissions } from '../../types';
+import OperatorPermissionsForm from './OperatorPermissionsForm';
 
 interface CreateUserModalProps {
   onClose: () => void;
@@ -57,6 +58,18 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
   const [pickupCost, setPickupCost] = useState<number>(0);
   const [pricing, setPricing] = useState<UserPricing>({ sameDay: 0, express: 0, nextDay: 0 });
   
+  const [operatorPermissions, setOperatorPermissions] = useState<OperatorPermissions>({
+    canManageDrivers: true,
+    canManageClients: true,
+    canManagePackages: true,
+    canDeletePackages: false,
+    canManageZones: false,
+    canManageSettings: false,
+    canManageIntegrations: false,
+    canViewReports: true,
+    canBulkActions: true,
+  });
+
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -148,6 +161,10 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
         creationData.billingGiro = billingGiro;
         creationData.pickupCost = Number(pickupCost) || 0;
         creationData.pricing = pricing;
+    }
+
+    if (defaultRole === Role.OperadorSistemas) {
+        creationData.operatorPermissions = operatorPermissions;
     }
 
     setIsSubmitting(true);
@@ -271,6 +288,12 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
                     </div>
                 </div>
                 </>
+            )}
+            {defaultRole === Role.OperadorSistemas && (
+                <OperatorPermissionsForm 
+                    permissions={operatorPermissions} 
+                    onChange={setOperatorPermissions} 
+                />
             )}
             <div className="pt-4 mt-4 border-t border-[var(--border-primary)]">
                  <h4 className="text-md font-semibold text-[var(--text-secondary)]">Credenciales de Acceso</h4>

@@ -7,6 +7,8 @@ interface PackageFiltersProps {
   onOpenCreateModal: () => void;
   onOpenImportModal: () => void;
   onRefresh: () => void;
+  canCreate?: boolean;
+  canImport?: boolean;
   isSyncing?: boolean;
   searchQuery: string;
   onSearchChange: (query: string) => void;
@@ -43,6 +45,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
   onOpenCreateModal,
   onOpenImportModal,
   onRefresh,
+  canCreate = true,
+  canImport = true,
   isSyncing = false,
   searchQuery,
   onSearchChange,
@@ -409,6 +413,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                 <IconSearch className="w-5 h-5 mr-3 -ml-1"/>
                 Consultar ID Flex
             </button>
+            {canImport && (
             <button
                 onClick={onOpenImportModal}
                 className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border border-gray-300 text-sm font-bold rounded-lg shadow-sm text-gray-700 bg-white hover:bg-gray-50 hover:border-gray-400 transition-all uppercase tracking-tight"
@@ -416,6 +421,8 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                 <IconFileSpreadsheet className="w-5 h-5 mr-3 -ml-1 text-emerald-600"/>
                 Importar Excel
             </button>
+            )}
+            {canCreate && (
             <button
                 onClick={onOpenCreateModal}
                 className="flex-shrink-0 inline-flex items-center justify-center px-5 py-2.5 border-2 border-transparent text-sm font-black rounded-lg shadow-sm text-white bg-[#005fb8] hover:bg-[#004a8f] hover:shadow-lg focus:outline-none transition-all uppercase tracking-widest"
@@ -423,6 +430,7 @@ const PackageFilters: React.FC<PackageFiltersProps> = ({
                 <IconPackage className="w-5 h-5 mr-3 -ml-1"/>
                 Crear Paquete
             </button>
+            )}
         </div>
       </div>
     </div>

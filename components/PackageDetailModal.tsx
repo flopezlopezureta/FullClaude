@@ -515,7 +515,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
               )}
 
               {/* Admin Closure Card */}
-              {(auth?.user?.role === Role.Admin || auth?.user?.role === Role.OperadorSistemas) && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned && pkg.status !== PackageStatus.Cancelled && (
+              {(auth?.user?.role === Role.Admin || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canManagePackages)) && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Returned && pkg.status !== PackageStatus.Cancelled && (
                 <div className="bg-indigo-50/50 p-4 rounded-lg shadow-sm border border-indigo-100 space-y-4">
                     <div className="flex items-center justify-center gap-2 mb-2">
                         <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-white">

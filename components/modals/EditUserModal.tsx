@@ -1,7 +1,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { IconX, IconEye, IconEyeOff, IconTruck, IconPencil, IconTrash, IconPlus, IconMercadoLibre, IconLoader, IconCheckCircle, IconShopify, IconWoocommerce, IconFalabella, IconPlugConnected, IconAlertTriangle, IconJumpseller } from '../Icon';
-import type { User, Vehicle, UserPricing, IntegrationSettings } from '../../types';
+import type { User, Vehicle, UserPricing, IntegrationSettings, OperatorPermissions } from '../../types';
+import OperatorPermissionsForm from './OperatorPermissionsForm';
 import { Role } from '../../constants';
 import { UserUpdateData, api } from '../../services/api';
 
@@ -159,6 +160,17 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                 pickupCost: user.pickupCost || 0,
                 integrations: user.integrations,
                 pricing: user.pricing || { sameDay: 0, express: 0, nextDay: 0 },
+                operatorPermissions: user.operatorPermissions || {
+                    canManageDrivers: true,
+                    canManageClients: true,
+                    canManagePackages: true,
+                    canDeletePackages: false,
+                    canManageZones: false,
+                    canManageSettings: false,
+                    canManageIntegrations: false,
+                    canViewReports: true,
+                    canBulkActions: true,
+                }
             });
             setUseSameAddress(!user.pickupAddress || user.address === user.pickupAddress);
             
@@ -727,6 +739,12 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                 <textarea name="backgroundCheckNotes" value={formData.backgroundCheckNotes || ''} onChange={handleChange} placeholder="Notas de antecedentes (opcional)" className={inputClasses} rows={2}></textarea>
                                 <div className="pt-4 mt-4 border-t"><h4 className="text-md font-semibold text-[var(--text-secondary)]">Vehículos</h4>{ (formData.vehicles || []).length > 0 && (<div className="space-y-2 mt-2">{ (formData.vehicles || []).map((v, i) => (<div key={v.id} className="flex items-center justify-between p-2 bg-[var(--background-muted)] border rounded-md"><div className="flex items-center gap-3"><IconTruck className="w-5 h-5 text-[var(--text-muted)]"/><div><p className="font-semibold">{v.plate} <span className="font-normal text-sm">{v.brand} {v.model} ({v.year})</span></p><p className="text-xs text-[var(--text-muted)]">Rev. Téc: {v.technicalReviewExpiry} / P. Circ: {v.circulationPermitExpiry}</p></div></div><div><button type="button" onClick={() => handleStartEditVehicle(v, i)} className="p-1.5"><IconPencil className="w-4 h-4"/></button><button type="button" onClick={() => handleDeleteVehicle(i)} className="p-1.5"><IconTrash className="w-4 h-4"/></button></div></div>))}</div>)}{editingVehicle ? (<VehicleForm vehicle={editingVehicle} onChange={handleVehicleFormChange} onSave={handleSaveVehicle} onCancel={handleCancelEditVehicle} />) : (<button type="button" onClick={handleStartAddVehicle} className="mt-2 text-sm font-semibold flex items-center gap-1"><IconPlus className="w-4 h-4"/> Agregar Vehículo</button>)}</div>
                             </div>
+                        )}
+                        {user.role === Role.OperadorSistemas && (
+                            <OperatorPermissionsForm 
+                                permissions={formData.operatorPermissions as OperatorPermissions}
+                                onChange={(permissions) => setFormData(prev => ({ ...prev, operatorPermissions: permissions }))}
+                            />
                         )}
                         {currentUserRole === Role.Admin && (
                             <div className="pt-4 mt-4 border-t border-[var(--border-primary)]">

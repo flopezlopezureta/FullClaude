@@ -131,6 +131,18 @@ export interface DriverPermissions {
   canAuxiliar: boolean;
 }
 
+export interface OperatorPermissions {
+  canManageDrivers: boolean;
+  canManageClients: boolean;
+  canManagePackages: boolean;
+  canDeletePackages: boolean;
+  canManageZones: boolean;
+  canManageSettings: boolean;
+  canManageIntegrations: boolean;
+  canViewReports: boolean;
+  canBulkActions: boolean;
+}
+
 export interface IntegrationAccount {
   id: string;
   type: 'MERCADO_LIBRE' | 'SHOPIFY' | 'WOOCOMMERCE' | 'FALABELLA' | 'JUMPSELLER';
@@ -231,6 +243,7 @@ export interface User {
   backgroundCheckNotes?: string;
   vehicles?: Vehicle[];
   driverPermissions?: DriverPermissions;
+  operatorPermissions?: OperatorPermissions;
 
   // Integrations
   integrations?: {
