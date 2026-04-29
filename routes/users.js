@@ -25,7 +25,9 @@ const adminOnly = (req, res, next) => {
 // GET /api/users - Get all users
 router.get('/', authMiddleware, async (req, res) => {
     try {
+        console.log(`[DEBUG SERVER] Fetching users for requester: ${req.user.name} (${req.user.role})`);
         const { rows: users } = await db.query('SELECT * FROM users ORDER BY name ASC');
+        console.log(`[DEBUG SERVER] Found ${users.length} users in database.`);
         const safeUsers = users.map(user => {
             delete user.password;
             // Only admins can see plain passwords
