@@ -87,3 +87,16 @@ export enum LabelFormat {
   MinimalSticker = 'minimal_sticker',
   LetterMulti = 'letter_multi',
 }
+
+export const DEFAULT_OPERATOR_PERMISSIONS = {
+  canManageDrivers: true,
+  canManageClients: true,
+  canManagePackages: true,
+  canDeletePackages: false,
+  canManageZones: true,
+  canManageSystem: false,
+  canManageIntegrations: false,
+  canViewReports: true,
+  canManageInvoices: true,
+  canBulkActions: true
+};

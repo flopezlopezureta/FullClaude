@@ -2,7 +2,7 @@
 import React, { useContext, useState } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle } from '../Icon';
-import { Role } from '../../constants';
+import { Role, DEFAULT_OPERATOR_PERMISSIONS } from '../../constants';
 
 interface SidebarProps {
   activeView: string;
@@ -28,6 +28,10 @@ const getRoleInSpanish = (role?: Role): string => {
 const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClose }) => {
   const { user, logout, systemSettings } = useContext(AuthContext)!;
   const isSuperUser = user?.email === 'admin' || user?.email === 'admin@admin.cl';
+  const isOp = user?.role === Role.OperadorSistemas;
+
+  // Use defaults if permissions are missing (backward compatibility)
+  const permissions = user?.operatorPermissions || (isOp ? DEFAULT_OPERATOR_PERMISSIONS : null);
 
   const [openMenus, setOpenMenus] = useState<Set<string>>(() => {
     const menus = new Set<string>();
@@ -115,11 +119,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       label: 'Gestión de Usuarios', 
       icon: <IconUsers className="h-6 w-6" />,
       subItems: [
-        ...(user?.operatorPermissions?.canManageClients ? [{ id: 'users-clients', label: 'Clientes', icon: <IconUser className="h-5 w-5" /> }] : []),
-        ...(user?.operatorPermissions?.canManageDrivers ? [{ id: 'users-drivers', label: 'Conductores', icon: <IconTruck className="h-5 w-5" /> }] : []),
-        ...(user?.operatorPermissions?.canManageDrivers ? [{ id: 'users-auxiliares', label: 'Auxiliares', icon: <IconUser className="h-5 w-5" /> }] : []),
-        ...(user?.operatorPermissions?.canBulkActions ? [{ id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> }] : []),
-        ...(user?.operatorPermissions?.canViewReports ? [{ id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> }] : []),
+        ...(permissions?.canManageClients ? [{ id: 'users-clients', label: 'Clientes', icon: <IconUser className="h-5 w-5" /> }] : []),
+        ...(permissions?.canManageDrivers ? [{ id: 'users-drivers', label: 'Conductores', icon: <IconTruck className="h-5 w-5" /> }] : []),
+        ...(permissions?.canManageDrivers ? [{ id: 'users-auxiliares', label: 'Auxiliares', icon: <IconUser className="h-5 w-5" /> }] : []),
+        ...(permissions?.canBulkActions ? [{ id: 'users-retiros', label: 'Retiros', icon: <IconUserCheck className="h-5 w-5" /> }] : []),
+        ...(permissions?.canViewReports ? [{ id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> }] : []),
       ]
     },
     { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" />, permission: 'canManageZones' },
@@ -133,12 +137,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       permission: 'canManageSettings',
       subItems: [
         { id: 'settings', label: 'Sistema', icon: <IconSettings className="h-5 w-5" /> },
-        ...(user?.operatorPermissions?.canManageIntegrations ? [{ id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }] : []),
+        ...(permissions?.canManageIntegrations ? [{ id: 'integrations', label: 'Integraciones', icon: <IconPlugConnected className="h-5 w-5" /> }] : []),
       ]
     }
   ].filter(item => {
-    if ((item as any).permission && user?.operatorPermissions) {
-        return (user.operatorPermissions as any)[(item as any).permission];
+    if ((item as any).permission && permissions) {
+        return (permissions as any)[(item as any).permission];
     }
     if ('subItems' in item) {
         return (item.subItems as any[]).length > 0;

@@ -5,7 +5,7 @@ import { useToast } from '../../contexts/ToastContext';
 import Sidebar from './Sidebar';
 import Dashboard from '../Dashboard';
 import UserManagement from '../admin/UserManagement';
-import { Role } from '../../constants';
+import { Role, DEFAULT_OPERATOR_PERMISSIONS } from '../../constants';
 import ClientDashboard from '../client/ClientDashboard';
 import { IconMenu, IconCheckCircle, IconX } from '../Icon';
 import SettingsPage from '../admin/SettingsPage';
@@ -104,21 +104,24 @@ const DashboardLayout: React.FC = () => {
     const isFact = hasRole(user.role, Role.Facturacion);
     const isAux = hasRole(user.role, Role.Auxiliar);
     const isClient = hasRole(user.role, Role.Client);
+    
+    // Use defaults if permissions are missing (backward compatibility)
+    const permissions = user?.operatorPermissions || (isOp ? DEFAULT_OPERATOR_PERMISSIONS : null);
 
     switch (activeView) {
       case 'packages':
         return { title: 'Gestión de Paquetes', content: <Dashboard /> };
       
       case 'import-orders':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
+        if (isAdmin || (isOp && permissions?.canManagePackages)) return { title: 'Importar Paquetes', content: <ImportOrdersPage /> };
         break;
 
       case 'assign-pickups':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canBulkActions) || isRetiros) return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
+        if (isAdmin || (isOp && permissions?.canBulkActions) || isRetiros) return { title: 'Gestión de Retiros', content: <PickupDashboard /> };
         break;
 
       case 'pickup-report':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports) || isRetiros) return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
+        if (isAdmin || (isOp && permissions?.canViewReports) || isRetiros) return { title: 'Reporte de Retiros', content: <PickupReportPage /> };
         break;
 
       // User Management
@@ -127,32 +130,32 @@ const DashboardLayout: React.FC = () => {
         break;
       
       case 'users-operadores':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canManageSettings)) return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
+        if (isAdmin || (isOp && permissions?.canManageSettings)) return { title: 'Gestión de Operadores', content: <UserManagement roleFilter={Role.OperadorSistemas} /> };
         break;
 
       case 'users-clients':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canManageClients)) return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
+        if (isAdmin || (isOp && permissions?.canManageClients)) return { title: 'Gestión de Clientes', content: <UserManagement roleFilter={Role.Client} /> };
         break;
 
       case 'users-drivers':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
+        if (isAdmin || (isOp && permissions?.canManageDrivers)) return { title: 'Gestión de Conductores', content: <UserManagement roleFilter={Role.Driver} /> };
         break;
 
       case 'users-auxiliares':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
+        if (isAdmin || (isOp && permissions?.canManageDrivers)) return { title: 'Gestión de Personal Auxiliar', content: <UserManagement roleFilter={Role.Auxiliar} /> };
         break;
 
       case 'users-retiros':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canBulkActions)) return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
+        if (isAdmin || (isOp && permissions?.canBulkActions)) return { title: 'Gestión de Personal de Retiros', content: <UserManagement roleFilter={Role.Retiros} /> };
         break;
 
       case 'users-facturacion':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports)) return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
+        if (isAdmin || (isOp && permissions?.canViewReports)) return { title: 'Gestión de Personal de Facturación', content: <UserManagement roleFilter={Role.Facturacion} /> };
         break;
 
       // Logistics
       case 'flex-discrepancies':
-        if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: 'Discrepancias de Carga', content: <DriverFlexDiscrepancyPage /> };
+        if (isAdmin || (isOp && permissions?.canManagePackages)) return { title: 'Discrepancias de Carga', content: <DriverFlexDiscrepancyPage /> };
         break;
 
       case 'zone-settings':
