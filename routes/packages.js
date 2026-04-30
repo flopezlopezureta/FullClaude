@@ -1168,11 +1168,19 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                             }
                         } catch(meliError) {
                              console.error(`[Deliver] Meli status verification failed for shipment ${meliFlexCode}:`, meliError.body || meliError.message);
-                             // Auth errors (401/403) are bypassed to avoid blocking drivers in production
+                             
+                             // Auth errors (401/403) or missing tokens (captured as null accessToken earlier) 
+                             // are bypassed to avoid blocking drivers in production when ML is disconnected.
                              const isAuthError = meliError.statusCode === 401 || meliError.statusCode === 403;
+                             
                              if (!isAuthError) {
-                                 return res.status(400).json({ message: 'No se pudo verificar el estado en Mercado Libre. Asegúrate de haber completado la entrega en la app de Flex.' });
+                                 // If it's a 400 with a specific ML error, it might be that the ID is wrong or driver needs to act in ML App
+                                 return res.status(400).json({ 
+                                     message: 'No se pudo verificar el estado en Mercado Libre. Si la cuenta está conectada, asegúrate de haber finalizado la entrega en la App de Flex primero.' 
+                                 });
                              }
+                             
+                             console.warn(`[Deliver] Bypassing ML validation for ${meliFlexCode} due to Auth Error (${meliError.statusCode}).`);
                         }
                     }
                 }

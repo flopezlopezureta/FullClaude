@@ -469,14 +469,14 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                             className="w-full px-4 py-3 text-base font-semibold text-white bg-green-600 rounded-lg hover:bg-green-700 transition-all shadow-sm flex items-center justify-center gap-2"
                         >
                             <IconCheckCircle className="w-5 h-5"/>
-                            Registrar Entrega
+                            ENTREGAR
                         </button>
                         <button 
                             onClick={() => onReportProblem(pkg)} 
                             className="w-full px-4 py-2 text-base font-medium text-red-600 bg-[var(--background-secondary)] border border-red-500 rounded-lg hover:bg-red-50 transition-colors flex items-center justify-center gap-2"
                         >
                             <IconAlertTriangle className="w-4 h-4"/>
-                            Reportar un Problema
+                            NO PUEDO ENTREGAR
                         </button>
                     </div>
                 </div>

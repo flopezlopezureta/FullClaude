@@ -327,7 +327,7 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
             onPress={() => setProblemModalVisible(true)}
             disabled={loading}
           >
-            <Text style={styles.problemBtnText}>REPORTAR PROBLEMA</Text>
+            <Text style={styles.problemBtnText}>NO PUEDO ENTREGAR</Text>
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -341,7 +341,7 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
             {loading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.confirmBtnText}>FINALIZAR ENTREGA</Text>
+              <Text style={styles.confirmBtnText}>ENTREGAR</Text>
             )}
           </TouchableOpacity>
         </View>
