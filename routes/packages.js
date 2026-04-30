@@ -1721,17 +1721,23 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         const enrichedData = rows.map(row => {
             const mlEvent = mlEvents.find(e => e.packageId === row.id);
             
-            // Format dates as YYYY-MM-DD for reliable comparison
-            const rowDateStr = new Date(row.local_timestamp).toLocaleDateString('en-CA');
+            // Safe date formatting
+            let rowDateStr = '';
+            try {
+                rowDateStr = row.local_timestamp ? new Date(row.local_timestamp).toISOString().split('T')[0] : '';
+            } catch (e) { console.error('Date error row:', e); }
+
             const stats = driverStats.find(s => {
-                const sDateStr = new Date(s.day).toLocaleDateString('en-CA');
-                return s.driverId === row.driverId && sDateStr === rowDateStr;
+                try {
+                    const sDateStr = s.day ? new Date(s.day).toISOString().split('T')[0] : '';
+                    return s.driverId === row.driverId && sDateStr === rowDateStr;
+                } catch (e) { return false; }
             });
             
             return {
                 id: row.id,
                 driver_name: row.driver_name,
-                seller_name: row.seller_name,
+                seller_name: row.seller_name || 'Sin Seller',
                 recipientCommune: row.recipientCommune,
                 delivery_day: rowDateStr,
                 delivery_hour: row.delivery_hour,
