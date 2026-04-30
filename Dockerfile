@@ -45,6 +45,7 @@ COPY db.js .
 COPY routes ./routes
 COPY middleware ./middleware
 COPY services ./services
+COPY utils ./utils
 COPY .env* ./
 
 # Expose port
