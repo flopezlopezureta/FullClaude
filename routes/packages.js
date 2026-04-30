@@ -1720,14 +1720,20 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         // Merge data in Node.js (much faster than SQL subqueries)
         const enrichedData = rows.map(row => {
             const mlEvent = mlEvents.find(e => e.packageId === row.id);
-            const stats = driverStats.find(s => s.driverId === row.driverId && s.day.toISOString().split('T')[0] === row.local_timestamp.toISOString().split('T')[0]);
+            
+            // Format dates as YYYY-MM-DD for reliable comparison
+            const rowDateStr = new Date(row.local_timestamp).toLocaleDateString('en-CA');
+            const stats = driverStats.find(s => {
+                const sDateStr = new Date(s.day).toLocaleDateString('en-CA');
+                return s.driverId === row.driverId && sDateStr === rowDateStr;
+            });
             
             return {
                 id: row.id,
                 driver_name: row.driver_name,
                 seller_name: row.seller_name,
                 recipientCommune: row.recipientCommune,
-                delivery_day: row.local_timestamp.toISOString().split('T')[0],
+                delivery_day: rowDateStr,
                 delivery_hour: row.delivery_hour,
                 total_packages_day: stats ? parseInt(stats.total_day) : 0,
                 first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
