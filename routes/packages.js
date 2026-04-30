@@ -1140,7 +1140,13 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                             }
                         } catch(meliError) {
                              console.error(`[Deliver] Meli status verification failed for shipment ${meliFlexCode}:`, meliError.body || meliError.message);
-                             return res.status(400).json({ message: 'No se pudo verificar el estado en Mercado Libre. Asegúrate de haber completado la entrega en la app de Flex.' });
+                             // [OPERATIONAL SAFETY] If it's an auth error or communication error, log it but DON'T block the driver if they have evidence
+                             const isAuthError = meliError.statusCode === 401 || meliError.statusCode === 403;
+                             if (isAuthError) {
+                                 console.warn(`[Deliver] Allowing delivery despite ML auth error for shipment ${meliFlexCode}`);
+                             } else {
+                                 return res.status(400).json({ message: 'No se pudo verificar el estado en Mercado Libre. Asegúrate de haber completado la entrega en la app de Flex.' });
+                             }
                         }
                     }
                 }
