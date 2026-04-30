@@ -1,11 +1,16 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { 
-    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
+    BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+    PieChart, Pie, Cell
 } from 'recharts';
-import { IconRefresh, IconAlertTriangle, IconTruck, IconMapPin, IconClock, IconUser, IconCheck } from '../Icon';
+import { 
+    IconRefresh, IconAlertTriangle, IconTruck, IconMapPin, IconClock, 
+    IconUser, IconCheck, IconChevronRight, IconX, IconExternalLink 
+} from '../Icon';
 import { getLocalDateString } from '../../utils/dateUtils';
 
 interface LateDelivery {
+    id: string;
     driver_name: string;
     seller_name: string;
     recipientCommune: string;
@@ -16,6 +21,8 @@ interface LateDelivery {
     last_delivery_hour: number;
     meli_delivered_hour: number | null;
 }
+
+const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
 
 const formatDecimalHour = (decimalHour: number | string | null) => {
     if (decimalHour === null) return '--:--';
@@ -32,6 +39,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
     const [data, setData] = useState<LateDelivery[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'logistics' | 'sellers'>('logistics');
+    const [selectedSeller, setSelectedSeller] = useState<string | null>(null);
 
     const fetchData = async () => {
         setIsLoading(true);
@@ -59,7 +67,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
     const analysis = useMemo(() => {
         const communeMap: { [key: string]: number } = {};
         const driverMap: { [key: string]: { lateCount: number, maxLoad: number, totalHours: number, firstHour: number, lastHour: number, maxGap: number, meliHour: number | null } } = {};
-        const sellerMap: { [key: string]: { lateCount: number, topCommune: string, communes: {[key: string]: number}, topDriver: string, drivers: {[key: string]: number} } } = {};
+        const sellerMap: { [key: string]: { lateCount: number, topCommune: string, communes: {[key: string]: number}, topDriver: string, drivers: {[key: string]: number}, items: LateDelivery[] } } = {};
         
         const loadRanges: { [key: string]: { totalHour: number, count: number } } = {
             '0-20 pqts': { totalHour: 0, count: 0 },
@@ -87,23 +95,22 @@ const LateDeliveriesAnalysis: React.FC = () => {
             driverMap[item.driver_name].lateCount++;
             driverMap[item.driver_name].totalHours += Number(item.delivery_hour);
 
-            // Calculate Gap (Fraud Detection)
             if (item.meli_delivered_hour) {
-                const gap = (Number(item.delivery_hour) - Number(item.meli_delivered_hour)) * 60; // in minutes
+                const gap = (Number(item.delivery_hour) - Number(item.meli_delivered_hour)) * 60;
                 if (gap > driverMap[item.driver_name].maxGap) {
                     driverMap[item.driver_name].maxGap = gap;
                     driverMap[item.driver_name].meliHour = item.meli_delivered_hour;
                 }
             }
 
-            // Sellers mapping
             const sName = item.seller_name || 'Sin Seller';
             if (!sellerMap[sName]) {
-                sellerMap[sName] = { lateCount: 0, topCommune: '', communes: {}, topDriver: '', drivers: {} };
+                sellerMap[sName] = { lateCount: 0, topCommune: '', communes: {}, topDriver: '', drivers: {}, items: [] };
             }
             sellerMap[sName].lateCount++;
             sellerMap[sName].communes[normalizedCommune] = (sellerMap[sName].communes[normalizedCommune] || 0) + 1;
             sellerMap[sName].drivers[item.driver_name] = (sellerMap[sName].drivers[item.driver_name] || 0) + 1;
+            sellerMap[sName].items.push(item);
 
             let range = '50+ pqts';
             if (item.total_packages_day <= 20) range = '0-20 pqts';
@@ -137,7 +144,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
             .map(([name, stats]) => {
                 const topCommune = Object.entries(stats.communes).sort((a,b) => b[1]-a[1])[0][0];
                 const topDriver = Object.entries(stats.drivers).sort((a,b) => b[1]-a[1])[0][0];
-                return { name, lateCount: stats.lateCount, topCommune, topDriver };
+                return { name, lateCount: stats.lateCount, topCommune, topDriver, raw: stats };
             })
             .sort((a, b) => b.lateCount - a.lateCount);
 
@@ -150,8 +157,19 @@ const LateDeliveriesAnalysis: React.FC = () => {
         return { communeData, driverData, rangeData, sellerData };
     }, [data]);
 
+    const sellerDetail = useMemo(() => {
+        if (!selectedSeller) return null;
+        const seller = analysis.sellerData.find(s => s.name === selectedSeller);
+        if (!seller) return null;
+
+        const communePie = Object.entries(seller.raw.communes).map(([name, value]) => ({ name, value }));
+        const driverPie = Object.entries(seller.raw.drivers).map(([name, value]) => ({ name, value }));
+
+        return { ...seller, communePie, driverPie };
+    }, [selectedSeller, analysis]);
+
     return (
-        <div className="space-y-6">
+        <div className="space-y-6 relative">
             {/* Warning Banner */}
             <div className="bg-red-50 border-l-4 border-red-500 p-6 rounded-2xl flex items-center gap-4">
                 <div className="p-3 bg-red-100 text-red-600 rounded-full">
@@ -312,12 +330,126 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         </td>
                                         <td className="px-6 py-4 text-center font-bold text-gray-500">{seller.topDriver}</td>
                                         <td className="px-6 py-4 text-right">
-                                            <button className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline">Ver Detalle</button>
+                                            <button 
+                                                onClick={() => setSelectedSeller(seller.name)}
+                                                className="text-[10px] font-black text-indigo-600 uppercase tracking-widest hover:underline flex items-center gap-1 justify-end w-full"
+                                            >
+                                                Ver Detalle
+                                                <IconChevronRight className="w-3 h-3"/>
+                                            </button>
                                         </td>
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
+                    </div>
+                </div>
+            )}
+
+            {/* Seller Detail Modal/Panel */}
+            {selectedSeller && sellerDetail && (
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex justify-end transition-all duration-300">
+                    <div className="w-full max-w-2xl bg-white h-full shadow-2xl flex flex-col animate-in slide-in-from-right">
+                        <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50">
+                            <div>
+                                <h3 className="text-xl font-black text-gray-900">{selectedSeller}</h3>
+                                <p className="text-xs text-gray-400 font-bold uppercase tracking-wider">Detalle de Impacto Logístico</p>
+                            </div>
+                            <button onClick={() => setSelectedSeller(null)} className="p-2 hover:bg-gray-200 rounded-full transition-colors">
+                                <IconX className="w-6 h-6 text-gray-500"/>
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                            {/* Key Stats */}
+                            <div className="grid grid-cols-3 gap-4">
+                                <div className="bg-red-50 p-4 rounded-2xl border border-red-100">
+                                    <p className="text-[10px] font-black text-red-400 uppercase">Paquetes Tarde</p>
+                                    <p className="text-2xl font-black text-red-600">{sellerDetail.lateCount}</p>
+                                </div>
+                                <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100">
+                                    <p className="text-[10px] font-black text-indigo-400 uppercase">Peor Comuna</p>
+                                    <p className="text-xs font-black text-indigo-600 uppercase mt-1">{sellerDetail.topCommune}</p>
+                                </div>
+                                <div className="bg-emerald-50 p-4 rounded-2xl border border-emerald-100">
+                                    <p className="text-[10px] font-black text-emerald-400 uppercase">Conductor Principal</p>
+                                    <p className="text-xs font-black text-emerald-600 truncate mt-1">{sellerDetail.topDriver}</p>
+                                </div>
+                            </div>
+
+                            {/* Charts Side by Side */}
+                            <div className="grid grid-cols-2 gap-6">
+                                <div>
+                                    <p className="text-xs font-black text-gray-900 uppercase mb-4">Comunas Afectadas</p>
+                                    <div className="h-[200px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={sellerDetail.communePie} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                                    {sellerDetail.communePie.map((_, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                                <div>
+                                    <p className="text-xs font-black text-gray-900 uppercase mb-4">Distribución Conductores</p>
+                                    <div className="h-[200px]">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <PieChart>
+                                                <Pie data={sellerDetail.driverPie} innerRadius={60} outerRadius={80} paddingAngle={5} dataKey="value">
+                                                    {sellerDetail.driverPie.map((_, index) => (
+                                                        <Cell key={`cell-${index}`} fill={COLORS[(index + 2) % COLORS.length]} />
+                                                    ))}
+                                                </Pie>
+                                                <Tooltip />
+                                            </PieChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Detailed List */}
+                            <div className="space-y-4">
+                                <p className="text-xs font-black text-gray-900 uppercase">Lista de Entregas Fuera de Horario</p>
+                                <div className="space-y-2">
+                                    {sellerDetail.raw.items.map((pkg, idx) => {
+                                        const gap = pkg.meli_delivered_hour ? Math.round((Number(pkg.delivery_hour) - Number(pkg.meli_delivered_hour)) * 60) : 0;
+                                        return (
+                                            <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center justify-between group">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                                                        <IconTruck className="w-5 h-5 text-gray-400 group-hover:text-indigo-500 transition-colors"/>
+                                                    </div>
+                                                    <div>
+                                                        <div className="flex items-center gap-2">
+                                                            <p className="text-xs font-black text-gray-900 uppercase tracking-tight">{pkg.id}</p>
+                                                            <span className="text-[10px] bg-white px-2 py-0.5 rounded border border-gray-200 font-bold text-gray-500">{pkg.recipientCommune}</span>
+                                                        </div>
+                                                        <p className="text-[10px] text-gray-400 font-bold mt-0.5">Conductor: {pkg.driver_name}</p>
+                                                    </div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs font-black text-red-600">{formatDecimalHour(pkg.delivery_hour)}</p>
+                                                    {gap > 0 && (
+                                                        <p className="text-[9px] font-black text-emerald-500">ML: {formatDecimalHour(pkg.meli_delivered_hour)} ({gap}m gap)</p>
+                                                    )}
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div className="p-6 bg-gray-50 border-t border-gray-100">
+                            <button className="w-full py-3 bg-gray-900 text-white rounded-xl font-black text-xs uppercase tracking-widest hover:bg-black transition-all flex items-center justify-center gap-2">
+                                <IconExternalLink className="w-4 h-4"/>
+                                Exportar Informe para Seller
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}
