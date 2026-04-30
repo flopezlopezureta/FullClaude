@@ -32,6 +32,13 @@ function getPool() {
             ssl: false
         });
         
+        // --- BLINDAJE DE ZONA HORARIA ---
+        // Forzamos que cada conexión nueva use la zona horaria de Chile
+        pool.on('connect', client => {
+            client.query("SET timezone = 'America/Santiago'")
+                .catch(err => console.error("❌ Error setting session timezone:", err.message));
+        });
+        
         // Test connection immediately
         pool.query('SELECT 1')
             .then(() => console.log("✅ PostgreSQL connection verified successfully."))
