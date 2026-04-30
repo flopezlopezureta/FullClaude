@@ -693,3 +693,29 @@ export const IconXCircle: React.FC<IconProps> = ({ className, title }) => (
         <line x1="9" y1="9" x2="15" y2="15"></line>
     </svg>
 );
+
+export const IconTarget: React.FC<IconProps> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <circle cx="12" cy="12" r="10"></circle>
+        <circle cx="12" cy="12" r="6"></circle>
+        <circle cx="12" cy="12" r="2"></circle>
+    </svg>
+);
+
+export const IconBarChart: React.FC<IconProps> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <line x1="18" y1="20" x2="18" y2="10"></line>
+        <line x1="12" y1="20" x2="12" y2="4"></line>
+        <line x1="6" y1="20" x2="6" y2="14"></line>
+    </svg>
+);
+
+export const IconPieChart: React.FC<IconProps> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <path d="M21.21 15.89A10 10 0 1 1 8 2.83"></path>
+        <path d="M22 12A10 10 0 0 0 12 2v10z"></path>
+    </svg>
+);

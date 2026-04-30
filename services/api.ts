@@ -413,6 +413,5 @@ export const api = {
     return `/api/integrations/meli-label/${packageId}${token ? `?token=${token}` : ''}`;
   },
   bulkMarkAllProcessed: () => post<{message: string, updatedCount: number}>('/packages/sys/bulk-mark-processed', {}),
-  bulkUpdatePackageStatus: (packageIds: string[], status: string) => post<{message: string}>('/packages/bulk-update-status', { packageIds, status }),
   forceCloseOldPackages: (days: number) => post<{message: string, updatedCount: number}>('/packages/sys/force-close-old', { days }),
 };
