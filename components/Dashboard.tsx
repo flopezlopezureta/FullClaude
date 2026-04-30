@@ -104,7 +104,13 @@ const Dashboard: React.FC = () => {
     return localStorage.getItem('lastCriticalAlertId') || '';
   });
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
-  const [alertDate, setAlertDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [alertDate, setAlertDate] = useState<string>(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  });
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -195,9 +201,16 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(timer);
   }, [pollingStatus, shopifyPollingStatus]);
 
+  const getLocalDateString = (dateObj: Date = new Date()) => {
+      const year = dateObj.getFullYear();
+      const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+      const day = String(dateObj.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
+  };
+
   const fetchCriticalAlerts = useCallback(async () => {
     try {
-      const targetDate = alertView === 'today' ? new Date().toISOString().split('T')[0] : alertDate;
+      const targetDate = alertView === 'today' ? getLocalDateString() : alertDate;
       const excludeChecked = alertView === 'today'; // Only hide checked alerts in 'Today' view
       
       const { packages: cancelled } = await api.getPackages({ 
