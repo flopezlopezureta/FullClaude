@@ -336,55 +336,46 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
             <div className="bg-white font-sans text-black w-[100mm] h-[80mm] flex items-center justify-center overflow-hidden">
                 {/* 
                    Contenedor interno de 80x100 rotado 90 grados.
-                   Esto hace que el ancho del contenido (80) sea el alto de la etiqueta (80)
-                   y el alto del contenido (100) sea el ancho de la etiqueta (100).
                 */}
-                <div className="w-[80mm] h-[100mm] border-2 border-black p-3 flex flex-col rotate-90 origin-center scale-[0.98]">
-                    <div className="flex justify-between items-start border-b-2 border-black pb-1 mb-2">
-                        <div className="flex-1 overflow-hidden pr-2">
-                            <h2 className="text-[10px] font-black truncate leading-none uppercase">{systemSettings.companyName}</h2>
-                            <p className="text-[8px] font-bold mt-1 opacity-60 truncate">{creatorName}</p>
-                        </div>
-                        <div className="text-right">
-                             <p className="text-[10px] font-black leading-none">{formattedDate}</p>
+                <div className="w-[80mm] h-[100mm] border-4 border-black p-3 flex flex-col rotate-90 origin-center scale-[0.98]">
+                    <div className="text-center mb-2">
+                        <h2 className="text-[11px] font-black tracking-tight leading-none">{systemSettings.companyName.toUpperCase()}</h2>
+                        <div className="flex flex-row flex-nowrap justify-between items-center mt-1 border-y border-black/10 py-1 px-2 overflow-hidden">
+                            <span className="text-[8px] font-black text-black uppercase truncate max-w-[40mm] text-left">{creatorName}</span>
+                            <span className="text-[8px] font-black text-black whitespace-nowrap text-right">{formattedDate}</span>
                         </div>
                     </div>
 
-                    <div className="bg-black text-white p-2 text-center rounded-md mb-2">
-                        <p className="text-[18px] font-[1000] uppercase tracking-tighter leading-none">{pkg.recipientCommune}</p>
+                    <div className="bg-white text-black p-2 text-center border-2 border-black rounded-xl mb-2">
+                        <p className="text-[8px] font-black uppercase tracking-[0.2em] mb-0.5 opacity-50 leading-none">Destino Prioritario</p>
+                        <p className={`font-[1000] uppercase leading-none ${pkg.recipientCommune.length > 12 ? 'text-xl' : 'text-2xl'}`}>{pkg.recipientCommune}</p>
                     </div>
 
                     <div className="flex-1 space-y-2">
-                        <div>
-                            <p className="text-[7px] font-black uppercase text-gray-400 leading-none">Destinatario:</p>
-                            <p className="text-[12px] font-black leading-tight truncate">{pkg.recipientName}</p>
-                        </div>
-                        <div>
-                            <p className="text-[7px] font-black uppercase text-gray-400 leading-none">Dirección:</p>
-                            <p className="text-[10px] font-bold leading-tight">{pkg.recipientAddress}</p>
-                        </div>
-                        <div className="flex justify-between items-end">
-                            <div>
-                                <p className="text-[7px] font-black uppercase text-gray-400 leading-none">Contacto:</p>
-                                <p className="text-[10px] font-black">{pkg.recipientPhone || 'N/A'}</p>
+                        <div className="border-l-2 border-black pl-2">
+                            <p className="text-[8px] font-black uppercase text-gray-400 leading-none mb-1">Entrega para:</p>
+                            <p className="text-[13px] font-black leading-none truncate">{pkg.recipientName}</p>
+                            <div className="flex space-x-2 items-center mt-1">
+                                 {pkg.recipientPhone && <p className="text-[10px] font-bold">📞 {pkg.recipientPhone}</p>}
+                                 {pkg.recipientRut && <p className="text-[10px] font-bold opacity-60">RUT: {pkg.recipientRut}</p>}
                             </div>
-                            {pkg.recipientRut && (
-                                <div className="text-right">
-                                    <p className="text-[7px] font-black uppercase text-gray-400 leading-none">RUT:</p>
-                                    <p className="text-[9px] font-bold">{pkg.recipientRut}</p>
-                                </div>
-                            )}
+                        </div>
+                        <div className="pt-1 border-t border-dashed border-gray-300">
+                            <p className="text-[8px] font-black uppercase text-gray-400 leading-none mb-1">Dirección:</p>
+                            <p className="text-[11px] font-bold leading-tight">{pkg.recipientAddress}</p>
+                            <p className="text-[9px] font-medium mt-0.5 italic text-gray-600">{pkg.recipientCommune}, {pkg.recipientCity}</p>
                         </div>
                     </div>
 
-                    <div className="mt-2 pt-2 border-t border-dashed border-black/30 flex items-center justify-between">
-                         <div className="flex flex-col justify-center">
-                             {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-14 h-14" style={{ imageRendering: 'pixelated' }} />}
-                         </div>
-                         <div className="flex-1 pl-3 text-right overflow-hidden">
-                             <p className="text-[6px] font-black text-gray-400 uppercase leading-none mb-1">ID OPERATIVO:</p>
-                             <p className="text-[9px] font-mono font-black break-all leading-none">{qrContent}</p>
-                         </div>
+                    <div className="mt-auto border-t border-black pt-2 flex items-center justify-between">
+                        <div className="flex flex-col items-center">
+                            {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20" style={{ imageRendering: 'pixelated' }} />}
+                        </div>
+                        <div className="flex-1 pl-3 text-right overflow-hidden">
+                             <p className="text-[7px] font-bold text-gray-400 uppercase leading-none mb-1">ID Operativo:</p>
+                             <p className="text-[9px] font-mono font-black break-all leading-tight">{qrContent}</p>
+                             <div className="w-full h-1.5 bg-black mt-1"></div>
+                        </div>
                     </div>
                 </div>
             </div>
