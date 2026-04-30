@@ -209,43 +209,32 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
             )}
 
             {/* SELLER SELECTION */}
-            <div className="bg-white p-5 rounded-2xl border border-[var(--border-secondary)] shadow-sm space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <IconUser className="w-4 h-4 text-[var(--brand-primary)]" />
-                    <h4 className="text-xs font-black text-[var(--brand-primary)] uppercase tracking-widest">Información del Seller</h4>
-                </div>
-                {clients ? (
-                    <div>
-                        <label className={labelClasses}>Buscador de Clientes / Sellers</label>
-                        <SearchableSelect 
-                            items={searchableClients}
-                            selectedId={selectedClientId}
-                            onSelect={setSelectedClientId}
-                            placeholder="Buscar cliente..."
-                            searchPlaceholder="Escribe el nombre del cliente..."
-                            showNoneOption={false}
-                        />
+            {!initialData && (
+                <div className={`p-5 rounded-2xl border shadow-sm space-y-4 transition-all ${errors.clientId ? 'bg-red-50 border-red-200' : 'bg-white border-[var(--border-secondary)]'}`}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <IconUser className={`w-4 h-4 ${errors.clientId ? 'text-red-500' : 'text-[var(--brand-primary)]'}`} />
+                        <h4 className={`text-xs font-black uppercase tracking-widest ${errors.clientId ? 'text-red-700' : 'text-[var(--brand-primary)]'}`}>Información del Seller</h4>
                     </div>
-                ) : (
-                    <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold bg-[var(--background-muted)] p-3 rounded-xl border border-[var(--border-primary)]">
-                        <IconCheck className="w-5 h-5 text-emerald-500" />
-                        <span>Creando como: <span className="text-[var(--brand-primary)]">Administrador</span></span>
-                    </div>
-                )}
-            </div>
-            {clients && !initialData && (
-                <div className={`p-5 rounded-2xl border shadow-sm transition-all ${errors.clientId ? 'bg-red-50 border-red-200' : 'bg-white border-[var(--border-secondary)]'}`}>
-                    <label className={labelClasses}>Vendedor / Dueño del Paquete</label>
-                    <SearchableSelect 
-                        items={searchableClients}
-                        selectedId={selectedClientId}
-                        onSelect={setSelectedClientId}
-                        placeholder="Buscar por nombre..."
-                        searchPlaceholder="Escriba el nombre del vendedor..."
-                        showNoneOption={false}
-                        error={!!errors.clientId}
-                    />
-                    {errors.clientId && <span className={errorLabelClasses}>{errors.clientId}</span>}
+                    {clients ? (
+                        <div>
+                            <label className={labelClasses}>Buscador de Clientes / Sellers</label>
+                            <SearchableSelect 
+                                items={searchableClients}
+                                selectedId={selectedClientId}
+                                onSelect={setSelectedClientId}
+                                placeholder="Buscar cliente..."
+                                searchPlaceholder="Escribe el nombre del cliente..."
+                                showNoneOption={false}
+                                error={!!errors.clientId}
+                            />
+                            {errors.clientId && <span className={errorLabelClasses}>{errors.clientId}</span>}
+                        </div>
+                    ) : (
+                        <div className="flex items-center gap-2 text-[var(--text-primary)] font-bold bg-[var(--background-muted)] p-3 rounded-xl border border-[var(--border-primary)]">
+                            <IconCheck className="w-5 h-5 text-emerald-500" />
+                            <span>Creando como: <span className="text-[var(--brand-primary)]">Administrador</span></span>
+                        </div>
+                    )}
                 </div>
             )}
 
