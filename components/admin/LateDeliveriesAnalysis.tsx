@@ -68,7 +68,8 @@ const LateDeliveriesAnalysis: React.FC = () => {
         };
         
         data.forEach(item => {
-            communeMap[item.recipientCommune] = (communeMap[item.recipientCommune] || 0) + 1;
+            const normalizedCommune = (item.recipientCommune || 'SIN COMUNA').trim().toUpperCase();
+            communeMap[normalizedCommune] = (communeMap[normalizedCommune] || 0) + 1;
             
             if (!driverMap[item.driver_name]) {
                 driverMap[item.driver_name] = { 
@@ -88,7 +89,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                 sellerMap[sName] = { lateCount: 0, topCommune: '', communes: {}, topDriver: '', drivers: {} };
             }
             sellerMap[sName].lateCount++;
-            sellerMap[sName].communes[item.recipientCommune] = (sellerMap[sName].communes[item.recipientCommune] || 0) + 1;
+            sellerMap[sName].communes[normalizedCommune] = (sellerMap[sName].communes[normalizedCommune] || 0) + 1;
             sellerMap[sName].drivers[item.driver_name] = (sellerMap[sName].drivers[item.driver_name] || 0) + 1;
 
             let range = '50+ pqts';
