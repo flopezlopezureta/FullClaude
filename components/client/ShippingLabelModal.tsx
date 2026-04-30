@@ -19,6 +19,7 @@ const formatOptions = [
     { id: LabelFormat.A4Single, name: 'Diseño 4', size: 'Hoja A4', desc: 'Instrucciones (Notas XL)' },
     { id: LabelFormat.A4Half, name: 'Diseño 5', size: 'Hoja A4 (x2)', desc: 'Despacho (Tracking Pro)' },
     { id: LabelFormat.MinimalSticker, name: 'Diseño 6', size: 'A6 / 105x148', desc: 'Compacto (Full Info)' },
+    { id: LabelFormat.Thermal10x8, name: 'Diseño 7', size: '100x80mm', desc: 'Térmica 10x8 (Rotada)' },
 ];
 
 const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg, creatorName, onClose }) => {
@@ -154,6 +155,7 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 margin: 0;
                 padding: 0;
                 ${format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl ? 'size: 100mm 150mm; margin: 0;' : ''}
+                ${format === LabelFormat.Thermal10x8 ? 'size: 100mm 80mm; margin: 0;' : ''}
                 ${format === LabelFormat.A4Single ? 'size: letter; margin: 0;' : ''}
                 ${format === LabelFormat.A4Half ? 'size: letter; margin: 0;' : ''}
                 ${format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}

@@ -86,6 +86,7 @@ export enum LabelFormat {
   ZebraZpl = 'zebra_zpl',
   MinimalSticker = 'minimal_sticker',
   LetterMulti = 'letter_multi',
+  Thermal10x8 = 'thermal_10x8',
 }
 
 export const DEFAULT_OPERATOR_PERMISSIONS = {

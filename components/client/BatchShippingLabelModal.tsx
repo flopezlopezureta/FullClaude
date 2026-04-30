@@ -20,6 +20,7 @@ const formatOptions = [
     { id: LabelFormat.A4Half, name: 'Diseño 5', size: 'Media Carta' },
     { id: LabelFormat.MinimalSticker, name: 'Diseño 6', size: 'A6 / 105x148' },
     { id: LabelFormat.LetterMulti, name: 'Hoja Carta (x4)', size: '8.5"x11" (x4)' },
+    { id: LabelFormat.Thermal10x8, name: 'Diseño 7', size: '100x80mm' },
 ];
 
 const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packages: initialPackages, creatorName, onClose }) => {
@@ -71,7 +72,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
         window.print();
     };
 
-    const isScaleFormat = format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl || format === LabelFormat.MinimalSticker || format === LabelFormat.LetterMulti;
+    const isScaleFormat = format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl || format === LabelFormat.MinimalSticker || format === LabelFormat.LetterMulti || format === LabelFormat.Thermal10x8;
 
     const printableArea = (
         <div 
@@ -238,6 +239,7 @@ const BatchShippingLabelModal: React.FC<BatchShippingLabelModalProps> = ({ packa
                 margin: 0;
                 padding: 0;
                 ${!isMultiLabel && (format === LabelFormat.CompactThermal || format === LabelFormat.FullThermal || format === LabelFormat.ZebraZpl) ? 'size: 100mm 150mm; margin: 0;' : ''}
+                ${!isMultiLabel && format === LabelFormat.Thermal10x8 ? 'size: 100mm 80mm; margin: 0;' : ''}
                 ${format === LabelFormat.A4Single || format === LabelFormat.A4Half || format === LabelFormat.LetterMulti || isMultiLabel ? 'size: letter; margin: 0;' : ''}
                 ${!isMultiLabel && format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
               }
