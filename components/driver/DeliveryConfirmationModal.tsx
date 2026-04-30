@@ -59,7 +59,23 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
             canvas.height = video.videoHeight;
             const context = canvas.getContext('2d');
             context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            
+            // 1. Generar la imagen para la App (con calidad reducida para subir)
             const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            
+            // 2. Intentar auto-descarga en el teléfono para que quede en la galería
+            try {
+                const link = document.createElement('a');
+                const timestamp = new Date().getTime();
+                link.href = dataUrl;
+                link.download = `entrega_${pkg.id}_${timestamp}.jpg`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            } catch (err) {
+                console.error("Error en auto-descarga:", err);
+            }
+
             onCapture(dataUrl);
         }
     };
