@@ -1189,7 +1189,37 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
 
+        const now = new Date();
         await addTrackingEvent(id, 'ENTREGADO', rows[0].recipientAddress, `Entregado a ${receiverName}.`);
+        
+        // --- NUEVO: Capturar Cierre Oficial de ML ---
+        let meliDeliveredAt = null;
+        try {
+            const { rows: pkgFullRows } = await db.query('SELECT "meliOrderId", "creatorId", "meliFlexCode", "sourceAccountId" FROM packages WHERE id = $1', [id]);
+            if (pkgFullRows.length > 0 && (pkgFullRows[0].meliOrderId || pkgFullRows[0].meliFlexCode)) {
+                const { meliOrderId, creatorId, meliFlexCode, sourceAccountId } = pkgFullRows[0];
+                const shipmentId = meliFlexCode || meliOrderId;
+                const accessToken = await meliPollingService.getValidMeliToken(creatorId, sourceAccountId);
+                
+                if (accessToken) {
+                    const shippingDetails = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    if (shippingDetails.status_history) {
+                        const deliveredEvent = shippingDetails.status_history.find(h => h.status === 'delivered');
+                        if (deliveredEvent && deliveredEvent.date) {
+                            meliDeliveredAt = new Date(deliveredEvent.date);
+                        }
+                    }
+                }
+            }
+        } catch (e) { console.warn('[Deliver] ML Hour fetch failed', e); }
+
+        if (meliDeliveredAt) {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora de entrega real registrada en ML: ${meliDeliveredAt.toISOString()}`, meliDeliveredAt]
+            );
+        }
+        // --- FIN CAPTURA ML ---
         
         await logAction(req.user.id, req.user.name, 'DELIVER_PACKAGE', { packageId: id, receiverName });
 
@@ -1673,7 +1703,9 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
                 (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
                  FROM tracking_events te2
-                 WHERE te2."packageId" = p.id AND te2.status = 'CIERRE_OFICIAL_ML' LIMIT 1) as meli_delivered_hour
+                 WHERE te2."packageId" = p.id 
+                 AND (te2.status = 'CIERRE_OFICIAL_ML' OR te2.status ILIKE '%ML%')
+                 ORDER BY te2.timestamp DESC LIMIT 1) as meli_delivered_hour
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
