@@ -1659,22 +1659,50 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
  * GET /api/packages/analytics/late-deliveries
  * Returns detailed analysis of deliveries after 21:00, correlated with driver workload.
  */
-router.get('/analytics/late-deliveries', async (req, res) => {
+router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
-        // Minimum query to test DB connectivity and route
-        const { rows } = await db.query('SELECT id FROM packages LIMIT 1');
-        res.json(rows.map(r => ({
-            id: r.id,
-            driver_name: 'Conectado a DB',
-            seller_name: 'Felicidades',
-            recipientCommune: 'SANTIAGO',
-            delivery_day: '2026-04-30',
-            delivery_hour: 22,
-            total_packages_day: 0,
-            first_delivery_hour: 8,
-            last_delivery_hour: 22,
-            meli_delivered_hour: null
-        })));
+        const { startDate, endDate } = req.query;
+        
+        const query = `
+            SELECT 
+                p.id,
+                u.name as driver_name,
+                c.name as seller_name,
+                p."recipientCommune",
+                (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
+                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
+                (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
+                 FROM tracking_events te2
+                 WHERE te2."packageId" = p.id AND te2.status = 'CIERRE_OFICIAL_ML' LIMIT 1) as meli_delivered_hour
+            FROM tracking_events te
+            JOIN packages p ON te."packageId" = p.id
+            JOIN users u ON p."driverId" = u.id
+            LEFT JOIN users c ON p."creatorId" = c.id
+            WHERE te.status = 'ENTREGADO'
+            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 19
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
+            ORDER BY te.timestamp DESC;
+        `;
+
+        const result = await db.query(query, [startDate, endDate]);
+        const rows = result.rows;
+
+        // Map database names to frontend names
+        const enrichedData = rows.map(row => ({
+            id: row.id,
+            driver_name: row.driver_name,
+            seller_name: row.seller_name || 'Sin Seller',
+            recipientCommune: row.recipientCommune,
+            delivery_day: row.delivery_day ? new Date(row.delivery_day).toISOString().split('T')[0] : '',
+            delivery_hour: row.delivery_hour,
+            total_packages_day: 0, 
+            first_delivery_hour: row.delivery_hour,
+            last_delivery_hour: row.delivery_hour,
+            meli_delivered_hour: row.meli_delivered_hour
+        }));
+
+        res.json(enrichedData);
     } catch (err) {
         console.error('CRITICAL DB ERROR:', err);
         res.status(500).json({ error: err.message });
