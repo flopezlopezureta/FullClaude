@@ -1663,23 +1663,6 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         
-        // DIAGNOSTIC: Return dummy data to see if 500 error persists
-        const dummyData = [{
-            id: 'test-1',
-            driver_name: 'Conductor de Prueba',
-            seller_name: 'Seller de Prueba',
-            recipientCommune: 'SANTIAGO',
-            delivery_day: new Date().toISOString().split('T')[0],
-            delivery_hour: 21.5,
-            total_packages_day: 10,
-            first_delivery_hour: 9,
-            last_delivery_hour: 21.5,
-            meli_delivered_hour: 20.5
-        }];
-
-        return res.json(dummyData);
-
-        /*
         const query = `
             SELECT 
                 p.id,
@@ -1689,18 +1672,18 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
                 EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
                 (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
-                 FROM tracking_events 
-                 WHERE "packageId" = p.id AND status = 'CIERRE_OFICIAL_ML' LIMIT 1) as meli_delivered_hour
+                 FROM tracking_events te2
+                 WHERE te2."packageId" = p.id AND te2.status = 'CIERRE_OFICIAL_ML' LIMIT 1) as meli_delivered_hour
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
             LEFT JOIN users c ON p."clientId" = c.id
             WHERE te.status = 'ENTREGADO'
+            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 19
             AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
             AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
             ORDER BY te.timestamp DESC;
         `;
-        */
 
         const result = await db.query(query, [startDate, endDate]);
         const rows = result.rows;
@@ -1711,9 +1694,9 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             driver_name: row.driver_name,
             seller_name: row.seller_name || 'Sin Seller',
             recipientCommune: row.recipientCommune,
-            delivery_day: row.delivery_day.toISOString().split('T')[0],
+            delivery_day: row.delivery_day ? new Date(row.delivery_day).toISOString().split('T')[0] : '',
             delivery_hour: row.delivery_hour,
-            total_packages_day: 0, // Simplified for now to avoid crashes
+            total_packages_day: 0, 
             first_delivery_hour: row.delivery_hour,
             last_delivery_hour: row.delivery_hour,
             meli_delivered_hour: row.meli_delivered_hour
