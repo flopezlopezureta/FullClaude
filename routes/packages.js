@@ -1594,13 +1594,13 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
                 COUNT(*) as count
             FROM tracking_events
             WHERE status = 'ENTREGADO'
-            AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $1::timestamp 
-            AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') <= $2::timestamp
+            AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date >= $1::date 
+            AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date <= $2::date
             GROUP BY hour
             ORDER BY hour ASC;
         `;
 
-        const result = await db.query(query, [startDate + ' 00:00:00', endDate + ' 23:59:59']);
+        const result = await db.query(query, [startDate, endDate]);
         
         const hourlyData = Array.from({ length: 24 }, (_, i) => ({
             hour: i,
@@ -1642,8 +1642,8 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 JOIN packages p ON te."packageId" = p.id
                 JOIN users u ON p."driverId" = u.id
                 WHERE te.status = 'ENTREGADO'
-                AND (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $1::timestamp 
-                AND (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') <= $2::timestamp
+                AND (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date >= $1::date 
+                AND (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date <= $2::date
             ),
             workload AS (
                 SELECT 
@@ -1652,8 +1652,8 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     COUNT(*) as total_packages_day
                 FROM tracking_events
                 WHERE status = 'ENTREGADO'
-                AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $1::timestamp 
-                AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') <= $2::timestamp
+                AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date >= $1::date 
+                AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date <= $2::date
                 GROUP BY "driverId", day
             )
             SELECT 
@@ -1668,7 +1668,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             ORDER BY ds.delivery_day DESC, ds.delivery_hour DESC;
         `;
 
-        const result = await db.query(query, [startDate + ' 00:00:00', endDate + ' 23:59:59']);
+        const result = await db.query(query, [startDate, endDate]);
         res.json(result.rows);
     } catch (err) {
         console.error('Error fetching late delivery analytics:', err);

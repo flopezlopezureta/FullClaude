@@ -188,6 +188,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'users',
       'zone-settings', 
       'live-map', 
+      'billing-summary',
+      'late-deliveries',
       'configuration'
     ];
     return allowedIds.includes(item.id);
