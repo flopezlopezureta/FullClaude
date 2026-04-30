@@ -1771,6 +1771,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 total_packages_day: stats ? parseInt(stats.total_day) : 0,
                 first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
                 last_delivery_hour: stats ? stats.last_h : row.delivery_hour,
+                meliHour: meliHour,
                 meli_delivered_hour: meliHour
             };
         });
