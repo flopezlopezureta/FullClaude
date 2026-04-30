@@ -1705,7 +1705,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
                      FROM tracking_events te2
                      WHERE te2."packageId" = p.id 
-                     AND (te2.status = 'CIERRE_OFICIAL_ML' OR te2.status ILIKE '%ML%')
+                     AND (te2.status = 'CIERRE_OFICIAL_ML' OR te2.status ILIKE '%ML%' OR te2.location ILIKE '%Mercado%')
                      ORDER BY te2.timestamp DESC LIMIT 1),
                     NULL
                 ) as meli_hour
