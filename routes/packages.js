@@ -1725,7 +1725,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             JOIN users u ON p."driverId" = u.id
             LEFT JOIN users c ON p."creatorId" = c.id
             WHERE te.status = 'ENTREGADO'
-            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 19
+            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 21
             AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
             AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
             ORDER BY te.timestamp DESC;
