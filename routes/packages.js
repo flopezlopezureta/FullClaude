@@ -1701,11 +1701,14 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 p."driverId",
                 (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
                 EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
-                (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
-                 FROM tracking_events te2
-                 WHERE te2."packageId" = p.id 
-                 AND (te2.status = 'CIERRE_OFICIAL_ML' OR te2.status ILIKE '%ML%')
-                 ORDER BY te2.timestamp DESC LIMIT 1) as meli_delivered_hour
+                COALESCE(
+                    (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
+                     FROM tracking_events te2
+                     WHERE te2."packageId" = p.id 
+                     AND (te2.status = 'CIERRE_OFICIAL_ML' OR te2.status ILIKE '%ML%')
+                     ORDER BY te2.timestamp DESC LIMIT 1),
+                    NULL
+                ) as meli_hour
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
@@ -1754,7 +1757,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 total_packages_day: stats ? parseInt(stats.total_day) : 0,
                 first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
                 last_delivery_hour: stats ? stats.last_h : row.delivery_hour,
-                meli_delivered_hour: row.meli_delivered_hour // Usar directamente el valor de la consulta principal
+                meli_delivered_hour: row.meli_hour // Usar el alias meli_hour de la consulta
             };
         });
 
