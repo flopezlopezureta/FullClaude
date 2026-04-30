@@ -56,6 +56,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   const adminNavItems = [
     { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
     { id: 'delivery-analytics', label: 'Análisis Logístico (BI)', icon: <IconBarChart className="h-6 w-6 text-indigo-600" /> },
+    { id: 'late-deliveries', label: 'Auditoría Nocturna (>21h)', icon: <IconClock className="h-6 w-6 text-red-500" /> },
     { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" /> },
     ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" /> }] : []),
     { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" /> },

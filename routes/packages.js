@@ -1588,7 +1588,6 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         
-        // We look for 'ENTREGADO' events in tracking_events
         const query = `
             SELECT 
                 EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'America/Santiago')) as hour,
@@ -1603,7 +1602,6 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
 
         const result = await db.query(query, [startDate + ' 00:00:00', endDate + ' 23:59:59']);
         
-        // Fill missing hours with 0
         const hourlyData = Array.from({ length: 24 }, (_, i) => ({
             hour: i,
             count: 0
@@ -1620,6 +1618,61 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error('Error fetching delivery analytics:', err);
         res.status(500).json({ message: 'Error al obtener estadísticas.' });
+    }
+});
+
+/**
+ * GET /api/packages/analytics/late-deliveries
+ * Returns detailed analysis of deliveries after 21:00, correlated with driver workload.
+ */
+router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        // 1. Get all late deliveries (>21:00) with commune and driver info
+        const query = `
+            WITH daily_stats AS (
+                SELECT 
+                    p."driverId",
+                    u.name as driver_name,
+                    p."recipientCommune",
+                    (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
+                    EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) as delivery_hour
+                FROM tracking_events te
+                JOIN packages p ON te."packageId" = p.id
+                JOIN users u ON p."driverId" = u.id
+                WHERE te.status = 'ENTREGADO'
+                AND (te.timestamp AT TIME ZONE 'America/Santiago') >= $1::timestamp 
+                AND (te.timestamp AT TIME ZONE 'America/Santiago') <= $2::timestamp
+            ),
+            workload AS (
+                SELECT 
+                    "driverId",
+                    (timestamp AT TIME ZONE 'America/Santiago')::date as day,
+                    COUNT(*) as total_packages_day
+                FROM tracking_events
+                WHERE status = 'ENTREGADO'
+                AND (timestamp AT TIME ZONE 'America/Santiago') >= $1::timestamp 
+                AND (timestamp AT TIME ZONE 'America/Santiago') <= $2::timestamp
+                GROUP BY "driverId", day
+            )
+            SELECT 
+                ds.driver_name,
+                ds."recipientCommune",
+                ds.delivery_day,
+                ds.delivery_hour,
+                w.total_packages_day
+            FROM daily_stats ds
+            JOIN workload w ON ds."driverId" = w."driverId" AND ds.delivery_day = w.day
+            WHERE ds.delivery_hour >= 21
+            ORDER BY ds.delivery_day DESC, ds.delivery_hour DESC;
+        `;
+
+        const result = await db.query(query, [startDate + ' 00:00:00', endDate + ' 23:59:59']);
+        res.json(result.rows);
+    } catch (err) {
+        console.error('Error fetching late delivery analytics:', err);
+        res.status(500).json({ message: 'Error al obtener análisis de retrasos.' });
     }
 });
 

@@ -19,6 +19,7 @@ import ClientPerformanceReportPage from '../client/ClientPerformanceReportPage';
 import GlobalBillingPage from '../admin/GlobalBillingPage';
 import AdminBillingSummary from '../admin/AdminBillingSummary';
 import DeliveryEfficiencyDashboard from '../admin/DeliveryEfficiencyDashboard';
+import LateDeliveriesAnalysis from '../admin/LateDeliveriesAnalysis';
 import DispatchScanner from '../auxiliar/DispatchScanner';
 import { PickupDashboard } from '../admin/PickupDashboard';
 import PickupReportPage from '../admin/PickupReportPage';
@@ -187,6 +188,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'delivery-analytics':
         if (isAdmin || isOp) return { title: 'Análisis de Eficiencia Logística', content: <DeliveryEfficiencyDashboard /> };
+        break;
+
+      case 'late-deliveries':
+        if (isAdmin) return { title: 'Auditoría de Entregas Tardías (>21:00)', content: <LateDeliveriesAnalysis /> };
         break;
 
       case 'driver-performance':
