@@ -1222,7 +1222,6 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                         meliTimeStr = shipment.delivered_date;
                         source = 'shipment.delivered_date';
                     }
-
                     if (meliTimeStr) {
                         meliDeliveredAt = new Date(meliTimeStr);
                         await db.query(
@@ -1231,6 +1230,8 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                         );
                     }
                 }
+            }
+        } catch (e) { console.warn('[Deliver] ML Hour fetch failed', e); }
         // --- FIN CAPTURA ML ---
         
         await logAction(req.user.id, req.user.name, 'DELIVER_PACKAGE', { packageId: id, receiverName });
