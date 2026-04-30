@@ -87,14 +87,14 @@ export const PhotoService = {
 
   /**
    * Redimensiona y comprime la imagen para optimizar Base64
-   * Max 1024px de ancho o alto.
+   * Max 800px de ancho o alto.
    */
   processImage: async (uri: string) => {
     try {
       const manipResult = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 1024 } }], // Esto mantiene el aspect ratio automáticamente si solo pasas un lado
-        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        [{ resize: { width: 800 } }], // Reducido de 1024 a 800 para mayor velocidad en equipos antiguos
+        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true } // Reducido de 0.6 a 0.5
       );
 
       return `data:image/jpeg;base64,${manipResult.base64}`;

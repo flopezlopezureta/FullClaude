@@ -235,10 +235,10 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       
       try {
           const compressionOptions = {
-              maxSizeMB: 1,
-              maxWidthOrHeight: 1280,
+              maxSizeMB: 0.4, // Reducido para mayor velocidad
+              maxWidthOrHeight: 800, // Resolución optimizada para móviles
               useWebWorker: true,
-              initialQuality: 0.8
+              initialQuality: 0.5
           };
 
           for (const file of fileList) {
