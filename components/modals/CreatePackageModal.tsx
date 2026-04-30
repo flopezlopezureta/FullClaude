@@ -16,8 +16,8 @@ import SearchableSelect from '../SearchableSelect';
 
 interface CreatePackageModalProps {
   onClose: () => void;
-  onCreate?: (data: Omit<PackageCreationData, 'origin'>) => void;
-  onUpdate?: (id: string, data: Partial<PackageCreationData>) => void;
+  onCreate?: (data: Omit<PackageCreationData, 'origin'>, shouldClose?: boolean) => void | Promise<void>;
+  onUpdate?: (id: string, data: Partial<PackageCreationData>) => void | Promise<void>;
   initialData?: Package;
   clients?: User[];
   creatorId?: string;
@@ -127,14 +127,12 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
             await onUpdate(initialData.id, packageData);
             onClose();
         } else if (onCreate) {
-            await onCreate(packageData as Omit<PackageCreationData, 'origin'>);
+            await onCreate(packageData as Omit<PackageCreationData, 'origin'>, !createAnother);
             
             if (createAnother) {
                 setLastCreatedName(recipientName);
                 resetRecipientFields();
                 setTimeout(() => setLastCreatedName(null), 3000);
-            } else {
-                onClose();
             }
         }
     } catch (error) {

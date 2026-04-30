@@ -341,7 +341,7 @@ const Dashboard: React.FC = () => {
       setCurrentPage(1);
   };
 
-  const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>) => {
+  const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>, shouldClose = true) => {
     if (!auth?.user) {
       console.error("Cannot create package: user not authenticated.");
       return;
@@ -352,13 +352,20 @@ const Dashboard: React.FC = () => {
           origin: 'Centro de Distribución', // Admins create from a central location
         });
         
-        resetFiltersForNewData();
+        // No reset filters here if adding another to keep context
+        if (shouldClose) {
+            resetFiltersForNewData();
+        }
+        
         fetchData();
         
-        setIsCreateModalOpen(false);
+        if (shouldClose) {
+            setIsCreateModalOpen(false);
+        }
     } catch (error: any) {
         console.error("Failed to create package", error);
         alert("Error al crear el paquete: " + (error.message || "Error desconocido"));
+        throw error; // Throw to let the modal know it failed
     }
   };
 
