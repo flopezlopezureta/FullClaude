@@ -1663,6 +1663,23 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         
+        // DIAGNOSTIC: Return dummy data to see if 500 error persists
+        const dummyData = [{
+            id: 'test-1',
+            driver_name: 'Conductor de Prueba',
+            seller_name: 'Seller de Prueba',
+            recipientCommune: 'SANTIAGO',
+            delivery_day: new Date().toISOString().split('T')[0],
+            delivery_hour: 21.5,
+            total_packages_day: 10,
+            first_delivery_hour: 9,
+            last_delivery_hour: 21.5,
+            meli_delivered_hour: 20.5
+        }];
+
+        return res.json(dummyData);
+
+        /*
         const query = `
             SELECT 
                 p.id,
@@ -1671,7 +1688,6 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 p."recipientCommune",
                 (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
                 EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
-                -- Get ML Closure time if exists via a simple subquery (faster than complex joins in this case)
                 (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
                  FROM tracking_events 
                  WHERE "packageId" = p.id AND status = 'CIERRE_OFICIAL_ML' LIMIT 1) as meli_delivered_hour
@@ -1684,6 +1700,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
             ORDER BY te.timestamp DESC;
         `;
+        */
 
         const result = await db.query(query, [startDate, endDate]);
         const rows = result.rows;
