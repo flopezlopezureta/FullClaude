@@ -17,6 +17,8 @@ import ZoneSettingsPage from '../admin/ZoneSettingsPage';
 import { DriverPerformanceReportPage } from '../admin/DriverPerformanceReportPage';
 import ClientPerformanceReportPage from '../client/ClientPerformanceReportPage';
 import GlobalBillingPage from '../admin/GlobalBillingPage';
+import AdminBillingSummary from '../admin/AdminBillingSummary';
+import DeliveryEfficiencyDashboard from '../admin/DeliveryEfficiencyDashboard';
 import DispatchScanner from '../auxiliar/DispatchScanner';
 import { PickupDashboard } from '../admin/PickupDashboard';
 import PickupReportPage from '../admin/PickupReportPage';
@@ -177,6 +179,14 @@ const DashboardLayout: React.FC = () => {
 
       case 'billing-report':
         if (isAdmin || (isOp && user?.operatorPermissions?.canViewReports) || isFact) return { title: 'Informe de Facturación', content: <BillingReportPage /> };
+        break;
+
+      case 'billing-summary':
+        if (isAdmin) return { title: 'Resumen Operativo de Cobro', content: <AdminBillingSummary /> };
+        break;
+
+      case 'delivery-analytics':
+        if (isAdmin || isOp) return { title: 'Análisis de Eficiencia Logística', content: <DeliveryEfficiencyDashboard /> };
         break;
 
       case 'driver-performance':

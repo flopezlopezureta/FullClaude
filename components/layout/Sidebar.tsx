@@ -55,6 +55,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
 
   const adminNavItems = [
     { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
+    { id: 'delivery-analytics', label: 'Análisis Logístico (BI)', icon: <IconBarChart className="h-6 w-6 text-indigo-600" /> },
     { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" /> },
     ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" /> }] : []),
     { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" /> },
@@ -85,6 +86,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
     { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" /> },
     { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" /> },
+    { id: 'billing-summary', label: 'Resumen Operativo de Cobro', icon: <IconChartBar className="h-6 w-6 text-emerald-600" /> },
     { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" /> },
     {
       id: 'configuration',
@@ -100,6 +102,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
 
   const operadorSistemasNavItems = [
     { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" />, permission: 'canManagePackages' },
+    { id: 'delivery-analytics', label: 'Análisis Logístico (BI)', icon: <IconBarChart className="h-6 w-6 text-indigo-600" />, permission: 'canViewReports' },
     { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" />, permission: 'canViewReports' },
     ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" />, permission: 'canManagePackages' }] : []),
     { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" />, permission: 'canManagePackages' },
@@ -175,6 +178,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     // Non-superuser Admin: Only allowed sections
     const allowedIds = [
       'packages', 
+      'delivery-analytics',
       'driver-performance',
       'flex-discrepancies',
       'geolocate', 

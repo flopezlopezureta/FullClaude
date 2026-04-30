@@ -1571,4 +1571,46 @@ router.post('/:id/check-alert', authMiddleware, async (req, res) => {
     }
 });
 
+/**
+ * GET /api/packages/analytics/delivery-hours
+ * Returns delivery counts grouped by hour for a given date range.
+ */
+router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
+    try {
+        const { startDate, endDate } = req.query;
+        
+        // We look for 'ENTREGADO' events in tracking_events
+        const query = `
+            SELECT 
+                EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')) as hour,
+                COUNT(*) as count
+            FROM tracking_events
+            WHERE status = 'ENTREGADO'
+            AND timestamp >= $1 AND timestamp <= $2
+            GROUP BY hour
+            ORDER BY hour ASC;
+        `;
+
+        const result = await db.query(query, [startDate + ' 00:00:00', endDate + ' 23:59:59']);
+        
+        // Fill missing hours with 0
+        const hourlyData = Array.from({ length: 24 }, (_, i) => ({
+            hour: i,
+            count: 0
+        }));
+
+        result.rows.forEach(row => {
+            const h = parseInt(row.hour);
+            if (h >= 0 && h < 24) {
+                hourlyData[h].count = parseInt(row.count);
+            }
+        });
+
+        res.json(hourlyData);
+    } catch (err) {
+        console.error('Error fetching delivery analytics:', err);
+        res.status(500).json({ message: 'Error al obtener estadísticas.' });
+    }
+});
+
 module.exports = router;
