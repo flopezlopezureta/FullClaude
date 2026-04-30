@@ -16,6 +16,14 @@ interface LateDelivery {
 
 const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
 
+const formatDecimalHour = (decimalHour: number | string) => {
+    const num = Number(decimalHour);
+    if (isNaN(num)) return '--:--';
+    const hours = Math.floor(num);
+    const minutes = Math.round((num - hours) * 60);
+    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+};
+
 const LateDeliveriesAnalysis: React.FC = () => {
     const [startDate, setStartDate] = useState(getLocalDateString());
     const [endDate, setEndDate] = useState(getLocalDateString());
@@ -169,7 +177,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                 <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                                 <YAxis domain={[21, 24]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} label={{ value: 'Hora (>21h)', angle: -90, position: 'insideLeft' }} />
                                 <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
-                                <Bar dataKey="avgHour" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} label={{ position: 'top', fontSize: 10, fontWeight: 900, fill: '#b45309', formatter: (val: any) => `${val}h` }} />
+                                <Bar dataKey="avgHour" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} label={{ position: 'top', fontSize: 10, fontWeight: 900, fill: '#b45309', formatter: (val: any) => formatDecimalHour(val) }} />
                             </BarChart>
                         </ResponsiveContainer>
                     </div>
@@ -208,7 +216,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center text-red-600 font-black">{driver.lateCount}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-gray-500">{driver.avgHour}h</td>
+                                    <td className="px-6 py-4 text-center font-bold text-gray-500">{formatDecimalHour(driver.avgHour)}h</td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                             driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
