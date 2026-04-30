@@ -1776,7 +1776,18 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 });
                 
                 const [h, m] = santiagoTime.split(':').map(Number);
-                meliHour = h + (m / 60.0);
+                let hour = h;
+                const minutes = m;
+
+                // CORRECCIÓN AM/PM: Si la App dice noche y ML dice mañana (brecha de ~12h), corregir.
+                if (row.delivery_hour > 14 && hour < 12) {
+                    const gap = row.delivery_hour - hour;
+                    if (gap >= 10 && gap <= 14) { // Si el desfase es cercano a 12 horas
+                        hour += 12;
+                    }
+                }
+                
+                meliHour = hour + (minutes / 60.0);
             }
 
             return {
