@@ -1629,7 +1629,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         
-        // Optimized query to get late deliveries correlated with daily workload
+        // Optimized query to get late deliveries correlated with daily workload and day boundaries
         const query = `
             SELECT 
                 u.name as driver_name,
@@ -1643,7 +1643,23 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     WHERE p2."driverId" = p."driverId" 
                     AND te2.status = 'ENTREGADO'
                     AND (te2.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
-                ) as total_packages_day
+                ) as total_packages_day,
+                (
+                    SELECT MIN(EXTRACT(HOUR FROM te3.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te3.timestamp AT TIME ZONE 'America/Santiago')/60.0)
+                    FROM tracking_events te3
+                    JOIN packages p3 ON te3."packageId" = p3.id
+                    WHERE p3."driverId" = p."driverId"
+                    AND te3.status = 'ENTREGADO'
+                    AND (te3.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
+                ) as first_delivery_hour,
+                (
+                    SELECT MAX(EXTRACT(HOUR FROM te4.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te4.timestamp AT TIME ZONE 'America/Santiago')/60.0)
+                    FROM tracking_events te4
+                    JOIN packages p4 ON te4."packageId" = p4.id
+                    WHERE p4."driverId" = p."driverId"
+                    AND te4.status = 'ENTREGADO'
+                    AND (te4.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
+                ) as last_delivery_hour
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id

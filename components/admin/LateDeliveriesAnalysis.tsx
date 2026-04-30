@@ -12,6 +12,8 @@ interface LateDelivery {
     delivery_day: string;
     delivery_hour: number;
     total_packages_day: number;
+    first_delivery_hour: number;
+    last_delivery_hour: number;
 }
 
 const COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#10b981', '#8b5cf6', '#ec4899'];
@@ -57,7 +59,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
         // Group by Commune
         const communeMap: { [key: string]: number } = {};
         // Group by Driver
-        const driverMap: { [key: string]: { lateCount: number, maxLoad: number, totalHours: number } } = {};
+        const driverMap: { [key: string]: { lateCount: number, maxLoad: number, totalHours: number, firstHour: number, lastHour: number } } = {};
         // Group by Load Range for the second chart
         const loadRanges: { [key: string]: { totalHour: number, count: number } } = {
             '0-20 pqts': { totalHour: 0, count: 0 },
@@ -73,7 +75,13 @@ const LateDeliveriesAnalysis: React.FC = () => {
             
             // Drivers
             if (!driverMap[item.driver_name]) {
-                driverMap[item.driver_name] = { lateCount: 0, maxLoad: item.total_packages_day, totalHours: 0 };
+                driverMap[item.driver_name] = { 
+                    lateCount: 0, 
+                    maxLoad: item.total_packages_day, 
+                    totalHours: 0,
+                    firstHour: item.first_delivery_hour,
+                    lastHour: item.last_delivery_hour
+                };
             }
             driverMap[item.driver_name].lateCount++;
             driverMap[item.driver_name].totalHours += Number(item.delivery_hour);
@@ -99,7 +107,9 @@ const LateDeliveriesAnalysis: React.FC = () => {
                 name, 
                 lateCount: stats.lateCount, 
                 load: stats.maxLoad,
-                avgHour: (stats.totalHours / stats.lateCount).toFixed(1)
+                avgHour: (stats.totalHours / stats.lateCount).toFixed(1),
+                firstHour: stats.firstHour,
+                lastHour: stats.lastHour
             }))
             .sort((a, b) => b.lateCount - a.lateCount);
 
@@ -202,7 +212,9 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                 <th className="px-6 py-4 text-left text-xs font-bold text-gray-400 uppercase tracking-wider">Conductor</th>
                                 <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Carga Máx. Detectada</th>
                                 <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Cant. Entregas Tarde</th>
+                                <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Primera Entrega</th>
                                 <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Hora Promedio Tarde</th>
+                                <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Última Entrega</th>
                                 <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Estado de Riesgo</th>
                             </tr>
                         </thead>
@@ -216,7 +228,9 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center text-red-600 font-black">{driver.lateCount}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-gray-500">{formatDecimalHour(driver.avgHour)}h</td>
+                                    <td className="px-6 py-4 text-center font-bold text-gray-400">{formatDecimalHour(driver.firstHour)}</td>
+                                    <td className="px-6 py-4 text-center font-bold text-gray-500">{formatDecimalHour(driver.avgHour)}</td>
+                                    <td className="px-6 py-4 text-center font-bold text-red-500">{formatDecimalHour(driver.lastHour)}</td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                             driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
