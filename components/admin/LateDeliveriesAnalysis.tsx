@@ -49,7 +49,15 @@ const LateDeliveriesAnalysis: React.FC = () => {
         // Group by Commune
         const communeMap: { [key: string]: number } = {};
         // Group by Driver
-        const driverMap: { [key: string]: { lateCount: number, maxLoad: number, avgHour: number } } = {};
+        const driverMap: { [key: string]: { lateCount: number, maxLoad: number, totalHours: number } } = {};
+        // Group by Load Range for the second chart
+        const loadRanges: { [key: string]: { totalHour: number, count: number } } = {
+            '0-20 pqts': { totalHour: 0, count: 0 },
+            '21-30 pqts': { totalHour: 0, count: 0 },
+            '31-40 pqts': { totalHour: 0, count: 0 },
+            '41-50 pqts': { totalHour: 0, count: 0 },
+            '50+ pqts': { totalHour: 0, count: 0 },
+        };
         
         data.forEach(item => {
             // Communes
@@ -57,10 +65,20 @@ const LateDeliveriesAnalysis: React.FC = () => {
             
             // Drivers
             if (!driverMap[item.driver_name]) {
-                driverMap[item.driver_name] = { lateCount: 0, maxLoad: item.total_packages_day, avgHour: 0 };
+                driverMap[item.driver_name] = { lateCount: 0, maxLoad: item.total_packages_day, totalHours: 0 };
             }
             driverMap[item.driver_name].lateCount++;
-            driverMap[item.driver_name].avgHour += item.delivery_hour;
+            driverMap[item.driver_name].totalHours += Number(item.delivery_hour);
+
+            // Load Ranges logic
+            let range = '50+ pqts';
+            if (item.total_packages_day <= 20) range = '0-20 pqts';
+            else if (item.total_packages_day <= 30) range = '21-30 pqts';
+            else if (item.total_packages_day <= 40) range = '31-40 pqts';
+            else if (item.total_packages_day <= 50) range = '41-50 pqts';
+
+            loadRanges[range].totalHour += Number(item.delivery_hour);
+            loadRanges[range].count++;
         });
 
         const communeData = Object.entries(communeMap)
@@ -73,18 +91,17 @@ const LateDeliveriesAnalysis: React.FC = () => {
                 name, 
                 lateCount: stats.lateCount, 
                 load: stats.maxLoad,
-                avgHour: (stats.avgHour / stats.lateCount).toFixed(1)
+                avgHour: (stats.totalHours / stats.lateCount).toFixed(1)
             }))
             .sort((a, b) => b.lateCount - a.lateCount);
 
-        // Correlation Scatter Data
-        const scatterData = data.map(item => ({
-            load: item.total_packages_day,
-            hour: item.delivery_hour,
-            name: item.driver_name
-        }));
+        const rangeData = Object.entries(loadRanges)
+            .map(([name, stats]) => ({
+                name,
+                avgHour: stats.count > 0 ? (stats.totalHour / stats.count).toFixed(1) : 0
+            }));
 
-        return { communeData, driverData, scatterData };
+        return { communeData, driverData, rangeData };
     }, [data]);
 
     return (
@@ -139,26 +156,25 @@ const LateDeliveriesAnalysis: React.FC = () => {
                     </div>
                 </div>
 
-                {/* Chart: Workload vs Hour Correlation */}
+                {/* Chart: Load Range vs Avg Hour */}
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
                     <h3 className="text-lg font-black text-gray-900 mb-6 flex items-center gap-2">
                         <IconClock className="w-5 h-5 text-amber-500"/>
-                        Correlación: Carga Diaria vs Hora de Entrega
+                        Hora Promedio de Término según Carga
                     </h3>
                     <div className="h-[300px]">
                         <ResponsiveContainer width="100%" height="100%">
-                            <ScatterChart margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
-                                <XAxis type="number" dataKey="load" name="Paquetes en Ruta" unit=" pqts" axisLine={false} tickLine={false} label={{ value: 'Carga Diaria', position: 'insideBottom', offset: -10 }} />
-                                <YAxis type="number" dataKey="hour" name="Hora de Entrega" unit="h" domain={[21, 24]} axisLine={false} tickLine={false} label={{ value: 'Hora (>21h)', angle: -90, position: 'insideLeft' }} />
-                                <ZAxis type="number" range={[50, 400]} />
-                                <Tooltip cursor={{ strokeDasharray: '3 3' }} />
-                                <Scatter name="Entregas" data={analysis.scatterData} fill="#3b82f6" fillOpacity={0.6} />
-                            </ScatterChart>
+                            <BarChart data={analysis.rangeData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
+                                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
+                                <YAxis domain={[21, 24]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} label={{ value: 'Hora (>21h)', angle: -90, position: 'insideLeft' }} />
+                                <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }} />
+                                <Bar dataKey="avgHour" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} label={{ position: 'top', fontSize: 10, fontWeight: 900, fill: '#b45309', formatter: (val: any) => `${val}h` }} />
+                            </BarChart>
                         </ResponsiveContainer>
                     </div>
                     <p className="text-[10px] text-gray-400 mt-2 italic text-center">
-                        * Los puntos a la derecha y arriba indican sobrecarga crítica.
+                        * Demuestra que a mayor carga, la hora de término promedio se desplaza hacia la medianoche.
                     </p>
                 </div>
             </div>
@@ -192,7 +208,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         </span>
                                     </td>
                                     <td className="px-6 py-4 text-center text-red-600 font-black">{driver.lateCount}</td>
-                                    <td className="px-6 py-4 text-center font-bold text-gray-500">{driver.avgHour}:00h</td>
+                                    <td className="px-6 py-4 text-center font-bold text-gray-500">{driver.avgHour}h</td>
                                     <td className="px-6 py-4 text-right">
                                         <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase tracking-widest ${
                                             driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'
