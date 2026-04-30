@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { 
     BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from 'recharts';
-import { IconRefresh, IconAlertTriangle, IconTruck, IconMapPin, IconClock, IconUser } from '../Icon';
+import { IconRefresh, IconAlertTriangle, IconTruck, IconMapPin, IconClock, IconUser, IconCheck } from '../Icon';
 import { getLocalDateString } from '../../utils/dateUtils';
 
 interface LateDelivery {
@@ -14,9 +14,11 @@ interface LateDelivery {
     total_packages_day: number;
     first_delivery_hour: number;
     last_delivery_hour: number;
+    meli_delivered_hour: number | null;
 }
 
-const formatDecimalHour = (decimalHour: number | string) => {
+const formatDecimalHour = (decimalHour: number | string | null) => {
+    if (decimalHour === null) return '--:--';
     const num = Number(decimalHour);
     if (isNaN(num)) return '--:--';
     const hours = Math.floor(num);
@@ -56,7 +58,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
 
     const analysis = useMemo(() => {
         const communeMap: { [key: string]: number } = {};
-        const driverMap: { [key: string]: { lateCount: number, maxLoad: number, totalHours: number, firstHour: number, lastHour: number } } = {};
+        const driverMap: { [key: string]: { lateCount: number, maxLoad: number, totalHours: number, firstHour: number, lastHour: number, maxGap: number, meliHour: number | null } } = {};
         const sellerMap: { [key: string]: { lateCount: number, topCommune: string, communes: {[key: string]: number}, topDriver: string, drivers: {[key: string]: number} } } = {};
         
         const loadRanges: { [key: string]: { totalHour: number, count: number } } = {
@@ -77,11 +79,22 @@ const LateDeliveriesAnalysis: React.FC = () => {
                     maxLoad: item.total_packages_day, 
                     totalHours: 0,
                     firstHour: item.first_delivery_hour,
-                    lastHour: item.last_delivery_hour
+                    lastHour: item.last_delivery_hour,
+                    maxGap: 0,
+                    meliHour: null
                 };
             }
             driverMap[item.driver_name].lateCount++;
             driverMap[item.driver_name].totalHours += Number(item.delivery_hour);
+
+            // Calculate Gap (Fraud Detection)
+            if (item.meli_delivered_hour) {
+                const gap = (Number(item.delivery_hour) - Number(item.meli_delivered_hour)) * 60; // in minutes
+                if (gap > driverMap[item.driver_name].maxGap) {
+                    driverMap[item.driver_name].maxGap = gap;
+                    driverMap[item.driver_name].meliHour = item.meli_delivered_hour;
+                }
+            }
 
             // Sellers mapping
             const sName = item.seller_name || 'Sin Seller';
@@ -114,7 +127,9 @@ const LateDeliveriesAnalysis: React.FC = () => {
                 load: stats.maxLoad,
                 avgHour: (stats.totalHours / stats.lateCount).toFixed(1),
                 firstHour: stats.firstHour,
-                lastHour: stats.lastHour
+                lastHour: stats.lastHour,
+                maxGap: Math.round(stats.maxGap),
+                meliHour: stats.meliHour
             }))
             .sort((a, b) => b.lateCount - a.lateCount);
 
@@ -229,8 +244,9 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Carga Máx.</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Cant. Tarde</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Primera Entrega</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Promedio Tarde</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Última Entrega</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Última (App)</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Cierre ML</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Brecha (Min)</th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
                                     </tr>
                                 </thead>
@@ -241,11 +257,20 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                             <td className="px-6 py-4 text-center font-bold text-blue-600">{driver.load}</td>
                                             <td className="px-6 py-4 text-center text-red-600 font-black">{driver.lateCount}</td>
                                             <td className="px-6 py-4 text-center text-gray-400">{formatDecimalHour(driver.firstHour)}</td>
-                                            <td className="px-6 py-4 text-center font-black text-gray-900">{formatDecimalHour(driver.avgHour)}</td>
-                                            <td className="px-6 py-4 text-center text-red-500 font-black">{formatDecimalHour(driver.lastHour)}</td>
+                                            <td className="px-6 py-4 text-center font-black text-gray-900">{formatDecimalHour(driver.lastHour)}</td>
+                                            <td className="px-6 py-4 text-center text-emerald-600 font-bold">{formatDecimalHour(driver.meliHour)}</td>
+                                            <td className="px-6 py-4 text-center">
+                                                {driver.maxGap > 30 ? (
+                                                    <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-black">
+                                                        +{driver.maxGap} min
+                                                    </span>
+                                                ) : (
+                                                    <span className="text-gray-400 font-bold">{driver.maxGap || 0}m</span>
+                                                )}
+                                            </td>
                                             <td className="px-6 py-4 text-right">
-                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600'}`}>
-                                                    {driver.load > 40 ? 'Crítico' : 'Revisión'}
+                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${driver.maxGap > 60 ? 'bg-purple-100 text-purple-600' : (driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}`}>
+                                                    {driver.maxGap > 60 ? 'Posible Maquillaje' : (driver.load > 40 ? 'Crítico' : 'Revisión')}
                                                 </span>
                                             </td>
                                         </tr>

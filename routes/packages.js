@@ -1694,7 +1694,13 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     WHERE p4."driverId" = p."driverId"
                     AND te4.status = 'ENTREGADO'
                     AND (te4.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
-                ) as last_delivery_hour
+                ) as last_delivery_hour,
+                (
+                    SELECT MIN(EXTRACT(HOUR FROM te5.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te5.timestamp AT TIME ZONE 'America/Santiago')/60.0)
+                    FROM tracking_events te5
+                    WHERE te5."packageId" = p.id 
+                    AND te5.status = 'CIERRE_OFICIAL_ML'
+                ) as meli_delivered_hour
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id

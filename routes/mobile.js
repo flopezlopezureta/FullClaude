@@ -97,11 +97,14 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
         const { rows: settingsRows } = await db.query('SELECT "meliFlexValidation" FROM system_settings WHERE id = 1');
         const meliFlexValidation = settingsRows.length > 0 ? settingsRows[0].meliFlexValidation : true;
 
+        let meliDeliveredAt = null;
+
         if (meliFlexValidation) {
             try {
-                const { rows: pkgFullRows } = await db.query('SELECT "meliOrderId", "creatorId" FROM packages WHERE id = $1', [id]);
-                if (pkgFullRows.length > 0 && pkgFullRows[0].meliOrderId) {
-                    const { meliOrderId, creatorId } = pkgFullRows[0];
+                const { rows: pkgFullRows } = await db.query('SELECT "meliOrderId", "creatorId", "meliFlexCode" FROM packages WHERE id = $1', [id]);
+                if (pkgFullRows.length > 0 && (pkgFullRows[0].meliOrderId || pkgFullRows[0].meliFlexCode)) {
+                    const { meliOrderId, creatorId, meliFlexCode } = pkgFullRows[0];
+                    const shipmentId = meliFlexCode || meliOrderId;
                     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
                     let meliIntegration = userRows[0]?.integrations?.meli;
                     
@@ -122,9 +125,17 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
                         }
                         
                         try {
-                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliOrderId}`, meliIntegration.accessToken);
+                            const shippingDetails = await makeMeliGetRequest(`/shipments/${shipmentId}`, meliIntegration.accessToken);
                             if (shippingDetails.status !== 'delivered') {
                                 return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala en la app Meli primero y luego confirma aquí.' });
+                            }
+                            
+                            // Extract delivery time from ML history
+                            if (shippingDetails.status_history) {
+                                const deliveredEvent = shippingDetails.status_history.find(h => h.status === 'delivered');
+                                if (deliveredEvent && deliveredEvent.date) {
+                                    meliDeliveredAt = new Date(deliveredEvent.date);
+                                }
                             }
                         } catch(meliError) {
                              console.warn(`[Mobile Deliver] Could not verify Meli status. Allowing delivery.`, meliError.body || meliError.message);
@@ -148,11 +159,19 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
             [JSON.stringify([imagen]), now, id]
         );
 
-        // Registrar evento de seguimiento
+        // Registrar evento de seguimiento (Nuestro App)
         await db.query(
             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
             [id, 'ENTREGADO', 'Destino Final', 'Entrega cerrada desde App Móvil.', now]
         );
+
+        // Registrar evento especial de ML si se obtuvo la hora
+        if (meliDeliveredAt) {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora de entrega real registrada en ML: ${meliDeliveredAt.toISOString()}`, meliDeliveredAt]
+            );
+        }
         res.json({ message: 'Entrega cerrada con éxito.', id });
     } catch (err) {
         console.error('Error en POST /api/cerrar-entrega:', err);
