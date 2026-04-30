@@ -1106,45 +1106,28 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         const { rows: settingsRows } = await db.query('SELECT "meliFlexValidation" FROM system_settings WHERE id = 1');
         const meliFlexValidation = settingsRows.length > 0 ? settingsRows[0].meliFlexValidation : true;
 
-        // --- NEW MELI VALIDATION (STRICT) ---
+        // --- NEW MELI VALIDATION (STRICT & UNIFIED) ---
         if (meliFlexValidation) {
             try {
-                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId", source FROM packages WHERE id = $1', [id]);
+                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId", "source", "sourceAccountId" FROM packages WHERE id = $1', [id]);
                 if (pkgRows.length > 0 && pkgRows[0].meliFlexCode && pkgRows[0].source === 'MERCADO_LIBRE') {
-                    const { meliFlexCode, creatorId } = pkgRows[0];
+                    const { meliFlexCode, creatorId, sourceAccountId } = pkgRows[0];
 
-                    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
-                    let meliIntegration = userRows[0]?.integrations?.meli;
+                    const accessToken = await meliPollingService.getValidMeliToken(creatorId, sourceAccountId);
                     
-                    if (meliIntegration) {
-                        if (Date.now() >= meliIntegration.expiresAt) {
-                            try {
-                                const { rows: integrationSettingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-                                if (integrationSettingsRows[0]?.meli_app_id) {
-                                    const { meli_app_id, meli_client_secret } = integrationSettingsRows[0];
-                                    const refreshData = new URLSearchParams({ grant_type: 'refresh_token', client_id: meli_app_id.trim(), client_secret: meli_client_secret.trim(), refresh_token: meliIntegration.refreshToken }).toString();
-                                    const refreshedTokenData = await makeMeliPostRequest('/oauth/token', refreshData);
-                                    meliIntegration = { ...meliIntegration, accessToken: refreshedTokenData.access_token, refreshToken: refreshedTokenData.refresh_token, expiresAt: Date.now() + (refreshedTokenData.expires_in * 1000) };
-                                    await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), creatorId]);
-                                }
-                            } catch (refreshError) {
-                                console.error(`[Deliver] Error refreshing ML token for shipment ${meliFlexCode}:`, refreshError);
-                                return res.status(400).json({ message: 'Error de conexión con Mercado Libre. Por favor, reintenta en unos momentos.' });
-                            }
-                        }
-                        
+                    if (!accessToken) {
+                        console.warn(`[Deliver] Could not obtain ML token for shipment ${meliFlexCode}. Allowing bypass.`);
+                    } else {
                         try {
-                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, meliIntegration.accessToken);
+                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, accessToken);
                             if (shippingDetails.status !== 'delivered') {
                                 return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala allí primero y luego confirma aquí.' });
                             }
                         } catch(meliError) {
                              console.error(`[Deliver] Meli status verification failed for shipment ${meliFlexCode}:`, meliError.body || meliError.message);
-                             // [OPERATIONAL SAFETY] If it's an auth error or communication error, log it but DON'T block the driver if they have evidence
+                             // Auth errors (401/403) are bypassed to avoid blocking drivers in production
                              const isAuthError = meliError.statusCode === 401 || meliError.statusCode === 403;
-                             if (isAuthError) {
-                                 console.warn(`[Deliver] Allowing delivery despite ML auth error for shipment ${meliFlexCode}`);
-                             } else {
+                             if (!isAuthError) {
                                  return res.status(400).json({ message: 'No se pudo verificar el estado en Mercado Libre. Asegúrate de haber completado la entrega en la app de Flex.' });
                              }
                         }
@@ -1152,7 +1135,7 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                 }
             } catch (validationError) {
                 console.error('[Deliver] Fatal error in Meli validation block:', validationError);
-                return res.status(500).json({ message: 'Error interno validando estado con Mercado Libre.' });
+                // We don't return 500 here to avoid blocking the whole delivery process
             }
         }
         // --- END MELI VALIDATION ---
