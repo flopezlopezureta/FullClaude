@@ -1705,7 +1705,11 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         res.json(enrichedData);
     } catch (err) {
         console.error('Error fetching late delivery analytics:', err);
-        res.status(500).json({ message: 'Error al obtener análisis de retrasos.' });
+        res.status(500).json({ 
+            message: 'Error al obtener análisis de retrasos.',
+            debug: err.message,
+            stack: err.stack
+        });
     }
 });
 
