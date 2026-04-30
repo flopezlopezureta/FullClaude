@@ -1640,7 +1640,6 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
             hour: i,
             count: 0
         }));
-
         result.rows.forEach(row => {
             const h = parseInt(row.hour);
             if (h >= 0 && h < 24) {
@@ -1718,9 +1717,10 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
 
         const enrichedData = rows.map(row => {
             const mlEvent = mlEvents.find(e => e.packageId === row.id);
-            const rowDate = new Date(row.local_timestamp).toISOString().split('T')[0];
+            const rowDate = row.delivery_day ? new Date(row.delivery_day).toISOString().split('T')[0] : '';
+            
             const stats = driverStats.find(s => {
-                const sDate = new Date(s.day).toISOString().split('T')[0];
+                const sDate = s.day ? new Date(s.day).toISOString().split('T')[0] : '';
                 return s.driverId === row.driverId && sDate === rowDate;
             });
             
@@ -1728,7 +1728,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 id: row.id,
                 driver_name: row.driver_name,
                 seller_name: row.seller_name || 'Sin Seller',
-                recipientCommune: row.recipientCommune,
+                recipientCommune: normalizeCommune(row.recipientCommune),
                 delivery_day: rowDate,
                 delivery_hour: row.delivery_hour,
                 total_packages_day: stats ? parseInt(stats.total_day) : 0,
