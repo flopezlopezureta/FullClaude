@@ -32,6 +32,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   const [notes, setNotes] = useState(initialData?.notes || '');
   const [trackingId, setTrackingId] = useState(initialData?.trackingId || '');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [lastCreatedName, setLastCreatedName] = useState<string | null>(null);
 
   const getLocalDateString = (dateObj: Date = new Date()) => {
@@ -69,9 +70,25 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
     setNotes('');
   };
 
+  const validate = () => {
+    const newErrors: {[key: string]: string} = {};
+    if (clients && !selectedClientId && !initialData) newErrors.clientId = "Debe seleccionar un vendedor";
+    if (!recipientName.trim()) newErrors.recipientName = "El nombre es obligatorio";
+    if (!recipientPhone.trim()) newErrors.recipientPhone = "El teléfono es obligatorio";
+    if (!recipientAddress.trim()) newErrors.recipientAddress = "La dirección es obligatoria";
+    if (!recipientCommune) newErrors.recipientCommune = "Debe seleccionar una comuna";
+    if (!estimatedDelivery) newErrors.estimatedDelivery = "La fecha es obligatoria";
+    
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
   const handleSubmit = async (e: React.FormEvent, createAnother = false) => {
     e.preventDefault();
     if (isSubmitting) return;
+    
+    setErrors({}); // Clear previous errors
+    if (!validate()) return;
     
     const finalCreatorId = clients ? selectedClientId : creatorId;
     if (!finalCreatorId && !initialData) {
@@ -147,7 +164,9 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   
   const today = getLocalDateString();
   const inputClasses = "w-full px-4 py-2.5 border border-[var(--border-secondary)] rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] bg-[var(--background-secondary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-muted)]";
+  const errorInputClasses = "w-full px-4 py-2.5 border-2 border-red-500 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-red-50 text-[var(--text-primary)] transition-all";
   const labelClasses = "block text-xs font-black text-[var(--text-secondary)] uppercase tracking-widest mb-1.5 ml-1";
+  const errorLabelClasses = "block text-xs font-bold text-red-600 mt-1 ml-1";
 
   return (
     <div
@@ -214,14 +233,33 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                     </div>
                 )}
             </div>
-
-            {/* RECIPIENT INFORMATION */}
-            <div className="bg-white p-5 rounded-2xl border border-[var(--border-secondary)] shadow-sm space-y-5">
-                <div className="flex items-center gap-2 mb-2">
-                    <IconMapPin className="w-4 h-4 text-[var(--brand-primary)]" />
-                    <h4 className="text-xs font-black text-[var(--brand-primary)] uppercase tracking-widest">Datos del Destinatario</h4>
+            {clients && !initialData && (
+                <div className={`p-5 rounded-2xl border shadow-sm transition-all ${errors.clientId ? 'bg-red-50 border-red-200' : 'bg-white border-[var(--border-secondary)]'}`}>
+                    <label className={labelClasses}>Vendedor / Dueño del Paquete</label>
+                    <SearchableSelect 
+                        items={searchableClients}
+                        selectedId={selectedClientId}
+                        onSelect={setSelectedClientId}
+                        placeholder="Buscar por nombre..."
+                        searchPlaceholder="Escriba el nombre del vendedor..."
+                        showNoneOption={false}
+                        error={!!errors.clientId}
+                    />
+                    {errors.clientId && <span className={errorLabelClasses}>{errors.clientId}</span>}
                 </div>
-                
+            )}
+
+            {/* RECIPIENT DATA */}
+            <div className={`p-5 rounded-2xl border shadow-sm space-y-5 transition-all ${
+                (errors.recipientName || errors.recipientPhone || errors.recipientAddress || errors.recipientCommune) 
+                ? 'bg-red-50 border-red-200' 
+                : 'bg-white border-[var(--border-secondary)]'
+            }`}>
+                <div className="flex items-center gap-2 mb-2">
+                    <IconUser className={`w-4 h-4 ${(errors.recipientName || errors.recipientPhone || errors.recipientAddress || errors.recipientCommune) ? 'text-red-500' : 'text-[var(--brand-primary)]'}`} />
+                    <h4 className={`text-xs font-black uppercase tracking-widest ${(errors.recipientName || errors.recipientPhone || errors.recipientAddress || errors.recipientCommune) ? 'text-red-700' : 'text-[var(--brand-primary)]'}`}>Datos del Destinatario</h4>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="trackingId" className={labelClasses}>Tracking ID (Opcional)</label>
@@ -229,14 +267,16 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                     </div>
                     <div>
                         <label htmlFor="recipientName" className={labelClasses}>Nombre Completo</label>
-                        <input type="text" id="recipientName" value={recipientName} onChange={(e) => setRecipientName(e.target.value.toUpperCase())} required className={`${inputClasses} uppercase font-bold`} placeholder="JUAN PÉREZ" />
+                        <input type="text" id="recipientName" value={recipientName} onChange={(e) => setRecipientName(e.target.value.toUpperCase())} className={errors.recipientName ? errorInputClasses : `${inputClasses} uppercase font-bold`} placeholder="JUAN PÉREZ" />
+                        {errors.recipientName && <span className={errorLabelClasses}>{errors.recipientName}</span>}
                     </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="recipientPhone" className={labelClasses}>Teléfono</label>
-                        <input type="tel" id="recipientPhone" value={recipientPhone} onChange={handlePhoneChange} onBlur={handlePhoneBlur} required className={`${inputClasses} font-bold`} placeholder="+569XXXXXXXX" />
+                        <input type="tel" id="recipientPhone" value={recipientPhone} onChange={handlePhoneChange} onBlur={handlePhoneBlur} className={errors.recipientPhone ? errorInputClasses : `${inputClasses} font-bold`} placeholder="+569XXXXXXXX" />
+                        {errors.recipientPhone && <span className={errorLabelClasses}>{errors.recipientPhone}</span>}
                     </div>
                     <div>
                         <label htmlFor="recipientEmail" className={labelClasses}>Correo Electrónico</label>
@@ -246,7 +286,8 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
 
                 <div>
                     <label htmlFor="recipientAddress" className={labelClasses}>Dirección de Entrega</label>
-                    <input type="text" id="recipientAddress" value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value.toUpperCase())} required className={`${inputClasses} uppercase font-bold`} placeholder="CALLE, NÚMERO, DEPTO/OF" />
+                    <input type="text" id="recipientAddress" value={recipientAddress} onChange={(e) => setRecipientAddress(e.target.value.toUpperCase())} className={errors.recipientAddress ? errorInputClasses : `${inputClasses} uppercase font-bold`} placeholder="CALLE, NÚMERO, DEPTO/OF" />
+                    {errors.recipientAddress && <span className={errorLabelClasses}>{errors.recipientAddress}</span>}
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -259,11 +300,13 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                             placeholder="Seleccionar comuna..."
                             searchPlaceholder="Buscar comuna..."
                             showNoneOption={false}
+                            error={!!errors.recipientCommune}
                         />
+                        {errors.recipientCommune && <span className={errorLabelClasses}>{errors.recipientCommune}</span>}
                     </div>
                     <div>
                         <label htmlFor="recipientCity" className={labelClasses}>Región / Ciudad</label>
-                        <select id="recipientCity" value={recipientCity} onChange={(e) => setRecipientCity(e.target.value)} required className={inputClasses}>
+                        <select id="recipientCity" value={recipientCity} onChange={(e) => setRecipientCity(e.target.value)} className={inputClasses}>
                             {chileanCities.sort().map(city => (
                                 <option key={city} value={city}>{city}</option>
                             ))}
@@ -273,7 +316,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
             </div>
 
             {/* SHIPPING DETAILS */}
-            <div className="bg-white p-5 rounded-2xl border border-[var(--border-secondary)] shadow-sm space-y-5">
+            <div className={`p-5 rounded-2xl border shadow-sm space-y-5 transition-all ${errors.estimatedDelivery ? 'bg-red-50 border-red-200' : 'bg-white border-[var(--border-secondary)]'}`}>
                 <div className="flex items-center gap-2 mb-2">
                     <IconPackage className="w-4 h-4 text-[var(--brand-primary)]" />
                     <h4 className="text-xs font-black text-[var(--brand-primary)] uppercase tracking-widest">Detalles del Envío</h4>
@@ -283,7 +326,8 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="estimatedDelivery" className={labelClasses}>Fecha Programada</label>
-                        <input type="date" id="estimatedDelivery" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} required min={today} className={inputClasses} />
+                        <input type="date" id="estimatedDelivery" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} min={today} className={errors.estimatedDelivery ? errorInputClasses : inputClasses} />
+                        {errors.estimatedDelivery && <span className={errorLabelClasses}>{errors.estimatedDelivery}</span>}
                     </div>
                     <div>
                         <label htmlFor="notes" className={labelClasses}>Observaciones Adicionales</label>

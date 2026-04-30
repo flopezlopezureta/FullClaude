@@ -16,6 +16,7 @@ interface SearchableSelectProps {
   showNoneOption?: boolean;
   className?: string;
   disabled?: boolean;
+  error?: boolean;
 }
 
 const SearchableSelect: React.FC<SearchableSelectProps> = ({
@@ -28,6 +29,7 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
   showNoneOption = true,
   className = '',
   disabled = false,
+  error = false,
 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -69,9 +71,15 @@ const SearchableSelect: React.FC<SearchableSelectProps> = ({
     <div className={`relative ${className}`} ref={containerRef}>
       <button
         type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full flex items-center justify-between px-4 py-2.5 border rounded-xl shadow-sm transition-all text-left ${
+          disabled 
+            ? 'bg-gray-100 cursor-not-allowed border-gray-200 text-gray-400' 
+            : error
+              ? 'border-2 border-red-500 bg-red-50 text-red-900 focus:ring-2 focus:ring-red-500'
+              : 'border-[var(--border-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] hover:border-[var(--brand-primary)]'
+        } ${isOpen && !error ? 'ring-2 ring-[var(--brand-primary)] border-[var(--brand-primary)]' : ''}`}
         disabled={disabled}
-        onClick={() => setIsOpen(!isOpen)}
-        className={`w-full flex items-center justify-between pl-3 pr-10 py-2 text-base border border-[var(--border-secondary)] focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] sm:text-sm rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] text-left transition-all hover:bg-[var(--background-hover)] ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
       >
         <span className="block truncate">
           {selectedId === 'none' ? noneLabel : (selectedItem ? selectedItem.name : placeholder)}
