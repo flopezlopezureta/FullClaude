@@ -169,22 +169,22 @@ router.get('/', authMiddleware, async (req, res) => {
             const endStr = end.toISOString().split('T')[0];
             
             if (dateType === 'egress') {
-                whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
+                whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp`);
             } else if (driverFilter) {
                 // Para conductores, mostramos lo creado, asignado o con entrega estimada hoy.
                 // IMPORTANTE: Incluimos assignedAt para que si se le asigna un paquete viejo hoy, lo vea.
                 // Eliminamos updatedAt para evitar que paquetes cerrados reaparezcan por sync.
                 whereClauses.push(`(
-                    (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
-                    (p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}) OR
-                    (p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1})
+                    ((p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR 
+                    ((p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR
+                    ((p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp)
                 )`);
             } else {
                 // Para búsqueda general (Admin), mantenemos todos los campos para máxima cobertura
                 whereClauses.push(`(
-                    (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
-                    (p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1}) OR
-                    (p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1})
+                    ((p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR 
+                    ((p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR
+                    ((p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp)
                 )`);
             }
             queryParams.push(startDate, endStr);
@@ -193,9 +193,13 @@ router.get('/', authMiddleware, async (req, res) => {
             // Filtros individuales si no hay un rango completo
             if (startDate) {
                 if (dateType === 'egress') {
-                    whereClauses.push(`p."assignedAt" >= $${paramIndex}`);
+                    whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
                 } else {
-                    whereClauses.push(`(p."createdAt" >= $${paramIndex} OR p."updatedAt" >= $${paramIndex} OR p."estimatedDelivery" >= $${paramIndex})`);
+                    whereClauses.push(`(
+                        (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
+                        (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
+                        (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp
+                    )`);
                 }
                 queryParams.push(startDate);
                 paramIndex++;
@@ -204,12 +208,17 @@ router.get('/', authMiddleware, async (req, res) => {
             if (endDate) {
                 const end = new Date(endDate);
                 end.setDate(end.getDate() + 1);
+                const endStr = end.toISOString().split('T')[0];
                 if (dateType === 'egress') {
-                    whereClauses.push(`p."assignedAt" < $${paramIndex}`);
+                    whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
                 } else {
-                    whereClauses.push(`(p."createdAt" < $${paramIndex} OR p."updatedAt" < $${paramIndex} OR p."estimatedDelivery" < $${paramIndex})`);
+                    whereClauses.push(`(
+                        (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
+                        (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
+                        (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp
+                    )`);
                 }
-                queryParams.push(end.toISOString().split('T')[0]);
+                queryParams.push(endStr);
                 paramIndex++;
             }
         }
