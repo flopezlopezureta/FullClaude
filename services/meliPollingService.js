@@ -1,7 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
-const { normalizeCommune, normalizeCity } = require('../utils/normalization');
+const { normalizeCommune, normalizeCity } = require('../utils/normUtil');
 const { triggerBackgroundGeocoding } = require('./geocodingService');
 
 // --- MELI API HELPERS (Duplicated from integrations.js for independence) ---
