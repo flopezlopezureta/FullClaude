@@ -244,12 +244,29 @@ async function pollMeliPackages() {
                     
                     const mlStatus = shipment.status;
                     const mlSubstatus = shipment.substatus;
+                    const now = new Date();
                     
                     let newStatus = null;
                     let eventDetails = '';
                     let eventStatus = '';
 
-                    if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
+                    if (mlStatus === 'delivered') {
+                        const { rows: existingML } = await db.query(
+                            'SELECT id FROM tracking_events WHERE "packageId" = $1 AND status = \'CIERRE_OFICIAL_ML\'',
+                            [pkg.id]
+                        );
+                        if (existingML.length === 0) {
+                            let meliTime = now;
+                            if (shipment.status_history) {
+                                const deliveredEvent = shipment.status_history.find(h => h.status === 'delivered');
+                                if (deliveredEvent && deliveredEvent.date) meliTime = new Date(deliveredEvent.date);
+                            }
+                            await db.query(
+                                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Capture)', `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
+                            );
+                        }
+                    } else if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
                         newStatus = 'EN_TRANSITO';
                         eventStatus = 'En Tránsito';
                         eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
