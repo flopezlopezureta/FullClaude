@@ -1591,11 +1591,12 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
         // We look for 'ENTREGADO' events in tracking_events
         const query = `
             SELECT 
-                EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')) as hour,
+                EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'America/Santiago')) as hour,
                 COUNT(*) as count
             FROM tracking_events
             WHERE status = 'ENTREGADO'
-            AND timestamp >= $1 AND timestamp <= $2
+            AND (timestamp AT TIME ZONE 'America/Santiago') >= $1::timestamp 
+            AND (timestamp AT TIME ZONE 'America/Santiago') <= $2::timestamp
             GROUP BY hour
             ORDER BY hour ASC;
         `;
