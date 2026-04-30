@@ -1670,38 +1670,9 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 u.name as driver_name,
                 c.name as seller_name,
                 p."recipientCommune",
-                (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
-                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) as delivery_hour,
-                (
-                    SELECT COUNT(*) 
-                    FROM tracking_events te2 
-                    JOIN packages p2 ON te2."packageId" = p2.id 
-                    WHERE p2."driverId" = p."driverId" 
-                    AND te2.status = 'ENTREGADO'
-                    AND (te2.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
-                ) as total_packages_day,
-                (
-                    SELECT MIN(EXTRACT(HOUR FROM te3.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te3.timestamp AT TIME ZONE 'America/Santiago')/60.0)
-                    FROM tracking_events te3
-                    JOIN packages p3 ON te3."packageId" = p3.id
-                    WHERE p3."driverId" = p."driverId"
-                    AND te3.status = 'ENTREGADO'
-                    AND (te3.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
-                ) as first_delivery_hour,
-                (
-                    SELECT MAX(EXTRACT(HOUR FROM te4.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te4.timestamp AT TIME ZONE 'America/Santiago')/60.0)
-                    FROM tracking_events te4
-                    JOIN packages p4 ON te4."packageId" = p4.id
-                    WHERE p4."driverId" = p."driverId"
-                    AND te4.status = 'ENTREGADO'
-                    AND (te4.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
-                ) as last_delivery_hour,
-                (
-                    SELECT MIN(EXTRACT(HOUR FROM te5.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te5.timestamp AT TIME ZONE 'America/Santiago')/60.0)
-                    FROM tracking_events te5
-                    WHERE te5."packageId" = p.id 
-                    AND te5.status = 'CIERRE_OFICIAL_ML'
-                ) as meli_delivered_hour
+                (te.timestamp AT TIME ZONE 'America/Santiago') as local_timestamp,
+                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
+                p."driverId"
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
@@ -1714,7 +1685,58 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         `;
 
         const result = await db.query(query, [startDate, endDate]);
-        res.json(result.rows);
+        const rows = result.rows;
+
+        // Fetch ML Closure events for the same packages to avoid subqueries
+        const packageIds = rows.map(r => r.id);
+        let mlEvents = [];
+        if (packageIds.length > 0) {
+            const mlResult = await db.query(
+                `SELECT "packageId", EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (timestamp AT TIME ZONE 'America/Santiago'))/60.0 as meli_hour
+                 FROM tracking_events 
+                 WHERE "packageId" = ANY($1) AND status = 'CIERRE_OFICIAL_ML'`,
+                [packageIds]
+            );
+            mlEvents = mlResult.rows;
+        }
+
+        // Fetch Daily Stats (First/Last) per driver and day in a separate query to be fast
+        const driverStatsResult = await db.query(`
+            SELECT 
+                "driverId",
+                (timestamp AT TIME ZONE 'America/Santiago')::date as day,
+                COUNT(*) as total_day,
+                MIN(EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0) as first_h,
+                MAX(EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0) as last_h
+            FROM tracking_events te
+            JOIN packages p ON te."packageId" = p.id
+            WHERE te.status = 'ENTREGADO'
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
+            GROUP BY "driverId", (te.timestamp AT TIME ZONE 'America/Santiago')::date
+        `, [startDate, endDate]);
+        const driverStats = driverStatsResult.rows;
+
+        // Merge data in Node.js (much faster than SQL subqueries)
+        const enrichedData = rows.map(row => {
+            const mlEvent = mlEvents.find(e => e.packageId === row.id);
+            const stats = driverStats.find(s => s.driverId === row.driverId && s.day.toISOString().split('T')[0] === row.local_timestamp.toISOString().split('T')[0]);
+            
+            return {
+                id: row.id,
+                driver_name: row.driver_name,
+                seller_name: row.seller_name,
+                recipientCommune: row.recipientCommune,
+                delivery_day: row.local_timestamp.toISOString().split('T')[0],
+                delivery_hour: row.delivery_hour,
+                total_packages_day: stats ? parseInt(stats.total_day) : 0,
+                first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
+                last_delivery_hour: stats ? stats.last_h : row.delivery_hour,
+                meli_delivered_hour: mlEvent ? mlEvent.meli_hour : null
+            };
+        });
+
+        res.json(enrichedData);
     } catch (err) {
         console.error('Error fetching late delivery analytics:', err);
         res.status(500).json({ message: 'Error al obtener análisis de retrasos.' });
