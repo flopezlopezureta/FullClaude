@@ -1539,7 +1539,7 @@ router.post('/bulk-update-status', authMiddleware, async (req, res) => {
         // Add tracking events
         for (const pkgId of packageIds) {
             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, NOW())', 
-                [pkgId, status, 'Operaciones', `Estado actualizado masivamente por el administrador a ${status}.`, new Date()]);
+                [pkgId, status, 'Operaciones', `Estado actualizado masivamente por el administrador a ${status}.`]);
         }
 
         res.json({ message: `Se actualizaron ${packageIds.length} paquetes a ${status}.` });
