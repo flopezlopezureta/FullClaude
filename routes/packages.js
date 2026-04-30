@@ -1688,18 +1688,6 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         const result = await db.query(query, [startDate, endDate]);
         const rows = result.rows;
 
-        const packageIds = rows.map(r => r.id);
-        let mlEvents = [];
-        if (packageIds.length > 0) {
-            const mlResult = await db.query(
-                `SELECT "packageId", EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (timestamp AT TIME ZONE 'America/Santiago'))/60.0 as meli_hour
-                 FROM tracking_events 
-                 WHERE "packageId" = ANY($1) AND status = 'CIERRE_OFICIAL_ML'`,
-                [packageIds]
-            );
-            mlEvents = mlResult.rows;
-        }
-
         const driverStatsResult = await db.query(`
             SELECT 
                 "driverId",
@@ -1717,7 +1705,6 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         const driverStats = driverStatsResult.rows;
 
         const enrichedData = rows.map(row => {
-            const mlEvent = mlEvents.find(e => e.packageId === row.id);
             const rowDate = row.delivery_day ? new Date(row.delivery_day).toISOString().split('T')[0] : '';
             
             const stats = driverStats.find(s => {
@@ -1735,7 +1722,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 total_packages_day: stats ? parseInt(stats.total_day) : 0,
                 first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
                 last_delivery_hour: stats ? stats.last_h : row.delivery_hour,
-                meli_delivered_hour: mlEvent ? mlEvent.meli_hour : null
+                meli_delivered_hour: row.meli_delivered_hour // Usar directamente el valor de la consulta principal
             };
         });
 
