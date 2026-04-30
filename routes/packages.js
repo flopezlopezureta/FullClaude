@@ -1629,10 +1629,11 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         
-        // Optimized query to get late deliveries correlated with daily workload and day boundaries
+        // Optimized query to get late deliveries correlated with daily workload, day boundaries and Seller info
         const query = `
             SELECT 
                 u.name as driver_name,
+                c.name as seller_name,
                 p."recipientCommune",
                 (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
                 EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) as delivery_hour,
@@ -1663,6 +1664,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
+            LEFT JOIN users c ON p."clientId" = c.id
             WHERE te.status = 'ENTREGADO'
             AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 21
             AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
