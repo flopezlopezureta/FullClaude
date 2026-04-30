@@ -1747,8 +1747,18 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             let meliHour = null;
             if (row.meli_timestamp) {
                 const mDate = new Date(row.meli_timestamp);
-                const santiagoDate = new Date(mDate.toLocaleString('en-US', { timeZone: 'America/Santiago' }));
-                meliHour = santiagoDate.getHours() + (santiagoDate.getMinutes() / 60.0);
+                
+                // Usar Intl.DateTimeFormat para extraer hora y minuto exactamente en la zona de Santiago
+                const options = { timeZone: 'America/Santiago', hour: 'numeric', minute: 'numeric', hour12: false };
+                const formatter = new Intl.DateTimeFormat('en-GB', options);
+                const parts = formatter.formatToParts(mDate);
+                
+                const hourPart = parts.find(p => p.type === 'hour');
+                const minutePart = parts.find(p => p.type === 'minute');
+                
+                if (hourPart && minutePart) {
+                    meliHour = parseInt(hourPart.value) + (parseInt(minutePart.value) / 60.0);
+                }
             }
 
             return {
