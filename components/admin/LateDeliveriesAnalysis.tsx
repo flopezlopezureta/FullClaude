@@ -262,37 +262,39 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Carga Máx.</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Cant. Tarde</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Primera Entrega</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Última (App)</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Cierre ML</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Brecha (Min)</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Último Cierre App</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Exceso s/21h</th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
-                                    {analysis.driverData.map((driver, idx) => (
-                                        <tr key={idx} className="hover:bg-gray-50/50 transition-colors text-sm">
-                                            <td className="px-6 py-4 font-bold text-gray-900">{driver.name}</td>
-                                            <td className="px-6 py-4 text-center font-bold text-blue-600">{driver.load}</td>
-                                            <td className="px-6 py-4 text-center text-red-600 font-black">{driver.lateCount}</td>
-                                            <td className="px-6 py-4 text-center text-gray-400">{formatDecimalHour(driver.firstHour)}</td>
-                                            <td className="px-6 py-4 text-center font-black text-gray-900">{formatDecimalHour(driver.lastHour)}</td>
-                                            <td className="px-6 py-4 text-center text-emerald-600 font-bold">{formatDecimalHour(driver.meliHour)}</td>
-                                            <td className="px-6 py-4 text-center">
-                                                {driver.maxGap > 30 ? (
-                                                    <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-black">
-                                                        +{driver.maxGap} min
+                                    {analysis.driverData.map((driver, idx) => {
+                                        // Calcular exceso sobre las 21:00
+                                        const excessMinutes = Math.round((driver.lastHour - 21) * 60);
+                                        return (
+                                            <tr key={idx} className="hover:bg-gray-50/50 transition-colors text-sm">
+                                                <td className="px-6 py-4 font-bold text-gray-900">{driver.name}</td>
+                                                <td className="px-6 py-4 text-center font-bold text-blue-600">{driver.load}</td>
+                                                <td className="px-6 py-4 text-center text-red-600 font-black">{driver.lateCount}</td>
+                                                <td className="px-6 py-4 text-center text-gray-400">{formatDecimalHour(driver.firstHour)}</td>
+                                                <td className="px-6 py-4 text-center font-black text-gray-900">{formatDecimalHour(driver.lastHour)}</td>
+                                                <td className="px-6 py-4 text-center">
+                                                    {excessMinutes > 0 ? (
+                                                        <span className="px-2 py-1 bg-red-100 text-red-600 rounded text-[10px] font-black">
+                                                            +{excessMinutes} min
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-emerald-500 font-bold">A tiempo</span>
+                                                    )}
+                                                </td>
+                                                <td className="px-6 py-4 text-right">
+                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${excessMinutes > 120 ? 'bg-purple-100 text-purple-600' : (driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}`}>
+                                                        {excessMinutes > 120 ? 'Crítico' : (driver.load > 40 ? 'Sobrecarga' : 'Revisión')}
                                                     </span>
-                                                ) : (
-                                                    <span className="text-gray-400 font-bold">{driver.maxGap || 0}m</span>
-                                                )}
-                                            </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${driver.maxGap > 60 ? 'bg-purple-100 text-purple-600' : (driver.load > 40 ? 'bg-red-100 text-red-600' : 'bg-amber-100 text-amber-600')}`}>
-                                                    {driver.maxGap > 60 ? 'Posible Maquillaje' : (driver.load > 40 ? 'Crítico' : 'Revisión')}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
@@ -433,9 +435,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                                 </div>
                                                 <div className="text-right">
                                                     <p className="text-xs font-black text-red-600">{formatDecimalHour(pkg.delivery_hour)}</p>
-                                                    {gap > 0 && (
-                                                        <p className="text-[9px] font-black text-emerald-500">ML: {formatDecimalHour(pkg.meli_delivered_hour)} ({gap}m gap)</p>
-                                                    )}
+                                                    <p className="text-[9px] font-black text-gray-400 uppercase">Cierre App</p>
                                                 </div>
                                             </div>
                                         );

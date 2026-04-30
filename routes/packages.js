@@ -1719,12 +1719,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 p."recipientCommune",
                 p."driverId",
                 (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
-                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
-                (SELECT timestamp 
-                 FROM tracking_events te2
-                 WHERE te2."packageId" = p.id 
-                 AND (te2.status = 'CIERRE_OFICIAL_ML' OR te2.status ILIKE '%ML%' OR te2.location ILIKE '%Mercado%')
-                 ORDER BY te2.timestamp DESC LIMIT 1) as meli_timestamp
+                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
@@ -1763,33 +1758,6 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 return s.driverId === row.driverId && sDate === rowDate;
             });
             
-            let meliHour = null;
-            if (row.meli_timestamp) {
-                const mDate = new Date(row.meli_timestamp);
-                
-                // Formato 24h forzado en zona Santiago
-                const santiagoTime = mDate.toLocaleTimeString('en-GB', { 
-                    timeZone: 'America/Santiago', 
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-                
-                const [h, m] = santiagoTime.split(':').map(Number);
-                let hour = h;
-                const minutes = m;
-
-                // CORRECCIÓN AM/PM: Si la App dice noche y ML dice mañana (brecha de ~12h), corregir.
-                if (row.delivery_hour > 14 && hour < 12) {
-                    const gap = row.delivery_hour - hour;
-                    if (gap >= 10 && gap <= 14) { // Si el desfase es cercano a 12 horas
-                        hour += 12;
-                    }
-                }
-                
-                meliHour = hour + (minutes / 60.0);
-            }
-
             return {
                 id: row.id,
                 driver_name: row.driver_name,
@@ -1799,9 +1767,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 delivery_hour: row.delivery_hour,
                 total_packages_day: stats ? parseInt(stats.total_day) : 0,
                 first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
-                last_delivery_hour: stats ? stats.last_h : row.delivery_hour,
-                meliHour: meliHour,
-                meli_delivered_hour: meliHour
+                last_delivery_hour: stats ? stats.last_h : row.delivery_hour
             };
         });
 

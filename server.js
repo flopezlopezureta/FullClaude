@@ -107,55 +107,6 @@ async function startServer() {
     const googleAuthRoute = tryRequireRoute('./routes/googleAuth.js'); if (googleAuthRoute) app.use('/api/auth/google', googleAuthRoute);
     const notificationsRoute = tryRequireRoute('./routes/notifications.js'); if (notificationsRoute) app.use('/api/notifications', notificationsRoute);
 
-    // [DEBUG] Ruta temporal para inspeccionar datos crudos de Meli
-    app.get('/api/debug-meli/:packageId', async (req, res) => {
-        try {
-            const db = require('./db');
-            const meliPollingService = require('./services/meliPollingService');
-            const { rows } = await db.query('SELECT "meliOrderId", "meliFlexCode", "creatorId", "sourceAccountId" FROM packages WHERE id = $1', [req.params.packageId]);
-            if (rows.length === 0) return res.status(404).json({ error: 'Package not found' });
-            
-            const pkg = rows[0];
-            const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
-            const accessToken = await meliPollingService.getValidMeliToken(pkg.creatorId, pkg.sourceAccountId);
-            
-            const https = require('https');
-            const options = {
-                hostname: 'api.mercadolibre.com',
-                path: `/shipments/${shipmentId}`,
-                method: 'GET',
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            };
-
-            const shipment = await new Promise((resolve, reject) => {
-                const req = https.request(options, (res) => {
-                    let data = '';
-                    res.on('data', (chunk) => { data += chunk; });
-                    res.on('end', () => resolve(JSON.parse(data)));
-                });
-                req.on('error', reject);
-                req.end();
-            });
-
-            res.json({
-                packageId: req.params.packageId,
-                shipmentId,
-                status: shipment.status,
-                substatus: shipment.substatus,
-                dates: {
-                    date_created: shipment.date_created,
-                    date_first_printed: shipment.date_first_printed,
-                    date_delivered: shipment.date_delivered,
-                    delivered_date: shipment.delivered_date,
-                    status_history: shipment.status_history
-                },
-                raw: shipment
-            });
-        } catch (err) {
-            res.status(500).json({ error: err.message });
-        }
-    });
-
     // API Catch-all: prevent falling back to HTML for missing /api routes
     app.all('/api/*', (req, res) => {
         res.status(404).json({ error: 'API Endpoint not found', path: req.path });
