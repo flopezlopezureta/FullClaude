@@ -1206,8 +1206,14 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                     let meliTimeStr = null;
                     let source = '';
 
+                    // Prioridad 0: Campo oficial de entrega final (más preciso para Flex)
+                    if (shipment.status === 'delivered' && shipment.date_delivered) {
+                        meliTimeStr = shipment.date_delivered;
+                        source = 'shipment.date_delivered';
+                    }
+
                     // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
-                    if (shipment.status_history) {
+                    if (!meliTimeStr && shipment.status_history) {
                         const deliveredEvent = shipment.status_history
                             .filter(h => h.status === 'delivered')
                             .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
@@ -1217,7 +1223,7 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                         }
                     }
 
-                    // Prioridad 2: Campo directo de entrega
+                    // Prioridad 2: Fallback campo directo de entrega
                     if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
                         meliTimeStr = shipment.delivered_date;
                         source = 'shipment.delivered_date';
@@ -1761,24 +1767,16 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             if (row.meli_timestamp) {
                 const mDate = new Date(row.meli_timestamp);
                 
-                // Cálculo manual robusto: UTC -> Santiago (UTC-4)
-                // Usamos el tiempo en milisegundos para evitar confusiones de zona horaria del sistema
-                const santiagoMs = mDate.getTime() - (4 * 60 * 60 * 1000); 
-                const sDate = new Date(santiagoMs);
+                // Formato 24h forzado en zona Santiago
+                const santiagoTime = mDate.toLocaleTimeString('en-GB', { 
+                    timeZone: 'America/Santiago', 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
                 
-                let hour = sDate.getUTCHours();
-                const minutes = sDate.getUTCMinutes();
-                
-                // Corrección de seguridad: Si la entrega fue tarde (App > 19:00) 
-                // y Meli nos da una hora de la mañana (ej: 9:00), es un error de formato 12h.
-                if (row.delivery_hour > 12 && hour < 12) {
-                    // Solo sumamos 12 si la diferencia es abismal (más de 6 horas de desfase)
-                    if ((row.delivery_hour - hour) > 6) {
-                        hour += 12;
-                    }
-                }
-                
-                meliHour = hour + (minutes / 60.0);
+                const [h, m] = santiagoTime.split(':').map(Number);
+                meliHour = h + (m / 60.0);
             }
 
             return {
