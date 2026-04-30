@@ -1629,43 +1629,29 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const { startDate, endDate } = req.query;
         
-        // 1. Get all late deliveries (>21:00) with commune and driver info
+        // Optimized query to get late deliveries correlated with daily workload
         const query = `
-            WITH daily_stats AS (
-                SELECT 
-                    p."driverId",
-                    u.name as driver_name,
-                    p."recipientCommune",
-                    timestamp::date as delivery_day,
-                    CAST(EXTRACT(HOUR FROM timestamp) AS INTEGER) as delivery_hour
-                FROM tracking_events te
-                JOIN packages p ON te."packageId" = p.id
-                JOIN users u ON p."driverId" = u.id
-                WHERE te.status = 'ENTREGADO'
-                AND te.timestamp::date >= $1::date 
-                AND te.timestamp::date <= $2::date
-            ),
-            workload AS (
-                SELECT 
-                    "driverId",
-                    timestamp::date as day,
-                    COUNT(*) as total_packages_day
-                FROM tracking_events
-                WHERE status = 'ENTREGADO'
-                AND timestamp::date >= $1::date 
-                AND timestamp::date <= $2::date
-                GROUP BY "driverId", day
-            )
             SELECT 
-                ds.driver_name,
-                ds."recipientCommune",
-                ds.delivery_day,
-                ds.delivery_hour,
-                w.total_packages_day
-            FROM daily_stats ds
-            JOIN workload w ON ds."driverId" = w."driverId" AND ds.delivery_day = w.day
-            WHERE ds.delivery_hour >= 21
-            ORDER BY ds.delivery_day DESC, ds.delivery_hour DESC;
+                u.name as driver_name,
+                p."recipientCommune",
+                (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
+                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) as delivery_hour,
+                (
+                    SELECT COUNT(*) 
+                    FROM tracking_events te2 
+                    JOIN packages p2 ON te2."packageId" = p2.id 
+                    WHERE p2."driverId" = p."driverId" 
+                    AND te2.status = 'ENTREGADO'
+                    AND (te2.timestamp AT TIME ZONE 'America/Santiago')::date = (te.timestamp AT TIME ZONE 'America/Santiago')::date
+                ) as total_packages_day
+            FROM tracking_events te
+            JOIN packages p ON te."packageId" = p.id
+            JOIN users u ON p."driverId" = u.id
+            WHERE te.status = 'ENTREGADO'
+            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 21
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
+            ORDER BY te.timestamp DESC;
         `;
 
         const result = await db.query(query, [startDate, endDate]);
