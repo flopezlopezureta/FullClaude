@@ -1590,12 +1590,12 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
         
         const query = `
             SELECT 
-                EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')) as hour,
+                EXTRACT(HOUR FROM timestamp) as hour,
                 COUNT(*) as count
             FROM tracking_events
             WHERE status = 'ENTREGADO'
-            AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date >= $1::date 
-            AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date <= $2::date
+            AND timestamp::date >= $1::date 
+            AND timestamp::date <= $2::date
             GROUP BY hour
             ORDER BY hour ASC;
         `;
@@ -1636,24 +1636,24 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     p."driverId",
                     u.name as driver_name,
                     p."recipientCommune",
-                    (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date as delivery_day,
-                    CAST(EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')) AS INTEGER) as delivery_hour
+                    timestamp::date as delivery_day,
+                    CAST(EXTRACT(HOUR FROM timestamp) AS INTEGER) as delivery_hour
                 FROM tracking_events te
                 JOIN packages p ON te."packageId" = p.id
                 JOIN users u ON p."driverId" = u.id
                 WHERE te.status = 'ENTREGADO'
-                AND (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date >= $1::date 
-                AND (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date <= $2::date
+                AND te.timestamp::date >= $1::date 
+                AND te.timestamp::date <= $2::date
             ),
             workload AS (
                 SELECT 
                     "driverId",
-                    (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date as day,
+                    timestamp::date as day,
                     COUNT(*) as total_packages_day
                 FROM tracking_events
                 WHERE status = 'ENTREGADO'
-                AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date >= $1::date 
-                AND (timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date <= $2::date
+                AND timestamp::date >= $1::date 
+                AND timestamp::date <= $2::date
                 GROUP BY "driverId", day
             )
             SELECT 
