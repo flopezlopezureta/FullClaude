@@ -1537,7 +1537,7 @@ router.post('/bulk-update-status', authMiddleware, async (req, res) => {
 
     try {
         const billed = status === 'ENTREGADO' || status === 'CANCELADO' || status === 'DEVUELTO';
-        const placeholders = packageIds.map((_, i) => `$${i + 2}`).join(', ');
+        const placeholders = packageIds.map((_, i) => `$${i + 3}`).join(', ');
         
         await db.query(`
             UPDATE packages 
