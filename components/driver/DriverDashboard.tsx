@@ -1,6 +1,5 @@
-
-
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
+import { getLocalDateString } from '../../utils/dateUtils';
 import { PackageStatus, MessagingPlan } from '../../constants';
 import type { Package, User } from '../../types';
 import { api, DeliveryConfirmationData } from '../../services/api';
@@ -260,7 +259,7 @@ const DriverDashboard: React.FC = () => {
 
     setIsExporting(true);
     try {
-        const dateStr = new Date().toISOString().split('T')[0];
+        const dateStr = getLocalDateString();
         const driverName = (auth?.user?.name || 'conductor').replace(/\s+/g, '_');
 
         // Export simplified CSV for Circuit with only Address and Name

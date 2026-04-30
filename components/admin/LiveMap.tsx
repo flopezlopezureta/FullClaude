@@ -1,5 +1,6 @@
 
 import React, { useEffect, useRef, useState, useMemo, useCallback } from 'react';
+import { getLocalDateString } from '../../utils/dateUtils';
 import { User, Package } from '../../types';
 import { PackageStatus } from '../../constants';
 import { api } from '../../services/api';
@@ -39,7 +40,7 @@ const LiveMap: React.FC = () => {
 
     const fetchData = useCallback(async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            const today = getLocalDateString();
             const [fetchedActiveDrivers, packagesResponse, allUsersData] = await Promise.all([
                 api.getActiveDriversLocations(),
                 api.getPackages({ limit: 0, startDate: today, isAssigned: 'true' }),

@@ -1,8 +1,7 @@
-
+﻿
 import React, { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
-import { getLocalDateString } from '../utils/dateUtils';
 import type { Package, User } from '../types';
-import { PackageStatus, Role, UserStatus } from '../constants';
+import { PackageStatus, Role, UserStatus, RM_COMMUNES } from '../constants';
 import { api, PackageCreationData, PackageUpdateData } from '../services/api';
 import PackageList from './PackageList';
 import PackageDetailModal from './PackageDetailModal';
@@ -43,11 +42,11 @@ const statusOptions: { label: string; value: string | null }[] = [
     { label: 'Pendiente', value: PackageStatus.Pending },
     { label: 'Asignado', value: PackageStatus.Assigned },
     { label: 'Retirado', value: PackageStatus.PickedUp },
-    { label: 'En Tránsito', value: PackageStatus.InTransit },
+    { label: 'En Tr├ínsito', value: PackageStatus.InTransit },
     { label: 'Entregado', value: PackageStatus.Delivered },
     { label: 'Retrasado', value: PackageStatus.Delayed },
     { label: 'Problema', value: PackageStatus.Problem },
-    { label: 'Pend. Devolución', value: PackageStatus.ReturnPending },
+    { label: 'Pend. Devoluci├│n', value: PackageStatus.ReturnPending },
     { label: 'Devuelto', value: PackageStatus.Returned },
     { label: 'Cancelado', value: PackageStatus.Cancelled },
     { label: 'Reprogramado', value: PackageStatus.Rescheduled },
@@ -95,7 +94,7 @@ const Dashboard: React.FC = () => {
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(25);
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = más nuevo primero (default)
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc'); // desc = m├ís nuevo primero (default)
   const [isForcingClose, setIsForcingClose] = useState(false);
   const [criticalAlerts, setCriticalAlerts] = useState<Package[]>([]);
   const [showCriticalAlerts, setShowCriticalAlerts] = useState(() => {
@@ -105,7 +104,7 @@ const Dashboard: React.FC = () => {
     return localStorage.getItem('lastCriticalAlertId') || '';
   });
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
-  const [alertDate, setAlertDate] = useState<string>(getLocalDateString());
+  const [alertDate, setAlertDate] = useState<string>(new Date().toISOString().split('T')[0]);
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
@@ -126,14 +125,14 @@ const Dashboard: React.FC = () => {
 
   const handleForceCloseOld = async () => {
     const cutoffDays = 30;
-    if (!window.confirm(`¿Estás seguro de cerrar forzosamente todos los envíos con más de ${cutoffDays} días sin actualización? Esta acción no se puede deshacer.`)) return;
+    if (!window.confirm(`┬┐Est├ís seguro de cerrar forzosamente todos los env├¡os con m├ís de ${cutoffDays} d├¡as sin actualizaci├│n? Esta acci├│n no se puede deshacer.`)) return;
     setIsForcingClose(true);
     try {
         const res = await api.forceCloseOldPackages(cutoffDays);
-        alert(`Cierre forzoso completado. ${res.updatedCount ?? 0} envíos cerrados.`);
+        alert(`Cierre forzoso completado. ${res.updatedCount ?? 0} env├¡os cerrados.`);
         fetchData();
     } catch (err: any) {
-        alert(err.message || 'Error al forzar el cierre de envíos antiguos.');
+        alert(err.message || 'Error al forzar el cierre de env├¡os antiguos.');
     } finally {
         setIsForcingClose(false);
     }
@@ -141,12 +140,12 @@ const Dashboard: React.FC = () => {
 
   const handleBulkMarkDelivered = async () => {
       if (selectedPackages.size === 0) return;
-      if (!window.confirm(`¿Estás seguro de marcar ${selectedPackages.size} paquetes como ENTREGADOS? Esto también los marcará como facturados.`)) return;
+      if (!window.confirm(`┬┐Est├ís seguro de marcar ${selectedPackages.size} paquetes como ENTREGADOS? Esto tambi├®n los marcar├í como facturados.`)) return;
       
       try {
           const packageIds = Array.from(selectedPackages);
           await api.bulkUpdatePackageStatus(packageIds, PackageStatus.Delivered);
-          alert('Paquetes actualizados con éxito.');
+          alert('Paquetes actualizados con ├®xito.');
           setSelectedPackages(new Set());
           fetchData();
       } catch (err: any) {
@@ -198,7 +197,7 @@ const Dashboard: React.FC = () => {
 
   const fetchCriticalAlerts = useCallback(async () => {
     try {
-      const targetDate = alertView === 'today' ? getLocalDateString() : alertDate;
+      const targetDate = alertView === 'today' ? new Date().toISOString().split('T')[0] : alertDate;
       const excludeChecked = alertView === 'today'; // Only hide checked alerts in 'Today' view
       
       const { packages: cancelled } = await api.getPackages({ 
@@ -236,7 +235,7 @@ const Dashboard: React.FC = () => {
     if (criticalAlerts.length > 0) {
         const newestId = criticalAlerts[0].id;
         
-        // Solo si la alerta más reciente es realmente nueva (diferente ID)
+        // Solo si la alerta m├ís reciente es realmente nueva (diferente ID)
         if (newestId !== lastAlertId) {
             setShowCriticalAlerts(true);
             localStorage.setItem('criticalAlertsPanelOpen', 'true');
@@ -251,7 +250,7 @@ const Dashboard: React.FC = () => {
             return () => clearTimeout(timer);
         }
     } else {
-        // Si no hay alertas en absoluto, simplemente nos aseguramos que esté cerrado
+        // Si no hay alertas en absoluto, simplemente nos aseguramos que est├® cerrado
         // Pero NO borramos el lastAlertId, para que al volver a cargar no crea que son nuevas
         if (criticalAlerts.length === 0 && showCriticalAlerts && localStorage.getItem('criticalAlertsPanelOpen') !== 'true') {
             setShowCriticalAlerts(false);
@@ -329,7 +328,7 @@ const Dashboard: React.FC = () => {
       setCurrentPage(1);
   };
 
-  const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>, shouldClose = true) => {
+  const handleCreatePackage = async (data: Omit<PackageCreationData, 'origin'>) => {
     if (!auth?.user) {
       console.error("Cannot create package: user not authenticated.");
       return;
@@ -337,23 +336,16 @@ const Dashboard: React.FC = () => {
     try {
         await api.createPackage({
           ...data,
-          origin: 'Centro de Distribución', // Admins create from a central location
+          origin: 'Centro de Distribuci├│n', // Admins create from a central location
         });
         
-        // No reset filters here if adding another to keep context
-        if (shouldClose) {
-            resetFiltersForNewData();
-        }
-        
+        resetFiltersForNewData();
         fetchData();
         
-        if (shouldClose) {
-            setIsCreateModalOpen(false);
-        }
+        setIsCreateModalOpen(false);
     } catch (error: any) {
         console.error("Failed to create package", error);
         alert("Error al crear el paquete: " + (error.message || "Error desconocido"));
-        throw error; // Throw to let the modal know it failed
     }
   };
 
@@ -361,7 +353,7 @@ const Dashboard: React.FC = () => {
       if (!selectedClientId) return;
       
       const client = users.find(u => u.id === selectedClientId);
-      const origin = client?.pickupAddress || client?.address || 'Centro de Distribución';
+      const origin = client?.pickupAddress || client?.address || 'Centro de Distribuci├│n';
 
       const fullPackagesData: PackageCreationData[] = packagesToCreate.map(p => ({
           ...p,
@@ -414,7 +406,7 @@ const Dashboard: React.FC = () => {
         setIsBulkAssignModalOpen(false); // Close modal
     } catch (error: any) {
         console.error("Failed to bulk assign driver", error);
-        alert("Ocurrió un error al asignar los paquetes: " + (error.message || "Error desconocido"));
+        alert("Ocurri├│ un error al asignar los paquetes: " + (error.message || "Error desconocido"));
     }
   };
 
@@ -424,7 +416,7 @@ const Dashboard: React.FC = () => {
         fetchData(); // Refetch to see the changes
     } catch (error) {
         console.error("Failed to mark package for return", error);
-        alert("Error al marcar el paquete para devolución.");
+        alert("Error al marcar el paquete para devoluci├│n.");
     }
   };
 
@@ -457,7 +449,7 @@ const Dashboard: React.FC = () => {
       // Status will be updated via the interval polling
     } catch (error: any) {
       console.error("Failed to trigger ML sync", error);
-      alert("Error al iniciar sincronización ML: " + (error.message || "Error desconocido"));
+      alert("Error al iniciar sincronizaci├│n ML: " + (error.message || "Error desconocido"));
     } finally {
       setIsSyncingMeli(false);
     }
@@ -471,7 +463,7 @@ const Dashboard: React.FC = () => {
       // Status will be updated via the interval polling
     } catch (error: any) {
       console.error("Failed to trigger Shopify sync", error);
-      alert("Error al iniciar sincronización Shopify: " + (error.message || "Error desconocido"));
+      alert("Error al iniciar sincronizaci├│n Shopify: " + (error.message || "Error desconocido"));
     } finally {
       setIsSyncingShopify(false);
     }
@@ -490,15 +482,6 @@ const Dashboard: React.FC = () => {
     .filter(u => u.role === Role.Client && u.status === UserStatus.Approved)
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const RM_COMMUNES = [
-    'SANTIAGO', 'CERRILLOS', 'CERRO NAVIA', 'CONCHALÍ', 'EL BOSQUE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 
-    'LA CISTERNA', 'LA FLORIDA', 'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 
-    'LO PRADO', 'MACUL', 'MAIPÚ', 'ÑUÑOA', 'PEDRO AGUIRRE CERDA', 'PEÑALOLÉN', 'PROVIDENCIA', 'PUDAHUEL', 'QUILICURA', 
-    'QUINTA NORMAL', 'RECOLETA', 'RENCA', 'SAN JOAQUÍN', 'SAN MIGUEL', 'SAN RAMÓN', 'VITACURA', 'PUENTE ALTO', 'PIRQUE', 
-    'SAN JOSÉ DE MAIPO', 'SAN BERNARDO', 'BUIN', 'CALERA DE TANGO', 'PAINE', 'MELIPILLA', 'ALHUÉ', 'CURACAVÍ', 
-    'MARÍA PINTO', 'SAN PEDRO', 'TALAGANTE', 'EL MONTE', 'ISLA DE MAIPO', 'PADRE HURTADO', 'PEÑAFLOR', 'COLINA', 'LAMPA', 'TILTIL'
-  ];
-
   const uniqueCommunes = useMemo(() => {
     // 1. Obtener comunas de los paquetes actuales, normalizadas
     const packageCommunes = Array.isArray(packages) 
@@ -508,7 +491,7 @@ const Dashboard: React.FC = () => {
     // 2. Combinar con la lista completa de la RM
     const combined = new Set([...RM_COMMUNES, ...packageCommunes]);
     
-    // 3. Convertir a array y ordenar alfabéticamente
+    // 3. Convertir a array y ordenar alfab├®ticamente
     return Array.from(combined).sort((a: string, b: string) => a.localeCompare(b));
   }, [packages]);
   
@@ -625,7 +608,7 @@ const Dashboard: React.FC = () => {
 
   const handleDeleteSelected = async (enteredPassword?: string) => {
     if (!enteredPassword) {
-        alert('Debes ingresar la contraseña para continuar.');
+        alert('Debes ingresar la contrase├▒a para continuar.');
         return;
     }
     try {
@@ -649,7 +632,7 @@ const Dashboard: React.FC = () => {
     } catch (error: any) {
       console.error("Failed to delete selected packages", error);
       if (error.status === 401 || error.status === 403) {
-          alert('Contraseña incorrecta.');
+          alert('Contrase├▒a incorrecta.');
       } else {
           alert("Error al eliminar los paquetes: " + (error.message || "Error desconocido"));
       }
@@ -682,7 +665,7 @@ const Dashboard: React.FC = () => {
                  </div>
                  <div className="flex flex-col">
                     <h2 className="text-sm font-black text-white uppercase tracking-[0.2em]">
-                        {alertView === 'today' ? 'Centro de Alertas Críticas (Hoy)' : `Historial de Alertas (${new Date(alertDate + 'T12:00:00').toLocaleDateString()})`}
+                        {alertView === 'today' ? 'Centro de Alertas Cr├¡ticas (Hoy)' : `Historial de Alertas (${new Date(alertDate + 'T12:00:00').toLocaleDateString()})`}
                     </h2>
                     <div className="flex items-center gap-2 mt-1">
                         <button 
@@ -885,11 +868,11 @@ const Dashboard: React.FC = () => {
                                 <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.meliAutoImport ? 'bg-blue-400 animate-pulse' : 'bg-gray-300'}`}></div>
                             </div>
 
-                            {/* Nuevo Cuadro Azul: Cantidad Importada en última consulta */}
+                            {/* Nuevo Cuadro Azul: Cantidad Importada en ├║ltima consulta */}
                             {pollingStatus.lastImportCount !== undefined && (
                                 <div 
                                     className="flex items-center justify-center min-w-[40px] h-[26px] px-2 bg-blue-600 text-white text-[10px] font-black rounded-lg shadow-md border border-blue-700 animate-fade-in"
-                                    title="Cantidad de paquetes en la última importación"
+                                    title="Cantidad de paquetes en la ├║ltima importaci├│n"
                                 >
                                     {pollingStatus.lastImportCount}
                                 </div>
@@ -957,7 +940,7 @@ const Dashboard: React.FC = () => {
                             )}
                         </button>
 
-                        {/* Nueva acción masiva: Marcar como Entregado */}
+                        {/* Nueva acci├│n masiva: Marcar como Entregado */}
                         {auth?.user?.role === Role.Admin && (
                             <button 
                                 onClick={handleBulkMarkDelivered}
@@ -1057,13 +1040,13 @@ const Dashboard: React.FC = () => {
             <div className="flex flex-wrap items-center justify-between w-full gap-2">
                 <div className="flex items-center gap-4 flex-wrap">
                     <div className="flex items-center gap-3">
-                        <label htmlFor="items-per-page-admin" className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filas por página</label>
+                        <label htmlFor="items-per-page-admin" className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Filas por p├ígina</label>
                         <select
                             id="items-per-page-admin"
                             value={itemsPerPage}
                             onChange={(e) => setItemsPerPage(Number(e.target.value))}
                             className="bg-white border border-gray-300 text-gray-900 rounded-md py-1 px-3 text-sm focus:ring-blue-500 focus:border-blue-500 shadow-sm"
-                            aria-label="Filas por página"
+                            aria-label="Filas por p├ígina"
                         >
                             <option value={10}>10</option>
                             <option value={25}>25</option>
@@ -1077,10 +1060,10 @@ const Dashboard: React.FC = () => {
                             {Math.min((currentPage - 1) * itemsPerPage + 1, totalPackages)}-{Math.min(currentPage * itemsPerPage, totalPackages)} de {totalPackages}
                         </span>
                         <div className="flex items-center bg-gray-100 rounded-md p-1 border border-gray-200">
-                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all" aria-label="Página anterior">
+                            <button onClick={() => setCurrentPage(prev => prev - 1)} disabled={currentPage === 1} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all" aria-label="P├ígina anterior">
                                 <IconChevronLeft className="w-4 h-4" />
                             </button>
-                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all" aria-label="Página siguiente">
+                            <button onClick={() => setCurrentPage(prev => prev + 1)} disabled={currentPage * itemsPerPage >= totalPackages} className="p-1 hover:bg-white rounded disabled:opacity-30 transition-all" aria-label="P├ígina siguiente">
                                 <IconChevronRight className="w-4 h-4" />
                             </button>
                         </div>
@@ -1090,7 +1073,7 @@ const Dashboard: React.FC = () => {
                     <button
                         id="sort-order-toggle"
                         onClick={() => { setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc'); setCurrentPage(1); }}
-                        title={sortOrder === 'desc' ? 'Mostrando más nuevos primero. Click para ver más antiguos primero.' : 'Mostrando más antiguos primero. Click para ver más nuevos primero.'}
+                        title={sortOrder === 'desc' ? 'Mostrando m├ís nuevos primero. Click para ver m├ís antiguos primero.' : 'Mostrando m├ís antiguos primero. Click para ver m├ís nuevos primero.'}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider border shadow-sm transition-all ${
                             sortOrder === 'asc'
                                 ? 'bg-amber-50 border-amber-300 text-amber-700 hover:bg-amber-100'
@@ -1098,9 +1081,9 @@ const Dashboard: React.FC = () => {
                         }`}
                     >
                         {sortOrder === 'desc' ? (
-                            <><IconSortDesc className="w-3.5 h-3.5" /> Más nuevos</>  
+                            <><IconSortDesc className="w-3.5 h-3.5" /> M├ís nuevos</>  
                         ) : (
-                            <><IconSortAsc className="w-3.5 h-3.5" /> Más antiguos</>
+                            <><IconSortAsc className="w-3.5 h-3.5" /> M├ís antiguos</>
                         )}
                     </button>
 
@@ -1126,7 +1109,7 @@ const Dashboard: React.FC = () => {
                 setSelectedPackages(new Set([pkg.id])); 
                 setIsDeletePasswordModalOpen(true); 
             } else {
-                alert("No tienes permiso para eliminar envíos.");
+                alert("No tienes permiso para eliminar env├¡os.");
             }
           }}
           onPrintLabel={(pkg) => setPrintingPackages([pkg])}

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { getLocalDateString } from '../../utils/dateUtils';
 import { IconX, IconPackage, IconUser, IconMapPin, IconPlus, IconCheck } from '../Icon';
 import { PackageCreationData } from '../../services/api';
 import { ShippingType } from '../../constants';
@@ -44,13 +45,9 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   const [lastCreatedName, setLastCreatedName] = useState<string | null>(null);
 
-  const getLocalDateString = (dateObj: Date = new Date()) => {
-      return `${dateObj.getFullYear()}-${String(dateObj.getMonth() + 1).padStart(2, '0')}-${String(dateObj.getDate()).padStart(2, '0')}`;
-  };
-
   const [estimatedDelivery, setEstimatedDelivery] = useState(
     initialData?.estimatedDelivery 
-      ? new Date(initialData.estimatedDelivery).toISOString().split('T')[0] 
+      ? getLocalDateString(new Date(initialData.estimatedDelivery)) 
       : getLocalDateString()
   );
   const [shippingType, setShippingType] = useState<ShippingType>(initialData?.shippingType || ShippingType.SameDay);
