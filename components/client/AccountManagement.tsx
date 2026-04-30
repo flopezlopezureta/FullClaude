@@ -36,6 +36,9 @@ const AccountManagement: React.FC = () => {
     const [showFalabellaModal, setShowFalabellaModal] = useState(false);
     const [showWooModal, setShowWooModal] = useState(false);
     const [shopifyUrl, setShopifyUrl] = useState('');
+    const [shopifyAccessToken, setShopifyAccessToken] = useState('');
+    const [isTestingShopify, setIsTestingShopify] = useState(false);
+    const [shopifyTestResult, setShopifyTestResult] = useState<{ type: 'success' | 'error', message: string } | null>(null);
     const [wooUrl, setWooUrl] = useState('');
     const [wooConsumerKey, setWooConsumerKey] = useState('');
     const [wooConsumerSecret, setWooConsumerSecret] = useState('');
@@ -321,37 +324,89 @@ const AccountManagement: React.FC = () => {
                             <p className="text-indigo-100 text-sm mt-1">Ingresa el dominio de tu tienda para comenzar.</p>
                         </div>
                         
-                        <div className="p-8">
-                            <label className="block text-sm font-semibold text-gray-700 mb-2">Dominio de la Tienda</label>
-                            <div className="relative">
+                        <div className="p-8 space-y-4">
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Dominio de la Tienda</label>
                                 <input 
                                     type="text" 
                                     placeholder="mi-tienda.myshopify.com"
                                     value={shopifyUrl}
                                     onChange={(e) => setShopifyUrl(e.target.value)}
-                                    className="w-full pl-4 pr-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-gray-800 font-medium placeholder:text-gray-300"
+                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-gray-800 font-medium placeholder:text-gray-300"
                                 />
                             </div>
-                            
-                            <div className="mt-4 p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3">
-                                <IconAlertTriangle className="w-5 h-5 text-blue-500 shrink-0" />
-                                <p className="text-[11px] text-blue-700 leading-relaxed">
-                                    Asegúrate de ingresar el dominio completo. Ejemplo: <span className="font-bold">mitienda.myshopify.com</span>. Serás redirigido a Shopify para autorizar la aplicación.
-                                </p>
+
+                            <div>
+                                <label className="block text-sm font-semibold text-gray-700 mb-2">Admin API Access Token (shpat_...)</label>
+                                <input 
+                                    type="password" 
+                                    placeholder="shpat_xxxxxxxxxxxxxxxxxxxxxxxx"
+                                    value={shopifyAccessToken}
+                                    onChange={(e) => setShopifyAccessToken(e.target.value)}
+                                    className="w-full px-4 py-4 bg-gray-50 border-2 border-gray-100 rounded-2xl focus:border-indigo-500 focus:bg-white outline-none transition-all text-gray-800 font-medium placeholder:text-gray-300"
+                                />
+                                <p className="text-[10px] text-gray-400 mt-1 italic">Este token se genera creando una "App Personalizada" en el panel de Shopify.</p>
                             </div>
                             
-                            <button 
-                                onClick={() => {
-                                    if (!shopifyUrl.trim()) return;
-                                    const token = localStorage.getItem('token');
-                                    window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shopifyUrl)}&token=${token}`;
-                                }}
-                                disabled={!shopifyUrl.trim()}
-                                className="w-full mt-8 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                            >
-                                <IconPlugConnected className="w-5 h-5" />
-                                Conectar ahora
-                            </button>
+                            {shopifyTestResult && (
+                                <div className={`p-4 rounded-2xl text-xs flex gap-3 ${shopifyTestResult.type === 'success' ? 'bg-green-50 text-green-700 border border-green-100' : 'bg-red-50 text-red-700 border border-red-100'}`}>
+                                    {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 shrink-0" /> : <IconAlertTriangle className="w-5 h-5 shrink-0" />}
+                                    <p className="font-bold">{shopifyTestResult.message}</p>
+                                </div>
+                            )}
+
+                            {!shopifyAccessToken && (
+                                <div className="p-4 bg-blue-50 rounded-2xl border border-blue-100 flex gap-3">
+                                    <IconAlertTriangle className="w-5 h-5 text-blue-500 shrink-0" />
+                                    <p className="text-[11px] text-blue-700 leading-relaxed">
+                                        Si prefieres el método de un clic, deja el Token vacío y haz clic en el botón de abajo.
+                                    </p>
+                                </div>
+                            )}
+                            
+                            <div className="grid grid-cols-1 gap-3 pt-4">
+                                <button 
+                                    onClick={async () => {
+                                        if (!shopifyUrl.trim() || !shopifyAccessToken.trim()) return;
+                                        setIsTestingShopify(true);
+                                        setShopifyTestResult(null);
+                                        try {
+                                            await api.createIntegrationAccount({
+                                                type: 'SHOPIFY',
+                                                nickname: `Shopify (${shopifyUrl})`,
+                                                credentials: { shopUrl: shopifyUrl, accessToken: shopifyAccessToken }
+                                            });
+                                            setShopifyTestResult({ type: 'success', message: '¡Tienda vinculada correctamente!' });
+                                            setTimeout(() => {
+                                                setShowShopifyModal(false);
+                                                fetchAccounts();
+                                            }, 1500);
+                                        } catch (err: any) {
+                                            setShopifyTestResult({ type: 'error', message: err.message || 'Error al conectar' });
+                                        } finally {
+                                            setIsTestingShopify(false);
+                                        }
+                                    }}
+                                    disabled={isTestingShopify || !shopifyUrl.trim() || !shopifyAccessToken.trim()}
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                                >
+                                    {isTestingShopify ? <IconLoader className="w-5 h-5 animate-spin" /> : <IconPlugConnected className="w-5 h-5" />}
+                                    Vincular con Token (Manual)
+                                </button>
+
+                                {!shopifyAccessToken && (
+                                    <button 
+                                        onClick={() => {
+                                            if (!shopifyUrl.trim()) return;
+                                            const token = localStorage.getItem('token');
+                                            window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shopifyUrl)}&token=${token}`;
+                                        }}
+                                        className="w-full py-4 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all"
+                                    >
+                                        O usar conexión un-clic (Vía App Shopify)
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
