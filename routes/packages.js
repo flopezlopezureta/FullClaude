@@ -1688,23 +1688,59 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         const result = await db.query(query, [startDate, endDate]);
         const rows = result.rows;
 
-        // Map database names to frontend names
-        const enrichedData = rows.map(row => ({
-            id: row.id,
-            driver_name: row.driver_name,
-            seller_name: row.seller_name || 'Sin Seller',
-            recipientCommune: row.recipientCommune,
-            delivery_day: row.delivery_day ? new Date(row.delivery_day).toISOString().split('T')[0] : '',
-            delivery_hour: row.delivery_hour,
-            total_packages_day: 0, 
-            first_delivery_hour: row.delivery_hour,
-            last_delivery_hour: row.delivery_hour,
-            meli_delivered_hour: row.meli_delivered_hour
-        }));
+        const packageIds = rows.map(r => r.id);
+        let mlEvents = [];
+        if (packageIds.length > 0) {
+            const mlResult = await db.query(
+                `SELECT "packageId", EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (timestamp AT TIME ZONE 'America/Santiago'))/60.0 as meli_hour
+                 FROM tracking_events 
+                 WHERE "packageId" = ANY($1) AND status = 'CIERRE_OFICIAL_ML'`,
+                [packageIds]
+            );
+            mlEvents = mlResult.rows;
+        }
+
+        const driverStatsResult = await db.query(`
+            SELECT 
+                "driverId",
+                (te.timestamp AT TIME ZONE 'America/Santiago')::date as day,
+                COUNT(*) as total_day,
+                MIN(EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'America/Santiago')/60.0) as first_h,
+                MAX(EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'America/Santiago')/60.0) as last_h
+            FROM tracking_events te
+            JOIN packages p ON te."packageId" = p.id
+            WHERE te.status = 'ENTREGADO'
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date
+            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
+            GROUP BY "driverId", (te.timestamp AT TIME ZONE 'America/Santiago')::date
+        `, [startDate, endDate]);
+        const driverStats = driverStatsResult.rows;
+
+        const enrichedData = rows.map(row => {
+            const mlEvent = mlEvents.find(e => e.packageId === row.id);
+            const rowDate = new Date(row.local_timestamp).toISOString().split('T')[0];
+            const stats = driverStats.find(s => {
+                const sDate = new Date(s.day).toISOString().split('T')[0];
+                return s.driverId === row.driverId && sDate === rowDate;
+            });
+            
+            return {
+                id: row.id,
+                driver_name: row.driver_name,
+                seller_name: row.seller_name || 'Sin Seller',
+                recipientCommune: row.recipientCommune,
+                delivery_day: rowDate,
+                delivery_hour: row.delivery_hour,
+                total_packages_day: stats ? parseInt(stats.total_day) : 0,
+                first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
+                last_delivery_hour: stats ? stats.last_h : row.delivery_hour,
+                meli_delivered_hour: mlEvent ? mlEvent.meli_hour : null
+            };
+        });
 
         res.json(enrichedData);
     } catch (err) {
-        console.error('CRITICAL DB ERROR:', err);
+        console.error('Error fetching late delivery analytics:', err);
         res.status(500).json({ error: err.message });
     }
 });
