@@ -1666,6 +1666,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         // Optimized query to get late deliveries correlated with daily workload, day boundaries and Seller info
         const query = `
             SELECT 
+                p.id,
                 u.name as driver_name,
                 c.name as seller_name,
                 p."recipientCommune",
