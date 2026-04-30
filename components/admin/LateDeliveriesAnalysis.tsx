@@ -178,7 +178,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                 <div>
                     <h3 className="text-lg font-black text-red-900">Alerta de Cumplimiento Logístico</h3>
                     <p className="text-sm text-red-700 font-medium">
-                        Se han detectado <span className="font-black">{data.length} entregas</span> después de las 21:00. Riesgo crítico para la reputación de los Sellers.
+                        Se han detectado <span className="font-black">{data.length} entregas</span> después de las 19:00. Riesgo crítico para la reputación de los Sellers.
                     </p>
                 </div>
             </div>
