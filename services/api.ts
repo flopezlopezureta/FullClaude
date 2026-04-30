@@ -304,6 +304,7 @@ export const api = {
   confirmBulkPickup: (clientId: string) => post<{count: number, message: string}>('/packages/bulk-pickup-client', { clientId }),
   scanPackageByAdmin: (packageId: string) => post<{message: string}>(`/packages/${packageId}/scan-admin`, {}),
   checkAlert: (packageId: string, checked: boolean) => post<Package>(`/packages/${packageId}/check-alert`, { checked }),
+  bulkUpdatePackageStatus: (packageIds: string[], status: PackageStatus) => post<{message: string}>('/packages/bulk-update-status', { packageIds, status }),
 
   // Settings
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
