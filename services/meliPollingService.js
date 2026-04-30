@@ -249,16 +249,6 @@ async function pollMeliPackages() {
                     let eventDetails = '';
                     let eventStatus = '';
 
-                    /* 
-                    // [DESACTIVADO] No cerramos automáticamente para forzar que el conductor suba fotos
-                    if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
-                        if ((pkg.status === 'EN_TRANSITO' || pkg.status === 'EN_RUTA' || pkg.isFlexed) && pkg.driverId) {
-                            newStatus = 'ENTREGADO';
-                            eventStatus = 'Entregado';
-                            eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
-                        }
-                    } else 
-                    */
                     if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
                         newStatus = 'EN_TRANSITO';
                         eventStatus = 'En Tránsito';
@@ -307,6 +297,42 @@ async function pollMeliPackages() {
                     processedPackagesCount++;
                 }
             });
+
+            // [NUEVO] Sincronización Retroactiva de Horas de Entrega para el Dashboard
+            console.log('[MeliPolling] Starting retroactive ML delivery hour sync...');
+            const { rows: deliveredMissingML } = await db.query(`
+                SELECT p.id, p."meliOrderId", p."meliFlexCode", p."creatorId", p."sourceAccountId"
+                FROM packages p
+                LEFT JOIN tracking_events te ON p.id = te."packageId" AND te.status = 'CIERRE_OFICIAL_ML'
+                WHERE p.status = 'ENTREGADO' 
+                AND p.source = 'MERCADO_LIBRE'
+                AND p."updatedAt"::date >= current_date - interval '1 day'
+                AND te.id IS NULL
+                LIMIT 20
+            `);
+
+            for (const pkg of deliveredMissingML) {
+                try {
+                    const accessToken = await getValidMeliToken(pkg.creatorId, pkg.sourceAccountId);
+                    if (accessToken) {
+                        const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+                        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                        if (shipment.status_history) {
+                            const deliveredEvent = shipment.status_history.find(h => h.status === 'delivered');
+                            if (deliveredEvent && deliveredEvent.date) {
+                                const meliTime = new Date(deliveredEvent.date);
+                                await db.query(
+                                    'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                                    [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Sync)', `Sincronización automática de hora real: ${meliTime.toISOString()}`, meliTime]
+                                );
+                                console.log(`[MeliPolling] Retroactively synced ML hour for ${pkg.id}: ${meliTime.toISOString()}`);
+                            }
+                        }
+                    }
+                } catch (e) {
+                    // Silently fail for background task
+                }
+            }
         }
         
         // [NUEVO] Paso de Auto-Fix para paquetes sin tracking_id en las últimas 48 horas
