@@ -1637,7 +1637,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     u.name as driver_name,
                     p."recipientCommune",
                     (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date as delivery_day,
-                    EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')) as delivery_hour
+                    CAST(EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')) AS INTEGER) as delivery_hour
                 FROM tracking_events te
                 JOIN packages p ON te."packageId" = p.id
                 JOIN users u ON p."driverId" = u.id
