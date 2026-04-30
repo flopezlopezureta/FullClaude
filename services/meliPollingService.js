@@ -1,6 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+const { normalizeCommune, normalizeCity } = require('../utils/normalization');
 const { triggerBackgroundGeocoding } = require('./geocodingService');
 
 // --- MELI API HELPERS (Duplicated from integrations.js for independence) ---
@@ -615,8 +616,8 @@ async function autoImportMeliPackages() {
                                         shippingType: 'SAME_DAY',
                                         origin: 'Centro de Distribución',
                                         recipientAddress: shipment.receiver_address?.address_line || 'N/A',
-                                        recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                                        recipientCity: stateName,
+                                        recipientCommune: normalizeCommune(shipment.receiver_address?.city?.name || 'N/A'),
+                                        recipientCity: normalizeCity(stateName),
                                         notes: `Auto-Import ML Order: ${orderId}`,
                                         estimatedDelivery: now,
                                         createdAt: now,
@@ -820,8 +821,8 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
             shippingType: 'SAME_DAY',
             origin: 'Centro de Distribución',
             recipientAddress: shipment.receiver_address?.address_line || 'N/A',
-            recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-            recipientCity: 'Región Metropolitana',
+            recipientCommune: normalizeCommune(shipment.receiver_address?.city?.name || 'N/A'),
+            recipientCity: normalizeCity('Región Metropolitana'),
             notes: `Just-In-Time Import ML: ${shipmentId}`,
             estimatedDelivery: now,
             createdAt: now,

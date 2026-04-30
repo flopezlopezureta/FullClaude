@@ -1,6 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+const { normalizeCommune, normalizeCity } = require('../utils/normalization');
 const { triggerBackgroundGeocoding } = require('./geocodingService');
 
 // --- SHOPIFY API HELPERS ---
@@ -222,8 +223,8 @@ async function autoImportShopifyPackages() {
                                         shippingType: 'SAME_DAY',
                                         origin: 'Centro de Distribución',
                                         recipientAddress: `${address.address1 || ''} ${address.address2 || ''}`.trim() || 'N/A',
-                                        recipientCommune: address.city || 'N/A',
-                                        recipientCity: 'Región Metropolitana',
+                                        recipientCommune: normalizeCommune(address.city || 'N/A'),
+                                        recipientCity: normalizeCity('Región Metropolitana'),
                                         notes: `Auto-Import Shopify Order: ${order.name || orderId}`,
                                         estimatedDelivery: nowImport,
                                         createdAt: nowImport,

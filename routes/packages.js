@@ -1,9 +1,8 @@
-
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { v4: uuidv4 } = require('uuid');
+const { normalizeCommune, normalizeCity } = require('../utils/normalization');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const NotificationService = require('../services/notificationService');
@@ -11,6 +10,34 @@ const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
 const jumpsellerPollingService = require('../services/jumpsellerPollingService');
 const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geocodingService');
+
+// [EMERGENCIA] Ruta para normalizar todas las comunas y ciudades del historial
+router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'No autorizado.' });
+    try {
+        console.log('[Maintenance] Starting system-wide commune normalization...');
+        
+        // Postgres SQL to normalize: Trim, Upper, and remove common accents (preserving Ñ)
+        const query = `
+            UPDATE packages 
+            SET 
+                "recipientCommune" = UPPER(TRIM(TRANSLATE("recipientCommune", 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'))),
+                "recipientCity" = UPPER(TRIM(TRANSLATE("recipientCity", 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU')))
+            WHERE "recipientCommune" IS NOT NULL OR "recipientCity" IS NOT NULL;
+        `;
+        
+        const result = await db.query(query);
+        console.log(`[Maintenance] Normalization complete. Rows affected: ${result.rowCount}`);
+        
+        res.json({ 
+            message: 'Normalización completada con éxito.', 
+            rowsAffected: result.rowCount 
+        });
+    } catch (err) {
+        console.error('[Maintenance] Normalization error:', err);
+        res.status(500).json({ message: 'Error durante la normalización: ' + err.message });
+    }
+});
 
 // [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
 router.get('/fix-egress-today', async (req, res) => {
@@ -447,8 +474,8 @@ router.post('/', authMiddleware, async (req, res) => {
             origin,
             destination: recipientAddress, // legacy, can be removed later
             recipientAddress,
-            recipientCommune,
-            recipientCity,
+            recipientCommune: normalizeCommune(recipientCommune),
+            recipientCity: normalizeCity(recipientCity),
             notes,
             estimatedDelivery: new Date(estimatedDelivery),
             createdAt: now,
@@ -591,8 +618,8 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     origin, 
                     destination: recipientAddress, 
                     recipientAddress, 
-                    recipientCommune, 
-                    recipientCity, 
+                    recipientCommune: normalizeCommune(recipientCommune), 
+                    recipientCity: normalizeCity(recipientCity), 
                     notes, 
                     estimatedDelivery: new Date(estimatedDelivery), 
                     createdAt: now, 
@@ -749,6 +776,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
         const { rows: currentPkgRows } = await db.query('SELECT "recipientAddress", "recipientCommune", "recipientCity" FROM packages WHERE id = $1', [id]);
         if (currentPkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         const currentPkg = currentPkgRows[0];
+
+        if (updateData.recipientCommune) {
+            updateData.recipientCommune = normalizeCommune(updateData.recipientCommune);
+        }
+        if (updateData.recipientCity) {
+            updateData.recipientCity = normalizeCity(updateData.recipientCity);
+        }
 
         // Check if address changed to add a tracking event
         const newAddr = updateData.recipientAddress !== undefined ? updateData.recipientAddress : currentPkg.recipientAddress;

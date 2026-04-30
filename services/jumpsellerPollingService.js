@@ -1,6 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+const { normalizeCommune, normalizeCity } = require('../utils/normalization');
 const { triggerBackgroundGeocoding } = require('./geocodingService');
 
 // --- JUMPSELLER API HELPERS ---
@@ -213,8 +214,8 @@ async function autoImportJumpsellerPackages() {
                                         shippingType: 'SAME_DAY',
                                         origin: origin,
                                         recipientAddress: shipping.address || 'N/A',
-                                        recipientCommune: shipping.municipality || 'N/A',
-                                        recipientCity: shipping.city || 'Santiago',
+                                        recipientCommune: normalizeCommune(shipping.municipality || 'N/A'),
+                                        recipientCity: normalizeCity(shipping.city || 'Santiago'),
                                         notes: `Auto-Import Jumpseller Order: ${order.id}`,
                                         estimatedDelivery: importNow,
                                         createdAt: importNow,
