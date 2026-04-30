@@ -263,14 +263,14 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Cant. Tarde</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Primera Entrega</th>
                                         <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Último Cierre App</th>
-                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Exceso s/21h</th>
+                                        <th className="px-6 py-4 text-center text-xs font-bold text-gray-400 uppercase tracking-wider">Exceso s/19h</th>
                                         <th className="px-6 py-4 text-right text-xs font-bold text-gray-400 uppercase tracking-wider">Estado</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
                                     {analysis.driverData.map((driver, idx) => {
-                                        // Calcular exceso sobre las 21:00
-                                        const excessMinutes = Math.round((driver.lastHour - 21) * 60);
+                                        // Calcular exceso sobre las 19:00 (que es el filtro base del reporte)
+                                        const excessMinutes = Math.round((driver.lastHour - 19) * 60);
                                         return (
                                             <tr key={idx} className="hover:bg-gray-50/50 transition-colors text-sm">
                                                 <td className="px-6 py-4 font-bold text-gray-900">{driver.name}</td>
