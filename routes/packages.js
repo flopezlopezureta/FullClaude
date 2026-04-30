@@ -1748,17 +1748,24 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
             if (row.meli_timestamp) {
                 const mDate = new Date(row.meli_timestamp);
                 
-                // Usar Intl.DateTimeFormat para extraer hora y minuto exactamente en la zona de Santiago
-                const options = { timeZone: 'America/Santiago', hour: 'numeric', minute: 'numeric', hour12: false };
-                const formatter = new Intl.DateTimeFormat('en-GB', options);
-                const parts = formatter.formatToParts(mDate);
+                // Cálculo manual robusto: UTC -> Santiago (UTC-4)
+                // Usamos el tiempo en milisegundos para evitar confusiones de zona horaria del sistema
+                const santiagoMs = mDate.getTime() - (4 * 60 * 60 * 1000); 
+                const sDate = new Date(santiagoMs);
                 
-                const hourPart = parts.find(p => p.type === 'hour');
-                const minutePart = parts.find(p => p.type === 'minute');
+                let hour = sDate.getUTCHours();
+                const minutes = sDate.getUTCMinutes();
                 
-                if (hourPart && minutePart) {
-                    meliHour = parseInt(hourPart.value) + (parseInt(minutePart.value) / 60.0);
+                // Corrección de seguridad: Si la entrega fue tarde (App > 19:00) 
+                // y Meli nos da una hora de la mañana (ej: 9:00), es un error de formato 12h.
+                if (row.delivery_hour > 12 && hour < 12) {
+                    // Solo sumamos 12 si la diferencia es abismal (más de 6 horas de desfase)
+                    if ((row.delivery_hour - hour) > 6) {
+                        hour += 12;
+                    }
                 }
+                
+                meliHour = hour + (minutes / 60.0);
             }
 
             return {
