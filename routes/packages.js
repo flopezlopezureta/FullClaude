@@ -1202,23 +1202,35 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                 const accessToken = await meliPollingService.getValidMeliToken(creatorId, sourceAccountId);
                 
                 if (accessToken) {
-                    const shippingDetails = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
-                    if (shippingDetails.status_history) {
-                        const deliveredEvent = shippingDetails.status_history.find(h => h.status === 'delivered');
-                        if (deliveredEvent && deliveredEvent.date) {
-                            meliDeliveredAt = new Date(deliveredEvent.date);
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    let meliTimeStr = null;
+                    let source = '';
+
+                    // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
+                    if (shipment.status_history) {
+                        const deliveredEvent = shipment.status_history
+                            .filter(h => h.status === 'delivered')
+                            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                        if (deliveredEvent) {
+                            meliTimeStr = deliveredEvent.date;
+                            source = 'status_history.delivered';
                         }
                     }
-                }
-            }
-        } catch (e) { console.warn('[Deliver] ML Hour fetch failed', e); }
 
-        if (meliDeliveredAt) {
-            await db.query(
-                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora de entrega real registrada en ML: ${meliDeliveredAt.toISOString()}`, meliDeliveredAt]
-            );
-        }
+                    // Prioridad 2: Campo directo de entrega
+                    if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
+                        meliTimeStr = shipment.delivered_date;
+                        source = 'shipment.delivered_date';
+                    }
+
+                    if (meliTimeStr) {
+                        meliDeliveredAt = new Date(meliTimeStr);
+                        await db.query(
+                            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                            [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora real capturada de ${source}: ${meliTimeStr}`, meliDeliveredAt]
+                        );
+                    }
+                }
         // --- FIN CAPTURA ML ---
         
         await logAction(req.user.id, req.user.name, 'DELIVER_PACKAGE', { packageId: id, receiverName });

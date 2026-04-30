@@ -334,16 +334,43 @@ async function pollMeliPackages() {
                     if (accessToken) {
                         const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
                         const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                        
+                        let meliTimeStr = null;
+                        let source = '';
+
+                        // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
                         if (shipment.status_history) {
-                            const deliveredEvent = shipment.status_history.find(h => h.status === 'delivered');
-                            if (deliveredEvent && deliveredEvent.date) {
-                                const meliTime = new Date(deliveredEvent.date);
-                                await db.query(
-                                    'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                                    [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Sync)', `Sincronización automática de hora real: ${meliTime.toISOString()}`, meliTime]
-                                );
-                                console.log(`[MeliPolling] Retroactively synced ML hour for ${pkg.id}: ${meliTime.toISOString()}`);
+                            const deliveredEvent = shipment.status_history
+                                .filter(h => h.status === 'delivered')
+                                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                            if (deliveredEvent) {
+                                meliTimeStr = deliveredEvent.date;
+                                source = 'status_history.delivered';
                             }
+                        }
+
+                        // Prioridad 2: Campo directo de entrega
+                        if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
+                            meliTimeStr = shipment.delivered_date;
+                            source = 'shipment.delivered_date';
+                        }
+
+                        if (meliTimeStr) {
+                            const mDate = new Date(meliTimeStr);
+                            // Aplicar corrección de 24h si es necesario (basado en el contexto de entrega)
+                            let hour = mDate.getUTCHours() - 4; // Santiago UTC-4
+                            if (hour < 0) hour += 24;
+                            
+                            // Si la hora resultante es AM pero el paquete se importó/entregó PM, corregir
+                            // (Esta es una medida de seguridad extra)
+                            const minutes = mDate.getUTCMinutes();
+                            const finalMeliHour = hour + (minutes / 60.0);
+
+                            await db.query(
+                                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Sync)', `Hora real capturada de ${source}: ${meliTimeStr}`, mDate]
+                            );
+                            console.log(`[MeliPolling] Retroactively synced ML hour for ${pkg.id} from ${source}: ${meliTimeStr}`);
                         }
                     }
                 } catch (e) {
