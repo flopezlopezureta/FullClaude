@@ -1668,6 +1668,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 u.name as driver_name,
                 c.name as seller_name,
                 p."recipientCommune",
+                p."driverId",
                 (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
                 EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour,
                 (SELECT EXTRACT(HOUR FROM timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM timestamp AT TIME ZONE 'America/Santiago')/60.0 
