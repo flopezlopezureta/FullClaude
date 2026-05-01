@@ -402,11 +402,11 @@ const LogisticsBIDashboard: React.FC = () => {
           <div className="mt-4 grid grid-cols-2 gap-4">
              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
                 <p className="text-[10px] text-gray-400 uppercase font-bold">Mejor Promedio</p>
-                <p className="text-sm font-black text-emerald-600">{analytics?.summary.top_driver || '-'}</p>
+                <p className="text-sm font-black text-emerald-600">{analytics?.summary?.top_driver || '-'}</p>
              </div>
              <div className="p-3 bg-gray-50 dark:bg-gray-900 rounded-xl">
                 <p className="text-[10px] text-gray-400 uppercase font-bold">Tiempo Global</p>
-                <p className="text-sm font-black text-indigo-600">{analytics?.summary.avg_delivery_time || 0} min/paquete</p>
+                <p className="text-sm font-black text-indigo-600">{analytics?.summary?.avg_delivery_time || 0} min/paquete</p>
              </div>
           </div>
         </div>
