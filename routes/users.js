@@ -285,7 +285,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     "driverId",
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
-                    COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')) as pending
+                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RECOGIDO', 'EN_RUTA')) as pending
                 FROM packages
                 WHERE "driverId" IS NOT NULL
                 AND ("assignedAt"::text LIKE $1 OR ("updatedAt"::text LIKE $1 AND status != 'PENDIENTE'))
@@ -295,11 +295,18 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
             WHERE u.role IN ('DRIVER', 'ADMIN') 
             AND u.status = 'APROBADO'
             AND (p_stats.total > 0 OR dc.id IS NOT NULL)
-            ORDER BY pending_packages DESC, u.name ASC
+            ORDER BY pending DESC, u.name ASC
         `;
         
         const { rows } = await db.query(query, [targetDate]);
-        res.json(rows);
+        
+        // Final logic adjustment in JS for clarity
+        const processedRows = rows.map(row => ({
+            ...row,
+            is_completed: row.pending === 0 || !!row.last_update
+        }));
+        
+        res.json(processedRows);
     } catch (err) {
         console.error('Error fetching fleet status:', err);
         res.status(500).json({ message: 'Error al obtener el estado de la flota.' });
