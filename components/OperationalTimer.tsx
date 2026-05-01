@@ -37,19 +37,19 @@ const OperationalTimer: React.FC = () => {
       <div className={`relative overflow-hidden p-6 rounded-2xl border transition-all shadow-lg ${
         isOvertime 
           ? 'bg-gradient-to-br from-red-600 to-red-800 border-red-500 shadow-red-200' 
-          : 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700 shadow-slate-200'
+          : 'bg-white border-slate-100 shadow-sm'
       }`}>
         <div className="relative z-10 flex items-center justify-between">
           <div>
-            <p className="text-[10px] font-black text-white/60 uppercase tracking-[0.3em] mb-1">
+            <p className={`text-[10px] font-black uppercase tracking-[0.3em] mb-1 ${isOvertime ? 'text-white/60' : 'text-slate-400'}`}>
               {isOvertime ? 'Exceso de Jornada' : 'Tiempo para Cierre (21:00)'}
             </p>
-            <h2 className="text-4xl font-black text-white tracking-tighter font-mono">
+            <h2 className={`text-4xl font-black tracking-tighter font-mono ${isOvertime ? 'text-white' : 'text-slate-800'}`}>
               {timeStr}
             </h2>
           </div>
-          <div className={`p-3 rounded-xl bg-white/10 backdrop-blur-md ${isOvertime ? 'animate-pulse' : ''}`}>
-            <IconClock className="w-8 h-8 text-white" />
+          <div className={`p-3 rounded-xl ${isOvertime ? 'bg-white/10 backdrop-blur-md animate-pulse' : 'bg-slate-50'}`}>
+            <IconClock className={`w-8 h-8 ${isOvertime ? 'text-white' : 'text-slate-400'}`} />
           </div>
         </div>
         {/* Background Decoration */}
