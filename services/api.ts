@@ -259,8 +259,8 @@ export const api = {
   register: (data: RegisterData) => post<User>('/auth/register', data),
   getUserByToken: () => get<User>('/auth/me'),
   requestPasswordRecovery: (email: string) => post<{message: string}>('/auth/recover-password', { email }),
-  getFleetStatus: () => get<any[]>('/users/fleet-status'),
-  getAnalytics: () => get<{ hourly: any[], ranking: any[] }>('/users/analytics'),
+  getFleetStatus: (date?: string) => get<any[]>(`/users/fleet-status${date ? `?date=${date}` : ''}`),
+  getAnalytics: (date?: string) => get<{ hourly: any[], ranking: any[] }>(`/users/analytics${date ? `?date=${date}` : ''}`),
 
   // Users
   getUsers: () => get<User[]>('/users'),

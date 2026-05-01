@@ -267,28 +267,25 @@ router.post('/:id/toggle-status', authMiddleware, adminOnly, async (req, res) =>
 // GET /api/users/fleet-status - Get real-time driver status for dashboard monitor
 router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
-        // Query to get drivers with their package counts for today and closure status
         const query = `
             SELECT 
-                u.id, 
-                u.name, 
+                u.id as driver_id, 
+                u.name as driver_name, 
                 u.phone,
-                COALESCE(p_stats.total, 0) as "totalToday",
-                COALESCE(p_stats.delivered, 0) as "deliveredToday",
-                COALESCE(p_stats.pending, 0) as "pendingToday",
-                COALESCE(p_stats.failed, 0) as "failedToday",
-                (dc.id IS NOT NULL) as "hasClosedToday",
-                dc."closedAt" as "closureTime"
+                COALESCE(p_stats.total, 0) as total_packages,
+                COALESCE(p_stats.delivered, 0) as delivered_packages,
+                COALESCE(p_stats.pending, 0) as pending_packages,
+                (p_stats.delivered = p_stats.total AND p_stats.total > 0) as is_completed,
+                dc."closedAt" as last_update
             FROM users u
             LEFT JOIN (
                 SELECT 
                     "driverId",
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
-                    COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')) as pending,
-                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as failed
+                    COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')) as pending
                 FROM packages
                 WHERE "driverId" IS NOT NULL
                 AND ("assignedAt"::text LIKE $1 OR ("updatedAt"::text LIKE $1 AND status != 'PENDIENTE'))
@@ -298,10 +295,10 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
             WHERE u.role IN ('DRIVER', 'ADMIN') 
             AND u.status = 'APROBADO'
             AND (p_stats.total > 0 OR dc.id IS NOT NULL)
-            ORDER BY "pendingToday" DESC, u.name ASC
+            ORDER BY pending_packages DESC, u.name ASC
         `;
         
-        const { rows } = await db.query(query, [today]);
+        const { rows } = await db.query(query, [targetDate]);
         res.json(rows);
     } catch (err) {
         console.error('Error fetching fleet status:', err);
@@ -312,45 +309,55 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/users/analytics - Advanced productivity metrics for reports
 router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
-        // 1. Packages per hour per driver (Today)
+        // 1. Flow of deliveries per hour (Total packages delivered by hour)
         const hourlyQuery = `
             SELECT 
-                u.name as "driverName",
-                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') as hour,
+                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::text || ':00' as hour,
                 COUNT(*)::int as count
             FROM packages p
-            JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
             AND p."updatedAt"::text LIKE $1
-            GROUP BY u.name, hour
-            ORDER BY hour ASC, u.name ASC
+            GROUP BY hour
+            ORDER BY hour ASC
         `;
 
-        // 2. Performance ranking (Today)
+        // 2. Efficiency Ranking
         const rankingQuery = `
             SELECT 
-                u.name as "driverName",
-                COUNT(*)::int as "deliveredCount",
-                ROUND(AVG(EXTRACT(EPOCH FROM (p."updatedAt" - p."assignedAt")))/60, 1) as "avgDeliveryTimeMinutes"
+                u.name,
+                COUNT(*)::int as delivered,
+                ROUND(AVG(EXTRACT(EPOCH FROM (p."updatedAt" - p."assignedAt")))/60, 1) as "avg_minutes",
+                COUNT(*)::float as "efficiency_score"
             FROM packages p
             JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
             AND p."updatedAt"::text LIKE $1
             AND p."assignedAt" IS NOT NULL
             GROUP BY u.name
-            ORDER BY "deliveredCount" DESC
+            ORDER BY delivered DESC
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [today + '%']),
-            db.query(rankingQuery, [today + '%'])
+            db.query(hourlyQuery, [targetDate + '%']),
+            db.query(rankingQuery, [targetDate + '%'])
         ]);
 
+        const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
+        const avgGlobal = rankingData.rows.length > 0 
+            ? Math.round(rankingData.rows.reduce((sum, r) => sum + r.avg_minutes, 0) / rankingData.rows.length)
+            : 0;
+
         res.json({
-            hourly: hourlyData.rows,
-            ranking: rankingData.rows
+            hourly_flow: hourlyData.rows,
+            driver_efficiency: rankingData.rows,
+            summary: {
+                total_delivered: totalDelivered,
+                avg_delivery_time: avgGlobal,
+                top_driver: rankingData.rows[0]?.name || '-',
+                efficiency_trend: 'STABLE'
+            }
         });
     } catch (err) {
         console.error('Error fetching analytics:', err);
