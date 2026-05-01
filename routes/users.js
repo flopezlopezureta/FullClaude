@@ -301,10 +301,15 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         const { rows } = await db.query(query, [targetDate]);
         
         // Final logic adjustment in JS for clarity
-        const processedRows = rows.map(row => ({
-            ...row,
-            is_completed: row.pending === 0 || !!row.last_update
-        }));
+        const processedRows = rows.map(row => {
+            const hasPackages = parseInt(row.total_packages) > 0;
+            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0) || !!row.last_update;
+            
+            return {
+                ...row,
+                is_completed: isCompleted
+            };
+        });
         
         res.json(processedRows);
     } catch (err) {
