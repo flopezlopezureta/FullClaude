@@ -743,3 +743,11 @@ export const IconExternalLink: React.FC<IconProps> = ({ className, title }) => (
         <line x1="10" y1="14" x2="21" y2="3"></line>
     </svg>
 );
+
+export const IconBan: React.FC<IconProps> = ({ className, title }) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+        {title && <title>{title}</title>}
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="4.93" y1="4.93" x2="19.07" y2="19.07"></line>
+    </svg>
+);
