@@ -750,6 +750,8 @@ async function autoImportMeliPackages(activeCommunes = []) {
     }
 }
 
+async function cleanupOutOfZonePackages() {
+    try {
         // Fetch active communes for cleanup
         const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
         const activeCommunes = activeRows.map(r => r.name.toLowerCase());
