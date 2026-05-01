@@ -1008,10 +1008,11 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
 
         const options = {
             hostname: hostname,
-            path: `/admin/api/2024-04${path}`,
+            path: `/admin/api/2026-01${path}`,
             method: method,
             headers: {
                 'X-Shopify-Access-Token': accessToken,
+                'X-Shopify-Api-Version': '2026-01',
                 'Content-Type': 'application/json',
                 'Accept': 'application/json'
             }
