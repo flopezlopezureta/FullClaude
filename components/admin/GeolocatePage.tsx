@@ -58,17 +58,32 @@ const GeolocatePage: React.FC = () => {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
 
+            // Fetch pending and active packages
+            const statusFilter = [
+                PackageStatus.Pending, 
+                PackageStatus.Assigned, 
+                PackageStatus.PickedUp, 
+                PackageStatus.InTransit,
+                PackageStatus.Delayed,
+                PackageStatus.Problem
+            ].join(',');
+
             if (dateMode === 'today') {
-                const { packages: pending } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Pending, startDate: todayStr, endDate: todayStr });
-                fetchedPackages = pending;
+                const { packages: active } = await api.getPackages({ limit: 0, statusFilter, startDate: todayStr, endDate: todayStr });
+                fetchedPackages = active;
             } else {
-                const { packages: pending } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Pending });
-                fetchedPackages = pending;
+                const { packages: active } = await api.getPackages({ limit: 0, statusFilter });
+                fetchedPackages = active;
             }
 
             if (deliveredMode === 'show') {
-                 const { packages: delivered } = await api.getPackages({ limit: 0, statusFilter: PackageStatus.Delivered, startDate: todayStr, endDate: todayStr });
-                 fetchedPackages = [...fetchedPackages, ...delivered];
+                 const { packages: extra } = await api.getPackages({ 
+                    limit: 0, 
+                    statusFilter: [PackageStatus.Delivered, PackageStatus.Returned, PackageStatus.Cancelled, PackageStatus.Rescheduled].join(','), 
+                    startDate: todayStr, 
+                    endDate: todayStr 
+                 });
+                 fetchedPackages = [...fetchedPackages, ...extra];
             }
             
             setPackages(fetchedPackages);
@@ -232,6 +247,11 @@ const GeolocatePage: React.FC = () => {
             clusterGroupRef.current.addLayer(marker);
         };
 
+        // Filter packages to render based on deliveredMode
+        const filteredPackages = deliveredMode === 'show' 
+            ? packages 
+            : packages.filter(p => ![PackageStatus.Delivered, PackageStatus.Returned, PackageStatus.Cancelled, PackageStatus.Rescheduled].includes(p.status as PackageStatus));
+
         if (optimizedRoutes.length > 0) {
             optimizedRoutes.forEach((route, routeIndex) => {
                 const color = ROUTE_COLORS[routeIndex % ROUTE_COLORS.length];
@@ -240,17 +260,26 @@ const GeolocatePage: React.FC = () => {
                     renderMarker(pkg, color, pkgIndex + 1);
                 });
             });
-            // Draw delivered packages in blue as well
-            packages.filter(p => p.status === PackageStatus.Delivered).forEach(pkg => {
-                renderMarker(pkg, '#3b82f6', undefined);
+            // Draw other packages (like delivered or problems) that are NOT in optimized routes
+            const optimizedIds = new Set(optimizedRoutes.flat().map(p => p.id));
+            filteredPackages.filter(p => !optimizedIds.has(p.id)).forEach(pkg => {
+                let color = '#94a3b8'; // Default grey
+                if (pkg.status === PackageStatus.Delivered) color = '#3b82f6';
+                else if (pkg.status === PackageStatus.Problem) color = '#f59e0b';
+                else if (pkg.status === PackageStatus.Cancelled) color = '#ef4444';
+                
+                renderMarker(pkg, color, undefined);
             });
         } else {
-             packages.forEach(pkg => {
-                if (pkg.status === PackageStatus.Delivered) {
-                    renderMarker(pkg, '#3b82f6'); // Blue for delivered
-                } else {
-                    renderMarker(pkg, '#dc2626'); // Red for pending
-                }
+             filteredPackages.forEach(pkg => {
+                let color = '#dc2626'; // Red for Pending
+                if (pkg.status === PackageStatus.Delivered) color = '#3b82f6';
+                else if (pkg.status === PackageStatus.Assigned) color = '#10b981';
+                else if (pkg.status === PackageStatus.InTransit) color = '#8b5cf6';
+                else if (pkg.status === PackageStatus.Problem) color = '#f59e0b';
+                else if (pkg.status === PackageStatus.Cancelled || pkg.status === PackageStatus.Returned) color = '#94a3b8';
+                
+                renderMarker(pkg, color);
             });
         }
 
