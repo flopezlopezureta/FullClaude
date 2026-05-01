@@ -30,6 +30,8 @@ interface AuthContextType {
   register: (data: RegisterData) => Promise<User>;
   updateSystemSettings: (newSettings: Partial<SystemSettings>) => Promise<void>;
   refetchUser: () => Promise<void>;
+  activeCommunes: string[];
+  refetchCommunes: () => Promise<void>;
   isPushSubscribed: boolean;
   isPushLoading: boolean;
   subscribeToPush: () => Promise<void>;
@@ -63,6 +65,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     timeFormat: '12h',
     allowRedelivery: false,
   });
+  const [activeCommunes, setActiveCommunes] = useState<string[]>([]);
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
   const [isPushLoading, setIsPushLoading] = useState(true);
 
@@ -102,8 +105,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const settings = await api.getSystemSettings();
           setSystemSettings(settings);
+          
+          const communesData = await api.getCommunes();
+          setActiveCommunes(communesData.filter(c => c.isActive).map(c => c.name));
         } catch (settingsErr) {
-          console.error("[Auth] Failed to fetch system settings. Using fallbacks.", settingsErr);
+          console.error("[Auth] Failed to fetch system settings or communes. Using fallbacks.", settingsErr);
           // Don't log out here! The app can run with fallback settings.
         }
 
@@ -146,6 +152,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       if (token) {
            const fetchedUser = await api.getUserByToken();
            setUser(fetchedUser);
+      }
+  };
+
+  const refetchCommunes = async () => {
+      try {
+          const communesData = await api.getCommunes();
+          setActiveCommunes(communesData.filter(c => c.isActive).map(c => c.name));
+      } catch (err) {
+          console.error("Failed to refetch communes", err);
       }
   };
 
@@ -229,7 +244,11 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, token, isInitialized, systemSettings, login, logout, register, updateSystemSettings, refetchUser, isPushSubscribed, isPushLoading, subscribeToPush, unsubscribeFromPush }}>
+    <AuthContext.Provider value={{ 
+        user, token, isInitialized, systemSettings, activeCommunes,
+        login, logout, register, updateSystemSettings, refetchUser, refetchCommunes,
+        isPushSubscribed, isPushLoading, subscribeToPush, unsubscribeFromPush 
+    }}>
       {children}
     </AuthContext.Provider>
   );

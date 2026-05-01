@@ -203,7 +203,11 @@ async function pollMeliPackages() {
         }
 
         if (autoImportEnabled) {
-            await autoImportMeliPackages();
+            // Fetch active communes once per cycle
+            const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+            const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+            
+            await autoImportMeliPackages(activeCommunes);
         }
 
         // [NUEVO] Limpieza automática de registros fuera de zona (Santiago/RM)
@@ -527,8 +531,23 @@ async function syncPackage(packageId) {
     }
 }
 
-async function autoImportMeliPackages() {
+async function autoImportMeliPackages(activeCommunes = []) {
     console.log('[MeliPolling] Starting auto-import cycle...');
+    
+    // Fallback if no active communes configured (sanity check)
+    const fallbackRM = [
+        'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+        'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+        'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+        'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+        'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+        'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+        'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+        'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+    ];
+    
+    const validCommunes = activeCommunes.length > 0 ? activeCommunes : fallbackRM;
+
     let importedThisCycle = 0;
     try {
         // 1. Get all customers with ML integrations (new or old format)
@@ -654,16 +673,7 @@ async function autoImportMeliPackages() {
                                                  lowerState.includes('r.m.') ||
                                                  lowerCommune.includes('metropolitana') ||
                                                  lowerCommune.includes('santiago') ||
-                                                 [
-                                                    'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                                                    'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                                                    'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                                                    'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                                                    'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                                                    'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                                                    'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                                                    'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                                                 ].includes(lowerCommune);
+                                                 validCommunes.includes(lowerCommune);
                                     
                                     if (isRM) {
                                         // Normalizamos el nombre de la ciudad
@@ -740,21 +750,34 @@ async function autoImportMeliPackages() {
     }
 }
 
-async function cleanupOutOfZonePackages() {
-    try {
-        // [MEJORADO] Buscamos paquetes fuera de zona, pero NUNCA eliminamos paquetes ya asignados ("driverId" IS NULL)
-        // Se incluyen todas las variaciones de la Región Metropolitana y sus comunas para evitar borrados accidentales.
+        // Fetch active communes for cleanup
+        const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+        const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+        
+        const fallbackRM = [
+            'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+            'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+            'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+            'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+            'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+            'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+            'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+            'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+        ];
+        
+        const validCommunes = activeCommunes.length > 0 ? activeCommunes : fallbackRM;
+
         const queryFind = `
             SELECT id, "recipientCity", "recipientCommune", source FROM packages 
             WHERE 
                "driverId" IS NULL AND (
-                   -- Bloque 1: Ciudades explícitamente fuera de zona (Puerto Montt, Loncoche, etc.)
+                   -- Bloque 1: Ciudades explícitamente fuera de zona
                    LOWER("recipientCity") LIKE '%puerto montt%' OR 
                    LOWER("recipientCity") LIKE '%loncoche%' OR 
                    LOWER("recipientCommune") LIKE '%puerto montt%' OR 
                    LOWER("recipientCommune") LIKE '%loncoche%' OR
                    
-                   -- Bloque 2: Paquetes de Mercado Libre que NO pertenecen a la RM
+                   -- Bloque 2: Paquetes de Mercado Libre que NO pertenecen a las comunas ACTIVAS
                    (
                      source = 'MERCADO_LIBRE' AND 
                      NOT (
@@ -765,22 +788,12 @@ async function cleanupOutOfZonePackages() {
                         LOWER("recipientCommune") LIKE '%metropolitana%' OR
                         LOWER("recipientCommune") LIKE '%santiago%' OR
                         LOWER("recipientCommune") LIKE '%rm%' OR
-                        -- Lista extendida de comunas de la RM para mayor seguridad
-                        LOWER("recipientCommune") = ANY(ARRAY[
-                            'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                            'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                            'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                            'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                            'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                            'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                            'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                            'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                        ])
+                        LOWER("recipientCommune") = ANY($1)
                      )
                    )
                )
         `;
-        const { rows: toDelete } = await db.query(queryFind);
+        const { rows: toDelete } = await db.query(queryFind, [validCommunes]);
         
         if (toDelete.length > 0) {
             const ids = toDelete.map(r => r.id);

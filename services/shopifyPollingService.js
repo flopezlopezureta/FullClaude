@@ -91,7 +91,11 @@ async function pollShopifyPackages() {
 
         // We'll proceed if enabled
         if (autoImportEnabled) {
-            await autoImportShopifyPackages();
+            // Fetch active communes once per cycle
+            const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+            const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+            
+            await autoImportShopifyPackages(activeCommunes);
         }
 
     } catch (err) {
@@ -132,8 +136,23 @@ const ensureMultiAccountStructure = (integrations) => {
     return integrations;
 };
 
-async function autoImportShopifyPackages() {
+async function autoImportShopifyPackages(activeCommunes = []) {
     console.log('[ShopifyPolling] Starting auto-import cycle...');
+    
+    // Fallback RM list if none configured
+    const fallbackRM = [
+        'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+        'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+        'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+        'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+        'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+        'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+        'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+        'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+    ];
+    
+    const validCommunes = activeCommunes.length > 0 ? activeCommunes : fallbackRM;
+
     let importedThisCycle = 0;
     try {
         // 1. Get all users with Shopify integration (new or old format)
@@ -201,16 +220,7 @@ async function autoImportShopifyPackages() {
                                                  city.includes('santiago') ||
                                                  city.includes('metropolitana') ||
                                                  city.includes('rm') ||
-                                                 [
-                                                    'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                                                    'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                                                    'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                                                    'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                                                    'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                                                    'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                                                    'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                                                    'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                                                 ].includes(city);
+                                                 validCommunes.includes(city);
                                     
                                     if (!isRM) continue;
 

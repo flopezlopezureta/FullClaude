@@ -601,6 +601,37 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (circuitExportEnabled):', err); }
         }
+
+        // --- ACTIVE COMMUNES: New table for managing where we deliver ---
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS active_communes (
+                id SERIAL PRIMARY KEY,
+                name TEXT NOT NULL UNIQUE,
+                region TEXT DEFAULT 'Metropolitana',
+                "isActive" BOOLEAN DEFAULT true,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Table "active_communes" is ready.');
+
+        // Initial Seed for Communes
+        const { rows: existingCommunes } = await db.query('SELECT COUNT(*) FROM active_communes');
+        if (parseInt(existingCommunes[0].count) === 0) {
+            console.log('Seeding initial active communes...');
+            const RM_COMMUNES = [
+                "SANTIAGO", "LAS CONDES", "VITACURA", "LO BARNECHEA", "PROVIDENCIA", "ÑUÑOA", "LA REINA", 
+                "MACUL", "PEÑALOLÉN", "LA FLORIDA", "SAN JOAQUÍN", "LA GRANJA", "SAN RAMÓN", "LA CISTERNA", 
+                "EL BOSQUE", "SAN MIGUEL", "LO ESPEJO", "PEDRO AGUIRRE CERDA", "CERRILLOS", "MAIPÚ", 
+                "ESTACIÓN CENTRAL", "QUINTA NORMAL", "LO PRADO", "CERRO NAVIA", "RENCA", "INDEPENDENCIA", 
+                "RECOLETA", "CONCHALÍ", "HUECHURABA", "QUILICURA", "PUDAHUEL", "LA PINTANA", "SAN BERNARDO", 
+                "PUENTE ALTO", "LAMPA", "COLINA", "BUIN", "PAINE", "PEÑAFLOR", "TALAGANTE", "MELIPILLA", 
+                "CURACAVÍ", "PIRQUE", "SAN JOSÉ DE MAIPO", "CALERA DE TANGO", "PADRE HURTADO", "EL MONTE", 
+                "ISLA DE MAIPO", "MARÍA PINTO", "SAN PEDRO", "ALHUÉ"
+            ];
+            for (const name of RM_COMMUNES) {
+                await db.query('INSERT INTO active_communes (name, region, "isActive") VALUES ($1, $2, $3)', [name, 'Metropolitana', true]);
+            }
+        }
         try {
             await db.query('ALTER TABLE system_settings ADD COLUMN "shopifyAutoImport" BOOLEAN DEFAULT false');
             console.log('MIGRATION APPLIED: Column "shopifyAutoImport" was added to "system_settings".');

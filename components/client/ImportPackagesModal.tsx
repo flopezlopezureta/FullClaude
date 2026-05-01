@@ -4,6 +4,8 @@ import { IconX, IconFileUpload, IconCheckCircle, IconAlertTriangle, IconFileText
 import { PackageCreationData } from '../../services/api';
 import { ShippingType } from '../../constants';
 import { User } from '../../types';
+import { AuthContext } from '../../contexts/AuthContext';
+import { useContext } from 'react';
 
 declare const XLSX: any;
 
@@ -51,6 +53,7 @@ interface ParsedRow {
 }
 
 const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onImport, clients }) => {
+    const auth = useContext(AuthContext);
     const [file, setFile] = useState<File | null>(null);
     const [isParsing, setIsParsing] = useState(false);
     const [isImporting, setIsImporting] = useState(false);
@@ -110,6 +113,14 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
         if (!rowData.recipientPhone) return { rowNumber: rowIndex + 2, isValid: false, error: 'Falta el teléfono.', rawData: row };
         if (!rowData.recipientAddress) return { rowNumber: rowIndex + 2, isValid: false, error: 'Falta la dirección.', rawData: row };
         if (!rowData.recipientCommune) return { rowNumber: rowIndex + 2, isValid: false, error: 'Falta la comuna.', rawData: row };
+        
+        const communeName = String(rowData.recipientCommune).trim().toUpperCase();
+        const activeCommunes = auth?.activeCommunes || [];
+        
+        // If system has configured communes, check if this one is active
+        if (activeCommunes.length > 0 && !activeCommunes.some(c => c.toUpperCase() === communeName)) {
+            return { rowNumber: rowIndex + 2, isValid: false, error: `La comuna "${communeName}" no está activa para repartos.`, rawData: row };
+        }
         
         const typeMap: { [key: string]: ShippingType } = {
             'EN EL DÍA': ShippingType.SameDay,

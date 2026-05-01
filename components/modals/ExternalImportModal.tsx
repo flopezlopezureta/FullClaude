@@ -3,7 +3,9 @@ import React, { useState, ReactNode } from 'react';
 import { api, PackageCreationData } from '../../services/api';
 import { User } from '../../types';
 import { PackageSource, ShippingType } from '../../constants';
-import { IconX, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader, IconJumpseller } from '../Icon';
+import { IconX, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader, IconJumpseller, IconBan } from '../Icon';
+import { AuthContext } from '../../contexts/AuthContext';
+import { useContext } from 'react';
 
 interface ExternalImportModalProps {
     client: User;
@@ -46,6 +48,7 @@ const sourceConfig: { [key in Exclude<PackageSource, 'MANUAL'>]: { title: string
 }
 
 const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, source, onClose, onImport }) => {
+    const auth = useContext(AuthContext);
     const config = sourceConfig[source as Exclude<PackageSource, 'MANUAL'>];
     const [orders, setOrders] = useState<any[]>([]);
     const [selectedOrderIds, setSelectedOrderIds] = useState<Set<string>>(new Set());
@@ -75,23 +78,32 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
     const filteredOrders = orders.filter(order => 
         order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         order.recipientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (order.address && order.address.toLowerCase().includes(searchQuery.toLowerCase()))
+        (order.address && order.address.toLowerCase().includes(searchQuery.toLowerCase())) ||
+        (order.commune && order.commune.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
-    const handleSelectOrder = (id: string) => {
+    const isCommuneActive = (communeName: string) => {
+        if (!auth?.activeCommunes || auth.activeCommunes.length === 0) return true; // Fallback to all if not loaded
+        return auth.activeCommunes.some(c => c.toUpperCase() === (communeName || '').toUpperCase());
+    };
+
+    const handleSelectOrder = (order: any) => {
+        if (!isCommuneActive(order.commune)) return; // Prevents selection of inactive communes
+        
         setSelectedOrderIds(prev => {
             const newSet = new Set(prev);
-            if (newSet.has(id)) newSet.delete(id);
-            else newSet.add(id);
+            if (newSet.has(order.id)) newSet.delete(order.id);
+            else newSet.add(order.id);
             return newSet;
         });
     };
 
     const handleSelectAll = () => {
-        if (selectedOrderIds.size === filteredOrders.length) {
+        const activeOrders = filteredOrders.filter(o => isCommuneActive(o.commune));
+        if (selectedOrderIds.size === activeOrders.length && activeOrders.length > 0) {
             setSelectedOrderIds(new Set());
         } else {
-            setSelectedOrderIds(new Set(filteredOrders.map(o => o.id)));
+            setSelectedOrderIds(new Set(activeOrders.map(o => o.id)));
         }
     };
 
@@ -187,24 +199,51 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-[var(--border-primary)]">
-                                {filteredOrders.map(order => (
-                                    <tr key={order.id} className={`hover:bg-[var(--background-hover)] cursor-pointer ${selectedOrderIds.has(order.id) ? 'bg-[var(--brand-muted)]' : ''}`} onClick={() => handleSelectOrder(order.id)}>
-                                        <td className="p-3" onClick={e => e.stopPropagation()}>
-                                            <input type="checkbox" checked={selectedOrderIds.has(order.id)} onChange={() => handleSelectOrder(order.id)} className="rounded border-gray-300 text-[var(--brand-primary)] focus:ring-[var(--brand-secondary)]" />
-                                        </td>
-                                        <td className="p-3 font-mono text-[10px]">{order.id}</td>
-                                        <td className="p-3">
-                                            <div className="flex items-center gap-2">
-                                                <span className="text-[10px] font-black px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full uppercase tracking-tighter">
-                                                    {order.sourceAccountName || 'Principal'}
-                                                </span>
-                                            </div>
-                                        </td>
-                                        <td className="p-3 font-medium">{order.recipientName}</td>
-                                        <td className="p-3">{order.address}</td>
-                                        <td className="p-3">{order.commune}</td>
-                                    </tr>
-                                ))}
+                                {filteredOrders.map(order => {
+                                    const isActive = isCommuneActive(order.commune);
+                                    return (
+                                        <tr 
+                                            key={order.id} 
+                                            className={`
+                                                border-b border-[var(--border-primary)] transition-colors
+                                                ${!isActive ? 'opacity-50 grayscale' : 'hover:bg-[var(--background-hover)] cursor-pointer'} 
+                                                ${selectedOrderIds.has(order.id) ? 'bg-[var(--brand-muted)]' : ''}
+                                            `} 
+                                            onClick={() => handleSelectOrder(order)}
+                                        >
+                                            <td className="p-3" onClick={e => e.stopPropagation()}>
+                                                <input 
+                                                    type="checkbox" 
+                                                    checked={selectedOrderIds.has(order.id)} 
+                                                    onChange={() => handleSelectOrder(order)} 
+                                                    disabled={!isActive}
+                                                    className={`rounded border-gray-300 text-[var(--brand-primary)] focus:ring-[var(--brand-secondary)] ${!isActive ? 'cursor-not-allowed opacity-50' : ''}`} 
+                                                />
+                                            </td>
+                                            <td className="p-3 font-mono text-[10px]">{order.id}</td>
+                                            <td className="p-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black px-2 py-0.5 bg-gray-100 text-gray-600 rounded-full uppercase tracking-tighter">
+                                                        {order.sourceAccountName || 'Principal'}
+                                                    </span>
+                                                </div>
+                                            </td>
+                                            <td className="p-3 font-medium">{order.recipientName}</td>
+                                            <td className="p-3">{order.address}</td>
+                                            <td className="p-3">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={!isActive ? 'text-red-500 font-bold' : ''}>{order.commune}</span>
+                                                    {!isActive && (
+                                                        <span className="flex items-center gap-1 text-[9px] font-black bg-red-100 text-red-600 px-2 py-0.5 rounded-full uppercase tracking-widest border border-red-200">
+                                                            <IconBan className="w-3 h-3" />
+                                                            Inactiva
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                })}
                             </tbody>
                         </table>
                     )}

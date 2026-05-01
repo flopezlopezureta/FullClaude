@@ -681,4 +681,45 @@ router.post('/disconnect-google-smtp', authMiddleware, adminOnly, async (req, re
     }
 });
 
+// GET /api/settings/communes
+router.get('/communes', authMiddleware, async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT * FROM active_communes ORDER BY name ASC');
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching communes:', err);
+        res.status(500).json({ message: 'Error al obtener las comunas.' });
+    }
+});
+
+// POST /api/settings/communes
+router.post('/communes', authMiddleware, adminOnly, async (req, res) => {
+    const { communes } = req.body; // Expects array of { name: string, isActive: boolean }
+    if (!communes || !Array.isArray(communes)) {
+        return res.status(400).json({ message: 'Se esperaba un array de comunas.' });
+    }
+
+    const client = await db.getClient();
+    try {
+        await client.query('BEGIN');
+        for (const commune of communes) {
+            await client.query(
+                'UPDATE active_communes SET "isActive" = $1 WHERE name = $2',
+                [commune.isActive, commune.name.toUpperCase()]
+            );
+        }
+        await client.query('COMMIT');
+        
+        await logAction(req.user.id, req.user.name, 'UPDATE_ACTIVE_COMMUNES', { count: communes.length });
+        
+        res.json({ message: 'Comunas actualizadas con éxito.' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error updating communes:', err);
+        res.status(500).json({ message: 'Error al actualizar las comunas.' });
+    } finally {
+        client.release();
+    }
+});
+
 module.exports = router;

@@ -453,6 +453,16 @@ router.post('/', authMiddleware, async (req, res) => {
         });
     }
 
+    // [VALIDACION] Comunas Activas
+    const { rows: activeCommunes } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+    const activeCommuneNames = activeCommunes.map(c => c.name.toUpperCase());
+    
+    if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(recipientCommune.toUpperCase().trim())) {
+        return res.status(400).json({ 
+            message: `La comuna "${recipientCommune}" no está habilitada para repartos actualmente.` 
+        });
+    }
+
     try {
         const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
         if (creatorRows.length === 0) {
@@ -539,6 +549,10 @@ router.post('/batch', authMiddleware, async (req, res) => {
     const results = [];
     const errors = [];
 
+    // Pre-fetch active communes for batch validation
+    const { rows: activeCommunes } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+    const activeCommuneNames = activeCommunes.map(c => c.name.toUpperCase());
+
     try {
         for (let i = 0; i < packages.length; i++) {
             const pkgData = packages[i];
@@ -588,6 +602,16 @@ router.post('/batch', authMiddleware, async (req, res) => {
                         index: i,
                         recipientName: recipientName || 'Desconocido',
                         error: `Faltan datos obligatorios: ${missingFields.join(', ')}`
+                    });
+                    continue;
+                }
+
+                // [VALIDACION] Comunas Activas
+                if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(recipientCommune.toUpperCase().trim())) {
+                    errors.push({
+                        index: i,
+                        recipientName: recipientName || 'Desconocido',
+                        error: `La comuna "${recipientCommune}" no está habilitada para repartos actualmente.`
                     });
                     continue;
                 }

@@ -6,6 +6,7 @@ import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcod
 import { useTheme } from '../../contexts/ThemeContext';
 import DeleteDatabaseModal, { ResetType } from '../modals/DeleteDatabaseModal';
 import { MessagingPlan, PickupMode, LabelFormat, Role } from '../../constants';
+import CommuneManagement from './CommuneManagement';
 
 const messagingPlanConfig = {
     [MessagingPlan.None]: { name: 'Sin Mensajería', description: 'No se envían notificaciones automáticas a clientes.' },
@@ -625,6 +626,10 @@ const SettingsPage: React.FC = () => {
                     </div>
                 </form>
             </div>
+
+            {auth?.user?.role === Role.Admin && (
+                <CommuneManagement />
+            )}
 
             {auth?.user?.email === 'admin' && (
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">

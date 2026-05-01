@@ -1,17 +1,9 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { getLocalDateString } from '../../utils/dateUtils';
 import { IconX, IconPackage, IconUser, IconMapPin, IconPlus, IconCheck } from '../Icon';
 import { PackageCreationData } from '../../services/api';
 import { ShippingType } from '../../constants';
-
-const RM_COMMUNES = [
-  'SANTIAGO', 'CERRILLOS', 'CERRO NAVIA', 'CONCHALÍ', 'EL BOSQUE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 
-  'LA CISTERNA', 'LA FLORIDA', 'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 
-  'LO PRADO', 'MACUL', 'MAIPÚ', 'ÑUÑOA', 'PEDRO AGUIRRE CERDA', 'PEÑALOLÉN', 'PROVIDENCIA', 'PUDAHUEL', 'QUILICURA', 
-  'QUINTA NORMAL', 'RECOLETA', 'RENCA', 'SAN JOAQUÍN', 'SAN MIGUEL', 'SAN RAMÓN', 'VITACURA', 'PUENTE ALTO', 'PIRQUE', 
-  'SAN JOSÉ DE MAIPO', 'SAN BERNARDO', 'BUIN', 'CALERA DE TANGO', 'PAINE', 'MELIPILLA', 'ALHUÉ', 'CURACAVÍ', 
-  'MARÍA PINTO', 'SAN PEDRO', 'TALAGANTE', 'EL MONTE', 'ISLA DE MAIPO', 'PADRE HURTADO', 'PEÑAFLOR', 'COLINA', 'LAMPA', 'TILTIL'
-];
+import { AuthContext } from '../../contexts/AuthContext';
 import type { User, Package } from '../../types';
 import SearchableSelect from '../SearchableSelect';
 
@@ -32,6 +24,7 @@ const chileanCities = [
 ];
 
 const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCreate, onUpdate, initialData, clients, creatorId }) => {
+  const auth = useContext(AuthContext);
   const [selectedClientId, setSelectedClientId] = useState(initialData?.creatorId || '');
   const [recipientName, setRecipientName] = useState(initialData?.recipientName || '');
   const [recipientPhone, setRecipientPhone] = useState(initialData?.recipientPhone || '');
@@ -63,8 +56,14 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   }, [clients]);
 
   const searchableCommunes = useMemo(() => {
-    return RM_COMMUNES.map(c => ({ id: c, name: c }));
-  }, []);
+    const list = auth?.activeCommunes && auth.activeCommunes.length > 0 ? auth.activeCommunes : [
+        'SANTIAGO', 'CERRILLOS', 'CERRO NAVIA', 'CONCHALÍ', 'EL BOSQUE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 
+        'LA CISTERNA', 'LA FLORIDA', 'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 
+        'LO PRADO', 'MACUL', 'MAIPÚ', 'ÑUÑOA', 'PEDRO AGUIRRE CERDA', 'PEÑALOLÉN', 'PROVIDENCIA', 'PUDAHUEL', 'QUILICURA', 
+        'QUINTA NORMAL', 'RECOLETA', 'RENCA', 'SAN JOAQUÍN', 'SAN MIGUEL', 'SAN RAMÓN', 'VITACURA'
+    ];
+    return list.map(c => ({ id: c, name: c }));
+  }, [auth?.activeCommunes]);
 
   const resetRecipientFields = () => {
     setRecipientName('');
