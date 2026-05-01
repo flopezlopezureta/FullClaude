@@ -10,9 +10,15 @@ const OperationalTimer: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Set target to 21:00 of today
+  // Set target to 21:00
   const target = new Date();
   target.setHours(21, 0, 0, 0);
+
+  // If it's early morning (before 6 AM), the target should be 21:00 of the PREVIOUS day
+  // so we correctly show the overtime from the night before.
+  if (now.getHours() < 6) {
+    target.setDate(target.getDate() - 1);
+  }
 
   const diff = target.getTime() - now.getTime();
   const isOvertime = diff < 0;
