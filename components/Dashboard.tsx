@@ -479,10 +479,11 @@ const Dashboard: React.FC = () => {
 
   const drivers = users
     .filter(u => {
-        // Ser extremadamente permisivo con los roles para asegurar que aparezcan los administradores
+        // [REFAC v2.5] Unificamos lógica: Solo mostrar usuarios APROBADOS que sean ADMIN o DRIVER.
+        // Esto evita duplicados si un usuario fue ADMIN y luego DRIVER, o registros eliminados.
         const isAdmin = u.role === Role.Admin || String(u.role).toUpperCase() === 'ADMIN';
-        const isDriverApproved = (u.role === Role.Driver || String(u.role).toUpperCase() === 'DRIVER') && u.status === UserStatus.Approved;
-        return isAdmin || isDriverApproved;
+        const isDriver = u.role === Role.Driver || String(u.role).toUpperCase() === 'DRIVER';
+        return (isAdmin || isDriver) && u.status === UserStatus.Approved;
     })
     .sort((a, b) => a.name.localeCompare(b.name));
     

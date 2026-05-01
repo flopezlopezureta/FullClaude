@@ -3,7 +3,8 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Role, UserStatus, PackageSource } from '../../constants';
 import type { User, DriverPermissions, OperatorPermissions } from '../../types';
 import { api, UserCreationData, UserUpdateData, PackageCreationData } from '../../services/api';
-import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconJumpseller, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck, IconUsers } from '../Icon';
+import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconJumpseller, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck, IconUsers, IconDownload } from '../Icon';
+import * as XLSX from 'xlsx';
 import CreateUserModal from '../modals/CreateUserModal';
 import EditUserModal from '../modals/EditUserModal';
 import ConfirmationModal from '../modals/ConfirmationModal';
@@ -261,6 +262,26 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     setTimeout(() => setCopiedUserId(null), 2000);
   };
 
+  const handleExportToExcel = () => {
+    const dataToExport = filteredUsers.map(user => ({
+      'Nombre': user.name,
+      'Email': user.email,
+      'RUT': user.rut || 'N/A',
+      'Teléfono': user.phone || 'N/A',
+      'Rol': user.role,
+      'Estado': statusStyles[user.status].text,
+      'Paquetes Totales': user.packageCount || 0,
+      'Fecha Registro': user.createdAt ? new Date(user.createdAt).toLocaleDateString('es-CL') : 'N/A',
+      'Dirección': user.pickupAddress || 'N/A',
+      'Comuna': user.commune || 'N/A'
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Usuarios");
+    XLSX.writeFile(wb, `Reporte_Usuarios_${roleFilter}_${new Date().toLocaleDateString('es-CL').replace(/\//g, '-')}.xlsx`);
+  };
+
   const filteredUsers = users.filter(user => {
     const matchesSearch = 
       user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -333,6 +354,14 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
             />
             Mostrar eliminados
           </label>
+          <button
+            onClick={handleExportToExcel}
+            className="inline-flex items-center justify-center px-4 py-2 border border-emerald-600 text-sm font-medium rounded-md shadow-sm text-emerald-700 bg-emerald-50 hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 whitespace-nowrap"
+            title="Descargar lista actual en formato Excel"
+          >
+            <IconDownload className="w-5 h-5 mr-2 -ml-1"/>
+            Exportar
+          </button>
           {((auth?.user?.role === Role.Admin) || 
             (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions && (
               ((roleFilter === Role.Driver || roleFilter === Role.Auxiliar || roleFilter === Role.Retiros) && auth.user.operatorPermissions.canManageDrivers) ||
@@ -456,7 +485,19 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
                         </div>
                     )}
                 </div>
-                <p className="text-sm text-[var(--text-muted)] mt-1">{user.email}</p>
+                <div className="flex items-center gap-2 mt-1 flex-wrap">
+                    <p className="text-sm text-[var(--text-muted)]">{user.email}</p>
+                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider ${
+                        user.status === UserStatus.Approved ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                        user.status === UserStatus.Pending ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400 animate-pulse' :
+                        'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                    }`}>
+                        {user.status === UserStatus.Approved ? 'Aprobado' : 
+                         user.status === UserStatus.Pending ? 'Pendiente' : 
+                         user.status === UserStatus.Disabled ? 'Deshabilitado' : 
+                         user.status === UserStatus.Deleted ? 'Eliminado' : user.status}
+                    </span>
+                </div>
                 {user.plainPassword && auth?.user?.role === Role.Admin && user.email !== 'admin' && user.email !== 'admin@admin.cl' && (
                     <p className="text-sm font-mono text-[var(--brand-primary)] mt-1">
                         Contraseña: {user.plainPassword}

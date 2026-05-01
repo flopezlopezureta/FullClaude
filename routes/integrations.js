@@ -1052,11 +1052,23 @@ const makeShopifyRequest = (shopUrl, accessToken, path, method = 'GET', postData
     });
 };
 
-const getValidShopifyIntegration = async (clientId) => {
+const getValidShopifyIntegration = async (clientId, accountId = null) => {
     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
     if (userRows.length === 0) throw new Error('Cliente no encontrado.');
     
-    let shopifyIntegration = userRows[0].integrations?.shopify;
+    let integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+    let shopifyIntegration = null;
+
+    if (accountId) {
+        const acc = integrations.accounts.find(a => a.id === accountId && a.type === 'SHOPIFY');
+        if (acc) shopifyIntegration = acc.credentials;
+    } else {
+        shopifyIntegration = integrations.shopify;
+        if (!shopifyIntegration && integrations.accounts) {
+            const acc = integrations.accounts.find(a => a.type === 'SHOPIFY');
+            if (acc) shopifyIntegration = acc.credentials;
+        }
+    }
     
     // If not in user, check global settings
     if (!shopifyIntegration || !shopifyIntegration.shopUrl || !shopifyIntegration.accessToken) {
@@ -1076,11 +1088,23 @@ const getValidShopifyIntegration = async (clientId) => {
     return shopifyIntegration;
 };
 
-const getValidWooCommerceIntegration = async (clientId) => {
+const getValidWooCommerceIntegration = async (clientId, accountId = null) => {
     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
     if (userRows.length === 0) throw new Error('Cliente no encontrado.');
     
-    let wooIntegration = userRows[0].integrations?.woocommerce;
+    let integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+    let wooIntegration = null;
+
+    if (accountId) {
+        const acc = integrations.accounts.find(a => a.id === accountId && a.type === 'WOOCOMMERCE');
+        if (acc) wooIntegration = acc.credentials;
+    } else {
+        wooIntegration = integrations.woocommerce;
+        if (!wooIntegration && integrations.accounts) {
+            const acc = integrations.accounts.find(a => a.type === 'WOOCOMMERCE');
+            if (acc) wooIntegration = acc.credentials;
+        }
+    }
     
     // If not in user, check global settings
     if (!wooIntegration || !wooIntegration.wooUrl || !wooIntegration.wooConsumerKey || !wooIntegration.wooConsumerSecret) {
@@ -1101,11 +1125,23 @@ const getValidWooCommerceIntegration = async (clientId) => {
     return wooIntegration;
 };
 
-const getValidFalabellaIntegration = async (clientId) => {
+const getValidFalabellaIntegration = async (clientId, accountId = null) => {
     const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
     if (userRows.length === 0) throw new Error('Cliente no encontrado.');
     
-    let falabellaIntegration = userRows[0].integrations?.falabella;
+    let integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+    let falabellaIntegration = null;
+
+    if (accountId) {
+        const acc = integrations.accounts.find(a => a.id === accountId && a.type === 'FALABELLA');
+        if (acc) falabellaIntegration = acc.credentials;
+    } else {
+        falabellaIntegration = integrations.falabella;
+        if (!falabellaIntegration && integrations.accounts) {
+            const acc = integrations.accounts.find(a => a.type === 'FALABELLA');
+            if (acc) falabellaIntegration = acc.credentials;
+        }
+    }
     
     // If not in user, check global settings
     if (!falabellaIntegration || !falabellaIntegration.falabellaApiKey || !falabellaIntegration.falabellaSellerId) {
@@ -1123,6 +1159,31 @@ const getValidFalabellaIntegration = async (clientId) => {
     }
 
     return falabellaIntegration;
+};
+
+const getValidJumpsellerIntegration = async (clientId, accountId = null) => {
+    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+    if (userRows.length === 0) throw new Error('Cliente no encontrado.');
+    
+    let integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+    let jumpsellerIntegration = null;
+
+    if (accountId) {
+        const acc = integrations.accounts.find(a => a.id === accountId && a.type === 'JUMPSELLER');
+        if (acc) jumpsellerIntegration = acc.credentials;
+    } else {
+        jumpsellerIntegration = integrations.jumpseller;
+        if (!jumpsellerIntegration && integrations.accounts) {
+            const acc = integrations.accounts.find(a => a.type === 'JUMPSELLER');
+            if (acc) jumpsellerIntegration = acc.credentials;
+        }
+    }
+    
+    if (!jumpsellerIntegration || !jumpsellerIntegration.login || !jumpsellerIntegration.token) {
+        throw new Error('El cliente no tiene Jumpseller configurado.');
+    }
+
+    return jumpsellerIntegration;
 };
 
 // POST /api/integrations/test/shopify
@@ -1234,55 +1295,61 @@ router.get('/:clientId/shopify/orders', authMiddleware, async (req, res) => {
     }
 
     try {
-        const shopifyIntegration = await getValidShopifyIntegration(clientId);
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
         
-        // Fetch open orders
-        const data = await makeShopifyRequest(
-            shopifyIntegration.shopUrl, 
-            shopifyIntegration.accessToken, 
-            '/orders.json?status=open&fulfillment_status=unfulfilled'
-        );
-        
-        if (!data || !data.orders) {
-            return res.json([]);
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        const shopifyAccounts = integrations.accounts.filter(acc => acc.type === 'SHOPIFY');
+
+        if (shopifyAccounts.length === 0) {
+            // Check legacy field or global settings
+            try {
+                const legacyShopify = await getValidShopifyIntegration(clientId);
+                if (legacyShopify) {
+                    shopifyAccounts.push({
+                        id: 'legacy-shopify',
+                        nickname: 'Shopify (Principal)',
+                        credentials: legacyShopify
+                    });
+                }
+            } catch (e) {
+                return res.json([]);
+            }
         }
 
-        const orders = data.orders.map(order => ({
-            id: order.id.toString(),
-            recipientName: `${order.shipping_address?.first_name || ''} ${order.shipping_address?.last_name || ''}`.trim() || order.customer?.first_name || 'N/A',
-            recipientPhone: order.shipping_address?.phone || order.customer?.phone || 'N/A',
-            address: `${order.shipping_address?.address1 || ''} ${order.shipping_address?.address2 || ''}`.trim() || 'N/A',
-            commune: order.shipping_address?.city || 'N/A',
-            city: order.shipping_address?.province || 'N/A',
-            notes: `Shopify Order: ${order.name || order.id}`,
-        }));
+        let allOrders = [];
+        for (const account of shopifyAccounts) {
+            try {
+                // Fetch open orders
+                const data = await makeShopifyRequest(
+                    account.credentials.shopUrl, 
+                    account.credentials.accessToken, 
+                    '/orders.json?status=open&fulfillment_status=unfulfilled'
+                );
+                
+                if (data && data.orders) {
+                    const mapped = data.orders.map(order => ({
+                        id: order.id.toString(),
+                        recipientName: `${order.shipping_address?.first_name || ''} ${order.shipping_address?.last_name || ''}`.trim() || order.customer?.first_name || 'N/A',
+                        recipientPhone: order.shipping_address?.phone || order.customer?.phone || 'N/A',
+                        address: `${order.shipping_address?.address1 || ''} ${order.shipping_address?.address2 || ''}`.trim() || 'N/A',
+                        commune: order.shipping_address?.city || 'N/A',
+                        city: order.shipping_address?.province || 'N/A',
+                        notes: `Shopify Order: ${order.name || order.id} (${account.nickname})`,
+                        sourceAccountId: account.id,
+                        sourceAccountName: account.nickname
+                    }));
+                    allOrders = [...allOrders, ...mapped];
+                }
+            } catch (err) {
+                console.error(`Error fetching Shopify orders for ${account.nickname}:`, err.message);
+            }
+        }
 
-        res.json(orders);
+        res.json(allOrders);
     } catch (err) {
         console.error("Shopify Fetch Orders Error:", err.body || err);
-        let errorMsg = 'Error al obtener pedidos de Shopify.';
-        let statusCode = 500;
-
-        if (err.statusCode) {
-            statusCode = err.statusCode;
-            if (err.statusCode === 401) {
-                errorMsg = 'No autorizado. Verifica las credenciales de Shopify.';
-            } else if (err.statusCode === 404) {
-                errorMsg = 'No encontrado. Verifica la URL de la tienda.';
-            }
-        }
-
-        if (err.body && err.body.errors) {
-            if (typeof err.body.errors === 'string') {
-                errorMsg = err.body.errors;
-            } else if (typeof err.body.errors === 'object') {
-                errorMsg = JSON.stringify(err.body.errors);
-            }
-        } else if (err.message) {
-            errorMsg = err.message;
-        }
-
-        res.status(statusCode).json({ message: errorMsg });
+        res.status(500).json({ message: err.message || 'Error al obtener pedidos de Shopify.' });
     }
 });
 
@@ -1378,34 +1445,60 @@ router.get('/:clientId/woocommerce/orders', authMiddleware, async (req, res) => 
     }
 
     try {
-        const wooIntegration = await getValidWooCommerceIntegration(clientId);
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado' });
         
-        // Fetch processing orders
-        const ordersData = await makeWooCommerceRequest(
-            wooIntegration.wooUrl, 
-            wooIntegration.wooConsumerKey, 
-            wooIntegration.wooConsumerSecret, 
-            '/orders?status=processing'
-        );
-        
-        if (!ordersData || !Array.isArray(ordersData)) {
-            return res.json([]);
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        const wooAccounts = integrations.accounts.filter(acc => acc.type === 'WOOCOMMERCE');
+
+        if (wooAccounts.length === 0) {
+            try {
+                const legacyWoo = await getValidWooCommerceIntegration(clientId);
+                if (legacyWoo) {
+                    wooAccounts.push({
+                        id: 'legacy-woo',
+                        nickname: 'WooCommerce (Principal)',
+                        credentials: legacyWoo
+                    });
+                }
+            } catch (e) {
+                return res.json([]);
+            }
         }
 
-        const orders = ordersData.map(order => ({
-            id: order.id.toString(),
-            recipientName: `${order.shipping?.first_name || ''} ${order.shipping?.last_name || ''}`.trim() || `${order.billing?.first_name || ''} ${order.billing?.last_name || ''}`.trim() || 'N/A',
-            recipientPhone: order.billing?.phone || 'N/A',
-            address: `${order.shipping?.address_1 || ''} ${order.shipping?.address_2 || ''}`.trim() || order.billing?.address_1 || 'N/A',
-            commune: order.shipping?.city || order.billing?.city || 'N/A',
-            city: order.shipping?.state || order.billing?.state || 'N/A',
-            notes: `WooCommerce Order: ${order.number || order.id}`,
-        }));
+        let allOrders = [];
+        for (const account of wooAccounts) {
+            try {
+                const ordersData = await makeWooCommerceRequest(
+                    account.credentials.wooUrl, 
+                    account.credentials.wooConsumerKey, 
+                    account.credentials.wooConsumerSecret, 
+                    '/orders?status=processing'
+                );
+                
+                if (ordersData && Array.isArray(ordersData)) {
+                    const mapped = ordersData.map(order => ({
+                        id: order.id.toString(),
+                        recipientName: `${order.shipping?.first_name || ''} ${order.shipping?.last_name || ''}`.trim() || `${order.billing?.first_name || ''} ${order.billing?.last_name || ''}`.trim() || 'N/A',
+                        recipientPhone: order.billing?.phone || 'N/A',
+                        address: `${order.shipping?.address_1 || ''} ${order.shipping?.address_2 || ''}`.trim() || order.billing?.address_1 || 'N/A',
+                        commune: order.shipping?.city || order.billing?.city || 'N/A',
+                        city: order.shipping?.state || order.billing?.state || 'N/A',
+                        notes: `Woo Order: ${order.number || order.id} (${account.nickname})`,
+                        sourceAccountId: account.id,
+                        sourceAccountName: account.nickname
+                    }));
+                    allOrders = [...allOrders, ...mapped];
+                }
+            } catch (err) {
+                console.error(`Error fetching WooCommerce orders for ${account.nickname}:`, err.message);
+            }
+        }
 
-        res.json(orders);
+        res.json(allOrders);
     } catch (err) {
         console.error("WooCommerce Fetch Orders Error:", err.body || err);
-        res.status(500).json({ message: 'Error al obtener pedidos de WooCommerce: ' + (err.message || 'Error desconocido') });
+        res.status(500).json({ message: 'Error al obtener pedidos de WooCommerce.' });
     }
 });
 
@@ -2097,34 +2190,58 @@ router.get('/:clientId/jumpseller/orders', authMiddleware, async (req, res) => {
         const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
         if (userRows.length === 0) return res.status(404).json({ message: 'Cliente no encontrado.' });
         
-        const jumpsellerIntegration = userRows[0].integrations?.jumpseller;
-        if (!jumpsellerIntegration) return res.status(400).json({ message: 'El cliente no tiene Jumpseller conectado.' });
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        const jumpAccounts = integrations.accounts.filter(acc => acc.type === 'JUMPSELLER');
 
-        // Fetch recent orders (Ready or Paid)
-        // Jumpseller orders endpoint: /orders.json
-        const orders = await makeJumpsellerRequest(jumpsellerIntegration.login, jumpsellerIntegration.token, '/orders.json?status=all&limit=50');
-        
-        // Filter and map to local format
-        // Statuses usually: 'Paid', 'Pending', 'Abandoned', 'Canceled', 'Shipped', 'Ready'
-        const eligibleOrders = orders
-            .filter(o => o.order.status === 'Paid' || o.order.status === 'Ready')
-            .map(o => {
-                const order = o.order;
-                const shipping = order.shipping_address || {};
-                const customer = order.customer || {};
+        if (jumpAccounts.length === 0) {
+            try {
+                const legacyJump = await getValidJumpsellerIntegration(clientId);
+                if (legacyJump) {
+                    jumpAccounts.push({
+                        id: 'legacy-jump',
+                        nickname: 'Jumpseller (Principal)',
+                        credentials: legacyJump
+                    });
+                }
+            } catch (e) {
+                return res.json([]);
+            }
+        }
+
+        let allOrders = [];
+        for (const account of jumpAccounts) {
+            try {
+                // Fetch recent orders (Ready or Paid)
+                const orders = await makeJumpsellerRequest(account.credentials.login, account.credentials.token, '/orders.json?status=all&limit=50');
                 
-                return {
-                    id: order.id.toString(),
-                    recipientName: shipping.fullname || customer.fullname || 'N/A',
-                    address: shipping.address || 'N/A',
-                    commune: shipping.municipality || 'N/A',
-                    city: shipping.city || 'N/A',
-                    notes: `Jumpseller Order: ${order.id}`,
-                    shipmentId: order.id.toString() // Jumpseller doesn't have a separate shipment ID easily accessible like ML
-                };
-            });
+                if (orders && Array.isArray(orders)) {
+                    const mapped = orders
+                        .filter(o => o.order.status === 'Paid' || o.order.status === 'Ready')
+                        .map(o => {
+                            const order = o.order;
+                            const shipping = order.shipping_address || {};
+                            const customer = order.customer || {};
+                            
+                            return {
+                                id: order.id.toString(),
+                                recipientName: shipping.fullname || customer.fullname || 'N/A',
+                                address: shipping.address || 'N/A',
+                                commune: shipping.municipality || 'N/A',
+                                city: shipping.city || 'N/A',
+                                notes: `Jump Order: ${order.id} (${account.nickname})`,
+                                shipmentId: order.id.toString(),
+                                sourceAccountId: account.id,
+                                sourceAccountName: account.nickname
+                            };
+                        });
+                    allOrders = [...allOrders, ...mapped];
+                }
+            } catch (err) {
+                console.error(`Error fetching Jumpseller orders for ${account.nickname}:`, err.message);
+            }
+        }
 
-        res.json(eligibleOrders);
+        res.json(allOrders);
     } catch (err) {
         console.error("Jumpseller Fetch Orders Error:", err.body || err);
         res.status(500).json({ message: err.message || 'Error al obtener pedidos de Jumpseller.' });

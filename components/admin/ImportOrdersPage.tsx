@@ -148,27 +148,32 @@ const ImportOrdersPage: React.FC = () => {
                 // Generic import for Shopify
                 const selectedOrdersList = orders.filter(o => selectedOrders.has(o.id));
                 
-                // Refetch user to get origin address
-                const client = allClients.find(c => c.id === selectedClientId);
-                const origin = client?.pickupAddress || client?.address || 'Shopify Import';
-
-                const packagesToCreate: PackageCreationData[] = selectedOrdersList.map(order => ({
-                    recipientName: order.recipientName,
-                    recipientPhone: '', 
-                    recipientAddress: order.address,
-                    recipientCommune: order.commune,
-                    recipientCity: order.city,
-                    notes: order.notes,
-                    estimatedDelivery: new Date(),
-                    shippingType: ShippingType.SameDay,
-                    source: source,
-                    shopifyOrderId: source === PackageSource.Shopify ? order.id : undefined,
-                    jumpsellerOrderId: source === PackageSource.Jumpseller ? order.id : undefined,
-                    creatorId: selectedClientId,
-                    origin: origin
-                }));
-
-                await api.createMultiplePackages(packagesToCreate);
+                const packagesToCreate = selectedOrdersList.map(order => {
+                    const client = allClients.find(c => c.id === selectedClientId);
+                    return {
+                        id: `${client?.clientIdentifier || 'CLI'}-${Math.random().toString(36).substr(2, 9)}`,
+                        recipientName: order.recipientName,
+                        recipientPhone: 'N/A', // Shopify doesn't always provide phone in the list
+                        status: PackageStatus.Pending,
+                        shippingType: ShippingType.SameDay,
+                        origin: client?.pickupAddress || client?.address || 'Centro de Distribución',
+                        recipientAddress: order.address,
+                        recipientCommune: order.commune,
+                        recipientCity: order.city || 'Santiago',
+                        notes: order.notes,
+                        estimatedDelivery: new Date(),
+                        createdAt: new Date(),
+                        updatedAt: new Date(),
+                        creatorId: selectedClientId,
+                        source: source === PackageSource.Shopify ? 'SHOPIFY' : (source === PackageSource.Jumpseller ? 'JUMPSELLER' : 'WOOCOMMERCE'),
+                        sourceAccountId: order.sourceAccountId,
+                        sourceAccountName: order.sourceAccountName,
+                        shopifyOrderId: source === PackageSource.Shopify ? order.id : undefined,
+                        jumpsellerOrderId: source === PackageSource.Jumpseller ? order.id : undefined,
+                        wooOrderId: source === PackageSource.WooCommerce ? order.id : undefined
+                    };
+                });
+                await api.createMultiplePackages(packagesToCreate as any);
             }
 
             // Refetch orders to show that the imported ones are gone

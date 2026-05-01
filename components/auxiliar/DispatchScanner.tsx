@@ -293,7 +293,22 @@ const DispatchScanner: React.FC = () => {
             setIsLoading(true);
             try {
                 const allUsers = await api.getUsers();
-                setDrivers(allUsers.filter(u => u.role === Role.Driver && u.status === 'APROBADO'));
+                setDrivers(allUsers.filter(u => {
+                    const role = String(u.role || '').toUpperCase();
+                    const status = String(u.status || '').toUpperCase();
+                    
+                    // Robust check for roles (includes synonyms and different cases)
+                    const isAdmin = role === 'ADMIN' || role === 'ADMINISTRADOR';
+                    const isDriver = role === 'DRIVER' || role === 'CONDUCTOR' || role === 'CHOFER';
+                    
+                    // Check for explicit delivery permission if available
+                    const hasDeliveryPermission = u.driverPermissions?.canDeliver === true;
+                    
+                    // Status check (Approved)
+                    const isApproved = status === 'APROBADO' || status === 'APPROVED' || status === 'ACTIVO';
+                    
+                    return (isAdmin || isDriver || hasDeliveryPermission) && isApproved;
+                }));
             } catch (error) {
                 console.error("Failed to fetch drivers", error);
             } finally {
