@@ -263,4 +263,99 @@ router.post('/:id/toggle-status', authMiddleware, adminOnly, async (req, res) =>
     }
 });
 
+
+// GET /api/users/fleet-status - Get real-time driver status for dashboard monitor
+router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        
+        // Query to get drivers with their package counts for today and closure status
+        const query = `
+            SELECT 
+                u.id, 
+                u.name, 
+                u.phone,
+                COALESCE(p_stats.total, 0) as "totalToday",
+                COALESCE(p_stats.delivered, 0) as "deliveredToday",
+                COALESCE(p_stats.pending, 0) as "pendingToday",
+                COALESCE(p_stats.failed, 0) as "failedToday",
+                (dc.id IS NOT NULL) as "hasClosedToday",
+                dc."closedAt" as "closureTime"
+            FROM users u
+            LEFT JOIN (
+                SELECT 
+                    "driverId",
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
+                    COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')) as pending,
+                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as failed
+                FROM packages
+                WHERE "driverId" IS NOT NULL
+                AND ("assignedAt"::text LIKE $1 OR ("updatedAt"::text LIKE $1 AND status != 'PENDIENTE'))
+                GROUP BY "driverId"
+            ) p_stats ON u.id = p_stats."driverId"
+            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::text = $1
+            WHERE u.role IN ('DRIVER', 'ADMIN') 
+            AND u.status = 'APROBADO'
+            AND (p_stats.total > 0 OR dc.id IS NOT NULL)
+            ORDER BY "pendingToday" DESC, u.name ASC
+        `;
+        
+        const { rows } = await db.query(query, [today]);
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching fleet status:', err);
+        res.status(500).json({ message: 'Error al obtener el estado de la flota.' });
+    }
+});
+
+// GET /api/users/analytics - Advanced productivity metrics for reports
+router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
+    try {
+        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        
+        // 1. Packages per hour per driver (Today)
+        const hourlyQuery = `
+            SELECT 
+                u.name as "driverName",
+                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') as hour,
+                COUNT(*)::int as count
+            FROM packages p
+            JOIN users u ON p."driverId" = u.id
+            WHERE p.status = 'ENTREGADO'
+            AND p."updatedAt"::text LIKE $1
+            GROUP BY u.name, hour
+            ORDER BY hour ASC, u.name ASC
+        `;
+
+        // 2. Performance ranking (Today)
+        const rankingQuery = `
+            SELECT 
+                u.name as "driverName",
+                COUNT(*)::int as "deliveredCount",
+                ROUND(AVG(EXTRACT(EPOCH FROM (p."updatedAt" - p."assignedAt")))/60, 1) as "avgDeliveryTimeMinutes"
+            FROM packages p
+            JOIN users u ON p."driverId" = u.id
+            WHERE p.status = 'ENTREGADO'
+            AND p."updatedAt"::text LIKE $1
+            AND p."assignedAt" IS NOT NULL
+            GROUP BY u.name
+            ORDER BY "deliveredCount" DESC
+        `;
+
+        const [hourlyData, rankingData] = await Promise.all([
+            db.query(hourlyQuery, [today + '%']),
+            db.query(rankingQuery, [today + '%'])
+        ]);
+
+        res.json({
+            hourly: hourlyData.rows,
+            ranking: rankingData.rows
+        });
+    } catch (err) {
+        console.error('Error fetching analytics:', err);
+        res.status(500).json({ message: 'Error al obtener estadísticas avanzadas.' });
+    }
+});
+
 module.exports = router;

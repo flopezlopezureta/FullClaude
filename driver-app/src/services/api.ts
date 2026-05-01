@@ -3,12 +3,17 @@ import * as SecureStore from 'expo-secure-store';
 import { API_URL, STORAGE_KEYS } from '../constants';
 import { OfflineManager } from './OfflineManager';
 
+// Instancia inicial sin baseURL (se configurará dinámicamente)
 const apiInstance = axios.create({
-  baseURL: API_URL,
   headers: {
     'Content-Type': 'application/json',
   },
 });
+
+// Función para actualizar la URL base dinámicamente
+export const setApiBaseUrl = (url: string) => {
+  apiInstance.defaults.baseURL = url.endsWith('/api') ? url : `${url}/api`;
+};
 
 // Interceptor para añadir el token a todas las peticiones
 apiInstance.interceptors.request.use(async (config) => {
@@ -49,9 +54,11 @@ export const api = {
         return await OfflineManager.getPackagesFromCache();
       }
 
-      const start = startDate || new Date().toISOString().split('T')[0];
-      const end = endDate || start;
-      const response = await apiInstance.get(`/packages?driverFilter=${driverId}&startDate=${start}&endDate=${end}&limit=0`);
+      let url = `/packages?driverFilter=${driverId}&limit=0`;
+      if (startDate) url += `&startDate=${startDate}`;
+      if (endDate) url += `&endDate=${endDate}`;
+      
+      const response = await apiInstance.get(url);
       
       // Guardamos en cache para la próxima vez
       if (response.data.packages) {

@@ -13,6 +13,9 @@ import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { AuthContext } from '../contexts/AuthContext';
 import { api } from '../services/api';
 import { COLORS } from '../constants';
+import { OfflineManager } from '../services/OfflineManager';
+import { Camera } from 'expo-camera';
+import * as Location from 'expo-location';
 
 const MENU_ITEMS = [
   { 
@@ -66,7 +69,6 @@ const MENU_ITEMS = [
   },
 ];
 
-import { OfflineManager } from '../services/OfflineManager';
 
 export default function HomeScreen({ navigation }: any) {
   const { user, logout } = useContext(AuthContext);
@@ -80,7 +82,18 @@ export default function HomeScreen({ navigation }: any) {
       const online = await OfflineManager.isConnected();
       setIsOnline(online);
 
-      // 2. Fetch settings
+      // 2. Request Permissions
+      try {
+        const { status: camStatus } = await Camera.requestCameraPermissionsAsync();
+        const { status: locStatus } = await Location.requestForegroundPermissionsAsync();
+        if (camStatus !== 'granted' || locStatus !== 'granted') {
+           console.log('Permisos no otorgados completamente');
+        }
+      } catch (e) {
+        console.log('Error solicitando permisos', e);
+      }
+
+      // 3. Fetch settings
       try {
         const data = await api.getSystemSettings();
         setSettings(data);

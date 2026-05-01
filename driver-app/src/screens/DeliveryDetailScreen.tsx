@@ -17,12 +17,14 @@ import {
 } from 'react-native';
 import { COLORS } from '../constants';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
+import { AuthContext } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
 import { api } from '../services/api';
 import { PhotoService } from '../services/PhotoService';
 
 export default function DeliveryDetailScreen({ route, navigation }: any) {
   const { pkg } = route.params;
+  const { user, serverUrl } = useContext(AuthContext);
   const isCompleted = ['ENTREGADO', 'CANCELADO', 'DEVUELTO'].includes(pkg.status);
   const isFailedAttempt = ['PROBLEMA', 'REPROGRAMADO'].includes(pkg.status);
   
@@ -33,6 +35,7 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
   const [photos, setPhotos] = useState<string[]>(pkg.photos || []);
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
+  const [packageHistory, setPackageHistory] = useState<any[]>(pkg.events || pkg.history || []);
 
   // Sync settings
   useEffect(() => {
@@ -44,6 +47,13 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
     };
     fetchSettings();
   }, []);
+
+  // Helpers to get image URL
+  const getImageUrl = (path: string) => {
+    if (path.startsWith('http')) return path;
+    const baseUrl = serverUrl.endsWith('/') ? serverUrl.slice(0, -1) : serverUrl;
+    return `${baseUrl}${path.startsWith('/') ? '' : '/'}${path}`;
+  };
   
   // Problem Report State
   const [problemModalVisible, setProblemModalVisible] = useState(false);
@@ -300,6 +310,57 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
                   <Text style={styles.addPhotoText}>Galería</Text>
                 </TouchableOpacity>
               </View>
+            )}
+          </View>
+          
+          {/* Fotos ya en el servidor */}
+          {pkg.photos && pkg.photos.length > 0 && (
+            <View style={{ marginTop: 20 }}>
+              <Text style={styles.sectionTitle}>Fotos en Servidor</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                <View style={styles.photoGrid}>
+                  {pkg.photos.map((photoPath: string, index: number) => (
+                    <TouchableOpacity key={index} onPress={() => Linking.openURL(getImageUrl(photoPath))}>
+                       <Image source={{ uri: getImageUrl(photoPath) }} style={styles.photoThumb} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
+          )}
+          
+          {/* Historial del Paquete */}
+          <View style={{ marginTop: 30 }}>
+            <Text style={styles.sectionTitle}>Historial del Paquete</Text>
+            {packageHistory.length > 0 ? (
+              <View style={styles.timeline}>
+                {packageHistory.map((event: any, index: number) => (
+                  <View key={index} style={styles.timelineItem}>
+                    <View style={styles.timelineIconContainer}>
+                      <View style={[styles.timelineLine, index === packageHistory.length - 1 && { height: 0 }]} />
+                      <View style={styles.timelineDot}>
+                        <Icon 
+                          name={
+                            event.status === 'ENTREGADO' ? 'check-circle' :
+                            event.status === 'DESPACHADO' ? 'truck-delivery' :
+                            event.status === 'RETIRADO' ? 'package-variant-closed' :
+                            'circle-outline'
+                          } 
+                          size={16} 
+                          color={COLORS.PRIMARY} 
+                        />
+                      </View>
+                    </View>
+                    <View style={styles.timelineContent}>
+                      <Text style={styles.timelineStatus}>{event.status}</Text>
+                      <Text style={styles.timelineDetail}>{event.notes || 'Evento registrado'}</Text>
+                      <Text style={styles.timelineDate}>{new Date(event.createdAt).toLocaleString()}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            ) : (
+              <Text style={styles.noHistoryText}>No hay eventos registrados aún.</Text>
             )}
           </View>
           
@@ -781,4 +842,63 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: '800',
   },
+  timeline: {
+    marginTop: 8,
+    paddingLeft: 4,
+  },
+  timelineItem: {
+    flexDirection: 'row',
+    marginBottom: 0,
+  },
+  timelineIconContainer: {
+    width: 30,
+    alignItems: 'center',
+  },
+  timelineLine: {
+    width: 2,
+    backgroundColor: '#e2e8f0',
+    flex: 1,
+    marginTop: 20,
+  },
+  timelineDot: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    borderWidth: 2,
+    borderColor: '#e2e8f0',
+    justifyContent: 'center',
+    alignItems: 'center',
+    position: 'absolute',
+    top: 0,
+    zIndex: 10,
+  },
+  timelineContent: {
+    flex: 1,
+    paddingLeft: 12,
+    paddingBottom: 24,
+  },
+  timelineStatus: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#1e293b',
+    textTransform: 'uppercase',
+  },
+  timelineDetail: {
+    fontSize: 13,
+    color: '#64748b',
+    marginTop: 2,
+  },
+  timelineDate: {
+    fontSize: 11,
+    color: '#94a3b8',
+    marginTop: 4,
+  },
+  noHistoryText: {
+    fontSize: 14,
+    color: '#94a3b8',
+    fontStyle: 'italic',
+    textAlign: 'center',
+    marginTop: 10,
+  }
 });

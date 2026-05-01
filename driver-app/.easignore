@@ -1,0 +1,11 @@
+node_modules
+.expo
+.next
+android
+ios
+bin
+build
+dist
+*.apk
+*.zip
+*.tar.gz

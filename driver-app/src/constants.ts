@@ -1,5 +1,6 @@
 export const API_URL = 'https://fullenvios.selcom.cl/api'; // Cambiar por la URL real de tu servidor
 export const STORAGE_KEYS = {
+  SERVER_URL: 'server_url',
   TOKEN: 'auth_token',
   USER: 'auth_user',
   PACKAGES_CACHE: 'packages_cache',

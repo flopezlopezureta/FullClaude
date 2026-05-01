@@ -12,6 +12,7 @@ import HistoryScreen from './src/screens/HistoryScreen';
 import ClosureScreen from './src/screens/ClosureScreen';
 import TestMLScreen from './src/screens/TestMLScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
+import SetupScreen from './src/screens/SetupScreen';
 import DeliveryDetailScreen from './src/screens/DeliveryDetailScreen';
 import { ActivityIndicator, View, StyleSheet } from 'react-native';
 import { COLORS } from './src/constants';
@@ -20,7 +21,7 @@ import { StatusBar } from 'expo-status-bar';
 const Stack = createNativeStackNavigator();
 
 function Navigation() {
-  const { user, isLoading } = useContext(AuthContext);
+  const { user, serverUrl, isLoading } = useContext(AuthContext);
 
   if (isLoading) {
     return (
@@ -33,7 +34,11 @@ function Navigation() {
   return (
     <NavigationContainer>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {user ? (
+        {!serverUrl ? (
+          <Stack.Screen name="Setup" component={SetupScreen} />
+        ) : !user ? (
+          <Stack.Screen name="Login" component={LoginScreen} />
+        ) : (
           <>
             <Stack.Screen name="Home" component={HomeScreen} />
             <Stack.Screen name="Deliveries" component={DeliveriesScreen} />
@@ -46,8 +51,6 @@ function Navigation() {
             <Stack.Screen name="Scanner" component={ScannerScreen} />
             <Stack.Screen name="DeliveryDetail" component={DeliveryDetailScreen} />
           </>
-        ) : (
-          <Stack.Screen name="Login" component={LoginScreen} />
         )}
       </Stack.Navigator>
     </NavigationContainer>

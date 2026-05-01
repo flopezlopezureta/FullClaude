@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useMemo } from 'react';
+import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { 
   StyleSheet, 
   View, 
@@ -94,16 +94,10 @@ export default function DeliveriesScreen({ navigation }: any) {
     
     let result = packages;
     if (activeTab === 'pending') {
-      // Mostrar solo lo que no esté cerrado Y que sea de hoy (o que esté explícitamente en ruta)
-      result = packages.filter(p => {
-        const isClosed = CLOSED_STATUSES.includes(p.status);
-        const isToday = p.createdAt && p.createdAt.startsWith(today);
-        const isActiveStatus = ['PENDIENTE', 'EN CAMINO', 'REPROGRAMADO'].includes(p.status);
-        
-        // Regla: No cerrado Y (Es de hoy O es un estado activo que requiere atención)
-        return !isClosed && (isToday || isActiveStatus);
-      });
+      // Mostrar TODO lo que no esté cerrado (sin importar la fecha)
+      result = packages.filter(p => !CLOSED_STATUSES.includes(p.status));
     } else {
+      // Mostrar TODO lo que esté cerrado (el API ya nos dará los relevantes)
       result = packages.filter(p => CLOSED_STATUSES.includes(p.status));
     }
 
