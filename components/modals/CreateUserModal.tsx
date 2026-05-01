@@ -150,7 +150,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
             canReturn: true,
             canViewHistory: true,
             canBulkPickup: false,
-            canColecta: false
+            canColecta: false,
+            canAuxiliar: false
         } : undefined
     };
     if (defaultRole === Role.Client) {

@@ -277,23 +277,57 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     }));
 
     const ws = XLSX.utils.json_to_sheet(dataToExport);
-    const wb = XLSX.utils.book_new();
+const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Usuarios");
     XLSX.writeFile(wb, `Reporte_Usuarios_${roleFilter}_${new Date().toLocaleDateString('es-CL').replace(/\//g, '-')}.xlsx`);
   };
 
-  const filteredUsers = users.filter(user => {
+  const filteredUsers = users.filter(u => {
+    const role = String(u.role || '').toUpperCase();
+    const searchTermLower = searchTerm.toLowerCase();
+    
+    // 1. Filtro por Rol (Tab seleccionada)
+    let matchesRole = false;
+    switch (roleFilter) {
+      case Role.Admin:
+        matchesRole = role === 'ADMIN' || role === 'ADMINISTRADOR';
+        break;
+      case Role.Driver:
+        matchesRole = role === 'DRIVER' || role === 'CHOFER' || role === 'CONDUCTOR' || u.driverPermissions?.canDeliver === true;
+        break;
+      case Role.Client:
+        matchesRole = role === 'CLIENT' || role === 'CLIENTE';
+        break;
+      case Role.Auxiliar:
+        matchesRole = role === 'AUXILIAR' || u.driverPermissions?.canDispatch === true;
+        break;
+      case Role.Retiros:
+        matchesRole = role === 'RETIROS' || u.driverPermissions?.canPickup === true;
+        break;
+      case Role.Facturacion:
+        matchesRole = role === 'FACTURACION';
+        break;
+      case Role.OperadorSistemas:
+        matchesRole = role === 'OPERADOR_SISTEMAS';
+        break;
+      default:
+        matchesRole = u.role === roleFilter;
+    }
+
+    if (!matchesRole) return false;
+
+    // 2. Filtro por búsqueda
     const matchesSearch = 
-      user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (user.phone && user.phone.includes(searchTerm)) ||
-      (user.rut && user.rut.toLowerCase().includes(searchTerm.toLowerCase()));
+      u.name.toLowerCase().includes(searchTermLower) ||
+      u.email.toLowerCase().includes(searchTermLower) ||
+      (u.phone && u.phone.includes(searchTermLower)) ||
+      (u.rut && u.rut.toLowerCase().includes(searchTermLower));
     
     // CASO ESPECIAL PARA PRUEBAS: Si el nombre contiene FABIÁN o FABIAN, incluir siempre
-    const isTestUser = user.name.toUpperCase().includes('FABIN') || user.name.toUpperCase().includes('FABIAN');
+    const isTestUser = u.name.toUpperCase().includes('FABIN') || u.name.toUpperCase().includes('FABIAN');
     
     if (showDeleted) return matchesSearch;
-    return (matchesSearch && user.status !== UserStatus.Deleted) || isTestUser;
+    return (matchesSearch && u.status !== UserStatus.Deleted) || isTestUser;
   }).sort((a, b) => {
     // Always keep Pending status at the top
     if (a.status === UserStatus.Pending && b.status !== UserStatus.Pending) return -1;

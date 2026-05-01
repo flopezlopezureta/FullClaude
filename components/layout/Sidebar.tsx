@@ -13,11 +13,16 @@ interface SidebarProps {
 
 const getRoleInSpanish = (role?: Role): string => {
     if (!role) return '';
-    switch (role) {
-        case Role.Admin: return 'Administrador';
+    const normalizedRole = String(role).toUpperCase();
+    switch (normalizedRole) {
+        case Role.Admin:
+        case 'ADMINISTRADOR': return 'Administrador';
         case Role.OperadorSistemas: return 'Operador de Sistemas';
-        case Role.Driver: return 'Conductor';
-        case Role.Client: return 'Cliente';
+        case Role.Driver:
+        case 'CHOFER':
+        case 'CONDUCTOR': return 'Conductor';
+        case Role.Client:
+        case 'CLIENTE': return 'Cliente';
         case Role.Facturacion: return 'Facturación';
         case Role.Retiros: return 'Retiros';
         case Role.Auxiliar: return 'Auxiliar';

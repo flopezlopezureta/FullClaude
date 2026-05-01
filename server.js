@@ -68,6 +68,74 @@ async function startServer() {
         }
     });
 
+    // [DIAGNÓSTICO] Auditoría de Integridad del Sistema
+    app.get('/api/admin/audit-integrity', async (req, res) => {
+        try {
+            const results = {
+                timestamp: new Date().toISOString(),
+                users: { 
+                    total: 0, 
+                    inconsistent: [],
+                    nonStandardStatus: []
+                },
+                integrations: { 
+                    legacyFormat: 0,
+                    orphanedConnections: 0 
+                },
+                packages: { 
+                    orphaned: 0, 
+                    duplicates: [] 
+                }
+            };
+
+            // 1. Roles/Status no estándar
+            const rolesRes = await db.query(`
+                SELECT id, name, role, status FROM users 
+                WHERE role NOT IN ('ADMIN', 'CLIENT', 'DRIVER', 'OPERADOR_SISTEMAS', 'FACTURACION', 'RETIROS', 'AUXILIAR')
+            `);
+            results.users.inconsistent = rolesRes.rows;
+
+            const statusRes = await db.query(`
+                SELECT id, name, status FROM users 
+                WHERE status NOT IN ('APROBADO', 'PENDIENTE', 'DESHABILITADO', 'ELIMINADO')
+            `);
+            results.users.nonStandardStatus = statusRes.rows;
+
+            // 2. Integraciones legadas (sin el campo 'accounts')
+            const legacyRes = await db.query(`
+                SELECT COUNT(*)::int FROM users 
+                WHERE integrations IS NOT NULL 
+                  AND (integrations->'accounts') IS NULL
+                  AND (integrations::text != '{}')
+            `);
+            results.integrations.legacyFormat = legacyRes.rows[0].count;
+
+            // 3. Paquetes huérfanos (asignados a conductores inexistentes)
+            const orphanedPkgRes = await db.query(`
+                SELECT COUNT(*)::int FROM packages p
+                LEFT JOIN users u ON p."driverId" = u.id
+                WHERE p."driverId" IS NOT NULL AND u.id IS NULL
+            `);
+            results.packages.orphaned = orphanedPkgRes.rows[0].count;
+
+            // 4. Duplicados de Mercado Libre / Shopify
+            const dupRes = await db.query(`
+                SELECT 'MELI' as type, "meliOrderId" as order_id, COUNT(*) 
+                FROM packages WHERE "meliOrderId" IS NOT NULL 
+                GROUP BY "meliOrderId" HAVING COUNT(*) > 1
+                UNION ALL
+                SELECT 'SHOPIFY' as type, "shopifyOrderId" as order_id, COUNT(*) 
+                FROM packages WHERE "shopifyOrderId" IS NOT NULL 
+                GROUP BY "shopifyOrderId" HAVING COUNT(*) > 1
+            `);
+            results.packages.duplicates = dupRes.rows;
+
+            res.json(results);
+        } catch (err) {
+            res.status(500).json({ error: err.message });
+        }
+    });
+
     // [EMERGENCIA] Limpieza de precisión para el arreglo de egresos
     app.get('/api/clean-egress-fix', async (req, res) => {
         try {
