@@ -12,3 +12,15 @@ yarn-error.log*
 *.sublime-workspace
 *.swp
 *.swo
+
+# Android and Build artifacts
+AndroidProject/
+AndroidTmp/
+APK/
+APK FullEnvios/
+dist/
+tmp/
+driver-app/node_modules/
+driver-app/android/
+driver-app/ios/
+driver-app/.expo/
