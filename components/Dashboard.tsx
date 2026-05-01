@@ -32,9 +32,6 @@ import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
 import ExportFormatModal from './modals/ExportFormatModal';
 import QuickStatusModal from './modals/QuickStatusModal';
 import { exportToExcel, exportToCSV } from '../services/exportService';
-import FleetMonitor from './FleetMonitor';
-import AnalyticsPanel from './AnalyticsPanel';
-import OperationalTimer from './OperationalTimer';
 
 // Fix: declare Chart.js if needed
 
@@ -663,9 +660,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      {/* --- OPERATIONAL PRECISION CLOCK --- */}
-      {auth?.user?.role === Role.Admin && <OperationalTimer />}
-
       {/* --- CRITICAL ALERTS CENTER --- */}
       {criticalAlerts.length > 0 && showCriticalAlerts && (
         <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up relative">
@@ -808,10 +802,6 @@ const Dashboard: React.FC = () => {
            </div>
         </div>
       )}
-
-      {/* --- FLEET MONITOR (REAL TIME) --- */}
-      {auth?.user?.role === Role.Admin && <FleetMonitor />}
-      {auth?.user?.role === Role.Admin && <AnalyticsPanel />}
 
       <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
         <PackageFilters
