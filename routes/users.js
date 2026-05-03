@@ -276,6 +276,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 u.phone,
                 COALESCE(p_stats.total, 0) as total_packages,
                 COALESCE(p_stats.delivered, 0) as delivered_packages,
+                COALESCE(p_stats.problems, 0) as problem_packages,
                 COALESCE(p_stats.pending, 0) as pending_packages,
                 (p_stats.delivered = p_stats.total AND p_stats.total > 0) as is_completed,
                 dc."closedAt" as last_update
@@ -285,7 +286,8 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     "driverId",
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
-                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RECOGIDO', 'EN_RUTA')) as pending
+                    COUNT(*) FILTER (WHERE status = 'PROBLEMA' OR status = 'REPROGRAMADO') as problems,
+                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RECOGIDO', 'EN_RUTA', 'RETIRADO')) as pending
                 FROM packages
                 WHERE "driverId" IS NOT NULL
                 AND (

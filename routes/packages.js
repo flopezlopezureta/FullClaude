@@ -155,6 +155,8 @@ router.get('/', authMiddleware, async (req, res) => {
                 statuses = statuses.filter(s => s !== 'closed');
                 if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
                 if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
+                if (!statuses.includes('PROBLEMA')) statuses.push('PROBLEMA');
+                if (!statuses.includes('REPROGRAMADO')) statuses.push('REPROGRAMADO');
             }
             if (statuses.length > 0) {
                 const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
@@ -268,7 +270,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
         if (quickFilter) {
             if (quickFilter === 'closed') {
-                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO')`);
+                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO', 'PROBLEMA', 'REPROGRAMADO')`);
             } else if (quickFilter === 'cancelled') {
                 whereClauses.push(`p.status = 'CANCELADO'`);
             } else if (quickFilter === 'rescheduled') {
