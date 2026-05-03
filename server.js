@@ -174,6 +174,7 @@ async function startServer() {
     const debugRoute = tryRequireRoute('./routes/debug.js'); if (debugRoute) app.use('/api/debug', debugRoute);
     const googleAuthRoute = tryRequireRoute('./routes/googleAuth.js'); if (googleAuthRoute) app.use('/api/auth/google', googleAuthRoute);
     const notificationsRoute = tryRequireRoute('./routes/notifications.js'); if (notificationsRoute) app.use('/api/notifications', notificationsRoute);
+    const reportsRoute = tryRequireRoute('./routes/reports.js'); if (reportsRoute) app.use('/api/reports', reportsRoute);
 
     // API Catch-all: prevent falling back to HTML for missing /api routes
     app.all('/api/*', (req, res) => {
