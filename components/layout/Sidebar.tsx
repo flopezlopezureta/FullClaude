@@ -197,6 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'zone-settings', 
       'live-map', 
       'billing-summary',
+      'activity-audit',
       'late-deliveries',
       'configuration'
     ];
