@@ -25,6 +25,7 @@ interface AuditReportRow {
     failedCurrently: number;
     returnedTotal: number;
     inTransit: number;
+    pending: number;
 }
 
 const ActivityAuditReport: React.FC = () => {
@@ -111,8 +112,9 @@ const ActivityAuditReport: React.FC = () => {
         success: acc.success + Number(row.successTotal),
         first: acc.first + Number(row.successFirstAttempt),
         failed: acc.failed + Number(row.failedCurrently) + Number(row.returnedTotal),
-        transit: acc.transit + Number(row.inTransit)
-    }), { total: 0, success: 0, first: 0, failed: 0, transit: 0 });
+        transit: acc.transit + Number(row.inTransit),
+        pending: acc.pending + Number(row.pending)
+    }), { total: 0, success: 0, first: 0, failed: 0, transit: 0, pending: 0 });
 
     const firstAttemptRate = globalTotals.success > 0 
         ? Math.round((globalTotals.first / globalTotals.success) * 100) 
@@ -230,6 +232,7 @@ const ActivityAuditReport: React.FC = () => {
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">3+ Intentos</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-rose-500 uppercase tracking-widest border-b border-slate-100 text-center">Fallas/Dev</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-amber-500 uppercase tracking-widest border-b border-slate-100 text-center">En Ruta</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-indigo-500 uppercase tracking-widest border-b border-slate-100 text-center">Pendientes</th>
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-50">
@@ -272,6 +275,9 @@ const ActivityAuditReport: React.FC = () => {
                                     <td className="px-6 py-4 text-center">
                                         <span className="font-black text-amber-600">{row.inTransit}</span>
                                     </td>
+                                    <td className="px-6 py-4 text-center">
+                                        <span className="font-black text-indigo-600">{row.pending}</span>
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -286,6 +292,7 @@ const ActivityAuditReport: React.FC = () => {
                                 </td>
                                 <td className="px-6 py-5 text-center text-lg text-rose-400">{globalTotals.failed}</td>
                                 <td className="px-6 py-5 text-center text-lg text-amber-400">{globalTotals.transit}</td>
+                                <td className="px-6 py-5 text-center text-lg text-indigo-400">{globalTotals.pending}</td>
                             </tr>
                         </tfoot>
                     </table>
