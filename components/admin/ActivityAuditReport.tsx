@@ -115,7 +115,7 @@ const ActivityAuditReport: React.FC = () => {
         dispatched: acc.dispatched + Number(row.dispatched),
         success: acc.success + Number(row.successTotal),
         first: acc.first + Number(row.successFirstAttempt),
-        failed: acc.failed + Number(row.failedCurrently) + Number(row.returnedTotal),
+        failed: acc.failed + (Number(row.failedCurrently) + Number(row.returnedTotal)),
         transit: acc.transit + Number(row.inTransit),
         pending: acc.pending + Number(row.pending)
     }), { totalIngresados: 0, dispatched: 0, success: 0, first: 0, failed: 0, transit: 0, pending: 0 });
@@ -308,7 +308,7 @@ const ActivityAuditReport: React.FC = () => {
                         <tfoot className="bg-slate-900 text-white">
                             <tr className="font-black">
                                 <td className="px-6 py-5 text-xs uppercase tracking-widest">TOTALES GENERALES</td>
-                                <td className="px-6 py-5 text-center text-lg">{globalTotals.total}</td>
+                                <td className="px-6 py-5 text-center text-lg">{globalTotals.dispatched}</td>
                                 <td className="px-6 py-5 text-center text-lg text-emerald-400">{globalTotals.success}</td>
                                 <td className="px-6 py-5 text-center" colSpan={3}>
                                     <span className="text-[10px] text-slate-400 uppercase tracking-widest mr-3">Tasa Éxito 1er Intento:</span>
