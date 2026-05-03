@@ -288,10 +288,13 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RECOGIDO', 'EN_RUTA')) as pending
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("assignedAt"::text LIKE $1 OR ("updatedAt"::text LIKE $1 AND status != 'PENDIENTE'))
+                AND (
+                    ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date 
+                    OR (("updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date AND status != 'PENDIENTE')
+                )
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
-            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::text = $1
+            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
             WHERE u.role IN ('DRIVER', 'ADMIN') 
             AND u.status = 'APROBADO'
             AND (p_stats.total > 0 OR dc.id IS NOT NULL)
@@ -330,7 +333,7 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
                 COUNT(*)::int as count
             FROM packages p
             WHERE p.status = 'ENTREGADO'
-            AND p."updatedAt"::text LIKE $1
+            AND (p."updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
             GROUP BY hour
             ORDER BY hour ASC
         `;
@@ -345,15 +348,15 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             FROM packages p
             JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
-            AND p."updatedAt"::text LIKE $1
+            AND (p."updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
             AND p."assignedAt" IS NOT NULL
             GROUP BY u.name
             ORDER BY delivered DESC
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [targetDate + '%']),
-            db.query(rankingQuery, [targetDate + '%'])
+            db.query(hourlyQuery, [targetDate]),
+            db.query(rankingQuery, [targetDate])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
