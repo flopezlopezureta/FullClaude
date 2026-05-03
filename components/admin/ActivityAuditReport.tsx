@@ -189,6 +189,21 @@ const ActivityAuditReport: React.FC = () => {
                 </div>
             </div>
 
+            {/* Informational Note for Open Packages */}
+            {(globalTotals.transit > 0) && (
+                <div className="bg-amber-50 border border-amber-200 p-4 rounded-2xl flex items-center gap-4 animate-pulse">
+                    <div className="w-10 h-10 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center">
+                        <IconAlertTriangle className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <p className="text-sm font-black text-amber-800">Atención: Paquetes sin gestionar</p>
+                        <p className="text-xs font-bold text-amber-600">
+                            Existen <span className="text-sm underline">{globalTotals.transit}</span> paquetes que salieron a terreno en este periodo pero aún no han sido completados (permanecen En Ruta o sin estado de cierre).
+                        </p>
+                    </div>
+                </div>
+            )}
+
             {/* Controls */}
             <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 flex flex-wrap items-end gap-6">
                 <div className="flex-1 min-w-[240px]">
