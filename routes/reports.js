@@ -27,9 +27,9 @@ router.get('/activity-audit', authMiddleware, async (req, res) => {
             WITH event_summary AS (
                 SELECT 
                     "packageId",
-                    COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered_events,
-                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as problem_events,
-                    COUNT(*) FILTER (WHERE status = 'DEVUELTO') as returned_events,
+                    COUNT(*) FILTER (WHERE status = 'ENTREGADO' AND timestamp >= $1 AND timestamp <= $2) as delivered_events,
+                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO') AND timestamp >= $1 AND timestamp <= $2) as problem_events,
+                    COUNT(*) FILTER (WHERE status = 'DEVUELTO' AND timestamp >= $1 AND timestamp <= $2) as returned_events,
                     MAX(timestamp) FILTER (WHERE status = 'ENTREGADO') as last_delivery_date,
                     MAX(timestamp) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as last_problem_date
                 FROM tracking_events
