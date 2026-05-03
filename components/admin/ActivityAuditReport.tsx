@@ -27,6 +27,7 @@ interface AuditReportRow {
     inTransit: number;
     pending: number;
     dispatched: number;
+    total: number;
 }
 
 const ActivityAuditReport: React.FC = () => {
@@ -114,8 +115,10 @@ const ActivityAuditReport: React.FC = () => {
         first: acc.first + Number(row.successFirstAttempt),
         failed: acc.failed + Number(row.failedCurrently) + Number(row.returnedTotal),
         transit: acc.transit + Number(row.inTransit),
-        pending: acc.pending + Number(row.pending)
-    }), { total: 0, success: 0, first: 0, failed: 0, transit: 0, pending: 0 });
+        pending: acc.pending + Number(row.pending),
+        dispatched: acc.dispatched + Number(row.dispatched),
+        total: acc.total + Number(row.total)
+    }), { total: 0, success: 0, first: 0, failed: 0, transit: 0, pending: 0, dispatched: 0 });
 
     const firstAttemptRate = globalTotals.success > 0 
         ? Math.round((globalTotals.first / globalTotals.success) * 100) 
@@ -124,14 +127,24 @@ const ActivityAuditReport: React.FC = () => {
     return (
         <div className="space-y-6">
             {/* Header Cards */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-inner">
+                    <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-xl flex items-center justify-center shadow-inner">
                         <IconPackage className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Despachados a Terreno</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Total Ingresados</p>
                         <p className="text-2xl font-black text-slate-800">{globalTotals.total}</p>
+                    </div>
+                </div>
+
+                <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shadow-inner">
+                        <IconTruck className="w-6 h-6" />
+                    </div>
+                    <div>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Despachados a Terreno</p>
+                        <p className="text-2xl font-black text-slate-800">{globalTotals.dispatched}</p>
                     </div>
                 </div>
 

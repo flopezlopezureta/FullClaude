@@ -56,7 +56,8 @@ router.get('/activity-audit', authMiddleware, async (req, res) => {
                 COUNT(pd.id) FILTER (WHERE pd.status = 'DEVUELTO') as "returnedTotal",
                 COUNT(pd.id) FILTER (WHERE pd.status IN ('ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "inTransit",
                 COUNT(pd.id) FILTER (WHERE pd.status NOT IN ('ENTREGADO', 'PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "pending",
-                COUNT(pd.id) FILTER (WHERE pd.status IN ('ENTREGADO', 'PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "dispatched"
+                COUNT(pd.id) FILTER (WHERE pd.status IN ('ENTREGADO', 'PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "dispatched",
+                COUNT(pd.id) as "total"
             FROM package_data pd
             JOIN users u ON pd."creatorId" = u.id
             GROUP BY u.id, u.name, u."companyName"
