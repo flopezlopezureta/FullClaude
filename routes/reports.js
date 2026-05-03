@@ -24,10 +24,14 @@ router.get('/activity-audit', authMiddleware, async (req, res) => {
         // 2. Correlate with tracking_events to count "Attempts" (Problem events before success)
         
         const query = `
-            WITH attempts_count AS (
+            WITH event_summary AS (
                 SELECT 
                     "packageId",
-                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as problem_events
+                    COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered_events,
+                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as problem_events,
+                    COUNT(*) FILTER (WHERE status = 'DEVUELTO') as returned_events,
+                    MAX(timestamp) FILTER (WHERE status = 'ENTREGADO') as last_delivery_date,
+                    MAX(timestamp) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as last_problem_date
                 FROM tracking_events
                 GROUP BY "packageId"
             ),
@@ -35,33 +39,36 @@ router.get('/activity-audit', authMiddleware, async (req, res) => {
                 SELECT 
                     p.id,
                     p."creatorId",
-                    p.status,
-                    COALESCE(ac.problem_events, 0) as failed_attempts
+                    p.status as current_status,
+                    COALESCE(es.delivered_events, 0) as delivered_count,
+                    COALESCE(es.problem_events, 0) as failed_attempts,
+                    COALESCE(es.returned_events, 0) as returned_count,
+                    es.last_delivery_date
                 FROM packages p
-                LEFT JOIN attempts_count ac ON p.id = ac."packageId"
+                LEFT JOIN event_summary es ON p.id = es."packageId"
                 WHERE 
                     (p."createdAt" >= $1 AND p."createdAt" <= $2)
-                    OR (p."updatedAt" >= $1 AND p."updatedAt" <= $2)
+                    OR (es.last_delivery_date >= $1 AND es.last_delivery_date <= $2)
+                    OR (es.last_problem_date >= $1 AND es.last_problem_date <= $2)
             )
             SELECT 
                 u.id as "clientId",
                 u.name as "clientName",
                 u."companyName",
-                COUNT(pd.id) as "totalProcessed",
-                COUNT(pd.id) FILTER (WHERE pd.status = 'ENTREGADO') as "successTotal",
-                COUNT(pd.id) FILTER (WHERE pd.status = 'ENTREGADO' AND pd.failed_attempts = 0) as "successFirstAttempt",
-                COUNT(pd.id) FILTER (WHERE pd.status = 'ENTREGADO' AND pd.failed_attempts = 1) as "successSecondAttempt",
-                COUNT(pd.id) FILTER (WHERE pd.status = 'ENTREGADO' AND pd.failed_attempts > 1) as "successMultipleAttempts",
-                COUNT(pd.id) FILTER (WHERE pd.status IN ('PROBLEMA', 'REPROGRAMADO')) as "failedCurrently",
-                COUNT(pd.id) FILTER (WHERE pd.status = 'DEVUELTO') as "returnedTotal",
-                COUNT(pd.id) FILTER (WHERE pd.status IN ('ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "inTransit",
-                COUNT(pd.id) FILTER (WHERE pd.status NOT IN ('ENTREGADO', 'PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "pending",
-                COUNT(pd.id) FILTER (WHERE pd.status IN ('ENTREGADO', 'PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "dispatched",
-                COUNT(pd.id) as "total"
+                COUNT(pd.id) as "total",
+                COUNT(pd.id) FILTER (WHERE pd.delivered_count > 0) as "successTotal",
+                COUNT(pd.id) FILTER (WHERE pd.delivered_count > 0 AND pd.failed_attempts = 0) as "successFirstAttempt",
+                COUNT(pd.id) FILTER (WHERE pd.delivered_count > 0 AND pd.failed_attempts = 1) as "successSecondAttempt",
+                COUNT(pd.id) FILTER (WHERE pd.delivered_count > 0 AND pd.failed_attempts > 1) as "successMultipleAttempts",
+                COUNT(pd.id) FILTER (WHERE pd.current_status IN ('PROBLEMA', 'REPROGRAMADO') AND pd.delivered_count = 0) as "failedCurrently",
+                COUNT(pd.id) FILTER (WHERE pd.current_status = 'DEVUELTO' OR (pd.returned_count > 0 AND pd.delivered_count = 0)) as "returnedTotal",
+                COUNT(pd.id) FILTER (WHERE pd.current_status IN ('ASIGNADO', 'RETIRADO', 'EN_TRANSITO') AND pd.delivered_count = 0) as "inTransit",
+                COUNT(pd.id) FILTER (WHERE pd.current_status NOT IN ('ENTREGADO', 'PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO') AND pd.delivered_count = 0) as "pending",
+                COUNT(pd.id) FILTER (WHERE pd.delivered_count > 0 OR pd.current_status IN ('PROBLEMA', 'REPROGRAMADO', 'DEVUELTO', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as "dispatched"
             FROM package_data pd
             JOIN users u ON pd."creatorId" = u.id
             GROUP BY u.id, u.name, u."companyName"
-            ORDER BY u.name ASC;
+            ORDER BY "successTotal" DESC;
         `;
 
         const result = await db.query(query, [startDate + ' 00:00:00', endDate + ' 23:59:59']);
