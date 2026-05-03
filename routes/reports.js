@@ -29,7 +29,6 @@ router.get('/activity-audit', authMiddleware, async (req, res) => {
                     "packageId",
                     COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO')) as problem_events
                 FROM tracking_events
-                WHERE timestamp >= $1 AND timestamp <= $2
                 GROUP BY "packageId"
             ),
             package_data AS (
