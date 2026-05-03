@@ -61,6 +61,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   const adminNavItems = [
     { id: 'packages', label: 'Gestión de Paquetes', icon: <IconLayoutDashboard className="h-6 w-6" /> },
     { id: 'delivery-analytics', label: 'Análisis Logístico (BI)', icon: <IconBarChart className="h-6 w-6 text-indigo-600" /> },
+    { id: 'activity-audit', label: 'Auditoría de Actividad', icon: <IconFileText className="h-6 w-6 text-amber-600" /> },
     { id: 'late-deliveries', label: 'Auditoría Nocturna (>21h)', icon: <IconClock className="h-6 w-6 text-red-500" /> },
     { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" /> },
     ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" /> }] : []),
@@ -93,7 +94,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" /> },
     { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" /> },
     { id: 'billing-summary', label: 'Resumen Operativo de Cobro', icon: <IconChartBar className="h-6 w-6 text-emerald-600" /> },
-    { id: 'activity-audit', label: 'Auditoría de Actividad', icon: <IconFileText className="h-6 w-6 text-amber-600" /> },
     { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" /> },
     {
       id: 'configuration',
@@ -189,6 +189,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'packages', 
       'delivery-analytics',
       'driver-performance',
+      'activity-audit',
       'flex-discrepancies',
       'geolocate', 
       'import-orders', 
@@ -196,6 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'users',
       'zone-settings', 
       'live-map', 
+      'global-billing',
       'billing-summary',
       'activity-audit',
       'late-deliveries',
