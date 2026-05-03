@@ -9,7 +9,8 @@ import {
     IconAlertTriangle, 
     IconTruck, 
     IconTrendingUp,
-    IconCalendar
+    IconCalendar,
+    IconClock
 } from '../Icon';
 import { getLocalDateString } from '../../utils/dateUtils';
 
