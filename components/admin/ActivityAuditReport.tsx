@@ -26,6 +26,7 @@ interface AuditReportRow {
     returnedTotal: number;
     inTransit: number;
     pending: number;
+    dispatched: number;
 }
 
 const ActivityAuditReport: React.FC = () => {
@@ -82,7 +83,7 @@ const ActivityAuditReport: React.FC = () => {
                 const values = [
                     row.clientName,
                     row.companyName,
-                    row.totalProcessed,
+                    row.dispatched,
                     row.successTotal,
                     row.successFirstAttempt,
                     row.successSecondAttempt,
@@ -108,7 +109,7 @@ const ActivityAuditReport: React.FC = () => {
     };
 
     const globalTotals = data.reduce((acc, row) => ({
-        total: acc.total + Number(row.totalProcessed),
+        total: acc.total + Number(row.dispatched),
         success: acc.success + Number(row.successTotal),
         first: acc.first + Number(row.successFirstAttempt),
         failed: acc.failed + Number(row.failedCurrently) + Number(row.returnedTotal),
@@ -129,7 +130,7 @@ const ActivityAuditReport: React.FC = () => {
                         <IconPackage className="w-6 h-6" />
                     </div>
                     <div>
-                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Procesados</p>
+                        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Despachados a Terreno</p>
                         <p className="text-2xl font-black text-slate-800">{globalTotals.total}</p>
                     </div>
                 </div>
@@ -225,7 +226,7 @@ const ActivityAuditReport: React.FC = () => {
                         <thead>
                             <tr className="bg-slate-50/50">
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100">Cliente</th>
-                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Total</th>
+                                <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">Despachados</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-emerald-500 uppercase tracking-widest border-b border-slate-100 text-center">Éxito</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">1er Intento</th>
                                 <th className="px-6 py-4 text-[10px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-100 text-center">2do Intento</th>
@@ -252,12 +253,12 @@ const ActivityAuditReport: React.FC = () => {
                                         <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{row.companyName || 'Persona Natural'}</p>
                                     </td>
                                     <td className="px-6 py-4 text-center">
-                                        <span className="inline-block px-3 py-1 bg-slate-100 text-slate-700 font-black text-xs rounded-lg">{row.totalProcessed}</span>
+                                        <span className="inline-block px-3 py-1 bg-slate-100 text-slate-700 font-black text-xs rounded-lg">{row.dispatched}</span>
                                     </td>
                                     <td className="px-6 py-4 text-center">
                                         <div className="flex flex-col items-center">
                                             <span className="font-black text-emerald-600">{row.successTotal}</span>
-                                            <span className="text-[9px] font-bold text-emerald-400 uppercase">{Math.round((row.successTotal / row.totalProcessed) * 100) || 0}%</span>
+                                            <span className="text-[9px] font-bold text-emerald-400 uppercase">{Math.round((row.successTotal / row.dispatched) * 100) || 0}%</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">
