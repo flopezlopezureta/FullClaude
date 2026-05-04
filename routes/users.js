@@ -282,12 +282,6 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 
                 UNION
                 
-                -- Drivers with events today
-                SELECT DISTINCT "userId" as driver_id FROM tracking_events
-                WHERE timestamp >= $1 AND timestamp <= $2
-                
-                UNION
-                
                 -- Drivers with packages updated today
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
@@ -389,7 +383,7 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
 
         const [hourlyData, rankingData] = await Promise.all([
             db.query(hourlyQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59', systemTZ]),
-            db.query(rankingQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59', systemTZ])
+            db.query(rankingQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59'])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
