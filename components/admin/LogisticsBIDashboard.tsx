@@ -51,8 +51,21 @@ interface AnalyticsData {
 const LogisticsBIDashboard: React.FC = () => {
   const [systemTimezone, setSystemTimezone] = useState<string>('America/Santiago');
   
-  const getTodayWithTimezone = (tz: string) => 
-    new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  const getTodayWithTimezone = (tz: string) => {
+    try {
+      // Use Intl.DateTimeFormat for a more reliable ISO-like format
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return formatter.format(new Date());
+    } catch (e) {
+      // Fallback
+      return new Date().toISOString().split('T')[0];
+    }
+  };
   
   const [selectedDate, setSelectedDate] = useState<string>(getTodayWithTimezone('America/Santiago'));
   const [isAutoDate, setIsAutoDate] = useState(true);
@@ -131,7 +144,7 @@ const LogisticsBIDashboard: React.FC = () => {
   const stats = useMemo(() => {
     const inRoute = fleet.filter(d => !d.is_completed).length;
     const finished = fleet.filter(d => d.is_completed).length;
-    const totalPending = fleet.reduce((sum, d) => sum + d.pending_packages, 0);
+    const totalPending = fleet.reduce((sum, d) => sum + Number(d.pending_packages || 0), 0);
     return { inRoute, finished, totalPending };
   }, [fleet]);
 
