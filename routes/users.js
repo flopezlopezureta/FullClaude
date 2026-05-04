@@ -325,7 +325,8 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
             LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
-            WHERE u.status = 'APROBADO'
+            WHERE u.status NOT IN ('ELIMINADO', 'DESHABILITADO', 'PENDIENTE')
+            AND u.role = 'DRIVER'
             ORDER BY pending DESC, u.name ASC
         `;
         
