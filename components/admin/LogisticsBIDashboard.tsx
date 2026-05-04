@@ -97,15 +97,25 @@ const LogisticsBIDashboard: React.FC = () => {
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fleetData, analyticsData] = await Promise.all([
-        api.getFleetStatus(selectedDate),
-        api.getAnalytics(selectedDate)
-      ]);
-      setFleet(fleetData);
-      setAnalytics(analyticsData);
+      // Fetch Fleet Status first (Priority)
+      try {
+        const fleetData = await api.getFleetStatus(selectedDate);
+        setFleet(fleetData);
+      } catch (err) {
+        console.error("Error fetching fleet status:", err);
+      }
+
+      // Then fetch Analytics (Secondary)
+      try {
+        const analyticsData = await api.getAnalytics(selectedDate);
+        setAnalytics(analyticsData);
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
+      }
+      
       setLastRefresh(new Date());
     } catch (error) {
-      console.error("Error fetching BI data:", error);
+      console.error("Critical error fetching BI data:", error);
     } finally {
       setLoading(false);
     }

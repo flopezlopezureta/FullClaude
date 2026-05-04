@@ -347,11 +347,11 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
         // 1. Flow of deliveries per hour (Total packages delivered by hour)
         const hourlyQuery = `
             SELECT 
-                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::text || ':00' as hour,
+                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'America/Santiago')::text || ':00' as hour,
                 COUNT(*)::int as count
             FROM packages p
             WHERE p.status = 'ENTREGADO'
-            AND (p."updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
+            AND p."updatedAt" >= $1 AND p."updatedAt" <= $2
             GROUP BY hour
             ORDER BY hour ASC
         `;
@@ -366,15 +366,15 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             FROM packages p
             JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
-            AND (p."updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
+            AND p."updatedAt" >= $1 AND p."updatedAt" <= $2
             AND p."assignedAt" IS NOT NULL
             GROUP BY u.name
             ORDER BY delivered DESC
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [targetDate]),
-            db.query(rankingQuery, [targetDate])
+            db.query(hourlyQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59']),
+            db.query(rankingQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59'])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
