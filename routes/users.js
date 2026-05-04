@@ -269,24 +269,28 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
     try {
         const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
+        // Fetch system timezone dynamically
+        const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
+        const systemTZ = settingsRows.length > 0 ? settingsRows[0].timezone : 'America/Santiago';
+        
         const query = `
             WITH active_drivers AS (
-                -- Drivers with events today (Santiago Time)
+                -- Drivers with events today (System TZ)
                 SELECT DISTINCT "userId" as driver_id FROM tracking_events
-                WHERE ("timestamp" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date = $1::date
+                WHERE ("timestamp" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
                 
                 UNION
                 
-                -- Drivers with packages updated today (Santiago Time)
+                -- Drivers with packages updated today (System TZ)
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date = $1::date
+                AND ("updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
                 
                 UNION
                 
-                -- Drivers with closures today
+                -- Drivers with closures today (System TZ)
                 SELECT DISTINCT "driverId" as driver_id FROM daily_closures
-                WHERE "date"::date = $1::date
+                WHERE ("date" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
             )
             SELECT 
                 u.id as driver_id, 
@@ -310,7 +314,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     MAX("updatedAt") as last_pkg_update
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date = $1::date
+                AND ("updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
             LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
@@ -318,7 +322,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
             ORDER BY pending DESC, u.name ASC
         `;
         
-        const { rows } = await db.query(query, [targetDate]);
+        const { rows } = await db.query(query, [targetDate, systemTZ]);
         
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
@@ -344,14 +348,18 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
     try {
         const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
+        // Fetch system timezone dynamically
+        const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
+        const systemTZ = settingsRows.length > 0 ? settingsRows[0].timezone : 'America/Santiago';
+
         // 1. Flow of deliveries per hour (Total packages delivered by hour)
         const hourlyQuery = `
             SELECT 
-                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::text || ':00' as hour,
+                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::text || ':00' as hour,
                 COUNT(*)::int as count
             FROM packages p
             WHERE p.status = 'ENTREGADO'
-            AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date = $1::date
+            AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
             GROUP BY hour
             ORDER BY hour ASC
         `;
@@ -366,15 +374,15 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             FROM packages p
             JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
-            AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::date = $1::date
+            AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
             AND p."assignedAt" IS NOT NULL
             GROUP BY u.name
             ORDER BY delivered DESC
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [targetDate]),
-            db.query(rankingQuery, [targetDate])
+            db.query(hourlyQuery, [targetDate, systemTZ]),
+            db.query(rankingQuery, [targetDate, systemTZ])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
