@@ -49,14 +49,34 @@ interface AnalyticsData {
 }
 
 const LogisticsBIDashboard: React.FC = () => {
-  const getTodaySantiago = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+  const [systemTimezone, setSystemTimezone] = useState<string>('America/Santiago');
   
-  const [selectedDate, setSelectedDate] = useState<string>(getTodaySantiago());
+  const getTodayWithTimezone = (tz: string) => 
+    new Date().toLocaleDateString('en-CA', { timeZone: tz });
+  
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayWithTimezone('America/Santiago'));
   const [isAutoDate, setIsAutoDate] = useState(true);
   const [fleet, setFleet] = useState<FleetDriverStatus[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
+
+  // Fetch system settings to get timezone
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await api.getSystemSettings();
+        if (settings.timezone) {
+          setSystemTimezone(settings.timezone);
+          const today = getTodayWithTimezone(settings.timezone);
+          setSelectedDate(today);
+        }
+      } catch (error) {
+        console.error("Error fetching system timezone:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   // Intelligent Date logic: Check if there's activity today
   useEffect(() => {
@@ -64,7 +84,7 @@ const LogisticsBIDashboard: React.FC = () => {
       if (!isAutoDate) return;
       
       try {
-        const today = getTodaySantiago();
+        const today = getTodayWithTimezone(systemTimezone);
         const fleetData = await api.getFleetStatus(today);
         
         // If no one is in route and no deliveries made today, switch to yesterday
@@ -114,7 +134,7 @@ const LogisticsBIDashboard: React.FC = () => {
   useEffect(() => {
     fetchData();
     // Auto-refresh every 30s if viewing today
-    const isToday = selectedDate === new Date().toISOString().split('T')[0];
+    const isToday = selectedDate === getTodayWithTimezone(systemTimezone);
     let interval: any;
     if (isToday) {
       interval = setInterval(fetchData, 30000);
