@@ -171,7 +171,7 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
         <div className="flex justify-center items-center space-x-3 mb-6">
             <img src="/logo.png" alt="Logo" className="h-12 w-auto drop-shadow-md" />
             <h1 className="text-3xl font-bold text-center text-[var(--text-primary)]">
-              {auth?.systemSettings.companyName || 'Sistema de Seguimiento'}
+              FULL ENVIOS
             </h1>
         </div>
         <div className="bg-[var(--background-secondary)] p-8 rounded-xl shadow-md">
