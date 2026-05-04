@@ -78,41 +78,21 @@ const LogisticsBIDashboard: React.FC = () => {
     fetchSettings();
   }, []);
 
-  // Intelligent Date logic: Check if there's activity today
+  // Fetch system settings to get timezone
   useEffect(() => {
-    const checkTodayActivity = async () => {
-      if (!isAutoDate) return;
-      
+    const fetchSettings = async () => {
       try {
-        const today = getTodayWithTimezone(systemTimezone);
-        const fleetData = await api.getFleetStatus(today);
-        
-        // If no one is in route and no deliveries made today, switch to yesterday
-        const totalDeliveriesToday = fleetData.reduce((sum: number, d: any) => sum + d.delivered_packages, 0);
-        
-        if (totalDeliveriesToday === 0 && fleetData.length === 0) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
-          if (selectedDate !== yesterdayStr) {
-            setSelectedDate(yesterdayStr);
-          }
-        } else {
-          if (selectedDate !== today) {
-            setSelectedDate(today);
-          }
+        const settings = await api.getSystemSettings();
+        if (settings.timezone) {
+          setSystemTimezone(settings.timezone);
+          setSelectedDate(getTodayWithTimezone(settings.timezone));
         }
       } catch (error) {
-        console.error("Error checking today's activity:", error);
+        console.error("Error fetching system timezone:", error);
       }
     };
-
-    checkTodayActivity();
-    
-    // Periodically check if today's operation started (every 2 mins)
-    const interval = setInterval(checkTodayActivity, 120000);
-    return () => clearInterval(interval);
-  }, [isAutoDate, selectedDate]);
+    fetchSettings();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
@@ -133,14 +113,10 @@ const LogisticsBIDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 30s if viewing today
-    const isToday = selectedDate === getTodayWithTimezone(systemTimezone);
-    let interval: any;
-    if (isToday) {
-      interval = setInterval(fetchData, 30000);
-    }
+    // Auto-refresh every 30s
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [selectedDate]);
+  }, [selectedDate, systemTimezone]);
 
   const stats = useMemo(() => {
     const inRoute = fleet.filter(d => !d.is_completed).length;
