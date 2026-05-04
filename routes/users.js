@@ -286,12 +286,6 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
                 AND "updatedAt" >= $1 AND "updatedAt" <= $2
-                
-                UNION
-                
-                -- Drivers with closures today
-                SELECT DISTINCT "driverId" as driver_id FROM daily_closures
-                WHERE "date" >= $1 AND "date" <= $2
             )
             SELECT 
                 u.id as driver_id, 
@@ -301,8 +295,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 COALESCE(p_stats.delivered, 0) as delivered_packages,
                 COALESCE(p_stats.problems, 0) as problem_packages,
                 COALESCE(p_stats.pending, 0) as pending_packages,
-                p_stats.last_pkg_update,
-                dc."closedAt" as closure_time
+                p_stats.last_pkg_update
             FROM active_drivers ad
             JOIN users u ON ad.driver_id = u.id
             LEFT JOIN (
@@ -318,7 +311,6 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 AND "updatedAt" >= $1 AND "updatedAt" <= $2
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
-            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date >= $1 AND dc.date <= $2
             WHERE u.status NOT IN ('ELIMINADO', 'DESHABILITADO', 'PENDIENTE')
             ORDER BY pending DESC, u.name ASC
         `;
@@ -328,11 +320,11 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
             const hasPackages = parseInt(row.total_packages) > 0;
-            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0) || !!row.closure_time;
+            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0);
             
             return {
                 ...row,
-                last_update: row.closure_time || row.last_pkg_update,
+                last_update: row.last_pkg_update,
                 is_completed: isCompleted
             };
         });
