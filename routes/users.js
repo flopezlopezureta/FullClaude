@@ -275,6 +275,13 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         
         const query = `
             WITH active_drivers AS (
+                -- Drivers with packages assigned for today (System TZ)
+                SELECT DISTINCT "driverId" as driver_id FROM packages
+                WHERE "driverId" IS NOT NULL
+                AND ("estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+                
+                UNION
+                
                 -- Drivers with events today (System TZ)
                 SELECT DISTINCT "userId" as driver_id FROM tracking_events
                 WHERE ("timestamp" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
