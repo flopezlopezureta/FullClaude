@@ -49,7 +49,9 @@ interface AnalyticsData {
 }
 
 const LogisticsBIDashboard: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const getTodaySantiago = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+  
+  const [selectedDate, setSelectedDate] = useState<string>(getTodaySantiago());
   const [isAutoDate, setIsAutoDate] = useState(true);
   const [fleet, setFleet] = useState<FleetDriverStatus[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -62,7 +64,7 @@ const LogisticsBIDashboard: React.FC = () => {
       if (!isAutoDate) return;
       
       try {
-        const today = new Date().toISOString().split('T')[0];
+        const today = getTodaySantiago();
         const fleetData = await api.getFleetStatus(today);
         
         // If no one is in route and no deliveries made today, switch to yesterday
