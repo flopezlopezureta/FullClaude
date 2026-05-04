@@ -275,29 +275,29 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         
         const query = `
             WITH active_drivers AS (
-                -- Drivers with packages assigned for today (System TZ)
+                -- Drivers with packages assigned for today
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+                AND "estimatedDelivery" >= $1 AND "estimatedDelivery" <= $2
                 
                 UNION
                 
-                -- Drivers with events today (System TZ)
+                -- Drivers with events today
                 SELECT DISTINCT "userId" as driver_id FROM tracking_events
-                WHERE ("timestamp" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+                WHERE timestamp >= $1 AND timestamp <= $2
                 
                 UNION
                 
-                -- Drivers with packages updated today (System TZ)
+                -- Drivers with packages updated today
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+                AND "updatedAt" >= $1 AND "updatedAt" <= $2
                 
                 UNION
                 
-                -- Drivers with closures today (System TZ)
+                -- Drivers with closures today
                 SELECT DISTINCT "driverId" as driver_id FROM daily_closures
-                WHERE ("date" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+                WHERE "date" >= $1 AND "date" <= $2
             )
             SELECT 
                 u.id as driver_id, 
@@ -321,16 +321,16 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     MAX("updatedAt") as last_pkg_update
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+                AND "updatedAt" >= $1 AND "updatedAt" <= $2
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
-            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
+            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date >= $1 AND dc.date <= $2
             WHERE u.status NOT IN ('ELIMINADO', 'DESHABILITADO', 'PENDIENTE')
             AND u.role = 'DRIVER'
             ORDER BY pending DESC, u.name ASC
         `;
         
-        const { rows } = await db.query(query, [targetDate, systemTZ]);
+        const { rows } = await db.query(query, [targetDate + ' 00:00:00', targetDate + ' 23:59:59']);
         
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
@@ -363,11 +363,11 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
         // 1. Flow of deliveries per hour (Total packages delivered by hour)
         const hourlyQuery = `
             SELECT 
-                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::text || ':00' as hour,
+                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $3)::text || ':00' as hour,
                 COUNT(*)::int as count
             FROM packages p
             WHERE p.status = 'ENTREGADO'
-            AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+            AND p."updatedAt" >= $1 AND p."updatedAt" <= $2
             GROUP BY hour
             ORDER BY hour ASC
         `;
@@ -382,15 +382,15 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             FROM packages p
             JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
-            AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $2)::date = $1::date
+            AND p."updatedAt" >= $1 AND p."updatedAt" <= $2
             AND p."assignedAt" IS NOT NULL
             GROUP BY u.name
             ORDER BY delivered DESC
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [targetDate, systemTZ]),
-            db.query(rankingQuery, [targetDate, systemTZ])
+            db.query(hourlyQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59', systemTZ]),
+            db.query(rankingQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59', systemTZ])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
