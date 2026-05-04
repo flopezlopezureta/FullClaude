@@ -503,16 +503,8 @@ const Dashboard: React.FC = () => {
         ? packages.map(p => p.recipientCommune?.trim().toUpperCase()).filter(Boolean)
         : [];
     
-    // 2. Combinar con la lista completa activa de la RM
-    const list = auth?.activeCommunes && auth.activeCommunes.length > 0 ? auth.activeCommunes : [
-        'ALHUÉ', 'BUIN', 'CALERA DE TANGO', 'CERRILLOS', 'CERRO NAVIA', 'COLINA', 'CONCHALÍ', 'CURACAVÍ', 
-        'EL BOSQUE', 'EL MONTE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 'ISLA DE MAIPO', 'LA CISTERNA', 'LA FLORIDA', 
-        'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAMPA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 'LO PRADO', 
-        'MACUL', 'MAIPÚ', 'MARÍA PINTO', 'MELIPILLA', 'ÑUÑOA', 'PADRE HURTADO', 'PAINE', 'PEDRO AGUIRRE CERDA', 
-        'PEÑAFLOR', 'PEÑALOLÉN', 'PIRQUE', 'PROVIDENCIA', 'PUDAHUEL', 'PUENTE ALTO', 'QUILICURA', 'QUINTA NORMAL', 
-        'RECOLETA', 'RENCA', 'SAN BERNARDO', 'SAN JOAQUÍN', 'SAN JOSÉ DE MAIPO', 'SAN MIGUEL', 'SAN PEDRO', 'SAN RAMÓN', 
-        'SANTIAGO', 'TALAGANTE', 'TILTIL', 'VITACURA'
-    ];
+    // 2. Combinar con la lista completa activa de la RM (solo configuradas)
+    const list = auth?.activeCommunes || [];
     const combined = new Set([...list, ...packageCommunes]);
     
     // 3. Convertir a array y ordenar alfabéticamente
