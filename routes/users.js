@@ -398,14 +398,10 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             : 0;
 
         res.json({
-            hourly_flow: hourlyData.rows,
-            driver_efficiency: rankingData.rows,
-            summary: {
-                total_delivered: totalDelivered,
-                avg_delivery_time: avgGlobal,
-                top_driver: rankingData.rows[0]?.name || '-',
-                efficiency_trend: 'STABLE'
-            }
+            hourly: hourlyData.rows,
+            ranking: rankingData.rows,
+            total_delivered: totalDelivered,
+            avg_global_minutes: avgGlobal
         });
     } catch (err) {
         console.error('Error fetching analytics:', err);
