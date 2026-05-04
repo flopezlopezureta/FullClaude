@@ -271,21 +271,20 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         
         const query = `
             WITH active_drivers AS (
-                -- Identify any driver who has had ANY activity today (events or assignments)
+                -- Drivers with events today
                 SELECT DISTINCT "userId" as driver_id FROM tracking_events
-                WHERE ("timestamp" AT TIME ZONE 'America/Santiago')::date = $1::date
+                WHERE "timestamp"::date = $1::date
                 
                 UNION
                 
+                -- Drivers with packages updated today
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND (
-                    ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
-                    OR (("updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date AND status != 'PENDIENTE')
-                )
+                AND "updatedAt"::date = $1::date
                 
                 UNION
                 
+                -- Drivers with closures today
                 SELECT DISTINCT "driverId" as driver_id FROM daily_closures
                 WHERE "date"::date = $1::date
             )
@@ -297,8 +296,8 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 COALESCE(p_stats.delivered, 0) as delivered_packages,
                 COALESCE(p_stats.problems, 0) as problem_packages,
                 COALESCE(p_stats.pending, 0) as pending_packages,
-                (p_stats.delivered = p_stats.total AND p_stats.total > 0) as is_completed,
-                dc."closedAt" as last_update
+                p_stats.last_pkg_update,
+                dc."closedAt" as closure_time
             FROM active_drivers ad
             JOIN users u ON ad.driver_id = u.id
             LEFT JOIN (
@@ -307,19 +306,11 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
                     COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO', 'DEVUELTO')) as problems,
-                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as pending
+                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as pending,
+                    MAX("updatedAt") as last_pkg_update
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND (
-                    ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date 
-                    OR (("updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date AND status != 'PENDIENTE')
-                    OR EXISTS (
-                        SELECT 1 FROM tracking_events te 
-                        WHERE te."packageId" = packages.id 
-                        AND te."userId" = packages."driverId"
-                        AND (te."timestamp" AT TIME ZONE 'America/Santiago')::date = $1::date
-                    )
-                )
+                AND "updatedAt"::date = $1::date
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
             LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
@@ -332,10 +323,11 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
             const hasPackages = parseInt(row.total_packages) > 0;
-            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0) || !!row.last_update;
+            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0) || !!row.closure_time;
             
             return {
                 ...row,
+                last_update: row.closure_time || row.last_pkg_update,
                 is_completed: isCompleted
             };
         });
