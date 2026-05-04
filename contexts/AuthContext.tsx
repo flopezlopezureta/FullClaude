@@ -105,12 +105,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const settings = await api.getSystemSettings();
           setSystemSettings(settings);
-          
+        } catch (settingsErr) {
+          console.error("[Auth] Failed to fetch system settings.", settingsErr);
+        }
+
+        // 3. Active Communes fetch
+        try {
           const communesData = await api.getCommunes();
           setActiveCommunes(communesData.filter(c => c.isActive).map(c => c.name));
-        } catch (settingsErr) {
-          console.error("[Auth] Failed to fetch system settings or communes. Using fallbacks.", settingsErr);
-          // Don't log out here! The app can run with fallback settings.
+        } catch (communesErr) {
+          console.error("[Auth] Failed to fetch communes.", communesErr);
         }
 
       } catch (globalErr) {
