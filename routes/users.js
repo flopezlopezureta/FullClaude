@@ -271,22 +271,22 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         
         const query = `
             WITH active_drivers AS (
-                -- Drivers with events today
+                -- Drivers with events in the range
                 SELECT DISTINCT "userId" as driver_id FROM tracking_events
-                WHERE "timestamp"::date = $1::date
+                WHERE timestamp >= $1 AND timestamp <= $2
                 
                 UNION
                 
-                -- Drivers with packages updated today
+                -- Drivers with packages updated in the range
                 SELECT DISTINCT "driverId" as driver_id FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND "updatedAt"::date = $1::date
+                AND "updatedAt" >= $1 AND "updatedAt" <= $2
                 
                 UNION
                 
-                -- Drivers with closures today
+                -- Drivers with closures in the range
                 SELECT DISTINCT "driverId" as driver_id FROM daily_closures
-                WHERE "date"::date = $1::date
+                WHERE "date" >= $1 AND "date" <= $2
             )
             SELECT 
                 u.id as driver_id, 
@@ -310,15 +310,15 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     MAX("updatedAt") as last_pkg_update
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND "updatedAt"::date = $1::date
+                AND "updatedAt" >= $1 AND "updatedAt" <= $2
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
-            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
+            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date >= $1 AND dc.date <= $2
             WHERE u.status = 'APROBADO'
             ORDER BY pending DESC, u.name ASC
         `;
         
-        const { rows } = await db.query(query, [targetDate]);
+        const { rows } = await db.query(query, [targetDate + ' 00:00:00', targetDate + ' 23:59:59']);
         
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
