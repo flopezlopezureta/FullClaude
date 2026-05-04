@@ -44,6 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     if (['assign-pickups', 'pickup-report'].includes(activeView)) menus.add('pickups');
     if (['settings', 'integrations'].includes(activeView)) menus.add('configuration');
     if (['delivery-analytics', 'late-deliveries', 'activity-audit'].includes(activeView)) menus.add('reports');
+    if (['geolocate', 'zone-settings', 'live-map'].includes(activeView)) menus.add('logistics');
     return menus;
   });
 
@@ -73,7 +74,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     },
     { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" /> },
     ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" /> }] : []),
-    { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" /> },
+    { 
+      id: 'logistics',
+      label: 'Logística y Mapas',
+      icon: <IconMap className="h-6 w-6" />,
+      subItems: [
+        { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-5 w-5" /> },
+        { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-5 w-5" /> },
+        { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-5 w-5" /> },
+      ]
+    },
     { id: 'import-orders', label: 'Importar Envíos', icon: <IconDownload className="h-6 w-6" /> },
     { 
       id: 'pickups',
@@ -98,8 +108,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         { id: 'users-operadores', label: 'Operadores Sist.', icon: <IconUserCheck className="h-5 w-5" /> }
       ]
     },
-    { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" /> },
-    { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" /> },
     { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" /> },
     { id: 'billing-summary', label: 'Resumen Operativo de Cobro', icon: <IconChartBar className="h-6 w-6 text-emerald-600" /> },
     { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" /> },
@@ -130,7 +138,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     },
     { id: 'driver-performance', label: 'Reporte Conductores', icon: <IconChartBar className="h-6 w-6" />, permission: 'canViewReports' },
     ...(systemSettings.flexDiscrepancyReportEnabled ? [{ id: 'flex-discrepancies', label: 'Discrepancias de Carga', icon: <IconAlertTriangle className="h-6 w-6 text-red-500" />, permission: 'canManagePackages' }] : []),
-    { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-6 w-6" />, permission: 'canManagePackages' },
+    { 
+      id: 'logistics',
+      label: 'Logística y Mapas',
+      icon: <IconMap className="h-6 w-6" />,
+      subItems: [
+        ...(permissions?.canManageDrivers ? [{ id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-5 w-5" /> }] : []),
+        ...(permissions?.canManageZones ? [{ id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-5 w-5" /> }] : []),
+        ...(permissions?.canManagePackages ? [{ id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-5 w-5" /> }] : []),
+      ]
+    },
     { id: 'import-orders', label: 'Importar Envíos', icon: <IconDownload className="h-6 w-6" />, permission: 'canManagePackages' },
     { 
       id: 'pickups',
@@ -154,8 +171,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         ...(permissions?.canViewReports ? [{ id: 'users-facturacion', label: 'Facturación', icon: <IconFileInvoice className="h-5 w-5" /> }] : []),
       ]
     },
-    { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-6 w-6" />, permission: 'canManageZones' },
-    { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-6 w-6" />, permission: 'canManageDrivers' },
     { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" />, permission: 'canViewReports' },
     { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" />, permission: 'canViewReports' },
     {
@@ -210,8 +225,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'import-orders', 
       'pickups', 
       'users',
-      'zone-settings', 
-      'live-map', 
+      'logistics', 
       'global-billing',
       'billing-summary',
       'activity-audit',
