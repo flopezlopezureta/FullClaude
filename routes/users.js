@@ -326,7 +326,6 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
             ) p_stats ON u.id = p_stats."driverId"
             LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date >= $1 AND dc.date <= $2
             WHERE u.status NOT IN ('ELIMINADO', 'DESHABILITADO', 'PENDIENTE')
-            AND u.role = 'DRIVER'
             ORDER BY pending DESC, u.name ASC
         `;
         
@@ -399,10 +398,14 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             : 0;
 
         res.json({
-            hourly: hourlyData.rows,
-            ranking: rankingData.rows,
-            total_delivered: totalDelivered,
-            avg_global_minutes: avgGlobal
+            hourly_flow: hourlyData.rows,
+            driver_efficiency: rankingData.rows,
+            summary: {
+                total_delivered: totalDelivered,
+                avg_delivery_time: avgGlobal,
+                top_driver: rankingData.rows[0]?.name || '-',
+                efficiency_trend: 'STABLE'
+            }
         });
     } catch (err) {
         console.error('Error fetching analytics:', err);
