@@ -270,22 +270,23 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
         const query = `
-            WITH daily_drivers AS (
-                -- Drivers who have packages assigned for today
-                SELECT DISTINCT "driverId" as id FROM packages 
-                WHERE "driverId" IS NOT NULL 
-                AND ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
-                
-                UNION
-                
-                -- Drivers who had activity (tracking events) today
-                SELECT DISTINCT "userId" as id FROM tracking_events
+            WITH active_drivers AS (
+                -- Identify any driver who has had ANY activity today (events or assignments)
+                SELECT DISTINCT "userId" as driver_id FROM tracking_events
                 WHERE ("timestamp" AT TIME ZONE 'America/Santiago')::date = $1::date
                 
                 UNION
                 
-                -- Drivers who closed their day today
-                SELECT DISTINCT "driverId" as id FROM daily_closures
+                SELECT DISTINCT "driverId" as driver_id FROM packages
+                WHERE "driverId" IS NOT NULL
+                AND (
+                    ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
+                    OR (("updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date AND status != 'PENDIENTE')
+                )
+                
+                UNION
+                
+                SELECT DISTINCT "driverId" as driver_id FROM daily_closures
                 WHERE "date"::date = $1::date
             )
             SELECT 
@@ -298,8 +299,8 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 COALESCE(p_stats.pending, 0) as pending_packages,
                 (p_stats.delivered = p_stats.total AND p_stats.total > 0) as is_completed,
                 dc."closedAt" as last_update
-            FROM daily_drivers dd
-            JOIN users u ON dd.id = u.id
+            FROM active_drivers ad
+            JOIN users u ON ad.driver_id = u.id
             LEFT JOIN (
                 SELECT 
                     "driverId",
