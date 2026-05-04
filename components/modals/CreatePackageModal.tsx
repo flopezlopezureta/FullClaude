@@ -57,10 +57,13 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
 
   const searchableCommunes = useMemo(() => {
     const list = auth?.activeCommunes && auth.activeCommunes.length > 0 ? auth.activeCommunes : [
-        'SANTIAGO', 'CERRILLOS', 'CERRO NAVIA', 'CONCHALÍ', 'EL BOSQUE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 
-        'LA CISTERNA', 'LA FLORIDA', 'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 
-        'LO PRADO', 'MACUL', 'MAIPÚ', 'ÑUÑOA', 'PEDRO AGUIRRE CERDA', 'PEÑALOLÉN', 'PROVIDENCIA', 'PUDAHUEL', 'QUILICURA', 
-        'QUINTA NORMAL', 'RECOLETA', 'RENCA', 'SAN JOAQUÍN', 'SAN MIGUEL', 'SAN RAMÓN', 'VITACURA'
+        'ALHUÉ', 'BUIN', 'CALERA DE TANGO', 'CERRILLOS', 'CERRO NAVIA', 'COLINA', 'CONCHALÍ', 'CURACAVÍ', 
+        'EL BOSQUE', 'EL MONTE', 'ESTACIÓN CENTRAL', 'HUECHURABA', 'INDEPENDENCIA', 'ISLA DE MAIPO', 'LA CISTERNA', 'LA FLORIDA', 
+        'LA GRANJA', 'LA PINTANA', 'LA REINA', 'LAMPA', 'LAS CONDES', 'LO BARNECHEA', 'LO ESPEJO', 'LO PRADO', 
+        'MACUL', 'MAIPÚ', 'MARÍA PINTO', 'MELIPILLA', 'ÑUÑOA', 'PADRE HURTADO', 'PAINE', 'PEDRO AGUIRRE CERDA', 
+        'PEÑAFLOR', 'PEÑALOLÉN', 'PIRQUE', 'PROVIDENCIA', 'PUDAHUEL', 'PUENTE ALTO', 'QUILICURA', 'QUINTA NORMAL', 
+        'RECOLETA', 'RENCA', 'SAN BERNARDO', 'SAN JOAQUÍN', 'SAN JOSÉ DE MAIPO', 'SAN MIGUEL', 'SAN PEDRO', 'SAN RAMÓN', 
+        'SANTIAGO', 'TALAGANTE', 'TILTIL', 'VITACURA'
     ];
     return list.map(c => ({ id: c, name: c }));
   }, [auth?.activeCommunes]);

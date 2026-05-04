@@ -58,7 +58,7 @@ router.get('/entregas', authMiddleware, async (req, res) => {
                 "destLatitude" as latitud, 
                 "destLongitude" as longitud 
              FROM packages 
-             WHERE "driverId" = $1 AND status IN ('PENDIENTE', 'EN_TRANSITO', 'PROBLEMA')
+             WHERE "driverId" = $1 AND status IN ('PENDIENTE', 'EN_TRANSITO')
              ORDER BY "createdAt" ASC`,
             [driverId]
         );
@@ -194,7 +194,7 @@ router.get('/closures/summary', authMiddleware, async (req, res) => {
                 COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
                 COUNT(*) FILTER (WHERE status = 'PROBLEMA' OR status = 'REPROGRAMADO') as problems,
                 COUNT(*) FILTER (WHERE status = 'CANCELADO') as cancelled,
-                COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')) as pending
+                COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO', 'PROBLEMA', 'REPROGRAMADO')) as pending
             FROM packages 
             WHERE "driverId" = $1 
             AND ("createdAt"::date = $2 OR "assignedAt"::date = $2)

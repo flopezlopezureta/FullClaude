@@ -49,61 +49,86 @@ interface AnalyticsData {
 }
 
 const LogisticsBIDashboard: React.FC = () => {
-  const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [systemTimezone, setSystemTimezone] = useState<string>('America/Santiago');
+  
+  const getTodayWithTimezone = (tz: string) => {
+    try {
+      // Use Intl.DateTimeFormat for a more reliable ISO-like format
+      const formatter = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz,
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+      return formatter.format(new Date());
+    } catch (e) {
+      // Fallback
+      return new Date().toISOString().split('T')[0];
+    }
+  };
+  
+  const [selectedDate, setSelectedDate] = useState<string>(getTodayWithTimezone('America/Santiago'));
   const [isAutoDate, setIsAutoDate] = useState(true);
   const [fleet, setFleet] = useState<FleetDriverStatus[]>([]);
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [lastRefresh, setLastRefresh] = useState(new Date());
 
-  // Intelligent Date logic: Check if there's activity today
+  // Fetch system settings to get timezone
   useEffect(() => {
-    const checkTodayActivity = async () => {
-      if (!isAutoDate) return;
-      
+    const fetchSettings = async () => {
       try {
-        const today = new Date().toISOString().split('T')[0];
-        const fleetData = await api.getFleetStatus(today);
-        
-        // If no one is in route and no deliveries made today, switch to yesterday
-        const totalDeliveriesToday = fleetData.reduce((sum: number, d: any) => sum + d.delivered_packages, 0);
-        
-        if (totalDeliveriesToday === 0 && fleetData.length === 0) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
-          if (selectedDate !== yesterdayStr) {
-            setSelectedDate(yesterdayStr);
-          }
-        } else {
-          if (selectedDate !== today) {
-            setSelectedDate(today);
-          }
+        const settings = await api.getSystemSettings();
+        if (settings.timezone) {
+          setSystemTimezone(settings.timezone);
+          const today = getTodayWithTimezone(settings.timezone);
+          setSelectedDate(today);
         }
       } catch (error) {
-        console.error("Error checking today's activity:", error);
+        console.error("Error fetching system timezone:", error);
       }
     };
+    fetchSettings();
+  }, []);
 
-    checkTodayActivity();
-    
-    // Periodically check if today's operation started (every 2 mins)
-    const interval = setInterval(checkTodayActivity, 120000);
-    return () => clearInterval(interval);
-  }, [isAutoDate, selectedDate]);
+  // Fetch system settings to get timezone
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const settings = await api.getSystemSettings();
+        if (settings.timezone) {
+          setSystemTimezone(settings.timezone);
+          setSelectedDate(getTodayWithTimezone(settings.timezone));
+        }
+      } catch (error) {
+        console.error("Error fetching system timezone:", error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [fleetData, analyticsData] = await Promise.all([
-        api.getFleetStatus(selectedDate),
-        api.getAnalytics(selectedDate)
-      ]);
-      setFleet(fleetData);
-      setAnalytics(analyticsData);
+      // Fetch Fleet Status first (Priority)
+      try {
+        const fleetData = await api.getFleetStatus(selectedDate);
+        setFleet(fleetData);
+      } catch (err) {
+        console.error("Error fetching fleet status:", err);
+      }
+
+      // Then fetch Analytics (Secondary)
+      try {
+        const analyticsData = await api.getAnalytics(selectedDate);
+        setAnalytics(analyticsData);
+      } catch (err) {
+        console.error("Error fetching analytics:", err);
+      }
+      
       setLastRefresh(new Date());
     } catch (error) {
-      console.error("Error fetching BI data:", error);
+      console.error("Critical error fetching BI data:", error);
     } finally {
       setLoading(false);
     }
@@ -111,19 +136,15 @@ const LogisticsBIDashboard: React.FC = () => {
 
   useEffect(() => {
     fetchData();
-    // Auto-refresh every 30s if viewing today
-    const isToday = selectedDate === new Date().toISOString().split('T')[0];
-    let interval: any;
-    if (isToday) {
-      interval = setInterval(fetchData, 30000);
-    }
+    // Auto-refresh every 30s
+    const interval = setInterval(fetchData, 30000);
     return () => clearInterval(interval);
-  }, [selectedDate]);
+  }, [selectedDate, systemTimezone]);
 
   const stats = useMemo(() => {
     const inRoute = fleet.filter(d => !d.is_completed).length;
     const finished = fleet.filter(d => d.is_completed).length;
-    const totalPending = fleet.reduce((sum, d) => sum + d.pending_packages, 0);
+    const totalPending = fleet.reduce((sum, d) => sum + Number(d.pending_packages || 0), 0);
     return { inRoute, finished, totalPending };
   }, [fleet]);
 

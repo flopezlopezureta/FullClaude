@@ -235,6 +235,7 @@ export const cityCoordinates: { [key: string]: [number, number] } = {
     'Puente Alto': [-33.6117, -70.5758],
     'Lampa': [-33.2830, -70.8670],
     'Colina': [-33.2030, -70.6760],
+    'Padre Hurtado': [-33.5667, -70.8167],
 };
 
 export const parseDateString = (dateString: string): Date => {

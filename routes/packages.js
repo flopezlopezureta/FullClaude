@@ -155,6 +155,8 @@ router.get('/', authMiddleware, async (req, res) => {
                 statuses = statuses.filter(s => s !== 'closed');
                 if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
                 if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
+                if (!statuses.includes('PROBLEMA')) statuses.push('PROBLEMA');
+                if (!statuses.includes('REPROGRAMADO')) statuses.push('REPROGRAMADO');
             }
             if (statuses.length > 0) {
                 const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
@@ -197,8 +199,8 @@ router.get('/', authMiddleware, async (req, res) => {
             
             if (dateType === 'egress') {
                 whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp`);
-            } else if (driverFilter) {
-                // Para conductores, mostramos lo creado, asignado o con entrega estimada hoy.
+            } else if (driverFilter && req.user.role === 'DRIVER') {
+                // Para la APP móvil de conductores:
                 // IMPORTANTE: Incluimos assignedAt para que si se le asigna un paquete viejo hoy, lo vea.
                 // Eliminamos updatedAt para evitar que paquetes cerrados reaparezcan por sync.
                 whereClauses.push(`(
@@ -207,7 +209,8 @@ router.get('/', authMiddleware, async (req, res) => {
                     ((p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp)
                 )`);
             } else {
-                // Para búsqueda general (Admin), mantenemos todos los campos para máxima cobertura
+                // Para búsqueda general (Admin y Reportes de Rendimiento), incluimos updatedAt
+                // Esto es vital para que los reportes vean los paquetes entregados en la fecha solicitada
                 whereClauses.push(`(
                     ((p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR 
                     ((p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR
@@ -268,7 +271,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
         if (quickFilter) {
             if (quickFilter === 'closed') {
-                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO')`);
+                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO', 'PROBLEMA', 'REPROGRAMADO')`);
             } else if (quickFilter === 'cancelled') {
                 whereClauses.push(`p.status = 'CANCELADO'`);
             } else if (quickFilter === 'rescheduled') {

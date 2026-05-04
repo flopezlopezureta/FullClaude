@@ -269,44 +269,62 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
     try {
         const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
+        // Fetch system timezone dynamically
+        const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
+        const systemTZ = settingsRows.length > 0 ? settingsRows[0].timezone : 'America/Santiago';
+        
         const query = `
+            WITH active_drivers AS (
+                -- Drivers with packages assigned for today
+                SELECT DISTINCT "driverId" as driver_id FROM packages
+                WHERE "driverId" IS NOT NULL
+                AND "estimatedDelivery" >= $1 AND "estimatedDelivery" <= $2
+                
+                UNION
+                
+                -- Drivers with packages updated today
+                SELECT DISTINCT "driverId" as driver_id FROM packages
+                WHERE "driverId" IS NOT NULL
+                AND "updatedAt" >= $1 AND "updatedAt" <= $2
+            )
             SELECT 
                 u.id as driver_id, 
                 u.name as driver_name, 
                 u.phone,
                 COALESCE(p_stats.total, 0) as total_packages,
                 COALESCE(p_stats.delivered, 0) as delivered_packages,
+                COALESCE(p_stats.problems, 0) as problem_packages,
                 COALESCE(p_stats.pending, 0) as pending_packages,
-                (p_stats.delivered = p_stats.total AND p_stats.total > 0) as is_completed,
-                dc."closedAt" as last_update
-            FROM users u
+                p_stats.last_pkg_update
+            FROM active_drivers ad
+            JOIN users u ON ad.driver_id = u.id
             LEFT JOIN (
                 SELECT 
                     "driverId",
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
-                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RECOGIDO', 'EN_RUTA')) as pending
+                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO', 'DEVUELTO')) as problems,
+                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as pending,
+                    MAX("updatedAt") as last_pkg_update
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND ("assignedAt"::text LIKE $1 OR ("updatedAt"::text LIKE $1 AND status != 'PENDIENTE'))
+                AND "updatedAt" >= $1 AND "updatedAt" <= $2
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
-            LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::text = $1
-            WHERE u.role IN ('DRIVER', 'ADMIN') 
-            AND u.status = 'APROBADO'
-            AND (p_stats.total > 0 OR dc.id IS NOT NULL)
+            WHERE u.status NOT IN ('ELIMINADO', 'DESHABILITADO', 'PENDIENTE')
             ORDER BY pending DESC, u.name ASC
         `;
         
-        const { rows } = await db.query(query, [targetDate]);
+        const { rows } = await db.query(query, [targetDate + ' 00:00:00', targetDate + ' 23:59:59']);
         
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
             const hasPackages = parseInt(row.total_packages) > 0;
-            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0) || !!row.last_update;
+            const isCompleted = (hasPackages && parseInt(row.pending_packages) === 0);
             
             return {
                 ...row,
+                last_update: row.last_pkg_update,
                 is_completed: isCompleted
             };
         });
@@ -323,14 +341,18 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
     try {
         const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
+        // Fetch system timezone dynamically
+        const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
+        const systemTZ = settingsRows.length > 0 ? settingsRows[0].timezone : 'America/Santiago';
+
         // 1. Flow of deliveries per hour (Total packages delivered by hour)
         const hourlyQuery = `
             SELECT 
-                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago')::text || ':00' as hour,
+                EXTRACT(HOUR FROM p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE $3)::text || ':00' as hour,
                 COUNT(*)::int as count
             FROM packages p
             WHERE p.status = 'ENTREGADO'
-            AND p."updatedAt"::text LIKE $1
+            AND p."updatedAt" >= $1 AND p."updatedAt" <= $2
             GROUP BY hour
             ORDER BY hour ASC
         `;
@@ -345,15 +367,15 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
             FROM packages p
             JOIN users u ON p."driverId" = u.id
             WHERE p.status = 'ENTREGADO'
-            AND p."updatedAt"::text LIKE $1
+            AND p."updatedAt" >= $1 AND p."updatedAt" <= $2
             AND p."assignedAt" IS NOT NULL
             GROUP BY u.name
             ORDER BY delivered DESC
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [targetDate + '%']),
-            db.query(rankingQuery, [targetDate + '%'])
+            db.query(hourlyQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59', systemTZ]),
+            db.query(rankingQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59'])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);

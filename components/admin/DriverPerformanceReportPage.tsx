@@ -131,11 +131,13 @@ export const DriverPerformanceReportPage: React.FC = () => {
 
             if (!relevantEvent) return false;
             
-            // Get the date string in the target timezone
-            const eventDateStr = new Date(relevantEvent.timestamp).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
+            // Robust Date object comparison instead of string comparison
+            // Append T00:00:00 and T23:59:59 to ensure full day coverage in local time
+            const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
+            const endTimestamp = new Date(endDate + 'T23:59:59.999').getTime();
+            const eventTimestamp = new Date(relevantEvent.timestamp).getTime();
             
-            // Compare string dates (YYYY-MM-DD)
-            return eventDateStr >= startDate && eventDateStr <= endDate;
+            return eventTimestamp >= startTimestamp && eventTimestamp <= endTimestamp;
         });
     }, [packages, selectedDriverId, startDate, endDate]);
 
@@ -189,10 +191,13 @@ export const DriverPerformanceReportPage: React.FC = () => {
         end.setHours(23, 59, 59, 999);
     
         // 1. Calculate from Legacy Assignment Events
+        const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
+        const endTimestamp = new Date(endDate + 'T23:59:59.999').getTime();
+        
         const relevantLegacyEvents = assignmentEvents.filter(event => {
             if (event.driverId !== selectedDriverId || event.status !== 'COMPLETADO' || !event.completedAt) return false;
-            const eventDateStr = new Date(event.completedAt).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
-            return eventDateStr >= startDate && eventDateStr <= endDate;
+            const eventTimestamp = new Date(event.completedAt).getTime();
+            return eventTimestamp >= startTimestamp && eventTimestamp <= endTimestamp;
         });
 
         // 2. Calculate from New Pickup System
@@ -232,11 +237,13 @@ export const DriverPerformanceReportPage: React.FC = () => {
             }
         }
 
+        const getLocalDateString = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
         const d = new Date(startDate + 'T12:00:00'); // Use noon to avoid day shifts during increment
         const endD = new Date(endDate + 'T12:00:00');
         
         while (d <= endD) {
-            const dateStr = d.toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
+            const dateStr = getLocalDateString(d);
             initializeDate(dateStr);
             d.setDate(d.getDate() + 1);
         }
@@ -246,7 +253,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
         deliveredPackages.forEach(pkg => {
             // Find the delivery event to get the actual date
             const deliveryEvent = pkg.history.find(e => e.status === PackageStatus.Delivered) || pkg.history[0];
-            const deliveryDateStr = new Date(deliveryEvent.timestamp).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
+            const deliveryDateStr = getLocalDateString(new Date(deliveryEvent.timestamp)); // YYYY-MM-DD
             initializeDate(deliveryDateStr);
             breakdown[deliveryDateStr].deliveries++;
             const payRate = pkg.shippingType === ShippingType.SameDay ? rates.sameDay : pkg.shippingType === ShippingType.Express ? rates.express : rates.nextDay;
@@ -254,14 +261,17 @@ export const DriverPerformanceReportPage: React.FC = () => {
         });
 
         // Legacy Pickups
+        const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
+        const endTimestamp = new Date(endDate + 'T23:59:59.999').getTime();
+        
         const relevantLegacyEvents = assignmentEvents.filter(event => {
             if (event.driverId !== selectedDriverId || event.status !== 'COMPLETADO' || !event.completedAt) return false;
-            const eventDateStr = new Date(event.completedAt).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' });
-            return eventDateStr >= startDate && eventDateStr <= endDate;
+            const eventTimestamp = new Date(event.completedAt).getTime();
+            return eventTimestamp >= startTimestamp && eventTimestamp <= endTimestamp;
         });
 
         relevantLegacyEvents.forEach(event => {
-            const dateStr = new Date(event.completedAt!).toLocaleDateString('en-CA', { timeZone: systemSettings?.timezone || 'America/Santiago' }); // YYYY-MM-DD
+            const dateStr = getLocalDateString(new Date(event.completedAt!)); // YYYY-MM-DD
             initializeDate(dateStr);
             breakdown[dateStr].pickups++;
             const cost = event.pickupCost !== undefined && event.pickupCost !== null ? event.pickupCost : (rates.pickup || 0);

@@ -510,6 +510,16 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
         client_secret: meliClientSecret
     }).toString();
 
+    const options = {
+        hostname: 'api.mercadolibre.com',
+        path: '/oauth/token',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': postData.length
+        }
+    };
+
     const reqApi = https.request(options, (resApi) => {
         let data = '';
         resApi.on('data', (chunk) => { data += chunk; });

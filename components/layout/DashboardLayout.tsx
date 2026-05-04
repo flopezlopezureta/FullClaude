@@ -28,6 +28,7 @@ import GeolocatePage from '../admin/GeolocatePage';
 import DriverMobileLayout from '../driver/DriverMobileLayout';
 import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 import ClientSettingsPage from '../client/ClientSettingsPage';
+import ActivityAuditReport from '../admin/ActivityAuditReport';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
@@ -184,6 +185,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'billing-summary':
         if (isAdmin) return { title: 'Resumen Operativo de Cobro', content: <AdminBillingSummary /> };
+        break;
+
+      case 'activity-audit':
+        if (isAdmin || isFact) return { title: 'Auditoría de Actividad Diaria', content: <ActivityAuditReport /> };
         break;
 
       case 'delivery-analytics':
