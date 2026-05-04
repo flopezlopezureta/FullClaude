@@ -270,6 +270,24 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
         const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
         
         const query = `
+            WITH daily_drivers AS (
+                -- Drivers who have packages assigned for today
+                SELECT DISTINCT "driverId" as id FROM packages 
+                WHERE "driverId" IS NOT NULL 
+                AND ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date
+                
+                UNION
+                
+                -- Drivers who had activity (tracking events) today
+                SELECT DISTINCT "userId" as id FROM tracking_events
+                WHERE ("timestamp" AT TIME ZONE 'America/Santiago')::date = $1::date
+                
+                UNION
+                
+                -- Drivers who closed their day today
+                SELECT DISTINCT "driverId" as id FROM daily_closures
+                WHERE "date"::date = $1::date
+            )
             SELECT 
                 u.id as driver_id, 
                 u.name as driver_name, 
@@ -280,26 +298,31 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                 COALESCE(p_stats.pending, 0) as pending_packages,
                 (p_stats.delivered = p_stats.total AND p_stats.total > 0) as is_completed,
                 dc."closedAt" as last_update
-            FROM users u
+            FROM daily_drivers dd
+            JOIN users u ON dd.id = u.id
             LEFT JOIN (
                 SELECT 
                     "driverId",
                     COUNT(*) as total,
                     COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
-                    COUNT(*) FILTER (WHERE status = 'PROBLEMA' OR status = 'REPROGRAMADO') as problems,
-                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RECOGIDO', 'EN_RUTA', 'RETIRADO')) as pending
+                    COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO', 'DEVUELTO')) as problems,
+                    COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as pending
                 FROM packages
                 WHERE "driverId" IS NOT NULL
                 AND (
                     ("assignedAt" AT TIME ZONE 'America/Santiago')::date = $1::date 
                     OR (("updatedAt" AT TIME ZONE 'America/Santiago')::date = $1::date AND status != 'PENDIENTE')
+                    OR EXISTS (
+                        SELECT 1 FROM tracking_events te 
+                        WHERE te."packageId" = packages.id 
+                        AND te."userId" = packages."driverId"
+                        AND (te."timestamp" AT TIME ZONE 'America/Santiago')::date = $1::date
+                    )
                 )
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
             LEFT JOIN daily_closures dc ON u.id = dc."driverId" AND dc.date::date = $1::date
-            WHERE u.role IN ('DRIVER', 'ADMIN') 
-            AND u.status = 'APROBADO'
-            AND (p_stats.total > 0 OR dc.id IS NOT NULL)
+            WHERE u.status = 'APROBADO'
             ORDER BY pending DESC, u.name ASC
         `;
         
