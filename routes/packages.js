@@ -199,8 +199,8 @@ router.get('/', authMiddleware, async (req, res) => {
             
             if (dateType === 'egress') {
                 whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp`);
-            } else if (driverFilter) {
-                // Para conductores, mostramos lo creado, asignado o con entrega estimada hoy.
+            } else if (driverFilter && req.user.role === 'DRIVER') {
+                // Para la APP móvil de conductores:
                 // IMPORTANTE: Incluimos assignedAt para que si se le asigna un paquete viejo hoy, lo vea.
                 // Eliminamos updatedAt para evitar que paquetes cerrados reaparezcan por sync.
                 whereClauses.push(`(
@@ -209,7 +209,8 @@ router.get('/', authMiddleware, async (req, res) => {
                     ((p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp)
                 )`);
             } else {
-                // Para búsqueda general (Admin), mantenemos todos los campos para máxima cobertura
+                // Para búsqueda general (Admin y Reportes de Rendimiento), incluimos updatedAt
+                // Esto es vital para que los reportes vean los paquetes entregados en la fecha solicitada
                 whereClauses.push(`(
                     ((p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR 
                     ((p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR
