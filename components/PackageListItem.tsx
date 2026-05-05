@@ -245,9 +245,12 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                                 </span>
                             )}
                             {/* [NUEVO] Mostrar ID de Referencia / Mercado Libre para identificación rápida */}
-                            {(pkg.meliOrderId || pkg.meliFlexCode || pkg.shopifyOrderId) && (
+                            {(pkg.meliOrderId || pkg.meliFlexCode || pkg.shopifyOrderId || pkg.shopifyOrderNumber) && (
                                 <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                    REF: {pkg.shopifyOrderId || pkg.meliOrderId || pkg.meliFlexCode}
+                                    REF: {pkg.shopifyOrderNumber || pkg.shopifyOrderId || pkg.meliOrderId || pkg.meliFlexCode}
+                                    {pkg.shopifyOrderNumber && pkg.shopifyOrderId && pkg.shopifyOrderNumber !== pkg.shopifyOrderId && (
+                                        <span className="ml-1 text-[9px] font-normal opacity-60">({pkg.shopifyOrderId})</span>
+                                    )}
                                 </span>
                             )}
                             <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">

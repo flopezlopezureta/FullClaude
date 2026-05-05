@@ -117,8 +117,8 @@ const Dashboard: React.FC = () => {
   const [clientFilter, setClientFilter] = useState<string>('');
   const [communeFilter, setCommuneFilter] = useState<string>('');
   const [cityFilter, setCityFilter] = useState<string>('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+  const [startDate, setStartDate] = useState(getLocalDateString());
+  const [endDate, setEndDate] = useState(getLocalDateString());
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'all_assigned' | 'first' | 'reassigned'>('all');
   const [dateType, setDateType] = useState<'created' | 'egress'>('created');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -323,8 +323,8 @@ const Dashboard: React.FC = () => {
       setClientFilter('');
       setCommuneFilter('');
       setCityFilter('');
-      setStartDate('');
-      setEndDate('');
+      setStartDate(getLocalDateString());
+      setEndDate(getLocalDateString());
       setDateType('created');
       setCurrentPage(1);
   };
