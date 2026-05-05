@@ -1,5 +1,5 @@
 require('dotenv').config();
-const db = require('../db'); // Fixed path
+const db = require('./db');
 
 async function checkStatus() {
     try {
