@@ -141,6 +141,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 </div>
                 <div className="mt-auto grid grid-cols-2 gap-4 border-t border-black pt-4">
                     <div className="flex flex-col justify-center">
+                         {refNumber && (
+                             <div className="mb-2">
+                                 <p className="text-[7px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
+                                 <p className="text-3xl font-black leading-none tracking-tighter">{refNumber}</p>
+                             </div>
+                         )}
                         <p className="text-[8px] font-black tracking-widest text-blue-600">DISEÑO 2</p>
                         <p className="text-[8px] font-bold mt-1 italic">{systemSettings.companyName}</p>
                     </div>
