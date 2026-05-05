@@ -2,7 +2,7 @@
 import React, { useState, useRef, useEffect, Children, cloneElement, isValidElement } from 'react';
 import { PackageStatus, ShippingType, PackageSource } from '../constants';
 import type { Package } from '../types';
-import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy, IconMail, IconPlugConnected } from './Icon';
+import { IconAlertTriangle, IconCheckCircle, IconClock, IconTruck, IconPackage, IconUserPlus, IconDotsVertical, IconPencil, IconTrash, IconArchive, IconChevronRight, IconPrinter, IconSun, IconZap, IconMoon, IconMercadoLibre, IconWoocommerce, IconArrowUturnLeft, IconUser, IconMapPin, IconQrcode, IconX, IconCopy, IconMail, IconPlugConnected, IconShopify, IconJumpseller, IconFalabella } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
 
 interface PackageListItemProps {
@@ -44,6 +44,10 @@ const shippingTypeIcons: { [key in ShippingType]: React.ReactNode } = {
 const sourceIcons: { [key in PackageSource]?: React.ReactNode } = {
   'MERCADO_LIBRE': <IconMercadoLibre title="Paquete de Mercado Libre" className="w-4 h-4 text-yellow-500 flex-shrink-0" />,
   'WOOCOMMERCE': <IconWoocommerce title="Paquete de WooCommerce" className="w-4 h-4 text-purple-600 flex-shrink-0" />,
+  'SHOPIFY': <IconShopify title="Paquete de Shopify" className="w-4 h-4 text-green-500 flex-shrink-0" />,
+  'JUMPSELLER': <IconJumpseller title="Paquete de Jumpseller" className="w-4 h-4 text-sky-600 flex-shrink-0" />,
+  'FALABELLA': <IconFalabella title="Paquete de Falabella" className="w-4 h-4 text-lime-600 flex-shrink-0" />,
+  'MANUAL': <div title="Paquete Manual" className="w-4 h-4 bg-gray-200 text-gray-500 rounded flex items-center justify-center font-bold text-[8px] flex-shrink-0">M</div>
 };
 
 const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -232,9 +236,9 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                                 </span>
                             )}
                             {/* [NUEVO] Mostrar ID de Referencia / Mercado Libre para identificación rápida */}
-                            {(pkg.meliOrderId || pkg.meliFlexCode) && (
+                            {(pkg.meliOrderId || pkg.meliFlexCode || pkg.shopifyOrderId) && (
                                 <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-mono font-bold bg-indigo-50 text-indigo-700 border border-indigo-200">
-                                    REF: {pkg.meliOrderId || pkg.meliFlexCode}
+                                    REF: {pkg.shopifyOrderId || pkg.meliOrderId || pkg.meliFlexCode}
                                 </span>
                             )}
                             <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">

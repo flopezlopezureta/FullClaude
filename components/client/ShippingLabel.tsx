@@ -29,6 +29,8 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         qrContent = pkg.trackingId || pkg.id;
     }
 
+    const refNumber = pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
+
     useEffect(() => {
         const generateQR = async () => {
             try {
@@ -83,10 +85,18 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                     <div className="flex flex-col items-center">
                         {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-28 h-28" style={{ imageRendering: 'pixelated' }} />}
                     </div>
-                    <div className="flex-1 pl-4 text-right">
-                         <p className="text-[8px] font-bold text-gray-400 uppercase">ID Operativo:</p>
-                         <p className="text-sm font-mono font-black break-all leading-tight">{qrContent}</p>
-                         <div className="w-full h-2 bg-black mt-2"></div>
+                    <div className="flex-1 pl-4 text-right flex flex-col justify-end">
+                         {refNumber && (
+                             <div className="mb-2">
+                                 <p className="text-[8px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
+                                 <p className="text-4xl font-black leading-none tracking-tighter">{refNumber}</p>
+                             </div>
+                         )}
+                         <div className="mt-auto">
+                             <p className="text-[7px] font-bold text-gray-400 uppercase leading-none">ID Operativo:</p>
+                             <p className="text-[10px] font-mono font-black break-all leading-tight">{qrContent}</p>
+                             <div className="w-full h-1.5 bg-black mt-1"></div>
+                         </div>
                     </div>
                 </div>
             </div>
@@ -131,6 +141,12 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 </div>
                 <div className="mt-auto grid grid-cols-2 gap-4 border-t border-black pt-4">
                     <div className="flex flex-col justify-center">
+                         {refNumber && (
+                             <div className="mb-2">
+                                 <p className="text-[7px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
+                                 <p className="text-3xl font-black leading-none tracking-tighter">{refNumber}</p>
+                             </div>
+                         )}
                         <p className="text-[8px] font-black tracking-widest text-blue-600">DISEÑO 2</p>
                         <p className="text-[8px] font-bold mt-1 italic">{systemSettings.companyName}</p>
                     </div>
@@ -176,8 +192,18 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <p className="text-sm font-bold mt-1 italic text-gray-500">{pkg.recipientCommune}, {pkg.recipientCity}</p>
                     </div>
                     <div className="mt-3">
-                         <p className="text-[7px] font-black text-gray-300 uppercase">Track ID:</p>
-                         <p className="text-[9px] font-mono font-black break-all leading-none">{qrContent}</p>
+                         <div className="flex justify-between items-end">
+                             <div>
+                                 <p className="text-[7px] font-black text-gray-300 uppercase">Track ID:</p>
+                                 <p className="text-[9px] font-mono font-black break-all leading-none">{qrContent}</p>
+                             </div>
+                             {refNumber && (
+                                 <div className="text-right">
+                                     <p className="text-[7px] font-black text-gray-300 uppercase">REF:</p>
+                                     <p className="text-lg font-black leading-none">{refNumber}</p>
+                                 </div>
+                             )}
+                         </div>
                     </div>
                 </div>
             </div>
@@ -225,7 +251,13 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                 </div>
                 <div className="mt-auto border-t-2 border-black pt-6 flex justify-between items-end">
                     <div>
-                         <p className="text-md font-mono font-black tracking-widest">{qrContent}</p>
+                         {refNumber && (
+                             <div className="mb-2">
+                                 <p className="text-sm font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
+                                 <p className="text-4xl font-black leading-none tracking-tighter">{refNumber}</p>
+                             </div>
+                         )}
+                         <p className="text-md font-mono font-black tracking-widest text-gray-400 mt-2">{qrContent}</p>
                     </div>
                     <div className="w-40 h-10 bg-black"></div>
                 </div>
@@ -246,9 +278,17 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <p className="text-[12px] font-black text-black border border-black px-2 py-0.5 rounded-sm bg-gray-50">{formattedDate}</p>
                     </div>
                 </div>
-                <div className="border-b border-black pb-2 mb-3">
-                    <p className="text-[8px] font-black uppercase text-gray-400">Clave de Envío:</p>
-                    <p className="text-xl font-mono font-[1000] tracking-tighter break-all leading-none">{qrContent}</p>
+                <div className="border-b border-black pb-2 mb-3 flex justify-between items-end">
+                    <div>
+                        <p className="text-[8px] font-black uppercase text-gray-400">Clave de Envío:</p>
+                        <p className="text-xl font-mono font-[1000] tracking-tighter break-all leading-none">{qrContent}</p>
+                    </div>
+                    {refNumber && (
+                        <div className="text-right">
+                            <p className="text-[8px] font-black uppercase text-gray-400">Orden / REF:</p>
+                            <p className="text-2xl font-black tracking-tighter leading-none">{refNumber}</p>
+                        </div>
+                    )}
                 </div>
                 <div className="flex-1 grid grid-cols-2 gap-4">
                     <div className="border-r border-black pr-4 space-y-3">
@@ -309,9 +349,17 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                          <p className="text-[8px] font-bold">{pkg.recipientRut || 'S/N'}</p>
                     </div>
                 </div>
-                <div className="border-2 border-black p-1.5 text-center mb-2">
-                    <p className="text-[7px] font-black uppercase opacity-50 mb-0.5 tracking-widest">Sector de Entrega</p>
-                    <p className="text-xl font-black uppercase tracking-tighter leading-none">{pkg.recipientCommune}</p>
+                <div className="border-2 border-black p-1.5 text-center mb-2 flex justify-between items-center">
+                    <div className="text-left">
+                        <p className="text-[7px] font-black uppercase opacity-50 mb-0.5 tracking-widest">Sector de Entrega</p>
+                        <p className="text-xl font-black uppercase tracking-tighter leading-none">{pkg.recipientCommune}</p>
+                    </div>
+                    {refNumber && (
+                        <div className="text-right border-l-2 border-black pl-2">
+                            <p className="text-[5px] font-black uppercase opacity-50 mb-0.5 tracking-widest">REF</p>
+                            <p className="text-lg font-black uppercase tracking-tighter leading-none">{refNumber}</p>
+                        </div>
+                    )}
                 </div>
                 <div className="border border-black p-1.5 flex-1 mb-2 space-y-1">
                      <p className="text-[6px] font-black uppercase text-gray-400 leading-none">Dirección / Instrucciones:</p>
@@ -371,10 +419,18 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <div className="flex flex-col items-center">
                             {qrCodeUrl && <img src={qrCodeUrl} alt="QR" className="w-20 h-20" style={{ imageRendering: 'pixelated' }} />}
                         </div>
-                        <div className="flex-1 pl-3 text-right overflow-hidden">
-                             <p className="text-[7px] font-bold text-gray-400 uppercase leading-none mb-1">ID Operativo:</p>
-                             <p className="text-[9px] font-mono font-black break-all leading-tight">{qrContent}</p>
-                             <div className="w-full h-1.5 bg-black mt-1"></div>
+                        <div className="flex-1 pl-3 text-right flex flex-col justify-end overflow-hidden">
+                             {refNumber && (
+                                 <div className="mb-1">
+                                     <p className="text-[6px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
+                                     <p className="text-2xl font-black leading-none tracking-tighter">{refNumber}</p>
+                                 </div>
+                             )}
+                             <div className="mt-auto">
+                                 <p className="text-[6px] font-bold text-gray-400 uppercase leading-none mb-0.5">ID Operativo:</p>
+                                 <p className="text-[8px] font-mono font-black break-all leading-tight">{qrContent}</p>
+                                 <div className="w-full h-1.5 bg-black mt-1"></div>
+                             </div>
                         </div>
                     </div>
                 </div>
