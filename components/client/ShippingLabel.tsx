@@ -29,7 +29,8 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         qrContent = pkg.trackingId || pkg.id;
     }
 
-    const refNumber = pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
+    const refNumber = pkg.shopifyOrderNumber || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
+    const secondaryRef = (pkg.shopifyOrderNumber && pkg.shopifyOrderId && pkg.shopifyOrderNumber !== pkg.shopifyOrderId) ? pkg.shopifyOrderId : null;
 
     useEffect(() => {
         const generateQR = async () => {
@@ -90,6 +91,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                              <div className="mb-2">
                                  <p className="text-[8px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
                                  <p className="text-xl font-black leading-none tracking-tighter">{refNumber}</p>
+                                 {secondaryRef && <p className="text-[10px] font-bold opacity-60 leading-none mt-1">({secondaryRef})</p>}
                              </div>
                          )}
                          <div className="mt-auto">
@@ -145,6 +147,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                              <div className="mb-2">
                                  <p className="text-[7px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
                                  <p className="text-xl font-black leading-none tracking-tighter">{refNumber}</p>
+                                 {secondaryRef && <p className="text-[10px] font-bold opacity-60 leading-none mt-1">({secondaryRef})</p>}
                              </div>
                          )}
                         <p className="text-[8px] font-black tracking-widest text-blue-600">DISEÑO 2</p>
@@ -201,6 +204,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                                  <div className="text-right">
                                      <p className="text-[7px] font-black text-gray-300 uppercase">REF:</p>
                                      <p className="text-lg font-black leading-none">{refNumber}</p>
+                                     {secondaryRef && <p className="text-[9px] font-bold opacity-60 leading-none mt-0.5">({secondaryRef})</p>}
                                  </div>
                              )}
                          </div>
@@ -255,6 +259,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                              <div className="mb-2">
                                  <p className="text-sm font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
                                  <p className="text-xl font-black leading-none tracking-tighter">{refNumber}</p>
+                                 {secondaryRef && <p className="text-[12px] font-bold opacity-60 leading-none mt-1">({secondaryRef})</p>}
                              </div>
                          )}
                          <p className="text-md font-mono font-black tracking-widest text-gray-400 mt-2">{qrContent}</p>
@@ -287,6 +292,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <div className="text-right">
                             <p className="text-[8px] font-black uppercase text-gray-400">Orden / REF:</p>
                             <p className="text-lg font-black tracking-tighter leading-none">{refNumber}</p>
+                            {secondaryRef && <p className="text-[11px] font-bold opacity-60 leading-none mt-1">({secondaryRef})</p>}
                         </div>
                     )}
                 </div>
@@ -358,6 +364,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                         <div className="text-right border-l-2 border-black pl-2">
                             <p className="text-[5px] font-black uppercase opacity-50 mb-0.5 tracking-widest">REF</p>
                             <p className="text-md font-black uppercase tracking-tighter leading-none">{refNumber}</p>
+                            {secondaryRef && <p className="text-[9px] font-bold opacity-60 leading-none mt-0.5">({secondaryRef})</p>}
                         </div>
                     )}
                 </div>
@@ -424,6 +431,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                                  <div className="mb-1">
                                      <p className="text-[6px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
                                      <p className="text-xl font-black leading-none tracking-tighter">{refNumber}</p>
+                                     {secondaryRef && <p className="text-[10px] font-bold opacity-60 leading-none mt-0.5">({secondaryRef})</p>}
                                  </div>
                              )}
                              <div className="mt-auto">

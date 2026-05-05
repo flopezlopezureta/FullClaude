@@ -299,6 +299,7 @@ export interface Package {
   sourceAccountName?: string;
   alertChecked?: boolean;
   alertCheckedAt?: Date;
+  shopifyOrderNumber?: string;
 }
 
 export interface Notification {

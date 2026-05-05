@@ -206,6 +206,7 @@ async function autoImportShopifyPackages(activeCommunes = []) {
                             for (const order of ordersData.orders) {
                                 try {
                                     const orderId = order.id.toString();
+                                    const orderNumber = order.order_number ? order.order_number.toString() : (order.name || orderId);
                                     const { rows: existing } = await db.query('SELECT id FROM packages WHERE "shopifyOrderId" = $1 OR "id" = $2', [orderId, orderId]);
                                     if (existing.length > 0) continue;
 
@@ -243,6 +244,7 @@ async function autoImportShopifyPackages(activeCommunes = []) {
                                         creatorId: clientId,
                                         source: 'SHOPIFY',
                                         shopifyOrderId: orderId,
+                                        shopifyOrderNumber: orderNumber,
                                         sourceAccountId: account.id,
                                         sourceAccountName: account.nickname
                                     };

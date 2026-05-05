@@ -1337,6 +1337,7 @@ router.get('/:clientId/shopify/orders', authMiddleware, async (req, res) => {
                         commune: order.shipping_address?.city || 'N/A',
                         city: order.shipping_address?.province || 'N/A',
                         notes: `Shopify Order: ${order.name || order.id} (${account.nickname})`,
+                        orderNumber: order.order_number?.toString() || order.name || order.id.toString(),
                         sourceAccountId: account.id,
                         sourceAccountName: account.nickname
                     }));
@@ -1417,7 +1418,8 @@ router.post('/shopify/webhook', async (req, res) => {
             updatedAt: now,
             creatorId: client.id,
             source: 'SHOPIFY',
-            shopifyOrderId: orderId
+            shopifyOrderId: orderId,
+            shopifyOrderNumber: order.order_number?.toString() || order.name || orderId
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

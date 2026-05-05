@@ -405,7 +405,8 @@ async function initializeDatabase() {
                 'isReassigned BOOLEAN DEFAULT false',
                 'sourceAccountId TEXT',
                 'sourceAccountName TEXT',
-                'alertChecked BOOLEAN DEFAULT false'
+                'alertChecked BOOLEAN DEFAULT false',
+                'shopifyOrderNumber TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];

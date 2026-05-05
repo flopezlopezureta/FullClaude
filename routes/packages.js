@@ -428,7 +428,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
     }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, jumpsellerOrderId, trackingId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, shopifyOrderNumber, wooOrderId, jumpsellerOrderId, trackingId } = req.body;
     
     // Validation
     const requiredFields = {
@@ -497,6 +497,7 @@ router.post('/', authMiddleware, async (req, res) => {
             source,
             meliOrderId,
             shopifyOrderId,
+            shopifyOrderNumber,
             wooOrderId,
             jumpsellerOrderId,
             trackingId,
@@ -575,6 +576,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     source, 
                     meliOrderId, 
                     shopifyOrderId, 
+                    shopifyOrderNumber,
                     wooOrderId, 
                     jumpsellerOrderId,
                     trackingId 
@@ -655,6 +657,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     source, 
                     meliOrderId, 
                     shopifyOrderId, 
+                    shopifyOrderNumber,
                     wooOrderId, 
                     jumpsellerOrderId,
                     trackingId: cleanTrackingId,
