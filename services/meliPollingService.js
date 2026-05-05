@@ -270,7 +270,7 @@ async function pollMeliPackages() {
                                 [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Capture)', `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
                             );
                         }
-                    } else if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
+                    } else if (mlStatus === 'shipped' && !['EN_TRANSITO', 'EN_RUTA', 'PROBLEMA', 'REPROGRAMADO', 'ENTREGADO', 'DEVUELTO', 'CANCELADO'].includes(pkg.status)) {
                         newStatus = 'EN_TRANSITO';
                         eventStatus = 'En Tránsito';
                         eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
