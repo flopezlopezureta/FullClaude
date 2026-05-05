@@ -321,7 +321,7 @@ router.get('/', authMiddleware, async (req, res) => {
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
-            ORDER BY p."updatedAt" ${orderDirection}
+            ORDER BY p."updatedAt" ${orderDirection}, p.id DESC
             ${limitClause}
         `;
         
