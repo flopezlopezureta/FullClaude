@@ -242,7 +242,18 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                                 </span>
                             )}
                             <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
-                                {pkg.source && sourceIcons[pkg.source]}
+                                {pkg.source && (
+                                    <div className="flex items-center gap-1 bg-[var(--background-secondary)] px-1.5 py-0.5 rounded border border-[var(--border-secondary)]" title={pkg.source === 'MANUAL' ? `Creado por ${creatorName || 'Usuario'}` : `Importado desde ${pkg.source}`}>
+                                        {sourceIcons[pkg.source] || (
+                                            <div className="w-3.5 h-3.5 rounded-sm flex items-center justify-center bg-[var(--background-muted)] text-[var(--text-secondary)] font-black text-[8px]">
+                                                M
+                                            </div>
+                                        )}
+                                        <span className="text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-tight hidden sm:inline-block">
+                                            {pkg.source === 'MANUAL' ? `Creado por ${creatorName || 'Usuario'}` : `Importado desde ${pkg.source.replace('_', ' ')}`}
+                                        </span>
+                                    </div>
+                                )}
                                 {pkg.recipientEmail && <IconMail title={`Email: ${pkg.recipientEmail}`} className="w-3.5 h-3.5 text-blue-500 flex-shrink-0" />}
                                 {pkg.source === 'MERCADO_LIBRE' && (
                                     pkg.isFlexed ? (
