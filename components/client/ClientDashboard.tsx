@@ -483,7 +483,7 @@ const ClientDashboard: React.FC = () => {
                     <div className="min-height-[300px]">
                         <PackageList 
                             packages={packages} 
-                            users={[]} 
+                            users={auth?.user ? [auth.user] as any[] : []} 
                             isLoading={isLoading}
                             onSelectPackage={setSelectedPackage}
                             onEditPackage={setEditingPackage}
