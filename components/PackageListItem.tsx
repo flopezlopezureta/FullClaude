@@ -154,6 +154,15 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
       : (pkg.recipientAddress || 'Sin Dirección');
 
     const isScanned = pkg.status !== PackageStatus.Pending;
+    
+    let displaySource = pkg.source;
+    if (displaySource === PackageSource.Manual || !displaySource) {
+        if (pkg.shopifyOrderId) displaySource = PackageSource.Shopify;
+        else if (pkg.jumpsellerOrderId) displaySource = PackageSource.Jumpseller;
+        else if (pkg.meliOrderId || pkg.meliFlexCode) displaySource = PackageSource.MercadoLibre;
+        else if (pkg.wooOrderId) displaySource = PackageSource.WooCommerce;
+        else displaySource = PackageSource.Manual;
+    }
 
     return (
         <>
@@ -242,15 +251,15 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                                 </span>
                             )}
                             <div className="flex items-center gap-1.5 pl-1 border-l border-[var(--border-secondary)]">
-                                {pkg.source && (
-                                    <div className="flex items-center gap-1 bg-[var(--background-secondary)] px-1.5 py-0.5 rounded border border-[var(--border-secondary)]" title={pkg.source === 'MANUAL' ? `Creado por ${creatorName || 'Usuario'}` : `Importado desde ${pkg.source}`}>
-                                        {sourceIcons[pkg.source] || (
+                                {displaySource && (
+                                    <div className="flex items-center gap-1 bg-[var(--background-secondary)] px-1.5 py-0.5 rounded border border-[var(--border-secondary)]" title={displaySource === PackageSource.Manual ? `Creado por ${creatorName || 'Usuario'}` : `Importado desde ${displaySource}`}>
+                                        {sourceIcons[displaySource] || (
                                             <div className="w-3.5 h-3.5 rounded-sm flex items-center justify-center bg-[var(--background-muted)] text-[var(--text-secondary)] font-black text-[8px]">
                                                 M
                                             </div>
                                         )}
                                         <span className="text-[9px] font-bold text-[var(--text-secondary)] uppercase tracking-tight hidden sm:inline-block">
-                                            {pkg.source === 'MANUAL' ? `Creado por ${creatorName || 'Usuario'}` : `Importado desde ${pkg.source.replace('_', ' ')}`}
+                                            {displaySource === PackageSource.Manual ? `Creado por ${creatorName || 'Usuario'}` : `Importado desde ${displaySource.replace('_', ' ')}`}
                                         </span>
                                     </div>
                                 )}
