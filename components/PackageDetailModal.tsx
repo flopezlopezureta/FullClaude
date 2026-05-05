@@ -328,7 +328,7 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                             )}
                             {recipientPhoneForDisplay && (
                                 <>
-                                <a href={`tel:${recipientPhoneForDisplay}`} className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors" aria-label="Llamar">
+                                <a href={`tel:${String(recipientPhoneForDisplay).replace(/[^\d+]/g, '')}`} className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-semibold text-blue-700 bg-blue-100 rounded-full hover:bg-blue-200 transition-colors" aria-label="Llamar">
                                     <IconPhone className="w-4 h-4"/>
                                     <span>Llamar</span>
                                 </a>
