@@ -101,6 +101,7 @@ router.get('/accounts', authMiddleware, async (req, res) => {
             type: acc.type,
             nickname: acc.nickname,
             settings: acc.settings,
+            status: acc.status || 'CONNECTED',
             connectedAt: acc.connectedAt,
             // Only return identifying info, not tokens
             identifier: acc.type === 'SHOPIFY' ? acc.credentials.shopUrl : (acc.type === 'MERCADO_LIBRE' ? acc.credentials.userId : null)
