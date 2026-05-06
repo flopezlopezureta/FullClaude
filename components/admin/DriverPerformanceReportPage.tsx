@@ -15,15 +15,25 @@ import { getLocalDateString, getLogicalDateString } from '../../utils/dateUtils'
 
 const getISODate = (date: Date, tz: string) => getLocalDateString(date, tz);
 
-const KpiCard: React.FC<{ icon: ReactNode, title: string, value: string | number, subtext?: string, color: string }> = ({ icon, title, value, subtext, color }) => (
-    <div className="bg-[var(--background-secondary)] rounded-lg p-4 shadow-sm border border-[var(--border-primary)] flex items-center">
-        <div className={`flex-shrink-0 p-3 rounded-full ${color}`}>
-            {icon}
-        </div>
-        <div className="ml-4">
-            <p className="text-sm font-medium text-[var(--text-muted)]">{title}</p>
-            <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
-            {subtext && <p className="text-xs text-[var(--text-muted)] opacity-70">{subtext}</p>}
+const KpiCard: React.FC<{ icon: ReactNode, title: string, value: string | number, subtext?: string, color: string, trend?: 'up' | 'down' | 'neutral' }> = ({ icon, title, value, subtext, color, trend }) => (
+    <div className="bg-[var(--background-secondary)] rounded-xl p-5 shadow-lg border border-[var(--border-primary)] relative overflow-hidden group transition-all hover:shadow-xl hover:-translate-y-1">
+        <div className={`absolute top-0 right-0 w-24 h-24 -mr-8 -mt-8 rounded-full opacity-10 ${color}`}></div>
+        <div className="flex items-center relative z-10">
+            <div className={`flex-shrink-0 p-3.5 rounded-xl shadow-inner ${color}`}>
+                {icon}
+            </div>
+            <div className="ml-5">
+                <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest mb-0.5">{title}</p>
+                <div className="flex items-baseline gap-2">
+                    <p className="text-3xl font-black text-[var(--text-primary)]">{value}</p>
+                    {trend && (
+                        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${trend === 'up' ? 'bg-green-100 text-green-600' : 'bg-red-100 text-red-600'}`}>
+                            {trend === 'up' ? '↑' : '↓'}
+                        </span>
+                    )}
+                </div>
+                {subtext && <p className="text-[11px] font-bold text-[var(--text-muted)] mt-1">{subtext}</p>}
+            </div>
         </div>
     </div>
 );
@@ -50,7 +60,8 @@ export const DriverPerformanceReportPage: React.FC = () => {
     
     const dailyDeliveriesChartRef = useRef<HTMLCanvasElement>(null);
     const deliveryTypeChartRef = useRef<HTMLCanvasElement>(null);
-    const chartInstances = useRef<{ daily?: any; type?: any }>({});
+    const hourlyFlowChartRef = useRef<HTMLCanvasElement>(null);
+    const chartInstances = useRef<{ daily?: any; type?: any; hourly?: any }>({});
     
     const [isDriverSearchOpen, setIsDriverSearchOpen] = useState(false);
     const [driverSearchTerm, setDriverSearchTerm] = useState('');
@@ -148,26 +159,42 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const reportStats = useMemo(() => {
         const delivered = filteredPackages.filter(p => p.status === PackageStatus.Delivered);
         const problems = filteredPackages.filter(p => p.status === PackageStatus.Problem);
+        const totalAttempted = delivered.length + problems.length;
+        
+        const successRate = totalAttempted > 0 ? ((delivered.length / totalAttempted) * 100).toFixed(1) : '0';
+        
+        // On time: Delivered same day it was assigned
         const onTime = delivered.filter(p => {
-            const deliveryEvent = p.history.find(e => e.status === PackageStatus.Delivered) || p.history[0];
-            return new Date(deliveryEvent.timestamp) <= new Date(p.estimatedDelivery);
+            if (!p.assignedAt) return true;
+            const assignDate = new Date(p.assignedAt).toISOString().split('T')[0];
+            const deliveryEvent = p.history.find(e => e.status === PackageStatus.Delivered);
+            if (!deliveryEvent) return false;
+            const deliveryDate = new Date(deliveryEvent.timestamp).toISOString().split('T')[0];
+            return assignDate === deliveryDate;
         });
 
         const totalDelivered = delivered.length;
         const onTimeRate = totalDelivered > 0 ? ((onTime.length / totalDelivered) * 100).toFixed(0) : '0';
         
+        // Avg delivery time: From ASSIGNMENT to DELIVERY (Last mile efficiency)
         const totalDeliveryMillis = delivered.reduce((sum, pkg) => {
-            const creationEvent = pkg.history.find(e => e.status === 'Creado') || pkg.history[pkg.history.length - 1];
+            const assignEvent = pkg.history.find(e => e.status === 'ASIGNADO' || e.status === 'EN_TRANSITO') || { timestamp: pkg.assignedAt };
             const deliveryEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
-            if (creationEvent && deliveryEvent) {
-                return sum + (new Date(deliveryEvent.timestamp).getTime() - new Date(creationEvent.timestamp).getTime());
+            if (assignEvent?.timestamp && deliveryEvent) {
+                return sum + (new Date(deliveryEvent.timestamp).getTime() - new Date(assignEvent.timestamp).getTime());
             }
             return sum;
         }, 0);
         
-        const avgDeliveryHours = totalDelivered > 0 ? Math.round(totalDeliveryMillis / totalDelivered / (1000 * 60 * 60)) : 0;
+        const avgDeliveryHours = totalDelivered > 0 ? (totalDeliveryMillis / totalDelivered / (1000 * 60 * 60)).toFixed(1) : '0';
 
-        return { totalDelivered, onTimeRate: `${onTimeRate}%`, avgDeliveryHours: `${avgDeliveryHours}h`, totalProblems: problems.length };
+        return { 
+            totalDelivered, 
+            successRate: `${successRate}%`, 
+            onTimeRate: `${onTimeRate}%`, 
+            avgDeliveryHours: `${avgDeliveryHours}h`, 
+            totalProblems: problems.length 
+        };
     }, [filteredPackages]);
     
     const paymentStats = useMemo(() => {
@@ -318,9 +345,11 @@ export const DriverPerformanceReportPage: React.FC = () => {
     useEffect(() => {
         const dailyCtx = dailyDeliveriesChartRef.current?.getContext('2d');
         const typeCtx = deliveryTypeChartRef.current?.getContext('2d');
+        const hourlyCtx = hourlyFlowChartRef.current?.getContext('2d');
 
         if (chartInstances.current.daily) chartInstances.current.daily.destroy();
         if (chartInstances.current.type) chartInstances.current.type.destroy();
+        if (chartInstances.current.hourly) chartInstances.current.hourly.destroy();
 
         if (dailyCtx && dailyBreakdown.length > 0) {
             const labels = dailyBreakdown.map(day => new Date(day.date + 'T12:00:00').toLocaleDateString('es-CL', { day: '2-digit', month: 'short' }));
@@ -333,18 +362,17 @@ export const DriverPerformanceReportPage: React.FC = () => {
                     datasets: [{ 
                         label: 'Entregas por Día', 
                         data, 
-                        backgroundColor: 'rgba(59, 130, 246, 0.5)', 
-                        borderColor: 'rgba(59, 130, 246, 1)', 
-                        borderWidth: 1 
+                        backgroundColor: 'rgba(59, 130, 246, 0.8)', 
+                        borderRadius: 6,
+                        hoverBackgroundColor: 'rgba(59, 130, 246, 1)'
                     }]
                 },
                 options: { 
                     scales: { 
-                        y: { 
-                            beginAtZero: true, 
-                            ticks: { stepSize: 1 } 
-                        } 
+                        y: { beginAtZero: true, ticks: { stepSize: 1, font: { weight: 'bold' } }, grid: { display: false } },
+                        x: { grid: { display: false }, ticks: { font: { weight: 'bold', size: 10 } } }
                     },
+                    plugins: { legend: { display: false } },
                     responsive: true,
                     maintainAspectRatio: false
                 }
@@ -359,19 +387,67 @@ export const DriverPerformanceReportPage: React.FC = () => {
             }, {} as { [key in ShippingType]?: number });
 
             chartInstances.current.type = new Chart(typeCtx, {
-                type: 'pie',
+                type: 'doughnut',
                 data: {
                     labels: Object.keys(typeCounts),
                     datasets: [{
-                        label: 'Tipo de Entrega',
                         data: Object.values(typeCounts),
-                        backgroundColor: ['#f97316', '#ef4444', '#4f46e5'],
+                        backgroundColor: ['#6366f1', '#f59e0b', '#10b981'],
+                        borderWidth: 0,
+                        hoverOffset: 10
                     }]
                 },
-                options: { responsive: true, maintainAspectRatio: false }
+                options: { 
+                    plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, font: { weight: 'bold', size: 11 } } } },
+                    cutout: '65%',
+                    responsive: true, 
+                    maintainAspectRatio: false 
+                }
             });
         }
-    }, [filteredPackages]);
+
+        if (hourlyCtx && filteredPackages.length > 0) {
+            const hourCounts = new Array(24).fill(0);
+            filteredPackages.filter(p => p.status === PackageStatus.Delivered).forEach(pkg => {
+                const deliveryEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
+                if (deliveryEvent) {
+                    const hour = new Date(deliveryEvent.timestamp).getHours();
+                    hourCounts[hour]++;
+                }
+            });
+
+            // Only show hours from 8:00 to 22:00
+            const labels = Array.from({length: 15}, (_, i) => `${i + 8}:00`);
+            const data = hourCounts.slice(8, 23);
+
+            chartInstances.current.hourly = new Chart(hourlyCtx, {
+                type: 'line',
+                data: {
+                    labels,
+                    datasets: [{
+                        label: 'Flujo Horario',
+                        data,
+                        borderColor: '#6366f1',
+                        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 4,
+                        pointBackgroundColor: '#fff',
+                        pointBorderWidth: 2
+                    }]
+                },
+                options: {
+                    scales: {
+                        y: { beginAtZero: true, display: false },
+                        x: { grid: { display: false }, ticks: { font: { size: 10, weight: 'bold' } } }
+                    },
+                    plugins: { legend: { display: false } },
+                    responsive: true,
+                    maintainAspectRatio: false
+                }
+            });
+        }
+    }, [filteredPackages, dailyBreakdown]);
     
     const inputClasses = "w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)]";
 
@@ -588,21 +664,28 @@ export const DriverPerformanceReportPage: React.FC = () => {
             
             {selectedDriver && !isLoading && (
                 <div className="space-y-6 animate-fade-in-up">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                        <KpiCard icon={<IconChecklist className="w-6 h-6 text-blue-600"/>} title="Entregados" value={reportStats.totalDelivered} color="bg-blue-100"/>
-                        <KpiCard icon={<IconClock className="w-6 h-6 text-green-600"/>} title="Puntualidad" value={reportStats.onTimeRate} color="bg-green-100"/>
-                        <KpiCard icon={<IconRoute className="w-6 h-6 text-purple-600"/>} title="Tiempo Promedio" value={reportStats.avgDeliveryHours} subtext="Creación a entrega" color="bg-purple-100"/>
-                        <KpiCard icon={<IconAlertTriangle className="w-6 h-6 text-red-600"/>} title="Problemas" value={reportStats.totalProblems} color="bg-red-100"/>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                        <KpiCard icon={<IconChecklist className="w-6 h-6 text-indigo-600"/>} title="Entregados" value={reportStats.totalDelivered} trend="up" color="bg-indigo-100"/>
+                        <KpiCard icon={<IconChecklist className="w-6 h-6 text-emerald-600"/>} title="Tasa Éxito" value={reportStats.successRate} trend="up" subtext="Efectividad en ruta" color="bg-emerald-100"/>
+                        <KpiCard icon={<IconRoute className="w-6 h-6 text-amber-600"/>} title="Eficiencia" value={reportStats.avgDeliveryHours} subtext="Asignación a entrega" color="bg-amber-100"/>
+                        <KpiCard icon={<IconAlertTriangle className="w-6 h-6 text-rose-600"/>} title="Problemas" value={reportStats.totalProblems} color="bg-rose-100"/>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                        <div className="lg:col-span-2 bg-[var(--background-secondary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 className="text-md font-semibold text-[var(--text-primary)] mb-4 text-center">Entregas Diarias</h4>
-                            <div className="h-64"><canvas ref={dailyDeliveriesChartRef}></canvas></div>
+                    <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                        <div className="lg:col-span-2 bg-[var(--background-secondary)] p-6 rounded-xl border border-[var(--border-primary)] shadow-lg">
+                            <div className="flex justify-between items-center mb-6">
+                                <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest">Volumen de Entregas</h4>
+                                <IconCalendar className="w-4 h-4 text-gray-400"/>
+                            </div>
+                            <div className="h-72"><canvas ref={dailyDeliveriesChartRef}></canvas></div>
                         </div>
-                        <div className="lg:col-span-1 bg-[var(--background-secondary)] p-4 rounded-lg border border-[var(--border-primary)] shadow-sm">
-                            <h4 className="text-md font-semibold text-[var(--text-primary)] mb-4 text-center">Tipos de Envío</h4>
-                            <div className="h-64"><canvas ref={deliveryTypeChartRef}></canvas></div>
+                        <div className="lg:col-span-1 bg-[var(--background-secondary)] p-6 rounded-xl border border-[var(--border-primary)] shadow-lg">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Mix de Servicios</h4>
+                            <div className="h-72"><canvas ref={deliveryTypeChartRef}></canvas></div>
+                        </div>
+                        <div className="lg:col-span-1 bg-[var(--background-secondary)] p-6 rounded-xl border border-[var(--border-primary)] shadow-lg">
+                            <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Flujo Horario</h4>
+                            <div className="h-72"><canvas ref={hourlyFlowChartRef}></canvas></div>
                         </div>
                     </div>
 
