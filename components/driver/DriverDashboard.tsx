@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
 import { getLocalDateString } from '../../utils/dateUtils';
+import { storageUtils } from '../../utils/storageUtils';
 import { PackageStatus, MessagingPlan } from '../../constants';
 import type { Package, User } from '../../types';
 import { api, DeliveryConfirmationData } from '../../services/api';
@@ -32,27 +33,20 @@ const DriverDashboard: React.FC = () => {
   useEffect(() => {
     if (!auth?.user) return;
     
-    const cachedPackages = localStorage.getItem(`driver_packages_${auth.user.id}`);
-    const cachedUsers = localStorage.getItem(`driver_users`);
+    // Cleanup old data and stale drafts on mount
+    storageUtils.cleanupStaleData();
     
-    if (cachedPackages) {
-      try {
-        const parsed = JSON.parse(cachedPackages);
-        setMyPackages(parsed);
+    const cachedPackages = storageUtils.getItem<Package[]>(`driver_packages_${auth.user.id}`, []);
+    const cachedUsers = storageUtils.getItem<User[]>(`driver_users`, []);
+    
+    if (cachedPackages.length > 0) {
+        setMyPackages(cachedPackages);
         setIsLoading(false);
         isInitialLoad.current = false;
-      } catch (e) {
-        console.error("Error parsing cached packages", e);
-      }
     }
     
-    if (cachedUsers) {
-      try {
-        const parsed = JSON.parse(cachedUsers);
-        setUsers(parsed);
-      } catch (e) {
-        console.error("Error parsing cached users", e);
-      }
+    if (cachedUsers.length > 0) {
+        setUsers(cachedUsers);
     }
   }, [auth?.user?.id]);
 
@@ -80,14 +74,17 @@ const DriverDashboard: React.FC = () => {
           // Fetch all packages for the current driver, without pagination
           const { packages: pkgs } = await api.getPackages({ driverFilter: auth.user.id, limit: 0 });
           setMyPackages(pkgs); 
-          localStorage.setItem(`driver_packages_${auth.user.id}`, JSON.stringify(pkgs));
+          storageUtils.safeSetItem(`driver_packages_${auth.user.id}`, pkgs);
+          
+          // Sync local cache to remove orphaned package drafts (avoid 404s)
+          storageUtils.syncLocalCache(pkgs.map(p => p.id));
           
           // Only fetch users if we don't have them or if it's the initial load
           // Users don't change that often for a driver's view
           if (users.length === 0 || isInitialLoad.current) {
             const allUsers = await api.getUsers();
             setUsers(allUsers);
-            localStorage.setItem(`driver_users`, JSON.stringify(allUsers));
+            storageUtils.safeSetItem(`driver_users`, allUsers);
           }
       } catch (error) {
           console.error("Failed to fetch driver data", error);

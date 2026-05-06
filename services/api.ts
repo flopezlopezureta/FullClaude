@@ -64,6 +64,11 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
     } else {
       const text = await response.text();
       console.warn(`[API] Received non-JSON error response (${response.status}):`, text.substring(0, 100));
+      
+      // Manejo específico para 404 cuando el servidor devuelve HTML (común en SPAs con fallbacks mal configurados)
+      if (response.status === 404) {
+        errorMessage = "El recurso solicitado no fue encontrado (404). Es posible que el paquete haya sido eliminado o reasignado.";
+      }
     }
 
     throw new ApiError(errorMessage, response.status, errorBody);
