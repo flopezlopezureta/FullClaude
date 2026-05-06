@@ -1743,11 +1743,10 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
 router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const targetDate = req.query.date || await timeService.getLogicalDate();
-        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const { start, nextDayStart } = await timeService.getLogicalRange(targetDate, targetDate);
         const tz = await timeService.getSystemTimezone();
         
         // Define late threshold (21:00 of the logical day start)
-        // Since 'start' is 02:00 AM, we add 19 hours to reach 21:00 PM
         const query = `
             SELECT 
                 p.id,
@@ -1761,7 +1760,7 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                     THEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) + 24
                     ELSE EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))
                 END + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))/60.0) as delivery_hour,
-                (SELECT COUNT(*) FROM packages WHERE "driverId" = p."driverId" AND "assignedAt"::date = $1::date) as total_packages_day
+                (SELECT COUNT(*) FROM packages WHERE "driverId" = p."driverId" AND "assignedAt" >= $1 AND "assignedAt" < $2) as total_packages_day
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
@@ -1778,17 +1777,16 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
         const driverStatsResult = await db.query(`
             SELECT 
                 "driverId",
-                (te.timestamp AT TIME ZONE 'America/Santiago')::date as day,
+                (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)::date as day,
                 COUNT(*) as total_day,
-                MIN(EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'America/Santiago')/60.0) as first_h,
-                MAX(EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'America/Santiago') + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'America/Santiago')/60.0) as last_h
+                MIN(CASE WHEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) < 2 THEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) + 24 ELSE EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) END + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)/60.0) as first_h,
+                MAX(CASE WHEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) < 2 THEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) + 24 ELSE EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) END + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)/60.0) as last_h
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             WHERE te.status = 'ENTREGADO'
-            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date
-            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
-            GROUP BY "driverId", (te.timestamp AT TIME ZONE 'America/Santiago')::date
-        `, [startDate, endDate]);
+            AND te.timestamp >= $1 AND te.timestamp < $2
+            GROUP BY "driverId", day
+        `, [start, nextDayStart, tz]);
         const driverStats = driverStatsResult.rows;
 
         const enrichedData = rows.map(row => {
