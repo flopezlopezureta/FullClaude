@@ -907,6 +907,15 @@ async function initializeDatabase() {
             if (err.code !== '42701') { console.error('Error during packages migration (shopifyOrderId):', err); }
         }
 
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "shopifyOrderNumber" TEXT');
+            console.log('MIGRATION APPLIED: Column "shopifyOrderNumber" added to "packages".');
+            // Populate with Order ID if number is missing for existing rows
+            await db.query('UPDATE packages SET "shopifyOrderNumber" = "shopifyOrderId" WHERE "shopifyOrderNumber" IS NULL AND "shopifyOrderId" IS NOT NULL');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during packages migration (shopifyOrderNumber):', err); }
+        }
+
 
         // --- MIGRATIONS: Add informed fields to pickup tables ---
         try {
