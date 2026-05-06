@@ -186,7 +186,6 @@ router.get('/', authMiddleware, async (req, res) => {
             whereClauses.push(`p."recipientCity" = $${paramIndex++}`);
             queryParams.push(cityFilter);
         }
-        
         // Relax date filtering if searching by query to find historical packages
         const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
         
@@ -194,31 +193,24 @@ router.get('/', authMiddleware, async (req, res) => {
         const dateColumn = dateType === 'egress' ? 'assignedAt' : 'createdAt';
 
         if (startDate && endDate && !isHistoricalSearch) {
-            const end = new Date(endDate);
-            end.setDate(end.getDate() + 1);
-            const endStr = end.toISOString().split('T')[0];
+            const { start, nextDayStart } = await timeService.getLogicalRange(startDate, endDate);
             
             if (dateType === 'egress') {
-                whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp`);
+                whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
             } else if (driverFilter && req.user.role === 'DRIVER') {
-                // Para la APP móvil de conductores:
-                // IMPORTANTE: Incluimos assignedAt para que si se le asigna un paquete viejo hoy, lo vea.
-                // Eliminamos updatedAt para evitar que paquetes cerrados reaparezcan por sync.
                 whereClauses.push(`(
-                    ((p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR 
-                    ((p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR
-                    ((p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp)
+                    p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                    p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                    p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
                 )`);
             } else {
-                // Para búsqueda general (Admin y Reportes de Rendimiento), incluimos updatedAt
-                // Esto es vital para que los reportes vean los paquetes entregados en la fecha solicitada
                 whereClauses.push(`(
-                    ((p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR 
-                    ((p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp) OR
-                    ((p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp AND (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex + 1}::timestamp)
+                    p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                    p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                    p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
                 )`);
             }
-            queryParams.push(startDate, endStr);
+            queryParams.push(start, nextDayStart);
             paramIndex += 2;
         } else if (!isHistoricalSearch) {
             // Filtros individuales si no hay un rango completo
