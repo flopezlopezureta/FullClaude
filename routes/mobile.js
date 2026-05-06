@@ -3,6 +3,7 @@ const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
+const timeService = require('../services/timeService');
 
 // --- MELI API HELPERS ---
 const makeMeliRequest = (options, postData = null) => {
@@ -186,19 +187,20 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
 router.get('/closures/summary', authMiddleware, async (req, res) => {
     try {
         const driverId = req.user.id;
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
-
-        const { rows } = await db.query(`
+        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        
+        const query = `
             SELECT 
                 COUNT(*) as total,
                 COUNT(*) FILTER (WHERE status = 'ENTREGADO') as delivered,
-                COUNT(*) FILTER (WHERE status = 'PROBLEMA' OR status = 'REPROGRAMADO') as problems,
-                COUNT(*) FILTER (WHERE status = 'CANCELADO') as cancelled,
-                COUNT(*) FILTER (WHERE status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO', 'PROBLEMA', 'REPROGRAMADO')) as pending
+                COUNT(*) FILTER (WHERE status IN ('PROBLEMA', 'REPROGRAMADO', 'DEVUELTO')) as problems,
+                COUNT(*) FILTER (WHERE status IN ('PENDIENTE', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) as pending
             FROM packages 
             WHERE "driverId" = $1 
-            AND ("createdAt"::date = $2 OR "assignedAt"::date = $2)
-        `, [driverId, today]);
+            AND "updatedAt" >= $2 AND "updatedAt" < $3
+        `;
+
+        const { rows } = await db.query(query, [driverId, start, nextDayStart]);
 
         res.json(rows[0]);
     } catch (err) {
@@ -215,9 +217,8 @@ router.post('/closures', authMiddleware, async (req, res) => {
     const { total, delivered, problems, cancelled, pending, notes } = req.body;
     const driverId = req.user.id;
     const driverName = req.user.name;
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
-
     try {
+        const today = await timeService.getLogicalDate();
         await db.query(`
             INSERT INTO daily_closures 
             ("driverId", "driverName", date, "totalPackages", "deliveredCount", "pendingCount", "problemCount", "cancelledCount", notes)

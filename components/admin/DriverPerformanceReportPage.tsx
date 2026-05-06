@@ -11,7 +11,9 @@ import { AuthContext } from '../../contexts/AuthContext';
 // Declare Chart.js in the global scope to avoid TypeScript errors
 declare const Chart: any;
 
-const getISODate = (date: Date) => date.toISOString().split('T')[0];
+import { getLocalDateString, getLogicalDateString } from '../../utils/dateUtils';
+
+const getISODate = (date: Date, tz: string) => getLocalDateString(date, tz);
 
 const KpiCard: React.FC<{ icon: ReactNode, title: string, value: string | number, subtext?: string, color: string }> = ({ icon, title, value, subtext, color }) => (
     <div className="bg-[var(--background-secondary)] rounded-lg p-4 shadow-sm border border-[var(--border-primary)] flex items-center">
@@ -38,11 +40,13 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
     const [selectedDriverId, setSelectedDriverId] = useState<string>('');
     
-    const today = new Date();
+    const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+    const todayStr = getLogicalDateString(new Date(), tz);
+    const today = new Date(todayStr + 'T12:00:00'); // Use noon to avoid DST/TZ issues when getting month start
     const firstDayOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
 
-    const [startDate, setStartDate] = useState(getISODate(firstDayOfMonth));
-    const [endDate, setEndDate] = useState(getISODate(today));
+    const [startDate, setStartDate] = useState(getISODate(firstDayOfMonth, tz));
+    const [endDate, setEndDate] = useState(todayStr);
     
     const dailyDeliveriesChartRef = useRef<HTMLCanvasElement>(null);
     const deliveryTypeChartRef = useRef<HTMLCanvasElement>(null);

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
-import { getLocalDateString } from '../utils/dateUtils';
+import { getLocalDateString, getLogicalDateString } from '../utils/dateUtils';
 import type { Package, User } from '../types';
 import { PackageStatus, Role, UserStatus } from '../constants';
 import { api, PackageCreationData, PackageUpdateData } from '../services/api';
@@ -107,6 +107,9 @@ const Dashboard: React.FC = () => {
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
   const [alertDate, setAlertDate] = useState<string>(getLocalDateString());
 
+  const auth = useContext(AuthContext);
+  const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -117,8 +120,8 @@ const Dashboard: React.FC = () => {
   const [clientFilter, setClientFilter] = useState<string>('');
   const [communeFilter, setCommuneFilter] = useState<string>('');
   const [cityFilter, setCityFilter] = useState<string>('');
-  const [startDate, setStartDate] = useState(getLocalDateString());
-  const [endDate, setEndDate] = useState(getLocalDateString());
+  const [startDate, setStartDate] = useState(getLogicalDateString(new Date(), tz));
+  const [endDate, setEndDate] = useState(getLogicalDateString(new Date(), tz));
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'all_assigned' | 'first' | 'reassigned'>('all');
   const [dateType, setDateType] = useState<'created' | 'egress'>('created');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -155,7 +158,6 @@ const Dashboard: React.FC = () => {
   };
 
   const statusDropdownRef = useRef<HTMLDivElement>(null);
-  const auth = useContext(AuthContext);
 
   useEffect(() => {
     const fetchPollingStatus = async () => {
@@ -198,7 +200,8 @@ const Dashboard: React.FC = () => {
 
   const fetchCriticalAlerts = useCallback(async () => {
     try {
-      const targetDate = alertView === 'today' ? getLocalDateString() : alertDate;
+      const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+      const targetDate = alertView === 'today' ? getLogicalDateString(new Date(), tz) : alertDate;
       const excludeChecked = alertView === 'today'; // Only hide checked alerts in 'Today' view
       
       const { packages: cancelled } = await api.getPackages({ 

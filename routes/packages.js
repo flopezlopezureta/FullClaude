@@ -4,6 +4,7 @@ const db = require('../db');
 const { v4: uuidv4 } = require('uuid');
 const { normalizeCommune, normalizeCity } = require('../utils/normUtil');
 const authMiddleware = require('../middleware/auth');
+const timeService = require('../services/timeService');
 const https = require('https');
 const NotificationService = require('../services/notificationService');
 const { logAction } = require('../services/logger');
@@ -42,7 +43,7 @@ router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
 // [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
 router.get('/fix-egress-today', async (req, res) => {
     try {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const today = await timeService.getLogicalDate();
         const query = `
             UPDATE packages 
             SET "assignedAt" = "updatedAt" 
@@ -108,7 +109,7 @@ router.get('/', authMiddleware, async (req, res) => {
 
         // [SEGURIDAD] Si es un conductor y no especificó fechas, forzamos que vea solo HOY para evitar descuadres
         if (req.user.role === 'DRIVER' && !startDate && !endDate) {
-            const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+            const todayStr = await timeService.getLogicalDate();
             startDate = todayStr;
             endDate = todayStr;
         }
@@ -1422,7 +1423,7 @@ router.post('/bulk-pickup-client', authMiddleware, async (req, res) => {
         await Promise.all(eventPromises);
 
         // Update pickup_assignments table (New System)
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const today = await timeService.getLogicalDate();
         await client.query(
             `UPDATE pickup_assignments 
              SET status = 'RETIRADO', "packagesPickedUp" = $1, "updatedAt" = $2
@@ -1707,21 +1708,23 @@ router.post('/:id/check-alert', authMiddleware, async (req, res) => {
  */
 router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        const targetDate = req.query.date || await timeService.getLogicalDate();
+        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const tz = await timeService.getSystemTimezone();
         
         const query = `
             SELECT 
-                EXTRACT(HOUR FROM timestamp) as hour,
+                EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) as hour,
                 COUNT(*) as count
             FROM tracking_events
             WHERE status = 'ENTREGADO'
-            AND timestamp::date >= $1::date 
-            AND timestamp::date <= $2::date
+            AND timestamp >= $1::timestamp 
+            AND timestamp < $2::timestamp
             GROUP BY hour
             ORDER BY hour ASC;
         `;
 
-        const result = await db.query(query, [startDate, endDate]);
+        const result = await db.query(query, [start, nextDayStart, tz]);
         
         const hourlyData = Array.from({ length: 24 }, (_, i) => ({
             hour: i,
@@ -1747,8 +1750,12 @@ router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
  */
 router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
-        const { startDate, endDate } = req.query;
+        const targetDate = req.query.date || await timeService.getLogicalDate();
+        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const tz = await timeService.getSystemTimezone();
         
+        // Define late threshold (21:00 of the logical day start)
+        // Since 'start' is 02:00 AM, we add 19 hours to reach 21:00 PM
         const query = `
             SELECT 
                 p.id,
@@ -1756,20 +1763,24 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 c.name as seller_name,
                 p."recipientCommune",
                 p."driverId",
-                (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
-                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour
+                (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)::date as delivery_day,
+                (CASE 
+                    WHEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) < 2 
+                    THEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) + 24
+                    ELSE EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))
+                END + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))/60.0) as delivery_hour,
+                (SELECT COUNT(*) FROM packages WHERE "driverId" = p."driverId" AND "assignedAt"::date = $1::date) as total_packages_day
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
             LEFT JOIN users c ON p."creatorId" = c.id
             WHERE te.status = 'ENTREGADO'
-            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 21
-            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
-            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
+            AND te.timestamp >= ($1 + INTERVAL '19 hours') 
+            AND te.timestamp < $2
             ORDER BY te.timestamp DESC;
         `;
 
-        const result = await db.query(query, [startDate, endDate]);
+        const result = await db.query(query, [start, nextDayStart, tz]);
         const rows = result.rows;
 
         const driverStatsResult = await db.query(`
