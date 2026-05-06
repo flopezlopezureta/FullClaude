@@ -3,6 +3,7 @@ import { Package } from '../../types';
 import { IconX, IconAlertTriangle, IconCamera, IconPhoto, IconCheckCircle } from '../Icon';
 import imageCompression from 'browser-image-compression';
 import { AuthContext } from '../../contexts/AuthContext';
+import { storageUtils } from '../../utils/storageUtils';
 
 interface UndeliveredModalProps {
   pkg: Package;
@@ -96,31 +97,41 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
   const STORAGE_KEY_PREFIX = `undelivered_draft_${pkg.id}_`;
 
   const clearDraft = () => {
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}reason`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}customReason`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}photos`);
+    storageUtils.removeItem(`${STORAGE_KEY_PREFIX}reason`);
+    storageUtils.removeItem(`${STORAGE_KEY_PREFIX}customReason`);
+    storageUtils.removeItem(`${STORAGE_KEY_PREFIX}photos`);
   };
 
   useEffect(() => {
-    const savedReason = localStorage.getItem(`${STORAGE_KEY_PREFIX}reason`);
-    const savedCustom = localStorage.getItem(`${STORAGE_KEY_PREFIX}customReason`);
-    const savedPhotos = localStorage.getItem(`${STORAGE_KEY_PREFIX}photos`);
+    const savedReason = storageUtils.getItem(`${STORAGE_KEY_PREFIX}reason`, '');
+    const savedCustom = storageUtils.getItem(`${STORAGE_KEY_PREFIX}customReason`, '');
+    const savedPhotos = storageUtils.getItem<string[]>(`${STORAGE_KEY_PREFIX}photos`, []);
 
     if (savedReason) setReason(savedReason);
     if (savedCustom) setCustomReason(savedCustom);
-    if (savedPhotos) {
-        try { setPhotosBase64(JSON.parse(savedPhotos)); } catch(e) { console.error(e); }
+    if (savedPhotos && savedPhotos.length > 0) {
+        setPhotosBase64(savedPhotos);
     }
 
-    if (savedReason || savedCustom || savedPhotos) {
+    if (savedReason || savedCustom || (savedPhotos && savedPhotos.length > 0)) {
         setIsRestored(true);
         setTimeout(() => setIsRestored(false), 3000);
     }
-  }, [pkg.id]);
+  }, [pkg.id, STORAGE_KEY_PREFIX]);
 
-  useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}reason`, reason); }, [reason, STORAGE_KEY_PREFIX]);
-  useEffect(() => { localStorage.setItem(`${STORAGE_KEY_PREFIX}customReason`, customReason); }, [customReason, STORAGE_KEY_PREFIX]);
-  // Photo persistence disabled to prevent localStorage quota issues in mobile
+  useEffect(() => { 
+    if (reason) storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}reason`, reason); 
+  }, [reason, STORAGE_KEY_PREFIX]);
+  
+  useEffect(() => { 
+    if (customReason) storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}customReason`, customReason); 
+  }, [customReason, STORAGE_KEY_PREFIX]);
+
+  useEffect(() => {
+    if (photosBase64.length > 0) {
+        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}photos`, photosBase64);
+    }
+  }, [photosBase64, STORAGE_KEY_PREFIX]);
   
 
   const finalReason = reason === "Otro motivo (especificar)" ? customReason : reason;
@@ -136,7 +147,11 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
       await onConfirm(pkg.id, finalReason, photosBase64);
       clearDraft();
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error al reportar el problema.');
+      if (err.status === 404) {
+        setError('El paquete ya no existe en el sistema o fue reasignado.');
+      } else {
+        setError(err.message || 'Ocurrió un error al reportar el problema.');
+      }
       setIsLoading(false);
     }
   };

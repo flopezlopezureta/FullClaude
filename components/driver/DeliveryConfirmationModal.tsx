@@ -4,6 +4,7 @@ import { DeliveryConfirmationData } from '../../services/api';
 import { IconX, IconUser, IconId, IconCamera, IconAlertTriangle, IconCheckCircle, IconPhoto } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 import imageCompression from 'browser-image-compression';
+import { storageUtils } from '../../utils/storageUtils';
 
 interface DeliveryConfirmationModalProps {
   pkg: Package;
@@ -145,44 +146,48 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
 
   // Hydration on mount
   useEffect(() => {
-    const savedName = localStorage.getItem(`${STORAGE_KEY_PREFIX}name`);
-    const savedId = localStorage.getItem(`${STORAGE_KEY_PREFIX}id`);
-    const savedPhotos = localStorage.getItem(`${STORAGE_KEY_PREFIX}photos`);
+    const savedName = storageUtils.getItem(`${STORAGE_KEY_PREFIX}name`, '');
+    const savedId = storageUtils.getItem(`${STORAGE_KEY_PREFIX}id`, '');
+    const savedPhotos = storageUtils.getItem<string[]>(`${STORAGE_KEY_PREFIX}photos`, []);
 
     if (savedName) setReceiverName(savedName);
     if (savedId) setReceiverId(savedId);
-    if (savedPhotos) {
-        try {
-            setPhotosBase64(JSON.parse(savedPhotos));
-        } catch (e) {
-            console.error("Error parsing saved photos", e);
-        }
+    if (savedPhotos && savedPhotos.length > 0) {
+        setPhotosBase64(savedPhotos);
     }
     
-    if (savedName || savedId || savedPhotos) {
+    if (savedName || savedId || (savedPhotos && savedPhotos.length > 0)) {
         setIsRestored(true);
         // Clear the "restored" message after 3 seconds
         setTimeout(() => setIsRestored(false), 3000);
     }
-  }, [pkg.id]);
+  }, [pkg.id, STORAGE_KEY_PREFIX]);
 
   // Auto-save on changes
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}name`, receiverName);
-  }, [receiverName, STORAGE_KEY_PREFIX]);
+    if (receiverName && receiverName !== pkg.recipientName) {
+        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}name`, receiverName);
+    }
+  }, [receiverName, STORAGE_KEY_PREFIX, pkg.recipientName]);
 
   useEffect(() => {
-    localStorage.setItem(`${STORAGE_KEY_PREFIX}id`, receiverId);
+    if (receiverId) {
+        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}id`, receiverId);
+    }
   }, [receiverId, STORAGE_KEY_PREFIX]);
 
-  // Photo persistence disabled to prevent localStorage quota issues in mobile
+  useEffect(() => {
+    if (photosBase64.length > 0) {
+        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}photos`, photosBase64);
+    }
+  }, [photosBase64, STORAGE_KEY_PREFIX]);
   
 
   // Cleanup helper
   const clearDraft = () => {
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}name`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}id`);
-    localStorage.removeItem(`${STORAGE_KEY_PREFIX}photos`);
+    storageUtils.removeItem(`${STORAGE_KEY_PREFIX}name`);
+    storageUtils.removeItem(`${STORAGE_KEY_PREFIX}id`);
+    storageUtils.removeItem(`${STORAGE_KEY_PREFIX}photos`);
   };
   const requiredPhotos = auth?.systemSettings.requiredPhotos || 1;
   const isRutRequired = auth?.systemSettings.isRutRequired ?? true;
@@ -302,7 +307,11 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       });
       clearDraft();
     } catch (err: any) {
-      setError(err.message || 'Ocurrió un error inesperado al confirmar la entrega.');
+      if (err.status === 404) {
+        setError('Este paquete ya no está disponible para entrega (puede haber sido reasignado o cancelado).');
+      } else {
+        setError(err.message || 'Ocurrió un error inesperado al confirmar la entrega.');
+      }
       setIsLoading(false);
     }
   };
