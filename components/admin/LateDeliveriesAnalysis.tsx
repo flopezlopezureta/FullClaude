@@ -7,7 +7,9 @@ import {
     IconRefresh, IconAlertTriangle, IconTruck, IconMapPin, IconClock, 
     IconUser, IconCheck, IconChevronRight, IconX, IconExternalLink 
 } from '../Icon';
-import { getLocalDateString } from '../../utils/dateUtils';
+import { getLocalDateString, getLogicalDateString } from '../../utils/dateUtils';
+import { AuthContext } from '../../contexts/AuthContext';
+import { useContext } from 'react';
 
 interface LateDelivery {
     id: string;
@@ -34,8 +36,11 @@ const formatDecimalHour = (decimalHour: number | string | null) => {
 };
 
 const LateDeliveriesAnalysis: React.FC = () => {
-    const [startDate, setStartDate] = useState(getLocalDateString());
-    const [endDate, setEndDate] = useState(getLocalDateString());
+    const auth = useContext(AuthContext);
+    const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+    
+    const [startDate, setStartDate] = useState(getLogicalDateString(new Date(), tz));
+    const [endDate, setEndDate] = useState(getLogicalDateString(new Date(), tz));
     const [data, setData] = useState<LateDelivery[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [activeTab, setActiveTab] = useState<'logistics' | 'sellers'>('logistics');
@@ -44,7 +49,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const response = await fetch(`/api/packages/analytics/late-deliveries?startDate=${startDate}&endDate=${endDate}`, {
+            const response = await fetch(`/api/packages/analytics/late-deliveries?date=${startDate}`, {
                 headers: {
                     'Authorization': `Bearer ${localStorage.getItem('token')}`
                 }

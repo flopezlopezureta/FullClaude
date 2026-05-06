@@ -1752,7 +1752,10 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     try {
         const targetDate = req.query.date || await timeService.getLogicalDate();
         const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const tz = await timeService.getSystemTimezone();
         
+        // Define late threshold (21:00 of the logical day start)
+        // Since 'start' is 02:00 AM, we add 19 hours to reach 21:00 PM
         const query = `
             SELECT 
                 p.id,
@@ -1760,20 +1763,24 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
                 c.name as seller_name,
                 p."recipientCommune",
                 p."driverId",
-                (te.timestamp AT TIME ZONE 'America/Santiago')::date as delivery_day,
-                EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'America/Santiago'))/60.0 as delivery_hour
+                (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)::date as delivery_day,
+                (CASE 
+                    WHEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) < 2 
+                    THEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) + 24
+                    ELSE EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))
+                END + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))/60.0) as delivery_hour,
+                (SELECT COUNT(*) FROM packages WHERE "driverId" = p."driverId" AND "assignedAt"::date = $1::date) as total_packages_day
             FROM tracking_events te
             JOIN packages p ON te."packageId" = p.id
             JOIN users u ON p."driverId" = u.id
             LEFT JOIN users c ON p."creatorId" = c.id
             WHERE te.status = 'ENTREGADO'
-            AND EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'America/Santiago')) >= 21
-            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date >= $1::date 
-            AND (te.timestamp AT TIME ZONE 'America/Santiago')::date <= $2::date
+            AND te.timestamp >= ($1 + INTERVAL '19 hours') 
+            AND te.timestamp < $2
             ORDER BY te.timestamp DESC;
         `;
 
-        const result = await db.query(query, [startDate, endDate]);
+        const result = await db.query(query, [start, nextDayStart, tz]);
         const rows = result.rows;
 
         const driverStatsResult = await db.query(`
