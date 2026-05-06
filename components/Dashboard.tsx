@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useContext, useMemo, useRef, useCallback } from 'react';
-import { getLocalDateString } from '../utils/dateUtils';
+import { getLocalDateString, getLogicalDateString } from '../utils/dateUtils';
 import type { Package, User } from '../types';
 import { PackageStatus, Role, UserStatus } from '../constants';
 import { api, PackageCreationData, PackageUpdateData } from '../services/api';
@@ -198,7 +198,8 @@ const Dashboard: React.FC = () => {
 
   const fetchCriticalAlerts = useCallback(async () => {
     try {
-      const targetDate = alertView === 'today' ? getLocalDateString() : alertDate;
+      const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+      const targetDate = alertView === 'today' ? getLogicalDateString(new Date(), tz) : alertDate;
       const excludeChecked = alertView === 'today'; // Only hide checked alerts in 'Today' view
       
       const { packages: cancelled } = await api.getPackages({ 

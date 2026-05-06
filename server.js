@@ -34,6 +34,18 @@ app.use('/api', (req, res, next) => {
 const PORT = process.env.PORT || 3000;
 
 async function startServer() {
+    // 0. Initialize System Settings
+    try {
+        const { rows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
+        if (rows.length > 0 && rows[0].timezone) {
+            process.env.SYSTEM_TZ = rows[0].timezone;
+            process.env.TZ = rows[0].timezone;
+            console.log(`[System] Timezone initialized to: ${rows[0].timezone}`);
+        }
+    } catch (err) {
+        console.warn('[System] Could not load timezone settings from DB, using default.');
+    }
+
     // --- API Routes ---
     // Helper to avoid startup crashes if a route file is missing in deploy.
     function tryRequireRoute(modulePath) {

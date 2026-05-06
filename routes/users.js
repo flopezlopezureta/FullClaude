@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
+const timeService = require('../services/timeService');
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/logger');
@@ -264,10 +265,10 @@ router.post('/:id/toggle-status', authMiddleware, adminOnly, async (req, res) =>
 });
 
 
-// GET /api/users/fleet-status - Get real-time driver status for dashboard monitor
 router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const targetDate = req.query.date || await timeService.getLogicalDate();
+        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
         
         // Fetch system timezone dynamically
         const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
@@ -315,7 +316,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
             ORDER BY pending DESC, u.name ASC
         `;
         
-        const { rows } = await db.query(query, [targetDate + ' 00:00:00', targetDate + ' 23:59:59']);
+        const { rows } = await db.query(query, [start, nextDayStart]);
         
         // Final logic adjustment in JS for clarity
         const processedRows = rows.map(row => {
@@ -339,7 +340,8 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/users/analytics - Advanced productivity metrics for reports
 router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const targetDate = req.query.date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const targetDate = req.query.date || await timeService.getLogicalDate();
+        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
         
         // Fetch system timezone dynamically
         const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
@@ -374,8 +376,8 @@ router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
         `;
 
         const [hourlyData, rankingData] = await Promise.all([
-            db.query(hourlyQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59', systemTZ]),
-            db.query(rankingQuery, [targetDate + ' 00:00:00', targetDate + ' 23:59:59'])
+            db.query(hourlyQuery, [start, nextDayStart, systemTZ]),
+            db.query(rankingQuery, [start, nextDayStart])
         ]);
 
         const totalDelivered = rankingData.rows.reduce((sum, r) => sum + r.delivered, 0);
