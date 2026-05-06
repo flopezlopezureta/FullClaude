@@ -107,6 +107,9 @@ const Dashboard: React.FC = () => {
   const [alertView, setAlertView] = useState<'today' | 'history'>('today');
   const [alertDate, setAlertDate] = useState<string>(getLocalDateString());
 
+  const auth = useContext(AuthContext);
+  const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
@@ -117,8 +120,8 @@ const Dashboard: React.FC = () => {
   const [clientFilter, setClientFilter] = useState<string>('');
   const [communeFilter, setCommuneFilter] = useState<string>('');
   const [cityFilter, setCityFilter] = useState<string>('');
-  const [startDate, setStartDate] = useState(getLocalDateString());
-  const [endDate, setEndDate] = useState(getLocalDateString());
+  const [startDate, setStartDate] = useState(getLogicalDateString(new Date(), tz));
+  const [endDate, setEndDate] = useState(getLogicalDateString(new Date(), tz));
   const [assignmentFilter, setAssignmentFilter] = useState<'all' | 'all_assigned' | 'first' | 'reassigned'>('all');
   const [dateType, setDateType] = useState<'created' | 'egress'>('created');
   const [isStatusDropdownOpen, setIsStatusDropdownOpen] = useState(false);
@@ -155,7 +158,6 @@ const Dashboard: React.FC = () => {
   };
 
   const statusDropdownRef = useRef<HTMLDivElement>(null);
-  const auth = useContext(AuthContext);
 
   useEffect(() => {
     const fetchPollingStatus = async () => {
