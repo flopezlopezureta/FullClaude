@@ -268,7 +268,7 @@ router.post('/:id/toggle-status', authMiddleware, adminOnly, async (req, res) =>
 router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
     try {
         const targetDate = req.query.date || await timeService.getLogicalDate();
-        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const { start, nextDayStart } = await timeService.getLogicalRange(targetDate, targetDate);
         
         // Fetch system timezone dynamically
         const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
@@ -341,7 +341,7 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
 router.get('/analytics', authMiddleware, adminOnly, async (req, res) => {
     try {
         const targetDate = req.query.date || await timeService.getLogicalDate();
-        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const { start, nextDayStart } = await timeService.getLogicalRange(targetDate, targetDate);
         
         // Fetch system timezone dynamically
         const { rows: settingsRows } = await db.query('SELECT timezone FROM system_settings WHERE id = 1');
