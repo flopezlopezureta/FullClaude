@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
-import { getLocalDateString } from '../../utils/dateUtils';
+import { getLogicalDateString, formatLocalDisplayDate } from '../../utils/dateUtils';
+import DriverClosureModal from '../modals/DriverClosureModal';
 import { storageUtils } from '../../utils/storageUtils';
 import { PackageStatus, MessagingPlan } from '../../constants';
 import type { Package, User } from '../../types';
@@ -130,7 +131,7 @@ const DriverDashboard: React.FC = () => {
   }, [myPackages]);
   
   const { pendingPackages, dailyHistoryPackages, unflexedCount, totalAssignedForToday } = useMemo(() => {
-    const todayStr = new Date().toDateString();
+    const todayStr = getLogicalDateString(new Date(), auth?.systemSettings?.timezone);
     
     // Base collections
     const allPending = myPackages.filter(p => 
@@ -141,7 +142,7 @@ const DriverDashboard: React.FC = () => {
         if (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem) return false;
         const closureEvent = p.history?.[0];
         if (!closureEvent) return false; 
-        return new Date(closureEvent.timestamp).toDateString() === todayStr;
+        return getLogicalDateString(new Date(closureEvent.timestamp), auth?.systemSettings?.timezone) === todayStr;
     });
 
     // Apply search filter

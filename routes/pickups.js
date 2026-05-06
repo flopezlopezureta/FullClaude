@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const authMiddleware = require('../middleware/auth');
+const timeService = require('../services/timeService');
 const { v4: uuidv4 } = require('uuid');
 const { logAction } = require('../services/logger');
 
@@ -16,7 +17,7 @@ const adminOrRetirosOnly = (req, res, next) => {
 // GET /api/pickups/colectas/available
 router.get('/colectas/available', authMiddleware, async (req, res) => {
     try {
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const today = await timeService.getLogicalDate();
         
         // Find clients who have pending packages AND don't have an active assignment for today
         const { rows: availableClients } = await db.query(`
@@ -46,7 +47,7 @@ router.get('/colectas/available', authMiddleware, async (req, res) => {
 router.post('/colectas/claim', authMiddleware, async (req, res) => {
     const { clientId, shift } = req.body;
     const driverId = req.user.id;
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+    const today = await timeService.getLogicalDate();
     
     if (!clientId) return res.status(400).json({ message: 'Se requiere el ID del cliente.' });
 
@@ -164,9 +165,8 @@ router.post('/', authMiddleware, adminOrRetirosOnly, async (req, res) => {
     try {
         await client.query('BEGIN');
 
-        // TIMEZONE FIX: If date is missing, default to Santiago time, NOT UTC.
-        // Also ensure we use the date string provided directly to avoid timezone shifts.
-        const runDate = date || new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        // TIMEZONE FIX: Use system timezone and logical date.
+        const runDate = date || await timeService.getLogicalDate();
         
         // VALIDATION: Check if any client is already assigned for this date.
         // Strict check: pa.status != 'NO_RETIRADO' ensures we block if they are assigned (ASIGNADO) OR already picked up (RETIRADO).
@@ -340,7 +340,7 @@ router.post('/runs/:id/copy', authMiddleware, adminOrRetirosOnly, async (req, re
                     );
                     
                     // SYNC LEGACY FIELD: If date is today, update assignment immediately
-                    const today = new Date().toISOString().split('T')[0];
+                    const today = await timeService.getLogicalDate();
                     if (date === today) {
                          await client.query('UPDATE users SET "assignedDriverId" = $1 WHERE id = $2', [sourceRun.driverId, sourceAssignment.clientId]);
                     }
@@ -442,7 +442,7 @@ router.post('/runs/:id/assignments', authMiddleware, adminOrRetirosOnly, async (
 // GET /api/pickups/driver/today
 router.get('/driver/today', authMiddleware, async (req, res) => {
     const driverId = req.user.id;
-    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+    const today = await timeService.getLogicalDate();
 
     try {
         const { rows: runs } = await db.query(

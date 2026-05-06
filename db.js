@@ -33,9 +33,10 @@ function getPool() {
         });
         
         // --- BLINDAJE DE ZONA HORARIA ---
-        // Forzamos que cada conexión nueva use la zona horaria de Chile
+        // Forzamos que cada conexión nueva use la zona horaria configurada (Default: Chile)
         pool.on('connect', client => {
-            client.query("SET timezone = 'America/Santiago'")
+            const tz = process.env.SYSTEM_TZ || 'America/Santiago';
+            client.query(`SET timezone = '${tz}'`)
                 .catch(err => console.error("❌ Error setting session timezone:", err.message));
         });
         
