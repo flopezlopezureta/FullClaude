@@ -69,28 +69,35 @@ async function getLogicalDate(date = new Date()) {
     return `${map.year}-${map.month}-${map.day}`;
 }
 
+async function getLogicalRange(startDateStr, endDateStr) {
+    // Start of logical day for startDateStr: YYYY-MM-DD 02:00:00
+    const start = `${startDateStr} 02:00:00`;
+    
+    // Calculate the end (01:59:59 AM of the day after endDateStr)
+    const endCalendarDate = new Date(endDateStr + 'T12:00:00');
+    endCalendarDate.setDate(endCalendarDate.getDate() + 1);
+    const endStr = endCalendarDate.toISOString().split('T')[0];
+    const nextDayStart = `${endStr} 02:00:00`;
+    
+    return { start, nextDayStart };
+}
+
 /**
  * Returns the logical "Today" range for SQL queries.
- * Respects the 02:00 AM cutoff and the system timezone.
  */
 async function getLogicalTodayRange() {
-    const tz = await getSystemTimezone();
     const todayStr = await getLogicalDate();
-    
-    // The logical day starts at 02:00 AM of the logical date
-    // and ends at 01:59:59 AM of the next calendar day.
-    
-    // We can use PostgreSQL intervals for this, but for JS filtering:
-    return {
-        dateStr: todayStr,
-        start: `${todayStr} 02:00:00`,
-        // We add 24 hours to the start to get the end of the logical day
-        nextDayStart: `(${todayStr}::date + interval '1 day' + interval '2 hours')`
+    const { start, nextDayStart } = await getLogicalRange(todayStr, todayStr);
+    return { 
+        dateStr: todayStr, 
+        start, 
+        nextDayStart 
     };
 }
 
 module.exports = {
     getSystemTimezone,
     getLogicalDate,
-    getLogicalTodayRange
+    getLogicalTodayRange,
+    getLogicalRange
 };
