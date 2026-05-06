@@ -30,8 +30,14 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         qrContent = pkg.trackingId || pkg.id;
     }
 
-    const refNumber = pkg.shopifyOrderNumber || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
-    const secondaryRef = (pkg.shopifyOrderNumber && pkg.shopifyOrderId && pkg.shopifyOrderNumber !== pkg.shopifyOrderId) ? pkg.shopifyOrderId : null;
+    let refNumber = pkg.shopifyOrderNumber || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
+    let secondaryRef = (pkg.shopifyOrderNumber && pkg.shopifyOrderId && pkg.shopifyOrderNumber !== pkg.shopifyOrderId) ? pkg.shopifyOrderId : null;
+
+    // Custom format for Shopify if both references exist: "Short / Long"
+    if (pkg.source === PackageSource.Shopify && pkg.shopifyOrderNumber && pkg.shopifyOrderId && pkg.shopifyOrderNumber !== pkg.shopifyOrderId) {
+        refNumber = `${pkg.shopifyOrderNumber} / ${pkg.shopifyOrderId}`;
+        secondaryRef = null; // Clear secondary to avoid duplication
+    }
 
     useEffect(() => {
         const generateQR = async () => {
@@ -91,7 +97,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
                          {refNumber && (
                              <div className="mb-2">
                                  <p className="text-[8px] font-bold text-gray-400 uppercase leading-none">Orden / REF:</p>
-                                 <p className="text-2xl font-black leading-none tracking-tighter">{refNumber}</p>
+                                 <p className={`${(refNumber?.toString().length || 0) > 15 ? 'text-lg' : 'text-2xl'} font-black leading-none tracking-tighter`}>{refNumber}</p>
                                  {secondaryRef && <p className="text-[10px] font-bold opacity-60 leading-none mt-1">({secondaryRef})</p>}
                              </div>
                          )}
