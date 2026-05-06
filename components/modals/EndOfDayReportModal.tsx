@@ -3,6 +3,7 @@ import type { Package, User } from '../../types';
 import { PackageStatus, MessagingPlan } from '../../constants';
 import { IconX, IconWhatsapp, IconMail, IconCheckCircle, IconAlertTriangle, IconUser } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
+import { getLogicalDateString } from '../../utils/dateUtils';
 
 interface ClientSummary {
     clientId: string;
@@ -26,12 +27,13 @@ const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, pack
   const auth = useContext(AuthContext);
 
   const clientSummaries: ClientSummary[] = useMemo(() => {
-    const todayStr = new Date().toDateString();
+    const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+    const todayStr = getLogicalDateString(new Date(), tz);
     const summaries: { [clientId: string]: ClientSummary } = {};
 
     const dailyPackages = packages.filter(p => {
         const finalEvent = p.history[0];
-        return finalEvent && new Date(finalEvent.timestamp).toDateString() === todayStr;
+        return finalEvent && getLogicalDateString(new Date(finalEvent.timestamp), tz) === todayStr;
     });
 
     for (const pkg of dailyPackages) {
@@ -67,7 +69,8 @@ const EndOfDayReportModal: React.FC<EndOfDayReportModalProps> = ({ onClose, pack
   }, [packages, users]);
 
   const handleNotifyClient = (summary: ClientSummary) => {
-    const message = `Resumen de jornada para ${summary.clientName} - ${new Date().toLocaleDateString('es-CL')}\n` +
+    const tz = auth?.systemSettings?.timezone || 'America/Santiago';
+    const message = `Resumen de jornada para ${summary.clientName} - ${getLogicalDateString(new Date(), tz)}\n` +
                     `Conductor: ${driverName}\n\n`+
                     `📦 Total de paquetes gestionados hoy: ${summary.total}\n`+
                     `✅ Entregados: ${summary.delivered}\n`+
