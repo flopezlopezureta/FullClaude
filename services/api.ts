@@ -51,6 +51,18 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   const isJson = contentType && contentType.includes('application/json');
 
   if (!response.ok) {
+    // Si el token no es válido o ha expirado (401), cerramos la sesión automáticamente
+    if (response.status === 401) {
+      console.warn('[API] Sesión expirada o inválida (401). Limpiando token...');
+      localStorage.removeItem('token');
+      
+      // Evitamos bucles infinitos de recarga si ya estamos intentando loguearnos
+      // o si la petición que falló era precisamente la de login.
+      if (!endpoint.includes('/auth/login')) {
+        window.location.reload();
+      }
+    }
+
     let errorMessage = `Error ${response.status}: ${response.statusText}`;
     let errorBody = {};
 
@@ -271,12 +283,12 @@ export const api = {
   // Users
   getUsers: () => get<User[]>('/users'),
   createUser: (data: UserCreationData) => post<User>('/users', data),
-  updateUser: (userId: string, data: UserUpdateData) => put<User>(`/users/${userId}`, data),
-  deleteUser: (userId: string, password?: string) => request<void>(`/users/${userId}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
-  deleteIntegration: (clientId: string, source: string, password?: string) => request<void>(`/integrations/${clientId}/${source}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
-  reintegrateUser: (userId: string) => post<User>(`/users/${userId}/reintegrate`, {}),
-  approveUser: (userId: string) => post<User>(`/users/${userId}/approve`, {}),
-  toggleUserStatus: (userId: string) => post<User>(`/users/${userId}/toggle-status`, {}),
+  updateUser: (userId: string, data: UserUpdateData) => put<User>(`/users/${encodeURIComponent(userId)}`, data),
+  deleteUser: (userId: string, password?: string) => request<void>(`/users/${encodeURIComponent(userId)}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
+  deleteIntegration: (clientId: string, source: string, password?: string) => request<void>(`/integrations/${encodeURIComponent(clientId)}/${encodeURIComponent(source)}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
+  reintegrateUser: (userId: string) => post<User>(`/users/${encodeURIComponent(userId)}/reintegrate`, {}),
+  approveUser: (userId: string) => post<User>(`/users/${encodeURIComponent(userId)}/approve`, {}),
+  toggleUserStatus: (userId: string) => post<User>(`/users/${encodeURIComponent(userId)}/toggle-status`, {}),
   
   // Packages
   getPackages: (params: any) => {
@@ -295,23 +307,23 @@ export const api = {
       errorCount: number, 
       errors: any[] 
   }>('/packages/batch', { packages }),
-  updatePackage: (pkgId: string, data: PackageUpdateData) => put<Package>(`/packages/${pkgId}`, data),
-  deletePackage: (pkgId: string, password?: string) => request<void>(`/packages/${pkgId}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
-  assignDriverToPackage: (pkgId: string, driverId: string | null, newDeliveryDate: Date) => post<Package>(`/packages/${pkgId}/assign-driver`, { driverId, newDeliveryDate }),
+  updatePackage: (pkgId: string, data: PackageUpdateData) => put<Package>(`/packages/${encodeURIComponent(pkgId)}`, data),
+  deletePackage: (pkgId: string, password?: string) => request<void>(`/packages/${encodeURIComponent(pkgId)}`, { method: 'DELETE', body: JSON.stringify({ password }) }),
+  assignDriverToPackage: (pkgId: string, driverId: string | null, newDeliveryDate: Date) => post<Package>(`/packages/${encodeURIComponent(pkgId)}/assign-driver`, { driverId, newDeliveryDate }),
   batchAssignDriverToPackages: (packageIds: string[], driverId: string | null, newDeliveryDate: Date) => post<{message: string}>(`/packages/batch-assign-driver`, { packageIds, driverId, newDeliveryDate }),
-  markPackageForReturn: (pkgId: string) => post<Package>(`/packages/${pkgId}/mark-for-return`, {}),
-  confirmDelivery: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${pkgId}/deliver`, data),
-  markPackageAsProblem: (pkgId: string, reason: string, photos: string[]) => post<Package>(`/packages/${pkgId}/problem`, { reason, photosBase64: photos }),
-  confirmReturn: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${pkgId}/return`, data),
+  markPackageForReturn: (pkgId: string) => post<Package>(`/packages/${encodeURIComponent(pkgId)}/mark-for-return`, {}),
+  confirmDelivery: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${encodeURIComponent(pkgId)}/deliver`, data),
+  markPackageAsProblem: (pkgId: string, reason: string, photos: string[]) => post<Package>(`/packages/${encodeURIComponent(pkgId)}/problem`, { reason, photosBase64: photos }),
+  confirmReturn: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${encodeURIComponent(pkgId)}/return`, data),
   markPackagesAsBilled: (packageIds: string[]) => post<void>('/packages/mark-billed', { packageIds }),
-  scanPackageForDispatch: (packageId: string, driverId: string, flexCode?: string, flexLabelPhotoBase64?: string) => post<{message: string, package: Package}>(`/packages/${packageId}/dispatch`, { driverId, flexCode, flexLabelPhotoBase64 }),
-  markPackageAsFlexed: (packageId: string, isFlexed: boolean, flexLabelPhotoBase64?: string) => post<Package>(`/packages/${packageId}/flex`, { isFlexed, flexLabelPhotoBase64 }),
-  syncPackageWithMeli: (packageId: string) => post<Package & { noChange?: boolean; mlStatus?: string; mlSubstatus?: string }>(`/packages/${packageId}/sync-meli`, {}),
+  scanPackageForDispatch: (packageId: string, driverId: string, flexCode?: string, flexLabelPhotoBase64?: string) => post<{message: string, package: Package}>(`/packages/${encodeURIComponent(packageId)}/dispatch`, { driverId, flexCode, flexLabelPhotoBase64 }),
+  markPackageAsFlexed: (packageId: string, isFlexed: boolean, flexLabelPhotoBase64?: string) => post<Package>(`/packages/${encodeURIComponent(packageId)}/flex`, { isFlexed, flexLabelPhotoBase64 }),
+  syncPackageWithMeli: (packageId: string) => post<Package & { noChange?: boolean; mlStatus?: string; mlSubstatus?: string }>(`/packages/${encodeURIComponent(packageId)}/sync-meli`, {}),
   syncAllMeliPackages: () => post<{ message: string; result: any }>('/packages/sync-meli-all', {}),
-  markPackageAsPickedUp: (packageId: string, flexCode?: string) => post<Package>(`/packages/${packageId}/pickup`, { flexCode }),
+  markPackageAsPickedUp: (packageId: string, flexCode?: string) => post<Package>(`/packages/${encodeURIComponent(packageId)}/pickup`, { flexCode }),
   confirmBulkPickup: (clientId: string) => post<{count: number, message: string}>('/packages/bulk-pickup-client', { clientId }),
-  scanPackageByAdmin: (packageId: string) => post<{message: string}>(`/packages/${packageId}/scan-admin`, {}),
-  checkAlert: (packageId: string, checked: boolean) => post<Package>(`/packages/${packageId}/check-alert`, { checked }),
+  scanPackageByAdmin: (packageId: string) => post<{message: string}>(`/packages/${encodeURIComponent(packageId)}/scan-admin`, {}),
+  checkAlert: (packageId: string, checked: boolean) => post<Package>(`/packages/${encodeURIComponent(packageId)}/check-alert`, { checked }),
   bulkUpdatePackageStatus: (packageIds: string[], status: PackageStatus) => post<{message: string}>('/packages/bulk-update-status', { packageIds, status }),
 
   // Settings
