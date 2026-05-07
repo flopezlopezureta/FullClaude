@@ -465,8 +465,8 @@ router.post('/', authMiddleware, async (req, res) => {
             return res.status(404).json({ message: 'Cliente creador no encontrado.' });
         }
 
-        // Geocode the address
-        const coords = await geocodeAddress(recipientAddress, recipientCommune, recipientCity);
+        // Geocoding is now handled in the background for speed (similar to batch route)
+        const coords = { lat: null, lng: null };
 
         const now = new Date();
         const packageId = trackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
@@ -510,8 +510,10 @@ router.post('/', authMiddleware, async (req, res) => {
 
         newPackage.history = await getHistory(newPackage.id);
         
-        // REQ: Do not send message on PENDIENTE, wait for Flex/Dispatch
-        // NotificationService.notifyRecipient(newPackage.id, 'PENDIENTE');
+        // Trigger background geocoding without awaiting it
+        setTimeout(() => {
+            triggerBackgroundGeocoding().catch(err => console.error('[PostProcess] Geocoding trigger failed:', err));
+        }, 1000);
 
         res.status(201).json(newPackage);
     } catch (err) {

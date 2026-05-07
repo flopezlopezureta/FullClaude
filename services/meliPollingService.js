@@ -648,15 +648,27 @@ async function autoImportMeliPackages(activeCommunes = []) {
                                             shipment.receiver_address?.phone,
                                             fullOrder.buyer?.phone?.number,
                                             fullOrder.buyer?.mobile?.number,
+                                            fullOrder.buyer?.billing_info?.phone,
+                                            fullOrder.shipping?.receiver_address?.receiver_phone,
+                                            fullOrder.shipping?.receiver_address?.phone,
                                             fullOrder.buyer?.phone?.area_code ? `${fullOrder.buyer.phone.area_code}${fullOrder.buyer.phone.number}` : null
                                         ];
+                                        
                                         for (const candidate of phoneCandidates) {
-                                            if (candidate && typeof candidate === 'string' && candidate.length > 5 && !candidate.includes('*')) {
-                                                recipientPhone = candidate;
-                                                break;
+                                            if (candidate && typeof candidate === 'string') {
+                                                const cleanCandidate = candidate.trim();
+                                                // Avoid masked numbers (X, *, or too short)
+                                                if (cleanCandidate.length > 5 && 
+                                                    !cleanCandidate.includes('*') && 
+                                                    !cleanCandidate.toUpperCase().includes('X') &&
+                                                    !cleanCandidate.includes('0000000')) {
+                                                    recipientPhone = cleanCandidate;
+                                                    break;
+                                                }
                                             }
                                         }
                                     } catch (phoneErr) {
+                                        console.warn(`[MeliPolling] Phone search failed for order ${orderId}:`, phoneErr.message);
                                         recipientPhone = shipment.receiver_address?.receiver_phone || 'N/A';
                                     }
                                     
