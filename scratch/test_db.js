@@ -1,16 +1,26 @@
 
-const db = require('./db');
 require('dotenv').config();
+const { Client } = require('pg');
 
-async function testConn() {
-    console.log("Testing DB Connection...");
+async function test() {
+    const client = new Client({
+        host: process.env.DB_HOST,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASSWORD,
+        database: process.env.DB_NAME,
+        port: process.env.DB_PORT || 5432,
+        connectionTimeoutMillis: 5000,
+    });
+
     try {
-        const res = await db.query("SELECT COUNT(*)::int FROM users");
-        console.log("Connection OK. Total users:", res.rows[0].count);
+        await client.connect();
+        console.log('Connected!');
+        const res = await client.query('SELECT now()');
+        console.log(res.rows[0]);
+        await client.end();
     } catch (err) {
-        console.error("Connection FAILED:", err.message);
-    } finally {
-        process.exit(0);
+        console.error('Connection failed:', err.message);
     }
 }
-testConn();
+
+test();
