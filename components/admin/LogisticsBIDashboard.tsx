@@ -27,6 +27,7 @@ interface FleetDriverStatus {
   driver_name: string;
   total_packages: number;
   delivered_packages: number;
+  problem_packages: number;
   pending_packages: number;
   is_completed: boolean;
   last_update: string;
@@ -284,6 +285,7 @@ const LogisticsBIDashboard: React.FC = () => {
                   <th className="px-8 py-5">Conductor</th>
                   <th className="px-8 py-5">Progreso de Ruta</th>
                   <th className="px-8 py-5 text-center">Entregados</th>
+                  <th className="px-8 py-5 text-center">Problemas</th>
                   <th className="px-8 py-5 text-center">Pendientes</th>
                   <th className="px-8 py-5 text-right">Estado</th>
                 </tr>
@@ -326,6 +328,11 @@ const LogisticsBIDashboard: React.FC = () => {
                       </td>
                       <td className="px-8 py-5 text-center">
                         <span className="text-sm font-black text-slate-800">{driver.delivered_packages}</span>
+                      </td>
+                      <td className="px-8 py-5 text-center">
+                        <span className={`text-sm font-black ${driver.problem_packages > 0 ? 'text-red-500' : 'text-slate-300'}`}>
+                          {driver.problem_packages}
+                        </span>
                       </td>
                       <td className="px-8 py-5 text-center">
                         <span className={`text-sm font-black ${driver.pending_packages > 0 ? 'text-amber-500' : 'text-slate-300'}`}>
