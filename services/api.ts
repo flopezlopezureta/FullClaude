@@ -58,7 +58,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       
       // Evitamos bucles infinitos de recarga si ya estamos intentando loguearnos
       // o si la petición que falló era precisamente la de login.
-      if (!endpoint.includes('/auth/login')) {
+      if (!endpoint.includes('/auth/login') && !window.location.pathname.includes('/login')) {
         window.location.reload();
       }
     }
