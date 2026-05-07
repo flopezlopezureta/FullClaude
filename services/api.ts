@@ -58,7 +58,9 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
       
       // Evitamos bucles infinitos de recarga si ya estamos intentando loguearnos
       // o si la petición que falló era precisamente la de login.
-      if (!endpoint.includes('/auth/login') && !window.location.pathname.includes('/login')) {
+      // Solo recargamos si había un token previo (sesión expirada).
+      // Si no hay token, dejamos que el frontend maneje el redirect al login sin bucles.
+      if (!!localStorage.getItem('token') && !endpoint.includes('/auth/login') && !window.location.pathname.includes('/login')) {
         window.location.reload();
       }
     }
