@@ -73,7 +73,8 @@ const DriverDashboard: React.FC = () => {
       }
       try {
           // Fetch all packages for the current driver, without pagination
-          const { packages: pkgs } = await api.getPackages({ driverFilter: auth.user.id, limit: 0 });
+          const response = await api.getPackages({ driverFilter: auth.user.id, limit: 0 });
+          const pkgs = Array.isArray(response.packages) ? response.packages : [];
           setMyPackages(pkgs); 
           storageUtils.safeSetItem(`driver_packages_${auth.user.id}`, pkgs);
           
@@ -133,13 +134,18 @@ const DriverDashboard: React.FC = () => {
   const { pendingPackages, dailyHistoryPackages, unflexedCount, totalAssignedForToday } = useMemo(() => {
     const todayStr = getLogicalDateString(new Date(), auth?.systemSettings?.timezone);
     
+    // Safety check to prevent "filter is not a function" if myPackages is not an array
+    if (!Array.isArray(myPackages)) {
+        return { pendingPackages: [], dailyHistoryPackages: [], unflexedCount: 0, totalAssignedForToday: 0 };
+    }
+
     // Base collections
     const allPending = myPackages.filter(p => 
-        p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem && p.status !== PackageStatus.Returned
+        p && p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem && p.status !== PackageStatus.Returned
     );
 
     const allHistory = myPackages.filter(p => {
-        if (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem) return false;
+        if (!p || (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem)) return false;
         const closureEvent = p.history?.[0];
         if (!closureEvent) return false; 
         return getLogicalDateString(new Date(closureEvent.timestamp), auth?.systemSettings?.timezone) === todayStr;
@@ -147,6 +153,7 @@ const DriverDashboard: React.FC = () => {
 
     // Apply search filter
     const filterFn = (p: Package) => {
+        if (!p) return false;
         if (!searchTerm) return true;
         const term = searchTerm.toLowerCase();
         return (
