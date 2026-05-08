@@ -132,6 +132,7 @@ const DriverDashboard: React.FC = () => {
   }, [myPackages]);
   
   const { pendingPackages, dailyHistoryPackages, unflexedCount, totalAssignedForToday } = useMemo(() => {
+    // Standardize comparison date to YYYY-MM-DD
     const todayStr = getLogicalDateString(new Date(), auth?.systemSettings?.timezone);
     
     // Safety check to prevent "filter is not a function" if myPackages is not an array
@@ -139,7 +140,7 @@ const DriverDashboard: React.FC = () => {
         return { pendingPackages: [], dailyHistoryPackages: [], unflexedCount: 0, totalAssignedForToday: 0 };
     }
 
-    // Base collections
+    // Base collections: Use status checks first
     const allPending = myPackages.filter(p => 
         p && p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem && p.status !== PackageStatus.Returned
     );
@@ -148,6 +149,7 @@ const DriverDashboard: React.FC = () => {
         if (!p || (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem)) return false;
         const closureEvent = p.history?.[0];
         if (!closureEvent) return false; 
+        // Compare using logical date strings (YYYY-MM-DD)
         return getLogicalDateString(new Date(closureEvent.timestamp), auth?.systemSettings?.timezone) === todayStr;
     });
 
@@ -169,11 +171,12 @@ const DriverDashboard: React.FC = () => {
 
     const unflexed = allPending.filter(p => !p.isFlexed).length; 
     
-    // Solo contar asignados del día actual para el badge superior
+    // Solo contar asignados de la jornada actual (según zona horaria lógica)
     const assignedToday = myPackages.filter(p => {
         const dateToCheck = p.assignedAt || p.createdAt;
         if (!dateToCheck) return false;
-        return new Date(dateToCheck).toDateString() === todayStr;
+        // Use standard YYYY-MM-DD comparison
+        return getLogicalDateString(new Date(dateToCheck), auth?.systemSettings?.timezone) === todayStr;
     }).length;
 
     return { 
@@ -182,7 +185,7 @@ const DriverDashboard: React.FC = () => {
         unflexedCount: unflexed,
         totalAssignedForToday: assignedToday
     };
-  }, [myPackages, searchTerm]);
+  }, [myPackages, searchTerm, auth?.systemSettings?.timezone]);
 
   const handleStartDelivery = (pkg: Package) => {
     setDeliveringPackage(pkg);
