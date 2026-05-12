@@ -77,9 +77,9 @@ router.get('/system', async (req, res) => {
             timezone: 'America/Santiago',
         };
         if (settings.length === 0) {
-            return res.json(fallbackSettings);
+            return res.json({ ...fallbackSettings, appEnv: process.env.APP_ENV || 'production' });
         }
-        res.json({ ...fallbackSettings, ...settings[0] });
+        res.json({ ...fallbackSettings, ...settings[0], appEnv: process.env.APP_ENV || 'production' });
     } catch (err) {
         console.error("ERROR in /api/settings/system:", err);
         // Fail gracefully if DB not ready

@@ -103,6 +103,7 @@ router.get('/', authMiddleware, async (req, res) => {
             assignmentFilter, // 'all', 'first', 'reassigned'
             excludeChecked, // 'true' or 'false'
             dateType = 'created', // 'created' or 'egress'
+            includeHistory = 'true', // 'true' or 'false'
         } = req.query;
 
         let { startDate, endDate } = req.query;
@@ -325,10 +326,10 @@ router.get('/', authMiddleware, async (req, res) => {
 
         const { rows: packages } = await db.query(packageQuery, finalQueryParams);
 
-        // Get history for only the paginated packages
+        // Get history only if requested
         const packageIds = packages.map(p => p.id);
         let eventsByPackageId = {};
-        if (packageIds.length > 0) {
+        if (includeHistory !== 'false' && packageIds.length > 0) {
             const placeholders = packageIds.map((_, i) => `$${i + 1}`).join(',');
             const { rows: allEvents } = await db.query(`SELECT * FROM tracking_events WHERE "packageId" IN (${placeholders}) ORDER BY timestamp DESC`, packageIds);
             

@@ -300,6 +300,10 @@ export const api = {
               searchParams.append(key, String(params[key]));
           }
       });
+      // [OPTIMIZACION v2.6.2] includeHistory por defecto es true si no se especifica
+      if (params.includeHistory === undefined) {
+          // No necesitamos añadirlo explícitamente si el backend asume true
+      }
       return get<{ packages: Package[], total: number }>(`/packages?${searchParams.toString()}`);
   },
   createPackage: (data: PackageCreationData) => post<Package>('/packages', data),

@@ -538,7 +538,8 @@ const Dashboard: React.FC = () => {
             endDate,
             flexFilter,
             quickFilter,
-            dateType
+            dateType,
+            includeHistory: false
         });
 
         let packagesToExport: Package[] = [];

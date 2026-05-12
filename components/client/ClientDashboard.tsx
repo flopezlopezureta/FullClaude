@@ -223,6 +223,7 @@ const ClientDashboard: React.FC = () => {
         if (selectedPackages.size > 0) {
             const { packages: allFiltered } = await api.getPackages({
                 limit: 0,
+                includeHistory: false,
                 searchQuery, statusFilter, communeFilter, startDate, endDate,
                 clientFilter: auth.user.id
             });
@@ -230,6 +231,7 @@ const ClientDashboard: React.FC = () => {
         } else {
             const { packages: allFiltered } = await api.getPackages({
                 limit: 0,
+                includeHistory: false,
                 searchQuery, statusFilter, communeFilter, startDate, endDate,
                 clientFilter: auth.user.id
             });
