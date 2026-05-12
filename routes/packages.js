@@ -83,220 +83,294 @@ const dispatchAllowed = (req, res, next) => {
 };
 
 
+// Helper function to build the package query base on request parameters
+async function buildPackageQuery(req) {
+    const {
+        statusFilter,
+        driverFilter,
+        clientFilter,
+        communeFilter,
+        cityFilter,
+        flexFilter,
+        quickFilter,
+        sourceFilter,
+        isAssigned,
+        accountId,
+        assignmentFilter, // 'all', 'first', 'reassigned'
+        excludeChecked, // 'true' or 'false'
+        dateType = 'created', // 'created' or 'egress'
+    } = req.query;
+
+    let { startDate, endDate } = req.query;
+
+    // [SEGURIDAD] Si es un conductor y no especificó fechas, forzamos que vea solo HOY para evitar descuadres
+    if (req.user.role === 'DRIVER' && !startDate && !endDate) {
+        const todayStr = await timeService.getLogicalDate();
+        startDate = todayStr;
+        endDate = todayStr;
+    }
+
+    const rawSearch = req.query.searchQuery || req.query.search || '';
+    const searchQuery = rawSearch.toString().trim() || null;
+
+    let whereClauses = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (req.user.role === 'CLIENT') {
+        whereClauses.push(`"creatorId" = $${paramIndex++}`);
+        queryParams.push(req.user.id);
+    }
+
+    if (searchQuery) {
+        whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} 
+            OR p."recipientAddress" ILIKE $${paramIndex} 
+            OR p."recipientCity" ILIKE $${paramIndex} 
+            OR p."recipientCommune" ILIKE $${paramIndex} 
+            OR p.id ILIKE $${paramIndex} 
+            OR p."meliOrderId" ILIKE $${paramIndex} 
+            OR p."shopifyOrderId" ILIKE $${paramIndex} 
+            OR p."wooOrderId" ILIKE $${paramIndex} 
+            OR p."jumpsellerOrderId" ILIKE $${paramIndex} 
+            OR p."trackingId" ILIKE $${paramIndex} 
+            OR p."recipientPhone" ILIKE $${paramIndex}
+            OR p."recipientEmail" ILIKE $${paramIndex}
+            OR p."meliFlexCode" ILIKE $${paramIndex} 
+            OR p.notes ILIKE $${paramIndex}
+            OR u.name ILIKE $${paramIndex})`);
+        queryParams.push(`%${searchQuery}%`);
+        paramIndex++;
+    }
+
+    if (statusFilter) {
+        let statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
+        if (statuses.includes('closed')) {
+            statuses = statuses.filter(s => s !== 'closed');
+            if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
+            if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
+            if (!statuses.includes('PROBLEMA')) statuses.push('PROBLEMA');
+            if (!statuses.includes('REPROGRAMADO')) statuses.push('REPROGRAMADO');
+        }
+        if (statuses.length > 0) {
+            const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
+            whereClauses.push(`p.status IN (${placeholders})`);
+            queryParams.push(...statuses);
+            paramIndex += statuses.length;
+        }
+    }
+
+    if (driverFilter) {
+        whereClauses.push(`p."driverId" = $${paramIndex++}`);
+        queryParams.push(driverFilter);
+    }
+    
+    if (clientFilter) {
+        whereClauses.push(`p."creatorId" = $${paramIndex++}`);
+        queryParams.push(clientFilter);
+    }
+
+    if (communeFilter) {
+        whereClauses.push(`p."recipientCommune" = $${paramIndex++}`);
+        queryParams.push(communeFilter);
+    }
+
+    if (cityFilter) {
+        whereClauses.push(`p."recipientCity" = $${paramIndex++}`);
+        queryParams.push(cityFilter);
+    }
+
+    const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
+    
+    if (startDate && endDate && !isHistoricalSearch) {
+        const { start, nextDayStart } = await timeService.getLogicalRange(startDate, endDate);
+        
+        if (dateType === 'egress') {
+            whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
+        } else if (driverFilter && req.user.role === 'DRIVER') {
+            whereClauses.push(`(
+                p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+            )`);
+        } else {
+            whereClauses.push(`(
+                p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+            )`);
+        }
+        queryParams.push(start, nextDayStart);
+        paramIndex += 2;
+    } else if (!isHistoricalSearch) {
+        if (startDate) {
+            if (dateType === 'egress') {
+                whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
+            } else {
+                whereClauses.push(`(
+                    (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
+                    (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
+                    (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp
+                )`);
+            }
+            queryParams.push(startDate);
+            paramIndex++;
+        }
+
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setDate(end.getDate() + 1);
+            const endStr = end.toISOString().split('T')[0];
+            if (dateType === 'egress') {
+                whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
+            } else {
+                whereClauses.push(`(
+                    (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
+                    (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
+                    (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp
+                )`);
+            }
+            queryParams.push(endStr);
+            paramIndex++;
+        }
+    }
+
+    if (flexFilter) {
+        if (flexFilter === 'flexed') {
+            whereClauses.push(`p."isFlexed" = true`);
+        } else if (flexFilter === 'not_flexed') {
+            whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
+        }
+    }
+
+    if (sourceFilter) {
+        if (sourceFilter === 'ml') {
+            whereClauses.push(`p.source = 'MERCADO_LIBRE'`);
+        } else if (sourceFilter === 'web') {
+            whereClauses.push(`p.source != 'MERCADO_LIBRE'`);
+        }
+    }
+
+    if (quickFilter) {
+        if (quickFilter === 'closed') {
+            whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO', 'PROBLEMA', 'REPROGRAMADO')`);
+        } else if (quickFilter === 'cancelled') {
+            whereClauses.push(`p.status = 'CANCELADO'`);
+        } else if (quickFilter === 'rescheduled') {
+            whereClauses.push(`p.status = 'REPROGRAMADO'`);
+        }
+    }
+
+    if (isAssigned === 'true') {
+        whereClauses.push(`p."driverId" IS NOT NULL`);
+    } else if (isAssigned === 'false') {
+        whereClauses.push(`p."driverId" IS NULL`);
+    }
+    
+    if (accountId) {
+        whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
+        queryParams.push(accountId);
+    }
+    
+    if (assignmentFilter === 'first') {
+        whereClauses.push(`p."driverId" IS NOT NULL AND (p."isReassigned" IS NULL OR p."isReassigned" = false)`);
+    } else if (assignmentFilter === 'reassigned') {
+        whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
+    } else if (assignmentFilter === 'all_assigned') {
+        whereClauses.push(`p."driverId" IS NOT NULL`);
+    }
+    
+    if (excludeChecked === 'true') {
+        whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    return { whereString, queryParams, paramIndex };
+}
+
+// GET /api/packages/export/csv - Streaming CSV export for large datasets
+router.get('/export/csv', authMiddleware, async (req, res) => {
+    try {
+        const { sortOrder = 'desc' } = req.query;
+        const { whereString, queryParams } = await buildPackageQuery(req);
+
+        const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
+        const query = `
+            SELECT p.*, u.name as "clientName", d.name as "driverName"
+            FROM packages p 
+            LEFT JOIN users u ON p."creatorId" = u.id 
+            LEFT JOIN users d ON p."driverId" = d.id
+            ${whereString} 
+            ORDER BY p."updatedAt" ${orderDirection}, p.id DESC
+        `;
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename=reporte_paquetes.csv');
+
+        // Write BOM for Excel
+        res.write('\uFEFF');
+
+        // Write header
+        const headers = [
+            'ID Paquete', 'Pedido', 'Cliente', 'ID Cliente', 'Fecha Creacion', 
+            'Estado', 'Destinatario', 'Direccion', 'Comuna', 'Ciudad', 
+            'Tipo Envio', 'Fecha de Egreso', 'Conductor', 'Bultos'
+        ];
+        res.write(headers.join(',') + '\n');
+
+        const escapeCSV = (val) => {
+            if (val === null || val === undefined) return '""';
+            const str = String(val).replace(/"/g, '""');
+            return `"${str}"`;
+        };
+
+        // We use a pool client to query to be safe, though simple db.query might work
+        // For very large results, we could use pg-query-stream, but let's try standard query with loop
+        const { rows: packages } = await db.query(query, queryParams);
+
+        for (const pkg of packages) {
+            const row = [
+                pkg.id,
+                pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
+                pkg.clientName || 'N/A',
+                pkg.creatorId || 'N/A',
+                new Date(pkg.createdAt).toLocaleString('es-CL'),
+                (pkg.status || '').replace('_', ' '),
+                pkg.recipientName,
+                pkg.recipientAddress,
+                pkg.recipientCommune,
+                pkg.recipientCity,
+                pkg.shippingType,
+                pkg.assignedAt ? new Date(pkg.assignedAt).toLocaleString('es-CL') : 'Pendiente',
+                pkg.driverName || 'No asignado',
+                1 // Bultos
+            ].map(escapeCSV).join(',');
+            res.write(row + '\n');
+        }
+
+        res.end();
+    } catch (err) {
+        console.error("Error in GET /api/packages/export/csv:", err);
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Error al exportar los paquetes.' });
+        }
+    }
+});
+
 // GET /api/packages - with server-side pagination and filtering
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const {
             page = 1,
             limit = 25,
-            statusFilter,
-            driverFilter,
-            clientFilter,
-            communeFilter,
-            cityFilter,
-            flexFilter,
-            quickFilter,
-            sourceFilter,
-            isAssigned,
-            accountId,
             sortOrder = 'desc',
-            assignmentFilter, // 'all', 'first', 'reassigned'
-            excludeChecked, // 'true' or 'false'
-            dateType = 'created', // 'created' or 'egress'
             includeHistory = 'true', // 'true' or 'false'
         } = req.query;
 
-        let { startDate, endDate } = req.query;
-
-        // [SEGURIDAD] Si es un conductor y no especificó fechas, forzamos que vea solo HOY para evitar descuadres
-        if (req.user.role === 'DRIVER' && !startDate && !endDate) {
-            const todayStr = await timeService.getLogicalDate();
-            startDate = todayStr;
-            endDate = todayStr;
-        }
-
-        // [MEJORADO] Limpiamos espacios en blanco de la búsqueda para evitar fallos por copy-paste
-        // Soportamos tanto 'search' como 'searchQuery' para compatibilidad total con el frontend
-        const rawSearch = req.query.searchQuery || req.query.search || '';
-        const searchQuery = rawSearch.toString().trim() || null;
+        const { whereString, queryParams, paramIndex: initialParamIndex } = await buildPackageQuery(req);
+        let paramIndex = initialParamIndex;
 
         const offset = (page - 1) * limit;
-        let whereClauses = [];
-        let queryParams = [];
-        let paramIndex = 1;
-
-        if (req.user.role === 'CLIENT') {
-            whereClauses.push(`"creatorId" = $${paramIndex++}`);
-            queryParams.push(req.user.id);
-        }
-
-        if (searchQuery) {
-            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} 
-                OR p."recipientAddress" ILIKE $${paramIndex} 
-                OR p."recipientCity" ILIKE $${paramIndex} 
-                OR p."recipientCommune" ILIKE $${paramIndex} 
-                OR p.id ILIKE $${paramIndex} 
-                OR p."meliOrderId" ILIKE $${paramIndex} 
-                OR p."shopifyOrderId" ILIKE $${paramIndex} 
-                OR p."wooOrderId" ILIKE $${paramIndex} 
-                OR p."jumpsellerOrderId" ILIKE $${paramIndex} 
-                OR p."trackingId" ILIKE $${paramIndex} 
-                OR p."recipientPhone" ILIKE $${paramIndex}
-                OR p."recipientEmail" ILIKE $${paramIndex}
-                OR p."meliFlexCode" ILIKE $${paramIndex} 
-                OR p.notes ILIKE $${paramIndex}
-                OR u.name ILIKE $${paramIndex})`);
-            queryParams.push(`%${searchQuery}%`);
-            paramIndex++;
-        }
-
-        if (statusFilter) {
-            let statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
-            // Expand "closed" to include both ENTREGADO and DEVUELTO
-            if (statuses.includes('closed')) {
-                statuses = statuses.filter(s => s !== 'closed');
-                if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
-                if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
-                if (!statuses.includes('PROBLEMA')) statuses.push('PROBLEMA');
-                if (!statuses.includes('REPROGRAMADO')) statuses.push('REPROGRAMADO');
-            }
-            if (statuses.length > 0) {
-                const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
-                whereClauses.push(`p.status IN (${placeholders})`);
-                queryParams.push(...statuses);
-                paramIndex += statuses.length;
-            }
-        }
-
-        if (driverFilter) {
-            whereClauses.push(`p."driverId" = $${paramIndex++}`);
-            queryParams.push(driverFilter);
-        }
-        
-        if (clientFilter) { // Admin filtering by client from the filter bar
-            whereClauses.push(`p."creatorId" = $${paramIndex++}`);
-            queryParams.push(clientFilter);
-        }
-
-        if (communeFilter) {
-            whereClauses.push(`p."recipientCommune" = $${paramIndex++}`);
-            queryParams.push(communeFilter);
-        }
-
-        if (cityFilter) {
-            whereClauses.push(`p."recipientCity" = $${paramIndex++}`);
-            queryParams.push(cityFilter);
-        }
-        // Relax date filtering if searching by query to find historical packages
-        const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
-        
-        // Determinar qué columna usar para el filtro de fecha
-        const dateColumn = dateType === 'egress' ? 'assignedAt' : 'createdAt';
-
-        if (startDate && endDate && !isHistoricalSearch) {
-            const { start, nextDayStart } = await timeService.getLogicalRange(startDate, endDate);
-            
-            if (dateType === 'egress') {
-                whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
-            } else if (driverFilter && req.user.role === 'DRIVER') {
-                whereClauses.push(`(
-                    p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
-                    p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
-                    p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
-                )`);
-            } else {
-                whereClauses.push(`(
-                    p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
-                    p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
-                    p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
-                )`);
-            }
-            queryParams.push(start, nextDayStart);
-            paramIndex += 2;
-        } else if (!isHistoricalSearch) {
-            // Filtros individuales si no hay un rango completo
-            if (startDate) {
-                if (dateType === 'egress') {
-                    whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
-                } else {
-                    whereClauses.push(`(
-                        (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
-                        (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
-                        (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp
-                    )`);
-                }
-                queryParams.push(startDate);
-                paramIndex++;
-            }
-
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setDate(end.getDate() + 1);
-                const endStr = end.toISOString().split('T')[0];
-                if (dateType === 'egress') {
-                    whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
-                } else {
-                    whereClauses.push(`(
-                        (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
-                        (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
-                        (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp
-                    )`);
-                }
-                queryParams.push(endStr);
-                paramIndex++;
-            }
-        }
-
-        if (flexFilter) {
-            if (flexFilter === 'flexed') {
-                whereClauses.push(`p."isFlexed" = true`);
-            } else if (flexFilter === 'not_flexed') {
-                whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
-            }
-        }
-
-        if (sourceFilter) {
-            if (sourceFilter === 'ml') {
-                whereClauses.push(`p.source = 'MERCADO_LIBRE'`);
-            } else if (sourceFilter === 'web') {
-                whereClauses.push(`p.source != 'MERCADO_LIBRE'`);
-            }
-        }
-
-        if (quickFilter) {
-            if (quickFilter === 'closed') {
-                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO', 'PROBLEMA', 'REPROGRAMADO')`);
-            } else if (quickFilter === 'cancelled') {
-                whereClauses.push(`p.status = 'CANCELADO'`);
-            } else if (quickFilter === 'rescheduled') {
-                whereClauses.push(`p.status = 'REPROGRAMADO'`);
-            }
-        }
-
-        if (isAssigned === 'true') {
-            whereClauses.push(`p."driverId" IS NOT NULL`);
-        } else if (isAssigned === 'false') {
-            whereClauses.push(`p."driverId" IS NULL`);
-        }
-        
-        if (accountId) {
-            whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
-            queryParams.push(accountId);
-        }
-        
-        if (assignmentFilter === 'first') {
-            whereClauses.push(`p."driverId" IS NOT NULL AND (p."isReassigned" IS NULL OR p."isReassigned" = false)`);
-        } else if (assignmentFilter === 'reassigned') {
-            whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
-        } else if (assignmentFilter === 'all_assigned') {
-            whereClauses.push(`p."driverId" IS NOT NULL`);
-        }
-        
-        if (excludeChecked === 'true') {
-            whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
-        }
-
-        const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         // Query for total count
         const countQuery = `
@@ -352,6 +426,7 @@ router.get('/', authMiddleware, async (req, res) => {
         res.status(500).json({ message: 'Error al obtener los paquetes.' });
     }
 });
+
 
 
 

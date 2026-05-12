@@ -306,6 +306,19 @@ export const api = {
       }
       return get<{ packages: Package[], total: number }>(`/packages?${searchParams.toString()}`);
   },
+  exportPackagesCSV: (params: any) => {
+      const searchParams = new URLSearchParams();
+      Object.keys(params).forEach(key => {
+          if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
+              searchParams.append(key, String(params[key]));
+          }
+      });
+      const token = localStorage.getItem('token');
+      if (token) {
+          searchParams.append('token', token);
+      }
+      window.location.href = `${API_URL}/packages/export/csv?${searchParams.toString()}`;
+  },
   createPackage: (data: PackageCreationData) => post<Package>('/packages', data),
   createMultiplePackages: (packages: PackageCreationData[]) => post<{ 
       success: boolean, 

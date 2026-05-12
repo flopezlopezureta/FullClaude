@@ -216,25 +216,34 @@ const ClientDashboard: React.FC = () => {
   const handleExportData = async (format: 'excel' | 'csv' = 'csv') => {
     if (!auth?.user || totalPackages === 0 || isExporting) return;
     
+    const params = {
+        searchQuery, 
+        statusFilter: Array.isArray(statusFilter) ? statusFilter.join(',') : statusFilter, 
+        communeFilter, 
+        startDate, 
+        endDate,
+        clientFilter: auth.user.id,
+        includeHistory: false
+    };
+
+    if (format === 'csv') {
+        // Use streaming export for CSV to handle large datasets
+        api.exportPackagesCSV(params);
+        setIsExportModalOpen(false);
+        return;
+    }
+
     setIsExporting(true);
     try {
-        let packagesToExport: Package[] = [];
+        const { packages: allFiltered } = await api.getPackages({
+            ...params,
+            limit: 0
+        });
 
+        let packagesToExport: Package[] = [];
         if (selectedPackages.size > 0) {
-            const { packages: allFiltered } = await api.getPackages({
-                limit: 0,
-                includeHistory: false,
-                searchQuery, statusFilter, communeFilter, startDate, endDate,
-                clientFilter: auth.user.id
-            });
             packagesToExport = allFiltered.filter(p => selectedPackages.has(p.id));
         } else {
-            const { packages: allFiltered } = await api.getPackages({
-                limit: 0,
-                includeHistory: false,
-                searchQuery, statusFilter, communeFilter, startDate, endDate,
-                clientFilter: auth.user.id
-            });
             packagesToExport = allFiltered;
         }
 
@@ -245,12 +254,7 @@ const ClientDashboard: React.FC = () => {
         }
 
         const dateStr = new Date().toISOString().split('T')[0];
-
-        if (format === 'excel') {
-            await exportToExcel(packagesToExport, `Mis_Paquetes_${dateStr}.xlsx`, [], auth?.systemSettings?.timeFormat || '12h');
-        } else {
-            exportToCSV(packagesToExport, `Mis_Paquetes_${dateStr}.csv`);
-        }
+        await exportToExcel(packagesToExport, `Mis_Paquetes_${dateStr}.xlsx`, [], auth?.systemSettings?.timeFormat || '12h');
         setIsExportModalOpen(false);
     } catch (error) {
         console.error("Export failed", error);
