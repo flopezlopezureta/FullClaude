@@ -1833,12 +1833,12 @@ router.get('/meli/callback', async (req, res) => {
 // Inicia el flujo de OAuth con Shopify
 router.get('/shopify/auth', authMiddleware, async (req, res) => {
     try {
-        let { shop, clientId } = req.query;
+        let { shop, clientId: queryClientId } = req.query;
         if (!shop) return res.status(400).json({ message: 'La URL de la tienda es requerida.' });
 
         // Si no se pasa clientId, usamos el del usuario actual (el que estÃ¡ haciendo clic)
         // Pero si es un ADMIN, podrÃ­a estar vinculando para otro usuario
-        const targetUserId = clientId || req.user.id;
+        const targetUserId = queryClientId || req.user.id;
 
         // Clean shop URL
         shop = shop.trim().replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
