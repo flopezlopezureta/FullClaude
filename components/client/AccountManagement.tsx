@@ -373,7 +373,8 @@ const AccountManagement: React.FC = () => {
                                             alert("Por favor, ingresa el dominio de tu tienda (ej: mi-tienda.myshopify.com)");
                                             return;
                                         }
-                                        const authUrl = `/api/integrations/shopify/auth?shop=${encodeURIComponent(shopifyUrl.trim())}`;
+                                        const token = localStorage.getItem('token');
+                                        const authUrl = `/api/integrations/shopify/auth?shop=${encodeURIComponent(shopifyUrl.trim())}&token=${token}`;
                                         // Redirigir directamente para el flujo OAuth
                                         window.location.href = authUrl;
                                     }}

@@ -594,7 +594,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                                                     return;
                                                                 }
                                                                 const host = window.location.origin;
-                                                                const authUrl = `${host}/api/integrations/shopify/auth?shop=${clientShopifyUrl.trim()}&clientId=${user.id}`;
+                                                                const token = localStorage.getItem('token');
+                                                                const authUrl = `${host}/api/integrations/shopify/auth?shop=${clientShopifyUrl.trim()}&clientId=${user.id}&token=${token}`;
                                                                 window.open(authUrl, 'ShopifyAuth', 'width=600,height=800');
                                                             }}
                                                             className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md shadow-md transition-all flex items-center justify-center gap-2 text-sm"
@@ -611,7 +612,8 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                                                 return;
                                                             }
                                                             const host = window.location.origin;
-                                                            const authUrl = `${host}/api/integrations/shopify/auth?shop=${clientShopifyUrl.trim()}&clientId=${user.id}`;
+                                                            const token = localStorage.getItem('token');
+                                                            const authUrl = `${host}/api/integrations/shopify/auth?shop=${clientShopifyUrl.trim()}&clientId=${user.id}&token=${token}`;
                                                             navigator.clipboard.writeText(authUrl);
                                                             alert("Â¡Enlace copiado! EnvÃ­aselo al cliente para que autorice la conexiÃ³n desde su navegador.");
                                                         }}
