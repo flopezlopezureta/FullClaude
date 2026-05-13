@@ -1737,10 +1737,11 @@ router.get('/meli/callback', async (req, res) => {
             <head>
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                <title>Â¡Ã‰xito! | Full EnvÃ­os</title>
+                <title>ConexiÃ³n Exitosa | Full EnvÃ­os</title>
                 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
                 <style>
                     :root {
+                        --brand-primary: #6366f1;
                         --success: #10b981;
                         --bg: #0f172a;
                     }
@@ -1764,11 +1765,11 @@ router.get('/meli/callback', async (req, res) => {
                         box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
                         max-width: 450px;
                         text-align: center;
-                        animation: popIn 0.6s cubic-bezier(0.34, 1.56, 0.64, 1);
+                        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
                     }
-                    @keyframes popIn {
-                        0% { opacity: 0; transform: scale(0.8); }
-                        100% { opacity: 1; transform: scale(1); }
+                    @keyframes slideUp {
+                        from { opacity: 0; transform: translateY(30px); }
+                        to { opacity: 1; transform: translateY(0); }
                     }
                     .icon-circle {
                         width: 80px;
@@ -1779,54 +1780,274 @@ router.get('/meli/callback', async (req, res) => {
                         display: flex;
                         align-items: center;
                         justify-content: center;
-                        font-size: 2.5rem;
-                        margin: 0 auto 2rem;
-                        border: 2px solid rgba(16, 185, 129, 0.2);
-                        animation: checkmark 0.8s ease-in-out forwards;
+                        margin: 0 auto 1.5rem;
                     }
-                    @keyframes checkmark {
-                        0% { transform: scale(0); }
-                        50% { transform: scale(1.2); }
-                        100% { transform: scale(1); }
-                    }
-                    h2 { margin: 0 0 1rem; font-weight: 700; font-size: 1.75rem; background: linear-gradient(to right, #10b981, #34d399); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+                    h1 { margin: 0 0 0.5rem; font-size: 1.8rem; font-weight: 700; }
                     p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
-                    .highlight { color: white; font-weight: 600; }
                     .btn {
-                        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+                        background: var(--brand-primary);
                         color: white;
+                        text-decoration: none;
+                        padding: 0.8rem 2rem;
+                        border-radius: 0.8rem;
+                        font-weight: 600;
+                        display: inline-block;
+                        transition: all 0.2s;
                         border: none;
-                        padding: 1rem 2rem;
-                        border-radius: 1rem;
-                        font-weight: 700;
                         cursor: pointer;
-                        transition: all 0.3s;
-                        box-shadow: 0 10px 15px -3px rgba(16, 185, 129, 0.3);
-                        text-transform: uppercase;
-                        letter-spacing: 1px;
-                        font-size: 0.875rem;
+                        box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
                     }
-                    .btn:hover { transform: translateY(-2px); box-shadow: 0 20px 25px -5px rgba(16, 185, 129, 0.4); }
-                    .timer { font-size: 0.75rem; color: #64748b; margin-top: 1.5rem; }
+                    .btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
+                    }
                 </style>
             </head>
             <body>
                 <div class="container">
-                    <div class="icon-circle">âœ“</div>
-                    <h2>Â¡ConexiÃ³n Exitosa!</h2>
-                    <p>La tienda <span class="highlight">${nickname}</span> se ha vinculado correctamente a Full EnvÃ­os.</p>
-                    <button onclick="window.close()" class="btn">Listo, Volver</button>
-                    <div class="timer">Esta ventana se cerrarÃ¡ automÃ¡ticamente...</div>
+                    <div class="icon-circle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </div>
+                    <h1>ConexiÃ³n Exitosa</h1>
+                    <p>Tu cuenta de Mercado Libre <strong>${nickname}</strong> ha sido vinculada correctamente a Full EnvÃ­os.</p>
+                    <button onclick="window.close()" class="btn">Volver al Sistema</button>
                 </div>
-                <script>setTimeout(() => window.close(), 4000);</script>
+                <script>
+                    // Intentar avisar al sistema principal si es un popup
+                    if (window.opener) {
+                        window.opener.postMessage({ type: 'INTEGRATION_SUCCESS', platform: 'MERCADO_LIBRE' }, '*');
+                        setTimeout(() => window.close(), 3000);
+                    }
+                </script>
             </body>
             </html>
         `);
 
     } catch (err) {
         console.error('[MeliCallback] Error:', err);
-        res.status(500).send('Error al procesar la vinculaciÃ³n con Mercado Libre.');
+        res.status(500).send('Error interno en la vinculaciÃ³n con Mercado Libre.');
     }
+});
+
+// GET /api/integrations/shopify/auth
+// Inicia el flujo de OAuth con Shopify
+router.get('/shopify/auth', authMiddleware, async (req, res) => {
+    try {
+        let { shop, clientId } = req.query;
+        if (!shop) return res.status(400).json({ message: 'La URL de la tienda es requerida.' });
+
+        // Si no se pasa clientId, usamos el del usuario actual (el que estÃ¡ haciendo clic)
+        // Pero si es un ADMIN, podrÃ­a estar vinculando para otro usuario
+        const targetUserId = clientId || req.user.id;
+
+        // Clean shop URL
+        shop = shop.trim().replace(/^https?:\/\//, '').split('/')[0].split(':')[0];
+        if (!shop.includes('.')) shop += '.myshopify.com';
+
+        const { rows } = await db.query('SELECT shopify_client_id FROM integration_settings WHERE id = 1');
+        if (rows.length === 0 || !rows[0].shopify_client_id) {
+            return res.status(500).json({ message: 'El administrador no ha configurado el Client ID de Shopify en la configuraciÃ³n global.' });
+        }
+
+        const clientId = rows[0].shopify_client_id;
+        const host = req.get('host');
+        const protocol = host.includes('localhost') ? 'http' : 'https';
+        const redirectUri = `${protocol}://${host}/api/integrations/shopify/callback`;
+        
+        // Permisos necesarios para el polling de pedidos
+        const scopes = 'read_orders,read_shipping,read_products,read_customers';
+        const state = targetUserId; 
+
+        const authUrl = `https://${shop}/admin/oauth/authorize?client_id=${clientId}&scope=${scopes}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${state}`;
+        
+        res.redirect(authUrl);
+    } catch (err) {
+        console.error('[ShopifyAuth] Error:', err);
+        res.status(500).json({ message: 'Error interno al iniciar autenticaciÃ³n con Shopify' });
+    }
+});
+
+// GET /api/integrations/shopify/callback
+// Recibe el cÃ³digo de Shopify y guarda la cuenta
+router.get('/shopify/callback', async (req, res) => {
+    const { code, shop, state: userId, hmac } = req.query;
+
+    if (!code || !userId || !shop) {
+        return res.status(400).send('Faltan parÃ¡metros de autorizaciÃ³n de Shopify (code, shop o state).');
+    }
+
+    try {
+        // 1. Obtener credenciales de la App Global
+        const { rows: settingsRows } = await db.query('SELECT shopify_client_id, shopify_client_secret FROM integration_settings WHERE id = 1');
+        if (settingsRows.length === 0) return res.status(500).send('ConfiguraciÃ³n global de Shopify no encontrada.');
+        
+        const { shopify_client_id, shopify_client_secret } = settingsRows[0];
+
+        // 2. Intercambiar cÃ³digo por Access Token
+        // Shopify requiere una peticiÃ³n POST a la tienda del cliente
+        const postData = {
+            client_id: shopify_client_id,
+            client_secret: shopify_client_secret,
+            code: code
+        };
+
+        const response = await fetch(`https://${shop}/admin/oauth/access_token`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(postData)
+        });
+
+        const tokenData = await response.json();
+        if (!tokenData.access_token) {
+            console.error('[ShopifyCallback] Error exchanging code:', tokenData);
+            return res.status(401).send('Error al obtener el Access Token de Shopify. Verifica las credenciales de la App.');
+        }
+
+        // 3. Guardar la cuenta en el usuario
+        const { rows: userRows } = await db.query('SELECT id, name, integrations FROM users WHERE id = $1', [userId]);
+        if (userRows.length === 0) return res.status(404).send('Usuario no encontrado.');
+
+        let integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        
+        // Evitar duplicados para la misma tienda
+        integrations.accounts = integrations.accounts.filter(acc => !(acc.type === 'SHOPIFY' && acc.credentials.shopUrl === shop));
+
+        integrations.accounts.push({
+            id: `shopify-${uuidv4().split('-')[0]}`,
+            type: 'SHOPIFY',
+            nickname: `Shopify (${shop.split('.')[0]})`,
+            credentials: {
+                shopUrl: shop,
+                accessToken: tokenData.access_token
+            },
+            settings: {
+                autoImport: true,
+                syncInterval: 5
+            },
+            connectedAt: new Date().toISOString()
+        });
+
+        await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), userId]);
+
+        // 4. Responder con HTML de Ã©xito
+        res.send(`
+            <!DOCTYPE html>
+            <html lang="es">
+            <head>
+                <meta charset="UTF-8">
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <title>ConexiÃ³n Exitosa | Full EnvÃ­os</title>
+                <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+                <style>
+                    :root {
+                        --brand-primary: #6366f1;
+                        --success: #10b981;
+                        --bg: #0f172a;
+                    }
+                    body {
+                        margin: 0;
+                        font-family: 'Outfit', sans-serif;
+                        background: var(--bg);
+                        color: white;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        height: 100vh;
+                        overflow: hidden;
+                    }
+                    .container {
+                        background: rgba(30, 41, 59, 0.7);
+                        backdrop-filter: blur(12px);
+                        border: 1px solid rgba(255, 255, 255, 0.1);
+                        padding: 3rem;
+                        border-radius: 2rem;
+                        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+                        max-width: 450px;
+                        text-align: center;
+                        animation: slideUp 0.6s cubic-bezier(0.16, 1, 0.3, 1);
+                    }
+                    @keyframes slideUp {
+                        from { opacity: 0; transform: translateY(30px); }
+                        to { opacity: 1; transform: translateY(0); }
+                    }
+                    .icon-circle {
+                        width: 80px;
+                        height: 80px;
+                        background: rgba(16, 185, 129, 0.1);
+                        color: var(--success);
+                        border-radius: 50%;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        margin: 0 auto 1.5rem;
+                    }
+                    h1 { margin: 0 0 0.5rem; font-size: 1.8rem; font-weight: 700; }
+                    p { color: #94a3b8; line-height: 1.6; margin-bottom: 2rem; }
+                    .btn {
+                        background: var(--brand-primary);
+                        color: white;
+                        text-decoration: none;
+                        padding: 0.8rem 2rem;
+                        border-radius: 0.8rem;
+                        font-weight: 600;
+                        display: inline-block;
+                        transition: all 0.2s;
+                        border: none;
+                        cursor: pointer;
+                        box-shadow: 0 10px 15px -3px rgba(99, 102, 241, 0.3);
+                    }
+                    .btn:hover {
+                        transform: translateY(-2px);
+                        box-shadow: 0 20px 25px -5px rgba(99, 102, 241, 0.4);
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                    <div class="icon-circle">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>
+                    </div>
+                    <h1>ConexiÃ³n Exitosa</h1>
+                    <p>Tu tienda de Shopify <strong>${shop}</strong> ha sido vinculada correctamente.</p>
+                    <button onclick="window.close()" class="btn">Volver al Sistema</button>
+                </div>
+                <script>
+                    if (window.opener) {
+                        window.opener.postMessage({ type: 'INTEGRATION_SUCCESS', platform: 'SHOPIFY' }, '*');
+                        setTimeout(() => window.close(), 3000);
+                    }
+                </script>
+            </body>
+            </html>
+        `);
+
+    } catch (err) {
+        console.error('[ShopifyCallback] Error:', err);
+        res.status(500).send('Error interno en la vinculaciÃ³n con Shopify.');
+    }
+});
+
+// --- SHOPIFY GDPR WEBHOOKS (MANDATORIOS PARA APROBACIÃ“N) ---
+// Estos endpoints son requeridos por Shopify para cumplir con las leyes de protecciÃ³n de datos.
+
+// 1. Solicitud de datos de un cliente
+router.post('/shopify/gdpr/customer-data', async (req, res) => {
+    console.log('[ShopifyGDPR] Customer data request received');
+    // AquÃ­ deberÃ­as buscar datos del cliente y enviarlos si fuera necesario. 
+    // Por ahora respondemos 200 OK como exige Shopify.
+    res.status(200).send('OK');
+});
+
+// 2. Solicitud de borrado de datos de un cliente
+router.post('/shopify/gdpr/customer-redact', async (req, res) => {
+    console.log('[ShopifyGDPR] Customer redact request received');
+    res.status(200).send('OK');
+});
+
+// 3. Solicitud de borrado de datos de una tienda (cuando desinstalan la app)
+router.post('/shopify/gdpr/shop-redact', async (req, res) => {
+    console.log('[ShopifyGDPR] Shop redact request received');
+    res.status(200).send('OK');
 });
 
 // POST /api/integrations/sync-shipment/:id
