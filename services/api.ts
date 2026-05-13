@@ -53,15 +53,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (!response.ok) {
     // Si el token no es válido o ha expirado (401), cerramos la sesión automáticamente
     if (response.status === 401) {
-      // Si el endpoint es /auth/login, un 401 solo significa "credenciales incorrectas",
-      // no que la sesión actual haya expirado. Solo limpiamos el token si NO es un login.
-      if (!endpoint.includes('/auth/login')) {
+      const hasToken = !!options.headers && (options.headers as any)['Authorization'];
+      const isLoginRequest = endpoint.includes('/auth/login');
+      
+      if (!isLoginRequest && hasToken) {
         console.warn('[API] Sesión expirada o inválida (401). Limpiando token...');
         localStorage.removeItem('token');
         
+        // Solo recargamos si NO estamos en la página de login para evitar bucles
         if (!window.location.pathname.includes('/login')) {
           window.location.reload();
         }
+      } else if (!isLoginRequest) {
+        // Si no hay token y da 401, simplemente limpiamos por si acaso pero no recargamos
+        localStorage.removeItem('token');
       }
     }
 

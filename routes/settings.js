@@ -691,8 +691,8 @@ router.post('/disconnect-google-smtp', authMiddleware, adminOnly, async (req, re
     }
 });
 
-// GET /api/settings/communes
-router.get('/communes', authMiddleware, async (req, res) => {
+// GET /api/settings/communes - Public to allow initial load without token
+router.get('/communes', async (req, res) => {
     try {
         const { rows } = await db.query('SELECT * FROM active_communes ORDER BY name ASC');
         res.json(rows);
