@@ -201,10 +201,19 @@ const DeliveryHistoryPage: React.FC = () => {
     if (!auth?.user) return;
     if (!silent) setIsLoading(true);
     try {
+      // Fetch packages and users separately to prevent one failure from blocking the other
+      const packagesPromise = api.getPackages({ driverFilter: auth.user.id, limit: 0 });
+      const usersPromise = api.getUsers().catch(err => {
+        console.warn("[Auth] Could not fetch users list, using cache if available.", err);
+        const cachedUsers = localStorage.getItem(`driver_users`);
+        return cachedUsers ? JSON.parse(cachedUsers) : [];
+      });
+
       const [{ packages: pkgs }, allUsers] = await Promise.all([
-          api.getPackages({ driverFilter: auth.user.id, limit: 0 }),
-          api.getUsers()
+          packagesPromise,
+          usersPromise
       ]);
+
       const driverPackages = pkgs
         .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
       
@@ -212,7 +221,9 @@ const DeliveryHistoryPage: React.FC = () => {
       setUsers(allUsers);
       
       localStorage.setItem(`driver_history_${auth.user.id}`, JSON.stringify(driverPackages));
-      localStorage.setItem(`driver_users`, JSON.stringify(allUsers));
+      if (allUsers.length > 0) {
+        localStorage.setItem(`driver_users`, JSON.stringify(allUsers));
+      }
     } catch (error) {
       console.error("Failed to fetch history data", error);
     } finally {
