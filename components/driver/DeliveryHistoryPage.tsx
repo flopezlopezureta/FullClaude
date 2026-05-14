@@ -33,7 +33,7 @@ const ReportContent: React.FC<{
     const formattedStartDate = new Date(startDate.replace(/-/g, '/')).toLocaleDateString('es-CL');
     const formattedEndDate = new Date(endDate.replace(/-/g, '/')).toLocaleDateString('es-CL');
     
-    const findClientName = (creatorId: string | null) => users.find(u => u.id === creatorId)?.name || 'N/A';
+    const findClientName = (creatorId: string | null) => users.find(u => u.id === creatorId)?.name || 'Cliente Particular';
     
     const findEventTimestamp = (pkg: Package, status: PackageStatus) => {
         const event = pkg.history.find(e => e.status === status);
@@ -41,97 +41,143 @@ const ReportContent: React.FC<{
     };
 
     return (
-        <div className="p-8 font-sans text-gray-800 bg-white" style={{ width: '8.5in', minHeight: '11in' }}>
-            {/* Header */}
-            <header className="flex justify-between items-start pb-4 border-b-2 border-gray-800">
-                <div className="flex items-center gap-3">
-                    <IconCube className="w-10 h-10 text-gray-800" />
+        <div className="p-10 font-sans text-slate-800 bg-white" style={{ width: '210mm', minHeight: '297mm', position: 'relative' }}>
+            {/* Professional Header */}
+            <header className="flex justify-between items-center pb-6 border-b-4 border-slate-900">
+                <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-slate-900 rounded-lg flex items-center justify-center">
+                        <IconCube className="w-10 h-10 text-white" />
+                    </div>
                     <div>
-                        <h1 className="text-2xl font-bold text-gray-900">{companyName}</h1>
-                        <h2 className="text-lg text-gray-600">Reporte de Actividad del Conductor</h2>
+                        <h1 className="text-3xl font-black tracking-tight text-slate-900 uppercase">{companyName}</h1>
+                        <div className="flex items-center gap-2 text-slate-500 font-medium">
+                            <IconArchive className="w-4 h-4" />
+                            <span>Reporte de Operaciones Logísticas</span>
+                        </div>
                     </div>
                 </div>
-                <div className="text-right text-sm text-gray-600">
-                    <p><span className="font-semibold text-gray-800">Conductor:</span> {driver.name}</p>
-                    <p><span className="font-semibold text-gray-800">Período:</span> {formattedStartDate} al {formattedEndDate}</p>
+                <div className="text-right">
+                    <p className="text-xs uppercase tracking-widest text-slate-400 font-bold mb-1">Documento Oficial</p>
+                    <div className="bg-slate-100 px-4 py-2 rounded-md">
+                        <p className="text-sm font-bold text-slate-800">{formattedStartDate} — {formattedEndDate}</p>
+                    </div>
                 </div>
             </header>
 
-            {/* Summary */}
-            <section className="my-8">
-                <h3 className="text-xl font-semibold mb-4 border-b border-gray-300 pb-2 text-gray-800">Resumen del Período</h3>
-                <table className="w-full text-left">
-                    <tbody>
-                        <tr>
-                            <td className="py-1 pr-4 font-semibold">Total Paquetes Entregados:</td>
-                            <td className="py-1 font-bold text-lg">{reportData.delivered.length}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 pr-4 font-semibold">Total Paquetes Retirados:</td>
-                            <td className="py-1 font-bold text-lg">{reportData.pickedUp.length}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 pr-4 font-semibold">Total Clientes Visitados (para retiro):</td>
-                            <td className="py-1 font-bold text-lg">{reportData.uniquePickupClients}</td>
-                        </tr>
-                        <tr>
-                            <td className="py-1 pr-4 font-semibold">Total Paquetes Devueltos:</td>
-                            <td className="py-1 font-bold text-lg">{reportData.returned.length}</td>
-                        </tr>
-                    </tbody>
-                </table>
+            {/* Information Grid */}
+            <div className="grid grid-cols-2 gap-8 my-8">
+                <div className="space-y-1">
+                    <p className="text-xs uppercase text-slate-400 font-bold">Información del Conductor</p>
+                    <p className="text-lg font-bold text-slate-900">{driver.name}</p>
+                    <p className="text-sm text-slate-500">{driver.email}</p>
+                </div>
+                <div className="space-y-1 text-right">
+                    <p className="text-xs uppercase text-slate-400 font-bold">Fecha de Emisión</p>
+                    <p className="text-sm font-medium">{new Date().toLocaleString('es-CL')}</p>
+                </div>
+            </div>
+
+            {/* Premium Summary Cards */}
+            <section className="grid grid-cols-4 gap-4 my-8">
+                {[
+                    { label: 'Entregados', value: reportData.delivered.length, color: 'bg-green-50 text-green-700 border-green-200' },
+                    { label: 'Retiros', value: reportData.pickedUp.length, color: 'bg-blue-50 text-blue-700 border-blue-200' },
+                    { label: 'Clientes', value: reportData.uniquePickupClients, color: 'bg-indigo-50 text-indigo-700 border-indigo-200' },
+                    { label: 'Devueltos', value: reportData.returned.length, color: 'bg-amber-50 text-amber-700 border-amber-200' }
+                ].map((card, i) => (
+                    <div key={i} className={`p-4 rounded-xl border-2 ${card.color} text-center`}>
+                        <p className="text-[10px] uppercase font-black tracking-wider mb-1 opacity-70">{card.label}</p>
+                        <p className="text-3xl font-black">{card.value}</p>
+                    </div>
+                ))}
             </section>
 
-            {/* Delivered Packages Table */}
-            <section className="my-8">
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">Entregados ({reportData.delivered.length})</h3>
-                <table className="w-full text-sm border-collapse">
-                    <thead className="bg-gray-100">
-                        <tr>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">ID Paquete</th>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">Destinatario</th>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">Comuna</th>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">Fecha Entrega</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {reportData.delivered.length > 0 ? reportData.delivered.map((pkg, index) => (
-                            <tr key={pkg.id} className={index % 2 === 0 ? '' : 'bg-gray-50'}>
-                                <td className="border-b border-gray-200 p-2 font-mono text-xs">{pkg.id}</td>
-                                <td className="border-b border-gray-200 p-2">{pkg.recipientName}</td>
-                                <td className="border-b border-gray-200 p-2">{pkg.recipientCommune}</td>
-                                <td className="border-b border-gray-200 p-2">{findEventTimestamp(pkg, PackageStatus.Delivered)?.toLocaleString('es-CL') || 'N/A'}</td>
+            {/* Main Tables */}
+            <div className="space-y-10">
+                {/* Delivered Section */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 border-l-4 border-green-500 pl-3">
+                        <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Detalle de Entregas</h3>
+                    </div>
+                    <table className="w-full text-xs border-collapse">
+                        <thead>
+                            <tr className="bg-slate-900 text-white">
+                                <th className="p-3 text-left font-bold rounded-tl-lg">Tracking / Ref</th>
+                                <th className="p-3 text-left font-bold">Destinatario</th>
+                                <th className="p-3 text-left font-bold">Comuna</th>
+                                <th className="p-3 text-right font-bold rounded-tr-lg">Fecha/Hora</th>
                             </tr>
-                        )) : <tr><td colSpan={4} className="border-b border-gray-200 p-4 text-center text-gray-500">No hay paquetes entregados en este período.</td></tr>}
-                    </tbody>
-                </table>
-            </section>
-            
-            {/* Picked Up Packages Table */}
-            <section className="my-8" style={{ pageBreakBefore: 'always' }}>
-                <h3 className="text-xl font-semibold mb-4 text-gray-800">Retirados ({reportData.pickedUp.length} paquetes de {reportData.uniquePickupClients} clientes)</h3>
-                <table className="w-full text-sm border-collapse">
-                     <thead className="bg-gray-100">
-                        <tr>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">ID Paquete</th>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">Cliente Remitente</th>
-                            <th className="border-b-2 border-gray-300 p-2 text-left font-semibold text-gray-600">Fecha Retiro</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {reportData.pickedUp.length > 0 ? reportData.pickedUp.map((pkg, index) => (
-                            <tr key={pkg.id} className={index % 2 === 0 ? '' : 'bg-gray-50'}>
-                                <td className="border-b border-gray-200 p-2 font-mono text-xs">{pkg.id}</td>
-                                <td className="border-b border-gray-200 p-2">{findClientName(pkg.creatorId)}</td>
-                                <td className="border-b border-gray-200 p-2">{findEventTimestamp(pkg, PackageStatus.PickedUp)?.toLocaleString('es-CL') || 'N/A'}</td>
-                            </tr>
-                        )) : <tr><td colSpan={3} className="border-b border-gray-200 p-4 text-center text-gray-500">No hay paquetes retirados en este período.</td></tr>}
-                    </tbody>
-                </table>
-            </section>
+                        </thead>
+                        <tbody>
+                            {reportData.delivered.length > 0 ? reportData.delivered.map((pkg, index) => (
+                                <tr key={pkg.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                    <td className="p-3 border-b border-slate-100 font-mono text-[10px]">
+                                        <div className="font-bold text-slate-900">{pkg.id}</div>
+                                        <div className="text-slate-400">{pkg.reference || 'Sin Ref'}</div>
+                                    </td>
+                                    <td className="p-3 border-b border-slate-100 font-medium">{pkg.recipientName}</td>
+                                    <td className="p-3 border-b border-slate-100 uppercase">{pkg.recipientCommune}</td>
+                                    <td className="p-3 border-b border-slate-100 text-right text-slate-500">
+                                        {findEventTimestamp(pkg, PackageStatus.Delivered)?.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) || 'N/A'}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic bg-slate-50 rounded-b-lg">No se registraron entregas en este período.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </section>
 
-             <footer className="absolute bottom-8 left-8 right-8 text-xs text-gray-500 text-center border-t border-gray-300 pt-2">
-                Reporte generado el {new Date().toLocaleString('es-CL')}
+                {/* Pickups Section */}
+                <section>
+                    <div className="flex items-center gap-2 mb-4 border-l-4 border-blue-500 pl-3">
+                        <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Detalle de Retiros</h3>
+                    </div>
+                    <table className="w-full text-xs border-collapse">
+                        <thead>
+                            <tr className="bg-slate-800 text-white">
+                                <th className="p-3 text-left font-bold rounded-tl-lg">ID Paquete</th>
+                                <th className="p-3 text-left font-bold">Cliente / Origen</th>
+                                <th className="p-3 text-right font-bold rounded-tr-lg">Fecha/Hora</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {reportData.pickedUp.length > 0 ? reportData.pickedUp.map((pkg, index) => (
+                                <tr key={pkg.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                    <td className="p-3 border-b border-slate-100 font-mono text-[10px] font-bold text-slate-900">{pkg.id}</td>
+                                    <td className="p-3 border-b border-slate-100 font-medium">{findClientName(pkg.creatorId)}</td>
+                                    <td className="p-3 border-b border-slate-100 text-right text-slate-500">
+                                        {findEventTimestamp(pkg, PackageStatus.PickedUp)?.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) || 'N/A'}
+                                    </td>
+                                </tr>
+                            )) : (
+                                <tr><td colSpan={3} className="p-8 text-center text-slate-400 italic bg-slate-50 rounded-b-lg">No se registraron retiros en este período.</td></tr>
+                            )}
+                        </tbody>
+                    </table>
+                </section>
+            </div>
+
+            {/* Signature Section */}
+            <div className="mt-20 grid grid-cols-2 gap-20">
+                <div className="text-center">
+                    <div className="border-t-2 border-slate-300 pt-3">
+                        <p className="text-sm font-bold text-slate-900">{driver.name}</p>
+                        <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">Firma del Conductor</p>
+                    </div>
+                </div>
+                <div className="text-center">
+                    <div className="border-t-2 border-slate-300 pt-3">
+                        <p className="text-sm font-bold text-slate-900">Operaciones {companyName}</p>
+                        <p className="text-[10px] uppercase text-slate-400 font-bold tracking-widest">Firma Responsable</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* Professional Footer */}
+            <footer className="absolute bottom-10 left-10 right-10 text-[9px] text-slate-400 flex justify-between border-t border-slate-100 pt-4">
+                <p>Este documento es una representación digital de la actividad logística de {companyName}.</p>
+                <p>Página 1 de 1</p>
             </footer>
         </div>
     );
