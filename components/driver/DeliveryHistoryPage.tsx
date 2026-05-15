@@ -197,6 +197,7 @@ const TabButton: React.FC<{ label: string; count: string | number; active: boole
 const DeliveryHistoryPage: React.FC = () => {
   const [allDriverPackages, setAllDriverPackages] = useState<Package[]>([]);
   const [users, setUsers] = useState<User[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
