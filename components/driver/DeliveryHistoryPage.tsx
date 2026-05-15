@@ -197,10 +197,8 @@ const TabButton: React.FC<{ label: string; count: string | number; active: boole
 const DeliveryHistoryPage: React.FC = () => {
   const [allDriverPackages, setAllDriverPackages] = useState<Package[]>([]);
   const [users, setUsers] = useState<User[]>([]);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [readyPdfData, setReadyPdfData] = useState<{ blob: Blob, fileName: string, title: string, text: string } | null>(null);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
   const auth = useContext(AuthContext);
 
@@ -210,11 +208,6 @@ const DeliveryHistoryPage: React.FC = () => {
 
   const [startDate, setStartDate] = useState(getISODate(oneWeekAgo));
   const [endDate, setEndDate] = useState(getISODate(today));
-
-  // Reset ready PDF if dates change
-  useEffect(() => {
-      setReadyPdfData(null);
-  }, [startDate, endDate]);
 
   // Load from cache on mount
   useEffect(() => {
@@ -344,7 +337,7 @@ const DeliveryHistoryPage: React.FC = () => {
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
 
 
-  const handlePrepareReport = async () => {
+  const handleShareReport = async () => {
     setIsGenerating(true);
     const reportElement = document.getElementById('report-content-for-pdf');
     if (!reportElement) {
@@ -360,60 +353,35 @@ const DeliveryHistoryPage: React.FC = () => {
     const opt = {
         margin: 0.5,
         filename: fileName,
-        image: { type: 'jpeg', quality: 0.80 },
-        html2canvas: { scale: 1, useCORS: true, logging: false },
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 50));
         const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
-        setReadyPdfData({
-            blob: pdfBlob,
-            fileName,
-            title: 'Reporte de Actividad',
-            text: `Reporte de actividad para ${auth?.user?.name} (${startDate} al ${endDate}).`
-        });
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        alert("Ocurrió un error al preparar el PDF.");
-    } finally {
-        setIsGenerating(false);
-    }
-  };
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-  const handleDirectShare = async () => {
-    if (!readyPdfData) return;
-    try {
-        // Build the file INSIDE the user gesture to bypass Chrome's strict security restrictions
-        const file = new File([readyPdfData.blob], readyPdfData.fileName, { type: 'application/pdf' });
-        
-        if (navigator.share) {
+        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
-                title: readyPdfData.title,
-                text: readyPdfData.text,
-                files: [file]
+                title: 'Reporte de Actividad',
+                text: `Reporte de actividad para ${auth?.user?.name} (${startDate} al ${endDate}).`,
+                files: [pdfFile],
             });
         } else {
-            throw new Error("El navegador no soporta compartir nativo.");
-        }
-    } catch (error: any) {
-        console.error("Error sharing PDF:", error);
-        if (error.name === 'AbortError') return; // User cancelled
-        
-        alert(`Tu teléfono bloqueó el envío automático (Error: ${error.message || error.name}). El archivo se descargará para que lo envíes manualmente.`);
-        
-        try {
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(readyPdfData.blob);
-            link.download = readyPdfData.fileName;
+            link.href = URL.createObjectURL(pdfBlob);
+            link.download = fileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
-        } catch (downloadError) {
-            alert("No se pudo descargar el archivo.");
         }
+    } catch (error) {
+        console.error("Error generating or sharing PDF:", error);
+        alert("Ocurrió un error al generar o compartir el PDF.");
+    } finally {
+        setIsGenerating(false);
     }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
@@ -461,17 +429,10 @@ const DeliveryHistoryPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-transparent mb-1">Acciones</label>
               <div className="flex flex-col items-stretch gap-2">
-                {!readyPdfData ? (
-                    <button onClick={handlePrepareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
-                      {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconArchive className="w-5 h-5 mr-2 -ml-1"/>}
-                      {isGenerating ? 'Comprimiendo PDF...' : 'Preparar Informe'}
-                    </button>
-                ) : (
-                    <button onClick={handleDirectShare} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 animate-pulse">
-                      <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
-                      ¡Listo! Toca para Compartir
-                    </button>
-                )}
+                <button onClick={handleShareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                  {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>}
+                  {isGenerating ? 'Generando PDF...' : 'Compartir Informe'}
+                </button>
                 <p className="text-xs text-center text-[var(--text-muted)] mt-1">En PC se descargará el archivo PDF.</p>
               </div>
             </div>
