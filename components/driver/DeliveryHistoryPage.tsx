@@ -344,7 +344,7 @@ const DeliveryHistoryPage: React.FC = () => {
   useEffect(() => {
     setPdfCache(null);
     const hasData = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
-    if (!hasData || !auth?.user) return;
+    if (!hasData) return;
 
     const generate = async () => {
       const reportElement = document.getElementById('report-content-for-pdf');
@@ -376,13 +376,33 @@ const DeliveryHistoryPage: React.FC = () => {
 
   const handleShareReport = () => {
     if (!pdfCache) return;
-    // Open the PDF in Chrome's built-in PDF viewer.
-    // From there, the conductor uses Chrome's native share/download buttons—
-    // which are full native Android controls, never blocked by the browser.
-    const url = URL.createObjectURL(pdfCache.blob);
-    window.open(url, '_blank');
-    // Keep the URL alive for 2 minutes so the PDF viewer can access it
-    setTimeout(() => URL.revokeObjectURL(url), 120000);
+    // The blob is pre-generated and in memory.
+    // navigator.share() is called synchronously from the tap (0ms delay)
+    // so Chrome's gesture timeout is never triggered.
+    const file = new File([pdfCache.blob], pdfCache.fileName, { type: 'application/pdf' });
+    if (navigator.share) {
+      navigator.share({
+        title: 'Reporte de Actividad',
+        text: `Reporte del conductor ${auth?.user?.name || 'conductor'} (${startDate} al ${endDate}).`,
+        files: [file]
+      }).catch((err: any) => {
+        if (err.name === 'AbortError') return;
+        console.error('Share error:', err);
+        // Fallback: force download
+        const url = URL.createObjectURL(pdfCache.blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = pdfCache.fileName;
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 2000);
+      });
+    } else {
+      // Desktop fallback: download directly
+      const url = URL.createObjectURL(pdfCache.blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = pdfCache.fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
   const isMobile = typeof navigator !== 'undefined' && /android|iphone|ipad/i.test(navigator.userAgent);
