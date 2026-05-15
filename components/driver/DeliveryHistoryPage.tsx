@@ -390,13 +390,25 @@ const DeliveryHistoryPage: React.FC = () => {
   const handleDirectShare = async () => {
     if (!readyPdfData) return;
     try {
-        if (navigator.share && navigator.canShare({ files: [readyPdfData.file] })) {
+        // Intento 1: Usar la API nativa de compartir si está disponible
+        if (navigator.share) {
             await navigator.share({
                 title: readyPdfData.title,
                 text: readyPdfData.text,
                 files: [readyPdfData.file],
             });
         } else {
+            throw new Error("El navegador no soporta compartir nativo.");
+        }
+    } catch (error: any) {
+        console.error("Error sharing PDF:", error);
+        // Si el usuario simplemente canceló el menú de compartir, no hacemos nada
+        if (error.name === 'AbortError') return;
+        
+        // Si falló por otra razón (restricción del dispositivo o no soportado)
+        alert("Tu teléfono no permite enviar este archivo directamente a WhatsApp. Se descargará a tu carpeta de Descargas para que lo envíes manualmente.");
+        
+        try {
             const link = document.createElement('a');
             link.href = URL.createObjectURL(readyPdfData.file);
             link.download = readyPdfData.file.name;
@@ -404,9 +416,9 @@ const DeliveryHistoryPage: React.FC = () => {
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
+        } catch (downloadError) {
+            alert("Tampoco se pudo descargar el archivo. Verifica los permisos de almacenamiento de tu navegador.");
         }
-    } catch (error) {
-        console.error("Error sharing PDF:", error);
     }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
