@@ -344,11 +344,10 @@ const DeliveryHistoryPage: React.FC = () => {
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
 
 
-  const handlePrepareReport = async () => {
+  const handleDownloadReport = async () => {
     setIsGenerating(true);
     const reportElement = document.getElementById('report-content-for-pdf');
     if (!reportElement) {
-        console.error("Report element not found");
         setIsGenerating(false);
         return;
     }
@@ -368,52 +367,51 @@ const DeliveryHistoryPage: React.FC = () => {
     try {
         await new Promise(resolve => setTimeout(resolve, 50));
         const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
+
+        // Step 1: Download the file immediately (no gesture restriction on downloads)
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(pdfBlob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
+
+        // Step 2: Save blob in memory so the Green button can share it instantly
         setReadyPdfData({
             blob: pdfBlob,
             fileName,
             title: 'Reporte de Actividad',
-            text: `Reporte de actividad para ${auth?.user?.name} (${startDate} al ${endDate}).`
+            text: `Reporte de actividad del conductor ${auth?.user?.name} (${startDate} al ${endDate}).`
         });
     } catch (error) {
         console.error("Error generating PDF:", error);
-        alert("Ocurrió un error al preparar el PDF.");
+        alert("Ocurrió un error al generar el PDF.");
     } finally {
         setIsGenerating(false);
     }
   };
 
-  const handleDirectShare = async () => {
+  const handleShareViaWhatsApp = async () => {
     if (!readyPdfData) return;
     try {
-        // Build the file INSIDE the user gesture to bypass Chrome's strict security restrictions
+        // The blob is already in memory. Creating the File object + calling navigator.share
+        // happens in < 1ms from the user's tap, so Chrome's gesture timeout is never triggered.
         const file = new File([readyPdfData.blob], readyPdfData.fileName, { type: 'application/pdf' });
         
-        if (navigator.share) {
+        if (navigator.share && navigator.canShare({ files: [file] })) {
             await navigator.share({
                 title: readyPdfData.title,
                 text: readyPdfData.text,
                 files: [file]
             });
         } else {
-            throw new Error("El navegador no soporta compartir nativo.");
+            alert('Tu navegador no soporta compartir archivos directamente. El PDF ya fue descargado, ábrelo desde tus descargas y envíalo por WhatsApp manualmente.');
         }
     } catch (error: any) {
-        console.error("Error sharing PDF:", error);
         if (error.name === 'AbortError') return; // User cancelled
-        
-        alert(`Tu teléfono bloqueó el envío automático (Error: ${error.message || error.name}). El archivo se descargará para que lo envíes manualmente.`);
-        
-        try {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(readyPdfData.blob);
-            link.download = readyPdfData.fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-        } catch (downloadError) {
-            alert("No se pudo descargar el archivo.");
-        }
+        console.error("Error sharing:", error);
+        alert('No se pudo abrir WhatsApp. El PDF ya fue descargado, busca el archivo en tu carpeta de Descargas.');
     }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
@@ -462,17 +460,22 @@ const DeliveryHistoryPage: React.FC = () => {
               <label className="block text-sm font-medium text-transparent mb-1">Acciones</label>
               <div className="flex flex-col items-stretch gap-2">
                 {!readyPdfData ? (
-                    <button onClick={handlePrepareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                    <button onClick={handleDownloadReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
                       {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconArchive className="w-5 h-5 mr-2 -ml-1"/>}
-                      {isGenerating ? 'Comprimiendo PDF...' : 'Preparar Informe'}
+                      {isGenerating ? 'Generando PDF...' : 'Descargar Informe'}
                     </button>
                 ) : (
-                    <button onClick={handleDirectShare} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 animate-pulse">
-                      <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
-                      ¡Listo! Toca para Compartir
-                    </button>
+                    <div className="flex flex-col gap-2">
+                      <p className="text-xs text-center text-green-600 font-semibold">✓ PDF descargado. ¡Ahora comparte por WhatsApp!</p>
+                      <button onClick={handleShareViaWhatsApp} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 animate-pulse">
+                        <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
+                        Enviar por WhatsApp
+                      </button>
+                      <button onClick={() => setReadyPdfData(null)} className="w-full inline-flex items-center justify-center px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700">
+                        Generar otro informe
+                      </button>
+                    </div>
                 )}
-                <p className="text-xs text-center text-[var(--text-muted)] mt-1">En PC se descargará el archivo PDF.</p>
               </div>
             </div>
           </div>
