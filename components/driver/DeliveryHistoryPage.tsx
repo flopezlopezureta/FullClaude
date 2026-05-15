@@ -374,31 +374,15 @@ const DeliveryHistoryPage: React.FC = () => {
     return () => clearTimeout(timer);
   }, [deliveredInRange, pickedUpInRange, returnedInRange]);
 
-  const handleShareReport = async () => {
+  const handleShareReport = () => {
     if (!pdfCache) return;
-    const fallbackDownload = () => {
-      const url = URL.createObjectURL(pdfCache.blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = pdfCache.fileName;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
-    };
-    try {
-      const file = new File([pdfCache.blob], pdfCache.fileName, { type: 'application/pdf' });
-      if (navigator.share) {
-        await navigator.share({
-          title: 'Reporte de Actividad',
-          text: `Reporte del conductor ${auth?.user?.name} (${startDate} al ${endDate}).`,
-          files: [file]
-        });
-      } else {
-        fallbackDownload();
-      }
-    } catch (err: any) {
-      if (err.name === 'AbortError') return;
-      console.error('Share failed:', err);
-      fallbackDownload();
-    }
+    // Open the PDF in Chrome's built-in PDF viewer.
+    // From there, the conductor uses Chrome's native share/download buttons—
+    // which are full native Android controls, never blocked by the browser.
+    const url = URL.createObjectURL(pdfCache.blob);
+    window.open(url, '_blank');
+    // Keep the URL alive for 2 minutes so the PDF viewer can access it
+    setTimeout(() => URL.revokeObjectURL(url), 120000);
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
   const isMobile = typeof navigator !== 'undefined' && /android|iphone|ipad/i.test(navigator.userAgent);
@@ -453,8 +437,8 @@ const DeliveryHistoryPage: React.FC = () => {
                   </button>
                 ) : pdfCache ? (
                   <button onClick={handleShareReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 active:bg-green-800">
-                    <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
-                    {isMobile ? 'Compartir Informe' : 'Descargar Informe PDF'}
+                    <IconArchive className="w-5 h-5 mr-2 -ml-1"/>
+                    Ver y Compartir Informe PDF
                   </button>
                 ) : (
                   <button disabled className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-400 cursor-not-allowed">
