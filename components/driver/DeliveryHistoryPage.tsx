@@ -40,6 +40,36 @@ const ReportContent: React.FC<{
         return event ? new Date(event.timestamp) : null;
     };
 
+    const dailySummary = useMemo(() => {
+        const summary: Record<string, { dateObj: Date, dateStr: string, delivered: number, pickedUp: number, returned: number }> = {};
+        
+        const addToSummary = (date: Date, type: 'delivered' | 'pickedUp' | 'returned') => {
+            const pad = (n: number) => n.toString().padStart(2, '0');
+            const dateKey = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+            const dateStr = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+            
+            if (!summary[dateKey]) summary[dateKey] = { dateObj: date, dateStr, delivered: 0, pickedUp: 0, returned: 0 };
+            summary[dateKey][type]++;
+        };
+
+        reportData.delivered.forEach(pkg => {
+            const date = findEventTimestamp(pkg, PackageStatus.Delivered);
+            if (date) addToSummary(date, 'delivered');
+        });
+
+        reportData.pickedUp.forEach(pkg => {
+            const date = findEventTimestamp(pkg, PackageStatus.PickedUp);
+            if (date) addToSummary(date, 'pickedUp');
+        });
+
+        reportData.returned.forEach(pkg => {
+            const date = findEventTimestamp(pkg, PackageStatus.Returned);
+            if (date) addToSummary(date, 'returned');
+        });
+
+        return Object.values(summary).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+    }, [reportData]);
+
     return (
         <div className="p-10 font-sans text-slate-800 bg-white" style={{ width: '210mm', minHeight: '297mm', position: 'relative' }}>
             {/* Professional Header */}
@@ -307,35 +337,7 @@ const DeliveryHistoryPage: React.FC = () => {
     }
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
 
-  const dailySummary = useMemo(() => {
-      const summary: Record<string, { dateObj: Date, dateStr: string, delivered: number, pickedUp: number, returned: number }> = {};
-      
-      const addToSummary = (date: Date, type: 'delivered' | 'pickedUp' | 'returned') => {
-          const pad = (n: number) => n.toString().padStart(2, '0');
-          const dateKey = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
-          const dateStr = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
-          
-          if (!summary[dateKey]) summary[dateKey] = { dateObj: date, dateStr, delivered: 0, pickedUp: 0, returned: 0 };
-          summary[dateKey][type]++;
-      };
 
-      deliveredInRange.forEach(pkg => {
-          const date = findEventTimestamp(pkg, PackageStatus.Delivered);
-          if (date) addToSummary(date, 'delivered');
-      });
-
-      pickedUpInRange.forEach(pkg => {
-          const date = findEventTimestamp(pkg, PackageStatus.PickedUp);
-          if (date) addToSummary(date, 'pickedUp');
-      });
-
-      returnedInRange.forEach(pkg => {
-          const date = findEventTimestamp(pkg, PackageStatus.Returned);
-          if (date) addToSummary(date, 'returned');
-      });
-
-      return Object.values(summary).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
-  }, [deliveredInRange, pickedUpInRange, returnedInRange]);
   
   const handleShareReport = async () => {
     setIsGenerating(true);
