@@ -362,8 +362,8 @@ const DeliveryHistoryPage: React.FC = () => {
     const opt = {
         margin: 0.5,
         filename: fileName,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2, useCORS: true, logging: false },
+        image: { type: 'jpeg', quality: 0.80 },
+        html2canvas: { scale: 1, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
@@ -406,7 +406,7 @@ const DeliveryHistoryPage: React.FC = () => {
         if (error.name === 'AbortError') return;
         
         // Si falló por otra razón (restricción del dispositivo o no soportado)
-        alert("Tu teléfono no permite enviar este archivo directamente a WhatsApp. Se descargará a tu carpeta de Descargas para que lo envíes manualmente.");
+        alert(`Tu teléfono bloqueó el envío automático (Error: ${error.message || error.name}). El archivo se descargará a tu teléfono para que lo envíes manualmente.`);
         
         try {
             const link = document.createElement('a');
