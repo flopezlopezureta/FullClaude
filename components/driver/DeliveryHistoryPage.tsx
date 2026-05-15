@@ -197,11 +197,13 @@ const TabButton: React.FC<{ label: string; count: string | number; active: boole
 
 const DeliveryHistoryPage: React.FC = () => {
   const [allDriverPackages, setAllDriverPackages] = useState<Package[]>([]);
-  const [users, setUsers] = useState<User[]>([]);
-  const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFiltering, setIsFiltering] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [previewBlob, setPreviewBlob] = useState<Blob | null>(null);
+  const [showPreviewModal, setShowPreviewModal] = useState(false);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
+  const [filteredData, setFilteredData] = useState({ delivered: [] as Package[], pickedUp: [] as Package[], returned: [] as Package[], clients: 0 });
   const auth = useContext(AuthContext);
 
   const today = new Date();
@@ -281,64 +283,74 @@ const DeliveryHistoryPage: React.FC = () => {
     fetchData(true); // Re-fetch when dates change or user changes
   }, [auth?.user, startDate, endDate]);
 
-  const { deliveredInRange, pickedUpInRange, returnedInRange, uniquePickupClientsCount } = useMemo(() => {
-    const start = new Date(startDate.replace(/-/g, '/'));
-    start.setHours(0, 0, 0, 0);
-    const end = new Date(endDate.replace(/-/g, '/'));
-    end.setHours(23, 59, 59, 999);
+  useEffect(() => {
+    setIsFiltering(true);
+    // Use timeout to allow UI to render the loading spinner before heavy calculation
+    const timeoutId = setTimeout(() => {
+      const start = new Date(`${startDate}T00:00:00`);
+      const end = new Date(`${endDate}T23:59:59`);
 
-    const delivered: Package[] = [];
-    const pickedUp: Package[] = [];
-    const returned: Package[] = [];
-    const pickupClients = new Set<string>();
+      const delivered: Package[] = [];
+      const pickedUp: Package[] = [];
+      const returned: Package[] = [];
+      const pickupClients = new Set<string>();
 
-    allDriverPackages.forEach(pkg => {
-        if (pkg.status === PackageStatus.Delivered) {
-            const deliveryEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
-            if (deliveryEvent) {
-                const deliveryDate = new Date(deliveryEvent.timestamp);
-                if (deliveryDate >= start && deliveryDate <= end) {
-                    delivered.push(pkg);
-                }
-            }
-        }
-        
-        if (pkg.status === PackageStatus.Returned) {
-            const returnEvent = pkg.history.find(e => e.status === PackageStatus.Returned);
-            if (returnEvent) {
-                const returnDate = new Date(returnEvent.timestamp);
-                if (returnDate >= start && returnDate <= end) {
-                    returned.push(pkg);
-                }
-            }
-        }
+      allDriverPackages.forEach(pkg => {
+          if (pkg.status === PackageStatus.Delivered) {
+              const deliveryEvent = pkg.history.find(e => e.status === PackageStatus.Delivered);
+              if (deliveryEvent) {
+                  const deliveryDate = new Date(deliveryEvent.timestamp);
+                  if (deliveryDate >= start && deliveryDate <= end) {
+                      delivered.push(pkg);
+                  }
+              }
+          }
+          
+          if (pkg.status === PackageStatus.Returned) {
+              const returnEvent = pkg.history.find(e => e.status === PackageStatus.Returned);
+              if (returnEvent) {
+                  const returnDate = new Date(returnEvent.timestamp);
+                  if (returnDate >= start && returnDate <= end) {
+                      returned.push(pkg);
+                  }
+              }
+          }
 
-        const pickupEvent = pkg.history.find(e => e.status === PackageStatus.PickedUp);
-        if (pickupEvent) {
-            const pickupDate = new Date(pickupEvent.timestamp);
-            if (pickupDate >= start && pickupDate <= end) {
-                pickedUp.push(pkg);
-                if (pkg.creatorId) {
-                    pickupClients.add(pkg.creatorId);
-                }
-            }
-        }
-    });
+          const pickupEvent = pkg.history.find(e => e.status === PackageStatus.PickedUp);
+          if (pickupEvent) {
+              const pickupDate = new Date(pickupEvent.timestamp);
+              if (pickupDate >= start && pickupDate <= end) {
+                  pickedUp.push(pkg);
+                  if (pkg.creatorId) {
+                      pickupClients.add(pkg.creatorId);
+                  }
+              }
+          }
+      });
 
-    return { deliveredInRange: delivered, pickedUpInRange: pickedUp, returnedInRange: returned, uniquePickupClientsCount: pickupClients.size };
+      setFilteredData({
+          delivered,
+          pickedUp,
+          returned,
+          clients: pickupClients.size
+      });
+      setIsFiltering(false);
+    }, 10);
+
+    return () => clearTimeout(timeoutId);
   }, [allDriverPackages, startDate, endDate]);
 
   const packagesToShow = useMemo(() => {
     switch (historyView) {
-        case 'picked-up': return pickedUpInRange;
-        case 'returned': return returnedInRange;
+        case 'picked-up': return filteredData.pickedUp;
+        case 'returned': return filteredData.returned;
         case 'delivered':
         default:
-            return deliveredInRange;
+            return filteredData.delivered;
     }
-  }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
+  }, [historyView, filteredData]);
 
-  const handleShareReport = async () => {
+  const handleGenerateReport = async () => {
     setIsGenerating(true);
     const reportElement = document.getElementById('report-content-for-pdf');
     if (!reportElement) {
@@ -354,7 +366,6 @@ const DeliveryHistoryPage: React.FC = () => {
     const opt = {
         margin: 0.5,
         filename: fileName,
-        // Usamos calidad super baja para que se genere en <1s y no lo bloquee Chrome
         image: { type: 'jpeg', quality: 0.80 },
         html2canvas: { scale: 1, useCORS: true, logging: false },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
@@ -362,8 +373,25 @@ const DeliveryHistoryPage: React.FC = () => {
 
     try {
         const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
-        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        setPreviewBlob(pdfBlob);
+        setShowPreviewModal(true);
+    } catch (error: any) {
+        console.error("Error generating PDF:", error);
+        alert("Ocurrió un error al generar el PDF.");
+    } finally {
+        setIsGenerating(false);
+    }
+  };
 
+  const handleFinalShare = async () => {
+    if (!previewBlob) return;
+    const driverName = auth?.user?.name.replace(/\s+/g, '_') || 'conductor';
+    const dateRange = `${startDate}_to_${endDate}`;
+    const fileName = `Reporte_${driverName}_${dateRange}.pdf`;
+    
+    const pdfFile = new File([previewBlob], fileName, { type: 'application/pdf' });
+
+    try {
         if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
                 title: 'Reporte de Actividad',
@@ -372,7 +400,7 @@ const DeliveryHistoryPage: React.FC = () => {
             });
         } else {
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(pdfBlob);
+            link.href = URL.createObjectURL(previewBlob);
             link.download = fileName;
             document.body.appendChild(link);
             link.click();
@@ -381,23 +409,19 @@ const DeliveryHistoryPage: React.FC = () => {
         }
     } catch (error: any) {
         if (error.name === 'AbortError') return;
-        console.error("Error generating or sharing PDF:", error);
-        alert(`Tu teléfono bloqueó el envío automático. El archivo se descargará para que lo envíes manualmente.`);
-        try {
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(pdfBlob);
-            link.download = fileName;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            URL.revokeObjectURL(link.href);
-        } catch(e){}
-    } finally {
-        setIsGenerating(false);
+        console.error("Share error:", error);
+        alert(`No se pudo enviar automáticamente. Se descargará el archivo para enviarlo manualmente.`);
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(previewBlob);
+        link.download = fileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        URL.revokeObjectURL(link.href);
     }
   };
 
-  const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
+  const hasDataToReport = filteredData.delivered.length > 0 || filteredData.pickedUp.length > 0 || filteredData.returned.length > 0;
 
   return (
     <div>
@@ -407,11 +431,11 @@ const DeliveryHistoryPage: React.FC = () => {
               <h3 className="text-lg font-semibold text-[var(--text-primary)]">Historial de Actividad</h3>
               <button 
                 onClick={() => fetchData()} 
-                disabled={isLoading}
+                disabled={isLoading || isFiltering}
                 className="p-2 bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-full shadow-sm active:bg-[var(--background-hover)] transition-colors disabled:opacity-50"
                 title="Actualizar datos"
               >
-                <IconRefresh className={`w-5 h-5 text-[var(--brand-primary)] ${isLoading ? 'animate-spin' : ''}`}/>
+                <IconRefresh className={`w-5 h-5 text-[var(--brand-primary)] ${isLoading || isFiltering ? 'animate-spin' : ''}`}/>
               </button>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 items-end gap-2 sm:gap-4 mb-4">
@@ -442,24 +466,24 @@ const DeliveryHistoryPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-transparent mb-1">Acciones</label>
               <div className="flex flex-col items-stretch gap-2">
-                <button onClick={handleShareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
-                  {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>}
-                  {isGenerating ? 'Generando PDF...' : 'Compartir Informe'}
+                <button onClick={handleGenerateReport} disabled={isGenerating || isFiltering || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                  {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconArchive className="w-5 h-5 mr-2 -ml-1"/>}
+                  {isGenerating ? 'Generando PDF...' : 'Generar Vista Previa'}
                 </button>
-                <p className="text-xs text-center text-[var(--text-muted)] mt-1">En PC se descargará el archivo PDF.</p>
+                <p className="text-xs text-center text-[var(--text-muted)] mt-1">Revisa el informe antes de enviarlo.</p>
               </div>
             </div>
           </div>
           <div className="border-t border-[var(--border-primary)] mt-4 pt-4">
             <div className="flex space-x-2">
-              <TabButton label="Entregados" count={deliveredInRange.length} active={historyView === 'delivered'} onClick={() => setHistoryView('delivered')} icon={<IconCheckCircle className="w-5 h-5"/>} />
-              <TabButton label="Retiros (Clientes / Paquetes)" count={`${uniquePickupClientsCount} / ${pickedUpInRange.length}`} active={historyView === 'picked-up'} onClick={() => setHistoryView('picked-up')} icon={<IconArchive className="w-5 h-5"/>} />
-              <TabButton label="Devueltos" count={returnedInRange.length} active={historyView === 'returned'} onClick={() => setHistoryView('returned')} icon={<IconArrowUturnLeft className="w-5 h-5"/>} />
+              <TabButton label="Entregados" count={filteredData.delivered.length} active={historyView === 'delivered'} onClick={() => setHistoryView('delivered')} icon={<IconCheckCircle className="w-5 h-5"/>} />
+              <TabButton label="Retiros (Clientes / Paquetes)" count={`${filteredData.clients} / ${filteredData.pickedUp.length}`} active={historyView === 'picked-up'} onClick={() => setHistoryView('picked-up')} icon={<IconArchive className="w-5 h-5"/>} />
+              <TabButton label="Devueltos" count={filteredData.returned.length} active={historyView === 'returned'} onClick={() => setHistoryView('returned')} icon={<IconArrowUturnLeft className="w-5 h-5"/>} />
             </div>
           </div>
         </div>
-        <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">
-          <PackageList packages={packagesToShow} users={users} isLoading={isLoading} onSelectPackage={setSelectedPackage} isDateFiltering={true} />
+        <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden opacity-100 transition-opacity duration-300" style={{ opacity: isFiltering ? 0.5 : 1 }}>
+          <PackageList packages={packagesToShow} users={users} isLoading={isLoading || isFiltering} onSelectPackage={setSelectedPackage} isDateFiltering={true} />
         </div>
         {selectedPackage && (
           <PackageDetailModal 
@@ -477,10 +501,10 @@ const DeliveryHistoryPage: React.FC = () => {
           {auth?.user && (
             <ReportContent 
               reportData={{
-                delivered: deliveredInRange,
-                pickedUp: pickedUpInRange,
-                returned: returnedInRange,
-                uniquePickupClients: uniquePickupClientsCount,
+                delivered: filteredData.delivered,
+                pickedUp: filteredData.pickedUp,
+                returned: filteredData.returned,
+                uniquePickupClients: filteredData.clients,
               }}
               driver={auth.user}
               users={users}
@@ -491,6 +515,48 @@ const DeliveryHistoryPage: React.FC = () => {
           )}
         </div>
       </div>
+
+      {/* PDF Preview Modal */}
+      {showPreviewModal && previewBlob && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm print:hidden">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col overflow-hidden animate-fade-in-up">
+            <div className="px-6 py-4 border-b border-slate-200 flex justify-between items-center bg-slate-50">
+              <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+                <IconArchive className="w-6 h-6 text-blue-600"/>
+                Vista Previa del Informe
+              </h2>
+              <button onClick={() => setShowPreviewModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-auto bg-slate-100 p-4 flex justify-center">
+                {/* Visual indicator that PDF is ready to be shared */}
+                <div className="bg-white p-8 rounded-xl shadow-sm text-center max-w-md w-full my-auto border border-slate-200">
+                    <div className="w-20 h-20 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <IconCheckCircle className="w-10 h-10"/>
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-800 mb-2">¡PDF Generado con Éxito!</h3>
+                    <p className="text-slate-500 mb-6">
+                        El informe de {auth?.user?.name} desde el {startDate} al {endDate} está listo para ser enviado.
+                    </p>
+                    <button 
+                        onClick={handleFinalShare}
+                        className="w-full py-4 px-6 bg-green-500 hover:bg-green-600 active:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/30 flex items-center justify-center text-lg transition-transform transform active:scale-95"
+                    >
+                        <IconWhatsapp className="w-6 h-6 mr-3"/>
+                        Compartir por WhatsApp
+                    </button>
+                    <p className="text-xs text-slate-400 mt-4 text-center px-4">
+                        Al presionar este botón, el menú para compartir se abrirá instantáneamente.
+                    </p>
+                </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
