@@ -368,6 +368,9 @@ const DeliveryHistoryPage: React.FC = () => {
     };
 
     try {
+        // Pausa breve para permitir que React actualice la interfaz a "Generando..."
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
         const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
