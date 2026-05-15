@@ -447,7 +447,7 @@ const DeliveryHistoryPage: React.FC = () => {
           </div>
           <div className="border-t border-[var(--border-primary)] mt-4 pt-4">
             <div className="flex space-x-2">
-              <TabButton label="Entregados" count={deliveredInRange.length} active={historyView === 'delivered'} onClick={() => setHistoryView('delivered'} icon={<IconCheckCircle className="w-5 h-5"/>} />
+              <TabButton label="Entregados" count={deliveredInRange.length} active={historyView === 'delivered'} onClick={() => setHistoryView('delivered')} icon={<IconCheckCircle className="w-5 h-5"/>} />
               <TabButton label="Retiros (Clientes / Paquetes)" count={`${uniquePickupClientsCount} / ${pickedUpInRange.length}`} active={historyView === 'picked-up'} onClick={() => setHistoryView('picked-up')} icon={<IconArchive className="w-5 h-5"/>} />
               <TabButton label="Devueltos" count={returnedInRange.length} active={historyView === 'returned'} onClick={() => setHistoryView('returned')} icon={<IconArrowUturnLeft className="w-5 h-5"/>} />
             </div>
