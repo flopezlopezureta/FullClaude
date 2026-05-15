@@ -10,6 +10,7 @@ import PackageDetailModal from '../PackageDetailModal';
 import { IconCalendar, IconCheckCircle, IconArchive, IconArrowUturnLeft, IconWhatsapp, IconCube, IconRefresh } from '../Icon';
 
 declare const html2pdf: any;
+declare const html2canvas: any;
 
 const getISODate = (date: Date) => date.toISOString().split('T')[0];
 
@@ -200,7 +201,7 @@ const DeliveryHistoryPage: React.FC = () => {
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isPreparing, setIsPreparing] = useState(false);
-  const [pdfCache, setPdfCache] = useState<{ blob: Blob, fileName: string } | null>(null);
+  const [imageCache, setImageCache] = useState<{ blob: Blob, fileName: string } | null>(null);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
   const auth = useContext(AuthContext);
 
@@ -338,11 +339,11 @@ const DeliveryHistoryPage: React.FC = () => {
     }
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
 
-  // Pre-generate PDF silently in the background as soon as data is ready.
+  // Pre-generate Image silently in the background as soon as data is ready.
   // This way, when the conductor taps "Compartir", the blob is already in memory
   // and navigator.share() fires in < 1ms — Chrome cannot block it.
   useEffect(() => {
-    setPdfCache(null);
+    setImageCache(null);
     const hasData = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
     if (!hasData) return;
 
@@ -351,20 +352,19 @@ const DeliveryHistoryPage: React.FC = () => {
       if (!reportElement) return;
       setIsPreparing(true);
       try {
-        const driverName = auth.user!.name.replace(/\s+/g, '_');
-        const fileName = `Reporte_${driverName}_${startDate}_to_${endDate}.pdf`;
-        const opt = {
-          margin: 0.5,
-          filename: fileName,
-          image: { type: 'jpeg', quality: 0.80 },
-          html2canvas: { scale: 1, useCORS: true, logging: false },
-          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-        };
-        const blob = await html2pdf().from(reportElement).set(opt).output('blob');
-        setPdfCache({ blob, fileName });
+        const driverName = auth?.user?.name.replace(/\s+/g, '_') || 'conductor';
+        const fileName = `Reporte_${driverName}_${startDate}_to_${endDate}.jpg`;
+        
+        // Capture as JPEG using html2canvas directly
+        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true, logging: false });
+        canvas.toBlob((blob: Blob | null) => {
+            if (blob) {
+                setImageCache({ blob, fileName });
+            }
+            setIsPreparing(false);
+        }, 'image/jpeg', 0.9);
       } catch (e) {
-        console.error('PDF pre-generation failed:', e);
-      } finally {
+        console.error('Image pre-generation failed:', e);
         setIsPreparing(false);
       }
     };
@@ -372,14 +372,14 @@ const DeliveryHistoryPage: React.FC = () => {
     // Wait 600ms for React to finish rendering the hidden report DOM before capturing it
     const timer = setTimeout(generate, 600);
     return () => clearTimeout(timer);
-  }, [deliveredInRange, pickedUpInRange, returnedInRange]);
+  }, [deliveredInRange, pickedUpInRange, returnedInRange, auth?.user]);
 
   const handleShareReport = () => {
-    if (!pdfCache) return;
+    if (!imageCache) return;
     // The blob is pre-generated and in memory.
     // navigator.share() is called synchronously from the tap (0ms delay)
     // so Chrome's gesture timeout is never triggered.
-    const file = new File([pdfCache.blob], pdfCache.fileName, { type: 'application/pdf' });
+    const file = new File([imageCache.blob], imageCache.fileName, { type: 'image/jpeg' });
     if (navigator.share) {
       navigator.share({
         title: 'Reporte de Actividad',
@@ -389,17 +389,17 @@ const DeliveryHistoryPage: React.FC = () => {
         if (err.name === 'AbortError') return;
         console.error('Share error:', err);
         // Fallback: force download
-        const url = URL.createObjectURL(pdfCache.blob);
+        const url = URL.createObjectURL(imageCache.blob);
         const a = document.createElement('a');
-        a.href = url; a.download = pdfCache.fileName;
+        a.href = url; a.download = imageCache.fileName;
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
         setTimeout(() => URL.revokeObjectURL(url), 2000);
       });
     } else {
       // Desktop fallback: download directly
-      const url = URL.createObjectURL(pdfCache.blob);
+      const url = URL.createObjectURL(imageCache.blob);
       const a = document.createElement('a');
-      a.href = url; a.download = pdfCache.fileName;
+      a.href = url; a.download = imageCache.fileName;
       document.body.appendChild(a); a.click(); document.body.removeChild(a);
       setTimeout(() => URL.revokeObjectURL(url), 2000);
     }
@@ -455,10 +455,10 @@ const DeliveryHistoryPage: React.FC = () => {
                     <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/>
                     Preparando informe...
                   </button>
-                ) : pdfCache ? (
+                ) : imageCache ? (
                   <button onClick={handleShareReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 active:bg-green-800">
-                    <IconArchive className="w-5 h-5 mr-2 -ml-1"/>
-                    Ver y Compartir Informe PDF
+                    <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
+                    Compartir Imagen del Informe
                   </button>
                 ) : (
                   <button disabled className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-400 cursor-not-allowed">
