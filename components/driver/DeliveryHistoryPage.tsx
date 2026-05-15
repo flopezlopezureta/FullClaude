@@ -200,8 +200,7 @@ const DeliveryHistoryPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isPreparing, setIsPreparing] = useState(false);
-  const [imageCache, setImageCache] = useState<{ blob: Blob, fileName: string } | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
   const auth = useContext(AuthContext);
 
@@ -339,73 +338,66 @@ const DeliveryHistoryPage: React.FC = () => {
     }
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
 
-  // Pre-generate Image silently in the background as soon as data is ready.
-  // This way, when the conductor taps "Compartir", the blob is already in memory
-  // and navigator.share() fires in < 1ms — Chrome cannot block it.
-  useEffect(() => {
-    setImageCache(null);
-    const hasData = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
-    if (!hasData) return;
+  const handleShareReport = async () => {
+    setIsGenerating(true);
+    const reportElement = document.getElementById('report-content-for-pdf');
+    if (!reportElement) {
+        console.error("Report element not found");
+        setIsGenerating(false);
+        return;
+    }
+    
+    const driverName = auth?.user?.name.replace(/\s+/g, '_') || 'conductor';
+    const dateRange = `${startDate}_to_${endDate}`;
+    const fileName = `Reporte_${driverName}_${dateRange}.pdf`;
 
-    const generate = async () => {
-      const reportElement = document.getElementById('report-content-for-pdf');
-      if (!reportElement) return;
-      setIsPreparing(true);
-      try {
-        const driverName = auth?.user?.name.replace(/\s+/g, '_') || 'conductor';
-        const fileName = `Reporte_${driverName}_${startDate}_to_${endDate}.jpg`;
-        
-        // Capture as JPEG using html2canvas directly
-        const canvas = await html2canvas(reportElement, { scale: 2, useCORS: true, logging: false });
-        canvas.toBlob((blob: Blob | null) => {
-            if (blob) {
-                setImageCache({ blob, fileName });
-            }
-            setIsPreparing(false);
-        }, 'image/jpeg', 0.9);
-      } catch (e) {
-        console.error('Image pre-generation failed:', e);
-        setIsPreparing(false);
-      }
+    const opt = {
+        margin: 0.5,
+        filename: fileName,
+        // Usamos calidad super baja para que se genere en <1s y no lo bloquee Chrome
+        image: { type: 'jpeg', quality: 0.80 },
+        html2canvas: { scale: 1, useCORS: true, logging: false },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
     };
 
-    // Wait 600ms for React to finish rendering the hidden report DOM before capturing it
-    const timer = setTimeout(generate, 600);
-    return () => clearTimeout(timer);
-  }, [deliveredInRange, pickedUpInRange, returnedInRange, auth?.user]);
+    try {
+        const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
+        const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-  const handleShareReport = () => {
-    if (!imageCache) return;
-    // The blob is pre-generated and in memory.
-    // navigator.share() is called synchronously from the tap (0ms delay)
-    // so Chrome's gesture timeout is never triggered.
-    const file = new File([imageCache.blob], imageCache.fileName, { type: 'image/jpeg' });
-    if (navigator.share) {
-      navigator.share({
-        title: 'Reporte de Actividad',
-        text: `Reporte del conductor ${auth?.user?.name || 'conductor'} (${startDate} al ${endDate}).`,
-        files: [file]
-      }).catch((err: any) => {
-        if (err.name === 'AbortError') return;
-        console.error('Share error:', err);
-        // Fallback: force download
-        const url = URL.createObjectURL(imageCache.blob);
-        const a = document.createElement('a');
-        a.href = url; a.download = imageCache.fileName;
-        document.body.appendChild(a); a.click(); document.body.removeChild(a);
-        setTimeout(() => URL.revokeObjectURL(url), 2000);
-      });
-    } else {
-      // Desktop fallback: download directly
-      const url = URL.createObjectURL(imageCache.blob);
-      const a = document.createElement('a');
-      a.href = url; a.download = imageCache.fileName;
-      document.body.appendChild(a); a.click(); document.body.removeChild(a);
-      setTimeout(() => URL.revokeObjectURL(url), 2000);
+        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
+            await navigator.share({
+                title: 'Reporte de Actividad',
+                text: `Reporte de actividad para ${auth?.user?.name} (${startDate} al ${endDate}).`,
+                files: [pdfFile],
+            });
+        } else {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(pdfBlob);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        }
+    } catch (error: any) {
+        if (error.name === 'AbortError') return;
+        console.error("Error generating or sharing PDF:", error);
+        alert(`Tu teléfono bloqueó el envío automático. El archivo se descargará para que lo envíes manualmente.`);
+        try {
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(pdfBlob);
+            link.download = fileName;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            URL.revokeObjectURL(link.href);
+        } catch(e){}
+    } finally {
+        setIsGenerating(false);
     }
   };
+
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
-  const isMobile = typeof navigator !== 'undefined' && /android|iphone|ipad/i.test(navigator.userAgent);
 
   return (
     <div>
@@ -450,22 +442,11 @@ const DeliveryHistoryPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-transparent mb-1">Acciones</label>
               <div className="flex flex-col items-stretch gap-2">
-                {isPreparing ? (
-                  <button disabled className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-400 cursor-not-allowed">
-                    <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/>
-                    Preparando informe...
-                  </button>
-                ) : imageCache ? (
-                  <button onClick={handleShareReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 active:bg-green-800">
-                    <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
-                    Compartir Imagen del Informe
-                  </button>
-                ) : (
-                  <button disabled className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-400 cursor-not-allowed">
-                    <IconArchive className="w-5 h-5 mr-2 -ml-1"/>
-                    Sin datos para reportar
-                  </button>
-                )}
+                <button onClick={handleShareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                  {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>}
+                  {isGenerating ? 'Generando PDF...' : 'Compartir Informe'}
+                </button>
+                <p className="text-xs text-center text-[var(--text-muted)] mt-1">En PC se descargará el archivo PDF.</p>
               </div>
             </div>
           </div>
