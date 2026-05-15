@@ -43,7 +43,7 @@ const LiveMap: React.FC = () => {
             const today = getLocalDateString();
             const [fetchedActiveDrivers, packagesResponse, allUsersData] = await Promise.all([
                 api.getActiveDriversLocations(),
-                api.getPackages({ limit: 0, startDate: today, isAssigned: 'true' }),
+                api.getPackages({ limit: 0, includeHistory: false, startDate: today, isAssigned: 'true' }),
                 api.getUsers()
             ]);
             setActiveDrivers(fetchedActiveDrivers);

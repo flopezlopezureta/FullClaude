@@ -69,16 +69,17 @@ const GeolocatePage: React.FC = () => {
             ].join(',');
 
             if (dateMode === 'today') {
-                const { packages: active } = await api.getPackages({ limit: 0, statusFilter, startDate: todayStr, endDate: todayStr });
+                const { packages: active } = await api.getPackages({ limit: 0, includeHistory: false, statusFilter, startDate: todayStr, endDate: todayStr });
                 fetchedPackages = active;
             } else {
-                const { packages: active } = await api.getPackages({ limit: 0, statusFilter });
+                const { packages: active } = await api.getPackages({ limit: 0, includeHistory: false, statusFilter });
                 fetchedPackages = active;
             }
 
             if (deliveredMode === 'show') {
                  const { packages: extra } = await api.getPackages({ 
                     limit: 0, 
+                    includeHistory: false,
                     statusFilter: [PackageStatus.Delivered, PackageStatus.Returned, PackageStatus.Cancelled, PackageStatus.Rescheduled].join(','), 
                     startDate: todayStr, 
                     endDate: todayStr 

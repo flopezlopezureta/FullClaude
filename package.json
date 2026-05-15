@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.4.8",
-  "versionComment": "Versión 2.4.8: Múltiples mejoras de estabilización y UI.",
+  "version": "2.6.3",
+  "versionComment": "Versión 2.6.3: Optimización masiva de exportación (Streaming CSV) y fix de RangeError.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

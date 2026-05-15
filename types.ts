@@ -45,6 +45,7 @@ export interface SystemSettings {
     timeFormat?: '12h' | '24h';
     allowRedelivery?: boolean;
     timezone?: string;
+    appEnv?: string;
 }
 
 export interface ZonePricing {

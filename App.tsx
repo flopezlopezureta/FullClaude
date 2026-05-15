@@ -53,7 +53,18 @@ const AppContent: React.FC = () => {
     return <AuthPage />;
   }
 
-  return <DashboardLayout />;
+  const isDev = auth.systemSettings.appEnv === 'development';
+
+  return (
+    <>
+      {isDev && (
+        <div className="bg-yellow-500 text-white text-center py-1 text-xs font-bold uppercase tracking-widest sticky top-0 z-[9999] shadow-sm animate-pulse">
+          ⚠️ Ambiente de Desarrollo - Las pruebas no afectan a Producción ⚠️
+        </div>
+      )}
+      <DashboardLayout />
+    </>
+  );
 };
 
 const App: React.FC = () => {

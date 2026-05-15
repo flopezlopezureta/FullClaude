@@ -109,10 +109,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           console.error("[Auth] Failed to fetch system settings.", settingsErr);
         }
 
-        // 3. Active Communes fetch
+        // 3. Active Communes fetch (Always fetch if possible, non-blocking)
         try {
           const communesData = await api.getCommunes();
-          setActiveCommunes(communesData.filter(c => c.isActive).map(c => c.name));
+          setActiveCommunes(communesData.filter(c => !!c && c.isActive).map(c => c.name));
         } catch (communesErr) {
           console.error("[Auth] Failed to fetch communes.", communesErr);
         }

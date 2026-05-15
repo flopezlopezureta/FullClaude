@@ -524,21 +524,33 @@ const Dashboard: React.FC = () => {
   const handleExportData = async (format: 'excel' | 'csv' = 'csv') => {
     if (totalPackages === 0 || isExporting) return;
     
+    const params = {
+        searchQuery, 
+        statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null, 
+        driverFilter, 
+        clientFilter, 
+        communeFilter, 
+        cityFilter, 
+        startDate, 
+        endDate,
+        flexFilter,
+        quickFilter,
+        dateType,
+        includeHistory: false
+    };
+
+    if (format === 'csv') {
+        // Use streaming export for CSV to handle large datasets
+        api.exportPackagesCSV(params);
+        setIsExportModalOpen(false);
+        return;
+    }
+
     setIsExporting(true);
     try {
         const { packages: allFiltered } = await api.getPackages({
-            limit: 0,
-            searchQuery, 
-            statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null, 
-            driverFilter, 
-            clientFilter, 
-            communeFilter, 
-            cityFilter, 
-            startDate, 
-            endDate,
-            flexFilter,
-            quickFilter,
-            dateType
+            ...params,
+            limit: 0
         });
 
         let packagesToExport: Package[] = [];
@@ -555,13 +567,7 @@ const Dashboard: React.FC = () => {
         }
 
         const dateStr = new Date().toISOString().split('T')[0];
-
-        if (format === 'excel') {
-            await exportToExcel(packagesToExport, `Reporte_Paquetes_${dateStr}.xlsx`, users, auth?.systemSettings?.timeFormat || '12h');
-        } else {
-            exportToCSV(packagesToExport, `Reporte_Paquetes_${dateStr}.csv`, users);
-        }
-
+        await exportToExcel(packagesToExport, `Reporte_Paquetes_${dateStr}.xlsx`, users, auth?.systemSettings?.timeFormat || '12h');
         setIsExportModalOpen(false);
     } catch(error) {
         console.error("Failed to export data", error);
