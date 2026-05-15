@@ -199,8 +199,8 @@ const DeliveryHistoryPage: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [readyPdfData, setReadyPdfData] = useState<{ blob: Blob, fileName: string, title: string, text: string } | null>(null);
+  const [isPreparing, setIsPreparing] = useState(false);
+  const [pdfCache, setPdfCache] = useState<{ blob: Blob, fileName: string } | null>(null);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
   const auth = useContext(AuthContext);
 
@@ -210,11 +210,6 @@ const DeliveryHistoryPage: React.FC = () => {
 
   const [startDate, setStartDate] = useState(getISODate(oneWeekAgo));
   const [endDate, setEndDate] = useState(getISODate(today));
-
-  // Reset ready PDF if dates change
-  useEffect(() => {
-      setReadyPdfData(null);
-  }, [startDate, endDate]);
 
   // Load from cache on mount
   useEffect(() => {
@@ -343,73 +338,70 @@ const DeliveryHistoryPage: React.FC = () => {
     }
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
 
+  // Pre-generate PDF silently in the background as soon as data is ready.
+  // This way, when the conductor taps "Compartir", the blob is already in memory
+  // and navigator.share() fires in < 1ms — Chrome cannot block it.
+  useEffect(() => {
+    setPdfCache(null);
+    const hasData = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
+    if (!hasData || !auth?.user) return;
 
-  const handleDownloadReport = async () => {
-    setIsGenerating(true);
-    const reportElement = document.getElementById('report-content-for-pdf');
-    if (!reportElement) {
-        setIsGenerating(false);
-        return;
-    }
-    
-    const driverName = auth?.user?.name.replace(/\s+/g, '_') || 'conductor';
-    const dateRange = `${startDate}_to_${endDate}`;
-    const fileName = `Reporte_${driverName}_${dateRange}.pdf`;
-
-    const opt = {
-        margin: 0.5,
-        filename: fileName,
-        image: { type: 'jpeg', quality: 0.80 },
-        html2canvas: { scale: 1, useCORS: true, logging: false },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+    const generate = async () => {
+      const reportElement = document.getElementById('report-content-for-pdf');
+      if (!reportElement) return;
+      setIsPreparing(true);
+      try {
+        const driverName = auth.user!.name.replace(/\s+/g, '_');
+        const fileName = `Reporte_${driverName}_${startDate}_to_${endDate}.pdf`;
+        const opt = {
+          margin: 0.5,
+          filename: fileName,
+          image: { type: 'jpeg', quality: 0.80 },
+          html2canvas: { scale: 1, useCORS: true, logging: false },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
+        const blob = await html2pdf().from(reportElement).set(opt).output('blob');
+        setPdfCache({ blob, fileName });
+      } catch (e) {
+        console.error('PDF pre-generation failed:', e);
+      } finally {
+        setIsPreparing(false);
+      }
     };
 
+    // Wait 600ms for React to finish rendering the hidden report DOM before capturing it
+    const timer = setTimeout(generate, 600);
+    return () => clearTimeout(timer);
+  }, [deliveredInRange, pickedUpInRange, returnedInRange]);
+
+  const handleShareReport = async () => {
+    if (!pdfCache) return;
+    const fallbackDownload = () => {
+      const url = URL.createObjectURL(pdfCache.blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = pdfCache.fileName;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 2000);
+    };
     try {
-        await new Promise(resolve => setTimeout(resolve, 50));
-        const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
-
-        // Trigger download via native jsPDF mechanism (most reliable on Android)
-        await html2pdf().from(reportElement).set(opt).save();
-
-        // Keep blob in memory for the WhatsApp share step
-        setReadyPdfData({
-            blob: pdfBlob,
-            fileName,
-            title: 'Reporte de Actividad',
-            text: `Reporte de actividad del conductor ${auth?.user?.name} (${startDate} al ${endDate}).`
-        });
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        alert("Ocurrió un error al generar el PDF.");
-    } finally {
-        setIsGenerating(false);
-    }
-  };
-
-  const handleShareViaWhatsApp = async () => {
-    if (!readyPdfData) return;
-    try {
-        // The file is already in memory. This runs in < 1ms from the tap — Chrome never blocks it.
-        const file = new File([readyPdfData.blob], readyPdfData.fileName, { type: 'application/pdf' });
-        
-        if (!navigator.share) {
-            alert('Tu navegador no soporta compartir archivos. El PDF ya fue descargado — búscalo en tu carpeta Descargas y envíalo por WhatsApp manualmente.');
-            return;
-        }
-        // Do NOT use navigator.canShare() — it is unreliable on Android Chrome and often
-        // returns false even when sharing actually works. Just attempt and catch errors.
+      const file = new File([pdfCache.blob], pdfCache.fileName, { type: 'application/pdf' });
+      if (navigator.share) {
         await navigator.share({
-            title: readyPdfData.title,
-            text: readyPdfData.text,
-            files: [file]
+          title: 'Reporte de Actividad',
+          text: `Reporte del conductor ${auth?.user?.name} (${startDate} al ${endDate}).`,
+          files: [file]
         });
-    } catch (error: any) {
-        if (error.name === 'AbortError') return; // User cancelled — do nothing
-        console.error("Error sharing:", error);
-        alert('WhatsApp no pudo recibir el archivo directamente. El PDF ya está descargado — búscalo en tu carpeta Descargas y compártelo desde ahí.');
+      } else {
+        fallbackDownload();
+      }
+    } catch (err: any) {
+      if (err.name === 'AbortError') return;
+      console.error('Share failed:', err);
+      fallbackDownload();
     }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
+  const isMobile = typeof navigator !== 'undefined' && /android|iphone|ipad/i.test(navigator.userAgent);
 
   return (
     <div>
@@ -454,22 +446,21 @@ const DeliveryHistoryPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-transparent mb-1">Acciones</label>
               <div className="flex flex-col items-stretch gap-2">
-                {!readyPdfData ? (
-                    <button onClick={handleDownloadReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
-                      {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconArchive className="w-5 h-5 mr-2 -ml-1"/>}
-                      {isGenerating ? 'Generando PDF...' : 'Descargar Informe'}
-                    </button>
+                {isPreparing ? (
+                  <button disabled className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-400 cursor-not-allowed">
+                    <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/>
+                    Preparando informe...
+                  </button>
+                ) : pdfCache ? (
+                  <button onClick={handleShareReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 active:bg-green-800">
+                    <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
+                    {isMobile ? 'Compartir Informe' : 'Descargar Informe PDF'}
+                  </button>
                 ) : (
-                    <div className="flex flex-col gap-2">
-                      <p className="text-xs text-center text-green-600 font-semibold">✓ PDF descargado. ¡Ahora comparte por WhatsApp!</p>
-                      <button onClick={handleShareViaWhatsApp} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 animate-pulse">
-                        <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
-                        Enviar por WhatsApp
-                      </button>
-                      <button onClick={() => setReadyPdfData(null)} className="w-full inline-flex items-center justify-center px-3 py-1 text-xs font-medium text-slate-500 hover:text-slate-700">
-                        Generar otro informe
-                      </button>
-                    </div>
+                  <button disabled className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-slate-400 cursor-not-allowed">
+                    <IconArchive className="w-5 h-5 mr-2 -ml-1"/>
+                    Sin datos para reportar
+                  </button>
                 )}
               </div>
             </div>
