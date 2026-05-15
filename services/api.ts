@@ -53,15 +53,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (!response.ok) {
     // Si el token no es válido o ha expirado (401), cerramos la sesión automáticamente
     if (response.status === 401) {
-      console.warn('[API] Sesión expirada o inválida (401). Limpiando token...');
-      localStorage.removeItem('token');
+      const hasToken = !!localStorage.getItem('token');
+      const isLoginRequest = endpoint.includes('/auth/login');
       
-      // Evitamos bucles infinitos de recarga si ya estamos intentando loguearnos
-      // o si la petición que falló era precisamente la de login.
-      // Solo recargamos si había un token previo (sesión expirada).
-      // Si no hay token, dejamos que el frontend maneje el redirect al login sin bucles.
-      if (!!localStorage.getItem('token') && !endpoint.includes('/auth/login') && !window.location.pathname.includes('/login')) {
-        window.location.reload();
+      if (!isLoginRequest && hasToken) {
+        console.warn('[API] Sesión expirada o inválida (401). Limpiando token...');
+        localStorage.removeItem('token');
+        
+        // Redirigimos forzadamente al login para romper cualquier bucle
+        if (!window.location.pathname.includes('/login')) {
+          window.location.href = '/login';
+        }
+      } else if (!isLoginRequest) {
+        // Si no hay token y da 401, simplemente limpiamos por si acaso pero no recargamos
+        localStorage.removeItem('token');
       }
     }
 

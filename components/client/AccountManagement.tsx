@@ -397,13 +397,18 @@ const AccountManagement: React.FC = () => {
                                 {!shopifyAccessToken && (
                                     <button 
                                         onClick={() => {
-                                            if (!shopifyUrl.trim()) return;
-                                            const token = localStorage.getItem('token');
-                                            window.location.href = `/api/integrations/shopify/install?shop=${encodeURIComponent(shopifyUrl)}&token=${token}`;
+                                            if (!shopifyUrl.trim()) {
+                                                alert("Por favor ingresa el dominio de tu tienda (ej: mi-tienda.myshopify.com)");
+                                                return;
+                                            }
+                                            const shopClean = shopifyUrl.trim().replace(/^https?:\/\//, '').split('/')[0];
+                                            const authUrl = `/api/integrations/shopify/auth?shop=${encodeURIComponent(shopClean)}`;
+                                            window.open(authUrl, 'shopify-auth', 'width=600,height=700');
                                         }}
-                                        className="w-full py-4 text-sm font-bold text-indigo-600 hover:bg-indigo-50 rounded-2xl transition-all"
+                                        className="w-full py-4 text-sm font-bold text-green-600 hover:bg-green-50 rounded-2xl transition-all flex items-center justify-center gap-2 border-2 border-dashed border-green-100 mt-2"
                                     >
-                                        O usar conexión un-clic (Vía App Shopify)
+                                        <IconShopify className="w-5 h-5" />
+                                        O usar conexión un-clic (Recomendado)
                                     </button>
                                 )}
                             </div>

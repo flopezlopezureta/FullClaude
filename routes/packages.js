@@ -107,8 +107,8 @@ router.get('/', authMiddleware, async (req, res) => {
 
         let { startDate, endDate } = req.query;
 
-        // [SEGURIDAD] Si es un conductor y no especificó fechas, forzamos que vea solo HOY para evitar descuadres
-        if (req.user.role === 'DRIVER' && !startDate && !endDate) {
+        // [MODIFICADO] Permitimos que el historial se cargue correctamente si se proporcionan fechas
+        if (req.user.role === 'DRIVER' && !startDate && !endDate && !searchQuery) {
             const todayStr = await timeService.getLogicalDate();
             startDate = todayStr;
             endDate = todayStr;
@@ -201,6 +201,7 @@ router.get('/', authMiddleware, async (req, res) => {
                 whereClauses.push(`(
                     p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
                     p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                    p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
                     p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
                 )`);
             } else {
