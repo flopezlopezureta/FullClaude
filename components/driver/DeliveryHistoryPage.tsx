@@ -368,16 +368,10 @@ const DeliveryHistoryPage: React.FC = () => {
         await new Promise(resolve => setTimeout(resolve, 50));
         const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
 
-        // Step 1: Download the file immediately (no gesture restriction on downloads)
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(pdfBlob);
-        link.download = fileName;
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        URL.revokeObjectURL(link.href);
+        // Trigger download via native jsPDF mechanism (most reliable on Android)
+        await html2pdf().from(reportElement).set(opt).save();
 
-        // Step 2: Save blob in memory so the Green button can share it instantly
+        // Keep blob in memory for the WhatsApp share step
         setReadyPdfData({
             blob: pdfBlob,
             fileName,
@@ -395,23 +389,24 @@ const DeliveryHistoryPage: React.FC = () => {
   const handleShareViaWhatsApp = async () => {
     if (!readyPdfData) return;
     try {
-        // The blob is already in memory. Creating the File object + calling navigator.share
-        // happens in < 1ms from the user's tap, so Chrome's gesture timeout is never triggered.
+        // The file is already in memory. This runs in < 1ms from the tap — Chrome never blocks it.
         const file = new File([readyPdfData.blob], readyPdfData.fileName, { type: 'application/pdf' });
         
-        if (navigator.share && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-                title: readyPdfData.title,
-                text: readyPdfData.text,
-                files: [file]
-            });
-        } else {
-            alert('Tu navegador no soporta compartir archivos directamente. El PDF ya fue descargado, ábrelo desde tus descargas y envíalo por WhatsApp manualmente.');
+        if (!navigator.share) {
+            alert('Tu navegador no soporta compartir archivos. El PDF ya fue descargado — búscalo en tu carpeta Descargas y envíalo por WhatsApp manualmente.');
+            return;
         }
+        // Do NOT use navigator.canShare() — it is unreliable on Android Chrome and often
+        // returns false even when sharing actually works. Just attempt and catch errors.
+        await navigator.share({
+            title: readyPdfData.title,
+            text: readyPdfData.text,
+            files: [file]
+        });
     } catch (error: any) {
-        if (error.name === 'AbortError') return; // User cancelled
+        if (error.name === 'AbortError') return; // User cancelled — do nothing
         console.error("Error sharing:", error);
-        alert('No se pudo abrir WhatsApp. El PDF ya fue descargado, busca el archivo en tu carpeta de Descargas.');
+        alert('WhatsApp no pudo recibir el archivo directamente. El PDF ya está descargado — búscalo en tu carpeta Descargas y compártelo desde ahí.');
     }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
