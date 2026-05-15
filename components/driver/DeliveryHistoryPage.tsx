@@ -208,7 +208,6 @@ const DeliveryHistoryPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
-  const [readyPdfData, setReadyPdfData] = useState<{ file: File, title: string, text: string } | null>(null);
   const auth = useContext(AuthContext);
 
   const today = new Date();
@@ -247,7 +246,6 @@ const DeliveryHistoryPage: React.FC = () => {
   const fetchData = async (silent = false) => {
     if (!auth?.user) return;
     if (!silent) setIsLoading(true);
-    setReadyPdfData(null);
     try {
       // Fetch packages and users separately to prevent one failure from blocking the other
       // Now including dates to bypass the backend's "today-only" default for drivers
@@ -368,57 +366,29 @@ const DeliveryHistoryPage: React.FC = () => {
     };
 
     try {
-        // Pausa breve para permitir que React actualice la interfaz a "Generando..."
-        await new Promise(resolve => setTimeout(resolve, 100));
-
         const pdfBlob = await html2pdf().from(reportElement).set(opt).output('blob');
         const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
 
-        setReadyPdfData({
-            file: pdfFile,
-            title: 'Reporte de Actividad',
-            text: `Reporte de actividad para ${auth?.user?.name} (${startDate} al ${endDate}).`
-        });
-    } catch (error) {
-        console.error("Error generating PDF:", error);
-        alert("Ocurrió un error al armar el PDF.");
-    } finally {
-        setIsGenerating(false);
-    }
-  };
-
-  const handleDirectShare = async () => {
-    if (!readyPdfData) return;
-    try {
-        // Intento 1: Usar la API nativa de compartir si está disponible
-        if (navigator.share) {
+        if (navigator.share && navigator.canShare({ files: [pdfFile] })) {
             await navigator.share({
-                title: readyPdfData.title,
-                text: readyPdfData.text,
-                files: [readyPdfData.file],
+                title: 'Reporte de Actividad',
+                text: `Reporte de actividad para ${auth?.user?.name} (${startDate} al ${endDate}).`,
+                files: [pdfFile],
             });
         } else {
-            throw new Error("El navegador no soporta compartir nativo.");
-        }
-    } catch (error: any) {
-        console.error("Error sharing PDF:", error);
-        // Si el usuario simplemente canceló el menú de compartir, no hacemos nada
-        if (error.name === 'AbortError') return;
-        
-        // Si falló por otra razón (restricción del dispositivo o no soportado)
-        alert(`Tu teléfono bloqueó el envío automático (Error: ${error.message || error.name}). El archivo se descargará a tu teléfono para que lo envíes manualmente.`);
-        
-        try {
             const link = document.createElement('a');
-            link.href = URL.createObjectURL(readyPdfData.file);
-            link.download = readyPdfData.file.name;
+            link.href = URL.createObjectURL(pdfBlob);
+            link.download = fileName;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
             URL.revokeObjectURL(link.href);
-        } catch (downloadError) {
-            alert("Tampoco se pudo descargar el archivo. Verifica los permisos de almacenamiento de tu navegador.");
         }
+    } catch (error) {
+        console.error("Error generating or sharing PDF:", error);
+        alert("Ocurrió un error al generar o compartir el PDF.");
+    } finally {
+        setIsGenerating(false);
     }
   };
   const hasDataToReport = deliveredInRange.length > 0 || pickedUpInRange.length > 0 || returnedInRange.length > 0;
@@ -466,17 +436,10 @@ const DeliveryHistoryPage: React.FC = () => {
             <div>
               <label className="block text-sm font-medium text-transparent mb-1">Acciones</label>
               <div className="flex flex-col items-stretch gap-2">
-                {!readyPdfData ? (
-                  <button onClick={handleShareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
-                    <IconRefresh className={`w-5 h-5 mr-2 -ml-1 ${isGenerating ? 'animate-spin' : ''}`}/>
-                    {isGenerating ? 'Generando PDF...' : 'Preparar Informe'}
-                  </button>
-                ) : (
-                  <button onClick={handleDirectShare} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 animate-pulse">
-                    <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>
-                    ¡Listo! Toca para Compartir
-                  </button>
-                )}
+                <button onClick={handleShareReport} disabled={isGenerating || !hasDataToReport} className="w-full inline-flex items-center justify-center px-3 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-green-600 hover:bg-green-700 disabled:bg-slate-400 disabled:cursor-not-allowed">
+                  {isGenerating ? <IconRefresh className="w-5 h-5 mr-2 -ml-1 animate-spin"/> : <IconWhatsapp className="w-5 h-5 mr-2 -ml-1"/>}
+                  {isGenerating ? 'Generando PDF...' : 'Compartir Informe'}
+                </button>
                 <p className="text-xs text-center text-[var(--text-muted)] mt-1">En PC se descargará el archivo PDF.</p>
               </div>
             </div>
