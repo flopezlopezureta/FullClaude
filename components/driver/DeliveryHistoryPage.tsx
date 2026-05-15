@@ -92,70 +92,33 @@ const ReportContent: React.FC<{
                 ))}
             </section>
 
-            {/* Main Tables */}
-            <div className="space-y-10">
-                {/* Delivered Section */}
-                <section>
-                    <div className="flex items-center gap-2 mb-4 border-l-4 border-green-500 pl-3">
-                        <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Detalle de Entregas</h3>
-                    </div>
-                    <table className="w-full text-xs border-collapse">
-                        <thead>
-                            <tr className="bg-slate-900 text-white">
-                                <th className="p-3 text-left font-bold rounded-tl-lg">Tracking / Ref</th>
-                                <th className="p-3 text-left font-bold">Destinatario</th>
-                                <th className="p-3 text-left font-bold">Comuna</th>
-                                <th className="p-3 text-right font-bold rounded-tr-lg">Fecha/Hora</th>
+            {/* Daily Summary Table */}
+            <div className="mt-8 mb-16">
+                <div className="flex items-center gap-2 mb-4 border-l-4 border-slate-900 pl-3">
+                    <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Resumen por Día</h3>
+                </div>
+                <table className="w-full text-sm border-collapse border border-slate-200">
+                    <thead>
+                        <tr className="bg-slate-100 text-slate-800">
+                            <th className="p-3 text-left font-bold border-b border-slate-300">Fecha</th>
+                            <th className="p-3 text-center font-bold border-b border-slate-300">Entregas</th>
+                            <th className="p-3 text-center font-bold border-b border-slate-300">Retiros (Paquetes)</th>
+                            <th className="p-3 text-center font-bold border-b border-slate-300">Devoluciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {dailySummary.length > 0 ? dailySummary.map((day, index) => (
+                            <tr key={day.dateStr} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                                <td className="p-3 border-b border-slate-200 font-bold text-slate-700">{day.dateStr}</td>
+                                <td className="p-3 border-b border-slate-200 text-center font-medium text-green-700">{day.delivered > 0 ? day.delivered : '-'}</td>
+                                <td className="p-3 border-b border-slate-200 text-center font-medium text-blue-700">{day.pickedUp > 0 ? day.pickedUp : '-'}</td>
+                                <td className="p-3 border-b border-slate-200 text-center font-medium text-amber-700">{day.returned > 0 ? day.returned : '-'}</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.delivered.length > 0 ? reportData.delivered.map((pkg, index) => (
-                                <tr key={pkg.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                                    <td className="p-3 border-b border-slate-100 font-mono text-[10px]">
-                                        <div className="font-bold text-slate-900">{pkg.id}</div>
-                                        <div className="text-slate-400">{pkg.reference || 'Sin Ref'}</div>
-                                    </td>
-                                    <td className="p-3 border-b border-slate-100 font-medium">{pkg.recipientName}</td>
-                                    <td className="p-3 border-b border-slate-100 uppercase">{pkg.recipientCommune}</td>
-                                    <td className="p-3 border-b border-slate-100 text-right text-slate-500">
-                                        {findEventTimestamp(pkg, PackageStatus.Delivered)?.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) || 'N/A'}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic bg-slate-50 rounded-b-lg">No se registraron entregas en este período.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </section>
-
-                {/* Pickups Section */}
-                <section>
-                    <div className="flex items-center gap-2 mb-4 border-l-4 border-blue-500 pl-3">
-                        <h3 className="text-lg font-bold text-slate-900 uppercase tracking-tight">Detalle de Retiros</h3>
-                    </div>
-                    <table className="w-full text-xs border-collapse">
-                        <thead>
-                            <tr className="bg-slate-800 text-white">
-                                <th className="p-3 text-left font-bold rounded-tl-lg">ID Paquete</th>
-                                <th className="p-3 text-left font-bold">Cliente / Origen</th>
-                                <th className="p-3 text-right font-bold rounded-tr-lg">Fecha/Hora</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.pickedUp.length > 0 ? reportData.pickedUp.map((pkg, index) => (
-                                <tr key={pkg.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
-                                    <td className="p-3 border-b border-slate-100 font-mono text-[10px] font-bold text-slate-900">{pkg.id}</td>
-                                    <td className="p-3 border-b border-slate-100 font-medium">{findClientName(pkg.creatorId)}</td>
-                                    <td className="p-3 border-b border-slate-100 text-right text-slate-500">
-                                        {findEventTimestamp(pkg, PackageStatus.PickedUp)?.toLocaleString('es-CL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) || 'N/A'}
-                                    </td>
-                                </tr>
-                            )) : (
-                                <tr><td colSpan={3} className="p-8 text-center text-slate-400 italic bg-slate-50 rounded-b-lg">No se registraron retiros en este período.</td></tr>
-                            )}
-                        </tbody>
-                    </table>
-                </section>
+                        )) : (
+                            <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic bg-slate-50 border-b border-slate-200">No hay actividad en este período.</td></tr>
+                        )}
+                    </tbody>
+                </table>
             </div>
 
             {/* Signature Section */}
@@ -343,6 +306,36 @@ const DeliveryHistoryPage: React.FC = () => {
             return deliveredInRange;
     }
   }, [historyView, deliveredInRange, pickedUpInRange, returnedInRange]);
+
+  const dailySummary = useMemo(() => {
+      const summary: Record<string, { dateObj: Date, dateStr: string, delivered: number, pickedUp: number, returned: number }> = {};
+      
+      const addToSummary = (date: Date, type: 'delivered' | 'pickedUp' | 'returned') => {
+          const pad = (n: number) => n.toString().padStart(2, '0');
+          const dateKey = `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+          const dateStr = `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear()}`;
+          
+          if (!summary[dateKey]) summary[dateKey] = { dateObj: date, dateStr, delivered: 0, pickedUp: 0, returned: 0 };
+          summary[dateKey][type]++;
+      };
+
+      deliveredInRange.forEach(pkg => {
+          const date = findEventTimestamp(pkg, PackageStatus.Delivered);
+          if (date) addToSummary(date, 'delivered');
+      });
+
+      pickedUpInRange.forEach(pkg => {
+          const date = findEventTimestamp(pkg, PackageStatus.PickedUp);
+          if (date) addToSummary(date, 'pickedUp');
+      });
+
+      returnedInRange.forEach(pkg => {
+          const date = findEventTimestamp(pkg, PackageStatus.Returned);
+          if (date) addToSummary(date, 'returned');
+      });
+
+      return Object.values(summary).sort((a, b) => a.dateObj.getTime() - b.dateObj.getTime());
+  }, [deliveredInRange, pickedUpInRange, returnedInRange]);
   
   const handleShareReport = async () => {
     setIsGenerating(true);
