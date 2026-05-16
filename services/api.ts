@@ -53,7 +53,7 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
   if (!response.ok) {
     // Si el token no es válido o ha expirado (401), cerramos la sesión automáticamente
     if (response.status === 401) {
-      const hasToken = !!options.headers && (options.headers as any)['Authorization'];
+      const hasToken = !!localStorage.getItem('token');
       const isLoginRequest = endpoint.includes('/auth/login');
       
       if (!isLoginRequest && hasToken) {
@@ -305,24 +305,7 @@ export const api = {
               searchParams.append(key, String(params[key]));
           }
       });
-      // [OPTIMIZACION v2.6.2] includeHistory por defecto es true si no se especifica
-      if (params.includeHistory === undefined) {
-          // No necesitamos añadirlo explícitamente si el backend asume true
-      }
       return get<{ packages: Package[], total: number }>(`/packages?${searchParams.toString()}`);
-  },
-  exportPackagesCSV: (params: any) => {
-      const searchParams = new URLSearchParams();
-      Object.keys(params).forEach(key => {
-          if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-              searchParams.append(key, String(params[key]));
-          }
-      });
-      const token = localStorage.getItem('token');
-      if (token) {
-          searchParams.append('token', token);
-      }
-      window.location.href = `${API_URL}/packages/export/csv?${searchParams.toString()}`;
   },
   createPackage: (data: PackageCreationData) => post<Package>('/packages', data),
   createMultiplePackages: (packages: PackageCreationData[]) => post<{ 

@@ -257,7 +257,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
         setFormData(prev => ({ ...prev, [name]: formatRut(value) }));
     };
 
-    const handleConnectIntegration = (type: ConnectionSource) => {
+    const handleConnectIntegration = (type: ConnectionSource | 'shopify') => {
         if (isLoadingSettings) return;
 
         if (type === 'meli') {
@@ -268,6 +268,13 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
             const redirectUri = `${window.location.origin}/api/integrations/meli/callback`;
             const authUrl = `https://auth.mercadolibre.com/authorization?response_type=code&client_id=${integrationSettings.meliAppId}&redirect_uri=${encodeURIComponent(redirectUri)}&state=${user.id}`;
             window.location.href = authUrl;
+        } else if (type === 'shopify') {
+            const shopUrl = prompt("Introduce la URL de la tienda Shopify (ej: mi-tienda.myshopify.com):", clientShopifyUrl);
+            if (!shopUrl) return;
+            
+            const authUrl = `${window.location.origin}/api/integrations/shopify/auth?shop=${encodeURIComponent(shopUrl)}`;
+            // Abrimos en una ventana nueva para no perder el estado del modal
+            window.open(authUrl, 'shopify-auth', 'width=600,height=700');
         } else {
             alert(`La conexión con ${type} aún no está implementada.`);
         }
@@ -570,70 +577,37 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                             <h5 className="font-medium text-[var(--text-primary)]">Shopify</h5>
                                         </div>
 
-                                        {/* OAuth Connection (Automated) */}
-                                        <div className="mb-4 p-4 bg-green-50/30 border border-green-100 rounded-lg">
-                                            <label className="block text-xs font-medium text-green-800 mb-2">ConexiÃ³n AutomÃ¡tica (Recomendado)</label>
-                                                <div className="flex flex-col gap-2 w-full">
-                                                    <div className="flex flex-col sm:flex-row gap-2">
-                                                        <input 
-                                                            type="text" 
-                                                            value={clientShopifyUrl} 
-                                                            onChange={(e) => setClientShopifyUrl(e.target.value)} 
-                                                            className={`${inputClasses} flex-grow`}
-                                                            placeholder="mitienda.myshopify.com"
-                                                        />
-                                                        <button 
-                                                            type="button"
-                                                            onClick={() => {
-                                                                if (!clientShopifyUrl) {
-                                                                    alert("Por favor ingresa la URL de tu tienda (ej: tienda.myshopify.com)");
-                                                                    return;
-                                                                }
-                                                                if (!integrationSettings.shopifyClientId) {
-                                                                    alert("El Administrador no ha configurado el Client ID de Shopify en la configuraciÃ³n global.");
-                                                                    return;
-                                                                }
-                                                                const host = window.location.origin;
-                                                                const token = localStorage.getItem('token');
-                                                                const authUrl = `${host}/api/integrations/shopify/auth?shop=${clientShopifyUrl.trim()}&clientId=${user.id}&token=${token}`;
-                                                                window.open(authUrl, 'ShopifyAuth', 'width=600,height=800');
-                                                            }}
-                                                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md shadow-md transition-all flex items-center justify-center gap-2 text-sm"
-                                                        >
-                                                            <IconPlugConnected className="w-4 h-4" />
-                                                            Conectar
-                                                        </button>
-                                                    </div>
-                                                    <button 
-                                                        type="button"
-                                                        onClick={() => {
-                                                            if (!clientShopifyUrl) {
-                                                                alert("Primero ingresa la URL de la tienda para generar el enlace.");
-                                                                return;
-                                                            }
-                                                            const host = window.location.origin;
-                                                            const token = localStorage.getItem('token');
-                                                            const authUrl = `${host}/api/integrations/shopify/auth?shop=${clientShopifyUrl.trim()}&clientId=${user.id}&token=${token}`;
-                                                            navigator.clipboard.writeText(authUrl);
-                                                            alert("Â¡Enlace copiado! EnvÃ­aselo al cliente para que autorice la conexiÃ³n desde su navegador.");
-                                                        }}
-                                                        className="w-full py-1.5 border border-dashed border-green-400 text-green-700 hover:bg-green-50 rounded-md text-[10px] font-semibold transition-colors"
-                                                    >
-                                                        Copiar Enlace de InvitaciÃ³n para el Cliente
-                                                    </button>
-                                                </div>
-                                            <p className="text-[10px] text-green-700 mt-2">
-                                                Al hacer clic en Conectar, serÃ¡s redirigido a Shopify para autorizar el acceso.
+                                        <div className="mb-4">
+                                            <button 
+                                                type="button" 
+                                                onClick={() => handleConnectIntegration('shopify')} 
+                                                className="w-full flex items-center justify-center gap-2 p-2 bg-green-600 hover:bg-green-700 text-white font-bold rounded-md shadow-sm transition-all"
+                                            >
+                                                <IconShopify className="w-4 h-4" />
+                                                Conectar Shopify (Un solo clic)
+                                            </button>
+                                            <p className="text-[10px] text-[var(--text-muted)] mt-1 text-center">
+                                                Recomendado: Conexión automática oficial de Shopify.
                                             </p>
                                         </div>
 
-                                        <div className="relative flex py-3 items-center">
-                                            <div className="flex-grow border-t border-[var(--border-secondary)]"></div>
-                                            <span className="flex-shrink mx-4 text-[10px] text-[var(--text-muted)] uppercase font-semibold">o configuraciÃ³n manual (App Personalizada)</span>
-                                            <div className="flex-grow border-t border-[var(--border-secondary)]"></div>
+                                        <div className="relative py-2 flex items-center">
+                                            <div className="flex-grow border-t border-gray-200"></div>
+                                            <span className="flex-shrink mx-4 text-gray-400 text-[10px] uppercase font-bold">O usar configuración manual</span>
+                                            <div className="flex-grow border-t border-gray-200"></div>
                                         </div>
 
-                                        <div className="space-y-3">
+                                        <div className="space-y-3 mt-2">
+                                            <div>
+                                                <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda (ej: mitienda.myshopify.com)</label>
+                                                <input 
+                                                    type="text" 
+                                                    value={clientShopifyUrl} 
+                                                    onChange={(e) => setClientShopifyUrl(e.target.value)} 
+                                                    className={inputClasses}
+                                                    placeholder="tutienda.myshopify.com"
+                                                />
+                                            </div>
                                             <div>
                                                 <label className="block text-xs font-medium text-[var(--text-secondary)] mb-1">Admin API Access Token (shpat_...)</label>
                                                 <div className="relative">
@@ -649,7 +623,11 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                                     </button>
                                                 </div>
                                             </div>
-                                            
+                                            <div className="text-xs text-[var(--text-muted)] italic">
+                                                Estos datos se guardarán al hacer clic en "Guardar Cambios" abajo.
+                                            </div>
+
+                                            {/* Shopify Test Results */}
                                             {shopifyTestResult && (
                                                 <div className={`p-3 rounded-md text-sm ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800 border border-green-200' : 'bg-red-100 text-red-800 border border-red-200'}`}>
                                                     <div className="flex items-center gap-2">
@@ -666,7 +644,7 @@ const EditUserModal: React.FC<EditUserModalProps> = ({ user, onClose, onUpdate, 
                                                 className="w-full flex items-center justify-center gap-2 px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-xs font-bold rounded-md shadow-sm disabled:opacity-50 transition-colors"
                                             >
                                                 {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconPlugConnected className="w-4 h-4 text-[var(--brand-primary)]" />}
-                                                Probar ConexiÃ³n Manual
+                                                Probar Conexión Shopify
                                             </button>
                                         </div>
                                     </div>

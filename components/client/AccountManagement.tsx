@@ -364,38 +364,10 @@ const AccountManagement: React.FC = () => {
                                 </div>
                             )}
                             
-                            <div className="grid grid-cols-1 gap-3 pt-2">
-                                {/* One-Click Connection (Recommended) */}
-                                <button 
-                                    type="button"
-                                    onClick={() => {
-                                        if (!shopifyUrl.trim()) {
-                                            alert("Por favor, ingresa el dominio de tu tienda (ej: mi-tienda.myshopify.com)");
-                                            return;
-                                        }
-                                        const token = localStorage.getItem('token');
-                                        const authUrl = `/api/integrations/shopify/auth?shop=${encodeURIComponent(shopifyUrl.trim())}&token=${token}`;
-                                        // Redirigir directamente para el flujo OAuth
-                                        window.location.href = authUrl;
-                                    }}
-                                    className="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-4 rounded-2xl shadow-lg shadow-green-100 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
-                                >
-                                    <IconPlugConnected className="w-5 h-5" />
-                                    Vincular con un Clic (Recomendado)
-                                </button>
-
-                                <div className="relative flex py-4 items-center">
-                                    <div className="flex-grow border-t border-gray-100"></div>
-                                    <span className="flex-shrink mx-4 text-[10px] text-gray-400 uppercase font-bold tracking-widest">o mÃ©todo manual</span>
-                                    <div className="flex-grow border-t border-gray-100"></div>
-                                </div>
-                                
+                            <div className="grid grid-cols-1 gap-3 pt-4">
                                 <button 
                                     onClick={async () => {
-                                        if (!shopifyUrl.trim() || !shopifyAccessToken.trim()) {
-                                            alert("Para el mÃ©todo manual, necesitas ingresar el Dominio y el Admin Token.");
-                                            return;
-                                        }
+                                        if (!shopifyUrl.trim() || !shopifyAccessToken.trim()) return;
                                         setIsTestingShopify(true);
                                         setShopifyTestResult(null);
                                         try {
@@ -404,7 +376,7 @@ const AccountManagement: React.FC = () => {
                                                 nickname: `Shopify (${shopifyUrl})`,
                                                 credentials: { shopUrl: shopifyUrl, accessToken: shopifyAccessToken }
                                             });
-                                            setShopifyTestResult({ type: 'success', message: 'Â¡Tienda vinculada correctamente!' });
+                                            setShopifyTestResult({ type: 'success', message: '¡Tienda vinculada correctamente!' });
                                             setTimeout(() => {
                                                 setShowShopifyModal(false);
                                                 fetchAccounts();
@@ -416,11 +388,29 @@ const AccountManagement: React.FC = () => {
                                         }
                                     }}
                                     disabled={isTestingShopify || !shopifyUrl.trim() || !shopifyAccessToken.trim()}
-                                    className="w-full bg-gray-100 hover:bg-gray-200 disabled:opacity-50 text-gray-700 font-bold py-3 rounded-2xl transition-all flex items-center justify-center gap-2 text-sm"
+                                    className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-4 rounded-2xl shadow-lg transition-all active:scale-[0.98] flex items-center justify-center gap-2"
                                 >
-                                    {isTestingShopify ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconFileText className="w-4 h-4" />}
+                                    {isTestingShopify ? <IconLoader className="w-5 h-5 animate-spin" /> : <IconPlugConnected className="w-5 h-5" />}
                                     Vincular con Token (Manual)
                                 </button>
+
+                                {!shopifyAccessToken && (
+                                    <button 
+                                        onClick={() => {
+                                            if (!shopifyUrl.trim()) {
+                                                alert("Por favor ingresa el dominio de tu tienda (ej: mi-tienda.myshopify.com)");
+                                                return;
+                                            }
+                                            const shopClean = shopifyUrl.trim().replace(/^https?:\/\//, '').split('/')[0];
+                                            const authUrl = `/api/integrations/shopify/auth?shop=${encodeURIComponent(shopClean)}`;
+                                            window.open(authUrl, 'shopify-auth', 'width=600,height=700');
+                                        }}
+                                        className="w-full py-4 text-sm font-bold text-green-600 hover:bg-green-50 rounded-2xl transition-all flex items-center justify-center gap-2 border-2 border-dashed border-green-100 mt-2"
+                                    >
+                                        <IconShopify className="w-5 h-5" />
+                                        O usar conexión un-clic (Recomendado)
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </div>

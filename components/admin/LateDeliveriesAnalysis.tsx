@@ -30,9 +30,10 @@ const formatDecimalHour = (decimalHour: number | string | null) => {
     if (decimalHour === null) return '--:--';
     const num = Number(decimalHour);
     if (isNaN(num)) return '--:--';
-    const hours = Math.floor(num);
-    const minutes = Math.round((num - hours) * 60);
-    return `${hours}:${minutes.toString().padStart(2, '0')}`;
+    const totalHours = Math.floor(num);
+    const displayHours = totalHours % 24;
+    const minutes = Math.round((num - totalHours) * 60);
+    return `${displayHours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
 };
 
 const LateDeliveriesAnalysis: React.FC = () => {
@@ -243,7 +244,7 @@ const LateDeliveriesAnalysis: React.FC = () => {
                                     <BarChart data={analysis.rangeData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
                                         <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" vertical={false} />
                                         <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
-                                        <YAxis domain={[21, 24]} axisLine={false} tickLine={false} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
+                                        <YAxis domain={[21, 'dataMax']} axisLine={false} tickLine={false} tickFormatter={(val) => formatDecimalHour(val)} tick={{ fontSize: 10, fontWeight: 700, fill: '#64748b' }} />
                                         <Tooltip cursor={{ fill: '#f8fafc' }} contentStyle={{ borderRadius: '12px', border: 'none' }} />
                                         <Bar dataKey="avgHour" fill="#f59e0b" radius={[4, 4, 0, 0]} barSize={40} label={{ position: 'top', fontSize: 10, fontWeight: 900, fill: '#b45309', formatter: (val: any) => formatDecimalHour(val) }} />
                                     </BarChart>
