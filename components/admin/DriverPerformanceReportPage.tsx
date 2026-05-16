@@ -81,41 +81,42 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
     
+    // Use a unified ID source
+    const targetDriverId = driverIdProp || selectedDriverId;
+
     const fetchData = async () => {
+        if (!targetDriverId && !driverIdProp) {
+            setIsLoading(false);
+            return;
+        }
+
         setIsLoading(true);
         try {
-            // 1. Fetch users if we're in admin mode (no driverIdProp)
+            // 1. Fetch users only if in admin mode (no fixed driverIdProp)
             if (!driverIdProp) {
                 const allUsers = await api.getUsers();
                 setUsers(allUsers);
-            } else {
-                // If we have a driverIdProp, we don't need all users, but we might need the current user object
-                // if it's not already in auth context (though it usually is)
-                if (auth?.user) {
-                    setUsers([auth.user]);
-                }
+            } else if (auth?.user) {
+                // If we are a driver, we already have our user object
+                setUsers([auth.user]);
             }
 
-            // 2. Only fetch performance data if a driver is selected or locked
-            const targetDriverId = driverIdProp || selectedDriverId;
-            if (targetDriverId) {
-                const [packagesResponse, allEvents, runs] = await Promise.all([
-                    api.getPackages({ 
-                        limit: 0, 
-                        driverFilter: targetDriverId,
-                        startDate,
-                        endDate,
-                        statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
-                    }),
-                    api.getAssignmentHistory(),
-                    api.getPickupRuns({ startDate, endDate })
-                ]);
-                setPackages(packagesResponse.packages);
-                setAssignmentEvents(allEvents);
-                setPickupRuns(runs);
-            } else {
-                setPackages([]);
-            }
+            // 2. Fetch all performance data
+            const [packagesResponse, allEvents, runs] = await Promise.all([
+                api.getPackages({ 
+                    limit: 0, 
+                    driverFilter: targetDriverId,
+                    startDate,
+                    endDate,
+                    statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
+                }),
+                api.getAssignmentHistory(),
+                api.getPickupRuns({ startDate, endDate })
+            ]);
+            
+            setPackages(packagesResponse.packages);
+            setAssignmentEvents(allEvents || []);
+            setPickupRuns(runs || []);
         } catch (error) {
             console.error("Failed to fetch report data", error);
         } finally {
@@ -125,7 +126,7 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
 
     useEffect(() => {
         fetchData();
-    }, [startDate, endDate, selectedDriverId]);
+    }, [startDate, endDate, targetDriverId]);
 
     const drivers = useMemo(() => {
         return users
@@ -142,35 +143,30 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
 
     const selectedDriver = useMemo(() => {
         if (driverIdProp && auth?.user?.id === driverIdProp) return auth.user;
-        return drivers.find(c => c.id === selectedDriverId);
-    }, [drivers, selectedDriverId, driverIdProp, auth?.user]);
+        return drivers.find(c => c.id === targetDriverId);
+    }, [drivers, targetDriverId, driverIdProp, auth?.user]);
 
     const filteredPackages = useMemo(() => {
-        if (!selectedDriverId) return [];
+        if (!targetDriverId) return [];
         
-        // Since we now fetch filtered packages from API, we just need to double check
-        // but we'll use a more robust date logic: use the timestamp of the actual Delivery/Problem event
+        // [v2.6.8] Trust the backend filter for targetDriverId. 
+        // We only filter by date here to ensure the UI matches the selected range exactly.
         return packages.filter(pkg => {
-            if (pkg.driverId !== selectedDriverId) return false;
-            
-            // Find the delivery or problem event to get the relevant date for the report
-            const relevantEvent = pkg.history.find(e => 
+            // Find the delivery/problem event to get the date. Fallback to updatedAt.
+            const relevantEvent = pkg.history?.find(e => 
                 e.status === PackageStatus.Delivered || 
                 e.status === PackageStatus.Problem || 
                 e.status === PackageStatus.Returned
-            ) || pkg.history[0];
+            ) || { timestamp: pkg.updatedAt };
 
-            if (!relevantEvent) return false;
-            
-            // Robust Date object comparison instead of string comparison
-            // Append T00:00:00 and T23:59:59 to ensure full day coverage in local time
+            // Robust timestamp comparison
             const startTimestamp = new Date(startDate + 'T00:00:00').getTime();
             const endTimestamp = new Date(endDate + 'T23:59:59.999').getTime();
             const eventTimestamp = new Date(relevantEvent.timestamp).getTime();
             
             return eventTimestamp >= startTimestamp && eventTimestamp <= endTimestamp;
         });
-    }, [packages, selectedDriverId, startDate, endDate]);
+    }, [packages, targetDriverId, startDate, endDate]);
 
     const reportStats = useMemo(() => {
         const delivered = filteredPackages.filter(p => p.status === PackageStatus.Delivered);
@@ -242,7 +238,7 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
         const endTimestamp = new Date(endDate + 'T23:59:59.999').getTime();
         
         const relevantLegacyEvents = assignmentEvents.filter(event => {
-            if (event.driverId !== selectedDriverId || event.status !== 'COMPLETADO' || !event.completedAt) return false;
+            if (event.driverId !== targetDriverId || event.status !== 'COMPLETADO' || !event.completedAt) return false;
             const eventTimestamp = new Date(event.completedAt).getTime();
             return eventTimestamp >= startTimestamp && eventTimestamp <= endTimestamp;
         });
@@ -680,7 +676,17 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
             </div>
             </div>
             
-            {selectedDriver && !isLoading && (
+            {!isLoading && selectedDriver && filteredPackages.length === 0 && (
+                <div className="bg-[var(--background-secondary)] rounded-xl p-10 text-center border border-[var(--border-primary)] shadow-sm animate-fade-in">
+                    <IconAlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-4 opacity-50"/>
+                    <h3 className="text-lg font-bold text-[var(--text-primary)]">Sin actividad en este periodo</h3>
+                    <p className="text-[var(--text-muted)] text-sm max-w-md mx-auto mt-2">
+                        No se encontraron entregas o problemas registrados para {selectedDriver.name} entre el {startDate} y el {endDate}. Prueba seleccionando un rango de fechas distinto.
+                    </p>
+                </div>
+            )}
+            
+            {selectedDriver && !isLoading && filteredPackages.length > 0 && (
                 <div className="space-y-6 animate-fade-in-up">
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
                         <KpiCard icon={<IconChecklist className="w-6 h-6 text-indigo-600"/>} title="Entregados" value={reportStats.totalDelivered} trend="up" color="bg-indigo-100"/>
