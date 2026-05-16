@@ -197,13 +197,14 @@ async function buildPackageQuery(req) {
                     p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
                 )`);
             } else {
-                // Historial de Entregas: Comportamiento exacto de ayer
+                // Historial de Entregas: Comportamiento exacto de ayer + Búsqueda en historial interno
                 whereClauses.push(`(
                     (
                         p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
                         p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
                         p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
-                        p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+                        p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1} OR
+                        p.id IN (SELECT "packageId" FROM tracking_events WHERE timestamp >= $${paramIndex} AND timestamp < $${paramIndex + 1})
                     ) OR (
                         p.status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
                     )
