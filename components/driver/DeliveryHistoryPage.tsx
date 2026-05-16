@@ -293,35 +293,23 @@ const DeliveryHistoryPage: React.FC = () => {
     const pickupClients = new Set<string>();
 
     allDriverPackages.forEach(pkg => {
-        if (pkg.status === PackageStatus.Delivered) {
-            const deliveryEvent = pkg.history?.find(e => e.status === PackageStatus.Delivered);
-            const eventDate = deliveryEvent ? new Date(deliveryEvent.timestamp) : new Date(pkg.updatedAt);
-            if (eventDate >= start && eventDate <= end) {
-                delivered.push(pkg);
-            }
-        }
-        
-        if (pkg.status === PackageStatus.Returned) {
-            const returnEvent = pkg.history?.find(e => e.status === PackageStatus.Returned);
-            const eventDate = returnEvent ? new Date(returnEvent.timestamp) : new Date(pkg.updatedAt);
-            if (eventDate >= start && eventDate <= end) {
-                returned.push(pkg);
-            }
-        }
+        // Encontrar el evento relevante, al igual que en DriverPerformanceReportPage
+        const relevantEvent = pkg.history?.find(e => 
+            e.status === PackageStatus.Delivered || 
+            e.status === PackageStatus.Problem || 
+            e.status === PackageStatus.Returned ||
+            e.status === PackageStatus.PickedUp
+        ) || pkg.history?.[0];
 
-        const pickupEvent = pkg.history?.find(e => e.status === PackageStatus.PickedUp);
-        if (pickupEvent) {
-            const pickupDate = new Date(pickupEvent.timestamp);
-            if (pickupDate >= start && pickupDate <= end) {
-                pickedUp.push(pkg);
-                if (pkg.creatorId) {
-                    pickupClients.add(pkg.creatorId);
-                }
-            }
-        } else if (pkg.status === PackageStatus.InTransit || pkg.status === PackageStatus.Delivered || pkg.status === PackageStatus.Returned) {
-            // Fallback para paquetes recolectados pero sin evento explícito de retiro
-            const pickupDate = new Date(pkg.assignedAt || pkg.updatedAt);
-            if (pickupDate >= start && pickupDate <= end) {
+        const eventDate = relevantEvent ? new Date(relevantEvent.timestamp) : new Date(pkg.updatedAt);
+
+        if (eventDate >= start && eventDate <= end) {
+            if (pkg.status === PackageStatus.Delivered) {
+                delivered.push(pkg);
+            } else if (pkg.status === PackageStatus.Returned) {
+                returned.push(pkg);
+            } else if (pkg.status === PackageStatus.PickedUp || pkg.status === PackageStatus.InTransit) {
+                // Incluir InTransit como fallback para retiros
                 pickedUp.push(pkg);
                 if (pkg.creatorId) {
                     pickupClients.add(pkg.creatorId);
