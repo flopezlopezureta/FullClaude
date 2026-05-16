@@ -573,20 +573,20 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
         <>
         <div id="report-container" className="space-y-6">
             <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6 print:hidden">
-            <div className="bg-[var(--background-secondary)] shadow-sm rounded-xl p-5 border border-[var(--border-primary)] print:hidden">
-                <div className="flex flex-col md:flex-row items-end gap-4 lg:gap-6">
-                    {/* Searchable Driver Dropdown */}
+            <div className="bg-[var(--background-secondary)] shadow-sm rounded-xl p-4 border border-[var(--border-primary)] print:hidden">
+                <div className="flex flex-wrap items-end gap-2 sm:gap-4">
+                    {/* Searchable Driver Dropdown (Admin only) */}
                     {!driverIdProp && (
-                    <div className="flex-1 relative min-w-[280px]" ref={driverRef}>
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 block">Conductor</label>
+                    <div className="flex-1 min-w-[200px] relative" ref={driverRef}>
+                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Conductor</label>
                         <div 
-                            className="w-full pl-4 pr-10 py-2 border border-[var(--border-secondary)] rounded-lg shadow-sm bg-[var(--background-primary)] text-left cursor-pointer text-sm font-bold flex justify-between items-center transition-all hover:border-[var(--brand-primary)] h-[42px]"
+                            className="w-full pl-3 pr-8 py-1.5 border border-[var(--border-secondary)] rounded-lg shadow-sm bg-[var(--background-primary)] text-left cursor-pointer text-xs font-bold flex justify-between items-center transition-all hover:border-[var(--brand-primary)] h-[38px]"
                             onClick={() => setIsDriverSearchOpen(!isDriverSearchOpen)}
                         >
                             <span className="truncate text-[var(--text-primary)]">
-                                {selectedDriver ? selectedDriver.name.toUpperCase() : '-- SELECCIONAR CONDUCTOR --'}
+                                {selectedDriver ? selectedDriver.name.toUpperCase() : '-- SELECCIONAR --'}
                             </span>
-                            <span className="text-[var(--text-muted)] ml-2 text-[10px]">{isDriverSearchOpen ? '▲' : '▼'}</span>
+                            <span className="text-[var(--text-muted)] ml-1 text-[9px]">{isDriverSearchOpen ? '▲' : '▼'}</span>
                         </div>
                         
                         {isDriverSearchOpen && (
@@ -595,71 +595,67 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                                     <div className="relative">
                                         <input
                                             type="text"
-                                            placeholder="Escribe para buscar..."
-                                            className="w-full pl-9 pr-3 py-2 text-sm font-bold border border-[var(--border-secondary)] rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] bg-[var(--background-primary)] text-[var(--text-primary)] shadow-inner"
+                                            placeholder="Buscar..."
                                             value={driverSearchTerm}
                                             onChange={(e) => setDriverSearchTerm(e.target.value)}
+                                            className="w-full pl-8 pr-4 py-1.5 bg-[var(--background-primary)] border border-[var(--border-secondary)] rounded-md text-xs focus:ring-1 focus:ring-[var(--brand-primary)]"
                                             onClick={(e) => e.stopPropagation()}
-                                            autoFocus
                                         />
-                                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                                            <IconSearch className="w-4 h-4 text-[var(--text-muted)]" />
-                                        </div>
+                                        <IconSearch className="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" />
                                     </div>
                                 </div>
-                                <div className="max-h-72 overflow-y-auto custom-scrollbar">
-                                    {filteredDrivers.map(driver => (
+                                <div className="max-h-60 overflow-y-auto">
+                                    {filteredDrivers.map(d => (
                                         <div 
-                                            key={driver.id}
-                                            className={`px-4 py-3 text-sm font-bold cursor-pointer transition-colors border-b border-[var(--border-primary)] last:border-0 ${selectedDriverId === driver.id ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]' : 'hover:bg-[var(--background-hover)] text-[var(--text-primary)]'}`}
-                                            onClick={() => { setSelectedDriverId(driver.id); setIsDriverSearchOpen(false); setDriverSearchTerm(''); }}
+                                            key={d.id}
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setSelectedDriverId(d.id);
+                                                setIsDriverSearchOpen(false);
+                                            }}
+                                            className={`px-4 py-2 text-xs font-bold cursor-pointer transition-colors hover:bg-[var(--brand-primary)] hover:text-white ${selectedDriverId === d.id ? 'bg-[var(--background-muted)] text-[var(--brand-primary)]' : 'text-[var(--text-secondary)]'}`}
                                         >
-                                            {driver.name.toUpperCase()}
+                                            {d.name.toUpperCase()}
                                         </div>
                                     ))}
-                                    {filteredDrivers.length === 0 && (
-                                        <div className="px-4 py-6 text-sm font-bold text-[var(--text-muted)] text-center">No se encontraron conductores</div>
-                                    )}
                                 </div>
                             </div>
                         )}
                     </div>
                     )}
 
-                    <div className="flex-shrink-0">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 block">Desde</label>
+                    <div className="flex-1 min-w-[110px]">
+                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Desde</label>
                         <div className="relative">
-                            <div className="flex items-center justify-between w-36 px-4 py-2 border border-[var(--border-secondary)] rounded-lg shadow-sm bg-[var(--background-primary)] text-left cursor-pointer text-sm font-bold transition-all hover:border-[var(--brand-primary)] h-[42px]">
+                            <div className="flex items-center justify-between w-full px-2 py-1.5 border border-[var(--border-secondary)] rounded-lg shadow-sm bg-[var(--background-primary)] text-left cursor-pointer text-xs font-bold transition-all hover:border-[var(--brand-primary)] h-[38px]">
                                 <span className="text-[var(--text-primary)]">
-                                    {new Date(startDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    {new Date(startDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
                                 </span>
-                                <IconCalendar className="h-5 w-5 text-[var(--text-muted)]" />
+                                <IconCalendar className="h-4 w-4 text-[var(--text-muted)]" />
                             </div>
                             <input 
                                 type="date" 
                                 value={startDate} 
                                 onChange={e => setStartDate(e.target.value)} 
                                 className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                                aria-label="Fecha inicio"
                             />
                         </div>
                     </div>
 
-                    <div className="flex-shrink-0">
-                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 block">Hasta</label>
+                    <div className="flex-1 min-w-[110px]">
+                        <label className="text-[9px] font-black text-gray-400 uppercase tracking-widest mb-1 block">Hasta</label>
                         <div className="relative">
-                            <div className="flex items-center justify-between w-36 px-4 py-2 border border-[var(--border-secondary)] rounded-lg shadow-sm bg-[var(--background-primary)] text-left cursor-pointer text-sm font-bold transition-all hover:border-[var(--brand-primary)] h-[42px]">
+                            <div className="flex items-center justify-between w-full px-2 py-1.5 border border-[var(--border-secondary)] rounded-lg shadow-sm bg-[var(--background-primary)] text-left cursor-pointer text-xs font-bold transition-all hover:border-[var(--brand-primary)] h-[38px]">
                                 <span className="text-[var(--text-primary)]">
-                                    {new Date(endDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                    {new Date(endDate.replace(/-/g, '/')).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
                                 </span>
-                                <IconCalendar className="h-5 w-5 text-[var(--text-muted)]" />
+                                <IconCalendar className="h-4 w-4 text-[var(--text-muted)]" />
                             </div>
                             <input 
                                 type="date" 
                                 value={endDate} 
                                 onChange={e => setEndDate(e.target.value)} 
                                 className="absolute top-0 left-0 w-full h-full opacity-0 cursor-pointer"
-                                aria-label="Fecha fin"
                             />
                         </div>
                     </div>
@@ -667,10 +663,10 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                     <button 
                         onClick={fetchData}
                         disabled={isLoading}
-                        className="flex-shrink-0 flex items-center justify-center gap-2 px-6 py-2 bg-[var(--brand-primary)] text-white text-sm font-black rounded-lg hover:bg-[var(--brand-hover)] transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed uppercase tracking-wider h-[42px]"
+                        className="flex-shrink-0 flex items-center justify-center h-[38px] w-[38px] sm:w-auto sm:px-4 bg-[var(--brand-primary)] text-white text-xs font-black rounded-lg hover:bg-[var(--brand-hover)] transition-all shadow-md disabled:opacity-50 uppercase"
                     >
                         <IconRefresh className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
-                        {isLoading ? '...' : 'Actualizar'}
+                        <span className="hidden sm:inline ml-2">Actualizar</span>
                     </button>
                 </div>
             </div>
