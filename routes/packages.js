@@ -187,19 +187,13 @@ async function buildPackageQuery(req) {
         if (dateType === 'egress') {
             whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
         } else if (driverFilter && req.user.role === 'DRIVER') {
-            // [CRITICO v2.6.4] Los conductores deben ver paquetes activos independiente de la fecha
-            // Solo mostramos los activos de las últimas 48 horas para evitar paquetes históricos perdidos.
+            // [v2.6.4] Conductores ven paquetes del día actual incluyendo los actualizados hoy
             whereClauses.push(`(
-                    (
-                        p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
-                        p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
-                        p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
-                        p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
-                    ) OR (
-                        p.status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
-                        AND p."assignedAt" >= NOW() - INTERVAL '48 hours'
-                    )
-                )`);
+                p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+            )`);
         } else {
             whereClauses.push(`(
                 p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
