@@ -84,16 +84,25 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            // 1. Always fetch users to populate the dropdown
-            const allUsers = await api.getUsers();
-            setUsers(allUsers);
+            // 1. Fetch users if we're in admin mode (no driverIdProp)
+            if (!driverIdProp) {
+                const allUsers = await api.getUsers();
+                setUsers(allUsers);
+            } else {
+                // If we have a driverIdProp, we don't need all users, but we might need the current user object
+                // if it's not already in auth context (though it usually is)
+                if (auth?.user) {
+                    setUsers([auth.user]);
+                }
+            }
 
-            // 2. Only fetch performance data if a driver is selected
-            if (selectedDriverId) {
+            // 2. Only fetch performance data if a driver is selected or locked
+            const targetDriverId = driverIdProp || selectedDriverId;
+            if (targetDriverId) {
                 const [packagesResponse, allEvents, runs] = await Promise.all([
                     api.getPackages({ 
                         limit: 0, 
-                        driverFilter: selectedDriverId,
+                        driverFilter: targetDriverId,
                         startDate,
                         endDate,
                         statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
@@ -131,7 +140,10 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
         [drivers, driverSearchTerm]
     );
 
-    const selectedDriver = drivers.find(c => c.id === selectedDriverId);
+    const selectedDriver = useMemo(() => {
+        if (driverIdProp && auth?.user?.id === driverIdProp) return auth.user;
+        return drivers.find(c => c.id === selectedDriverId);
+    }, [drivers, selectedDriverId, driverIdProp, auth?.user]);
 
     const filteredPackages = useMemo(() => {
         if (!selectedDriverId) return [];

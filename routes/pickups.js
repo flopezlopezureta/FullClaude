@@ -114,21 +114,30 @@ router.post('/colectas/claim', authMiddleware, async (req, res) => {
 });
 
 // GET /api/pickups?startDate=YYYY-MM-DD&endDate=YYYY-MM-DD
-router.get('/', authMiddleware, adminOrRetirosOnly, async (req, res) => {
+router.get('/', authMiddleware, async (req, res) => {
     const { startDate, endDate } = req.query;
 
     if (!startDate || !endDate) {
         return res.status(400).json({ message: 'Se requieren fechas de inicio y fin.' });
     }
+    
+    const isAdmin = req.user.role === 'ADMIN' || req.user.role === 'RETIROS' || req.user.role === 'OPERADOR_SISTEMAS';
 
     try {
-        const { rows: runs } = await db.query(
-            `SELECT r.*, d.name as "driverName" 
-             FROM pickup_runs r 
-             JOIN users d ON r."driverId" = d.id 
-             WHERE r.date >= $1 AND r.date <= $2`,
-            [startDate, endDate]
-        );
+        let query = `
+            SELECT r.*, d.name as "driverName" 
+            FROM pickup_runs r 
+            JOIN users d ON r."driverId" = d.id 
+            WHERE r.date >= $1 AND r.date <= $2
+        `;
+        const params = [startDate, endDate];
+        
+        if (!isAdmin) {
+            query += ' AND r."driverId" = $3';
+            params.push(req.user.id);
+        }
+
+        const { rows: runs } = await db.query(query, params);
 
         if (runs.length === 0) {
             return res.json([]);
