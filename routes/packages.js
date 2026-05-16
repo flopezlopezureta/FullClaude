@@ -187,13 +187,28 @@ async function buildPackageQuery(req) {
         if (dateType === 'egress') {
             whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
         } else if (driverFilter && req.user.role === 'DRIVER') {
-            // [v2.6.4] Conductores ven paquetes del día actual incluyendo los actualizados hoy
-            whereClauses.push(`(
-                p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
-                p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
-                p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
-                p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
-            )`);
+            // [v2.6.5] Separar lógica: El Dashboard (hoy) usa filtro estricto, el Historial (rango de fechas) usa el filtro laxo original.
+            if (startDate === endDate) {
+                // Dashboard principal: Solo paquetes de hoy (creados, asignados, actualizados o estimados hoy)
+                whereClauses.push(`(
+                    p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                    p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                    p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                    p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+                )`);
+            } else {
+                // Historial de Entregas: Comportamiento exacto de ayer
+                whereClauses.push(`(
+                    (
+                        p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                        p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                        p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                        p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+                    ) OR (
+                        p.status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
+                    )
+                )`);
+            }
         } else {
             whereClauses.push(`(
                 p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
