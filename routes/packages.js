@@ -198,6 +198,7 @@ router.get('/', authMiddleware, async (req, res) => {
             if (dateType === 'egress') {
                 whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
             } else if (driverFilter && req.user.role === 'DRIVER') {
+                // [v2.6.4] Conductores ven paquetes del día actual incluyendo los actualizados hoy
                 whereClauses.push(`(
                     p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
                     p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
