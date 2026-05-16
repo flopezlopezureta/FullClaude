@@ -787,7 +787,6 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                             </>
                         )}
                     </div>
-                    </div>
                 </div>
             )}
         </div>
