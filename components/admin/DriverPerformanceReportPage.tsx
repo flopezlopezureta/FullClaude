@@ -38,7 +38,11 @@ const KpiCard: React.FC<{ icon: ReactNode, title: string, value: string | number
     </div>
 );
 
-export const DriverPerformanceReportPage: React.FC = () => {
+interface DriverPerformanceReportPageProps {
+    driverIdProp?: string;
+}
+
+export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPageProps> = ({ driverIdProp }) => {
     const auth = useContext(AuthContext);
     const systemSettings = auth?.systemSettings;
     const [packages, setPackages] = useState<Package[]>([]);
@@ -48,7 +52,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [isExporting, setIsExporting] = useState(false);
     const [isDetailModalOpen, setIsDetailModalOpen] = useState(false);
-    const [selectedDriverId, setSelectedDriverId] = useState<string>('');
+    const [selectedDriverId, setSelectedDriverId] = useState<string>(driverIdProp || '');
     
     const tz = auth?.systemSettings?.timezone || 'America/Santiago';
     const todayStr = getLogicalDateString(new Date(), tz);
@@ -564,6 +568,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
             <div className="bg-[var(--background-secondary)] shadow-sm rounded-xl p-5 border border-[var(--border-primary)] print:hidden">
                 <div className="flex flex-col md:flex-row items-end gap-4 lg:gap-6">
                     {/* Searchable Driver Dropdown */}
+                    {!driverIdProp && (
                     <div className="flex-1 relative min-w-[280px]" ref={driverRef}>
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 block">Conductor</label>
                         <div 
@@ -611,6 +616,7 @@ export const DriverPerformanceReportPage: React.FC = () => {
                             </div>
                         )}
                     </div>
+                    )}
 
                     <div className="flex-shrink-0">
                         <label className="text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] mb-1.5 block">Desde</label>

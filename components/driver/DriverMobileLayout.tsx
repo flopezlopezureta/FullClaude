@@ -4,7 +4,8 @@ import { AuthContext } from '../../contexts/AuthContext';
 import { IconHistory, IconLogOut, IconUser, IconUsers, IconBell, IconBellOff, IconArrowUturnLeft, IconTruck, IconChevronLeft, IconChecklist, IconArchive, IconPlus, IconCube, IconX, IconCheck, IconZap } from '../Icon';
 import DriverDashboard from './DriverDashboard';
 import ScanDispatchPage from './ScanDispatchPage';
-import DeliveryHistoryPage from './DeliveryHistoryPage';
+import DeliveryHistoryPage from './DeliveryHistoryPage'; // Keeping it just in case, though unused
+import { DriverPerformanceReportPage } from '../admin/DriverPerformanceReportPage';
 import ReturnsDashboard from './ReturnsDashboard';
 import ScanPickupPage from './ScanPickupPage';
 import ColectaPage from './ColectaPage';
@@ -148,7 +149,7 @@ const DriverMobileLayout: React.FC = () => {
             case 'scan-dispatch': return <ScanDispatchPage />;
             case 'scan-dispatch-auxiliar': return <DispatchScanner />;
             case 'returns': return <ReturnsDashboard />;
-            case 'delivery-history': return <DeliveryHistoryPage />;
+            case 'delivery-history': return <DriverPerformanceReportPage driverIdProp={user?.id} />;
             case 'meli-flex-test': return <MeliFlexTestScanner onBack={() => setActiveView('menu')} />;
             default: return null;
         }
