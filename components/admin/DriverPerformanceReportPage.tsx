@@ -699,7 +699,7 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                             </div>
                             <div className="h-72"><canvas ref={dailyDeliveriesChartRef}></canvas></div>
                         </div>
-                        <div className="lg:col-span-1 bg-[var(--background-secondary)] p-6 rounded-xl border border-[var(--border-primary)] shadow-lg">
+                        <div className={`lg:col-span-1 bg-[var(--background-secondary)] p-6 rounded-xl border border-[var(--border-primary)] shadow-lg ${driverIdProp ? 'hidden' : ''}`}>
                             <h4 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-6">Mix de Servicios</h4>
                             <div className="h-72"><canvas ref={deliveryTypeChartRef}></canvas></div>
                         </div>
@@ -709,7 +709,8 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                         </div>
                     </div>
 
-                    {/* Payment Section */}
+                    {/* Payment Section (Hidden for drivers per request) */}
+                    {!driverIdProp && (
                     <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6 border border-[var(--border-primary)]">
                         <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4">Resumen de Pago Estimado</h3>
                         <div className="overflow-x-auto">
@@ -746,37 +747,46 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                                 </tfoot>
                             </table>
                         </div>
+                    </div>
+                    )}
+                    
+                    <div className="flex flex-wrap justify-center gap-3 print:hidden py-6 border-t border-[var(--border-primary)] mt-6">
+                        <button 
+                            onClick={() => setIsDetailModalOpen(true)}
+                            className="inline-flex items-center px-6 py-3 text-sm font-black text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 shadow-lg transition-all active:scale-95 uppercase tracking-wider"
+                        >
+                            <IconEye className="w-5 h-5 mr-2"/> Ver Detalle de Entregas
+                        </button>
                         
-                        <div className="flex flex-wrap justify-end gap-3 print:hidden">
-                            <button 
-                                onClick={() => setIsDetailModalOpen(true)}
-                                className="inline-flex items-center px-4 py-2 text-sm font-black text-white bg-indigo-600 rounded-md hover:bg-indigo-700 shadow-md transition-all active:scale-95 uppercase tracking-wider"
-                            >
-                                <IconEye className="w-5 h-5 mr-2"/> Ver Detalle de Entregas
-                            </button>
-                            <button 
-                                onClick={handleExportCSV} 
-                                disabled={isExporting}
-                                className={`inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-md hover:bg-green-700 shadow-sm disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
-                            >
-                                <IconFileSpreadsheet className={`w-5 h-5 mr-2 ${isExporting ? 'animate-spin' : ''}`}/> 
-                                {isExporting ? 'Exportando...' : 'Exportar CSV'}
-                            </button>
-                            
-                            {!driverIdProp && (
-                                <>
-                                    <a href={`https://wa.me/${selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#25D366] rounded-md hover:bg-[#128C7E] shadow-sm">
-                                        <IconWhatsapp className="w-5 h-5 mr-2"/> Enviar Resumen WhatsApp
-                                    </a>
-                                    <a href={`mailto:${selectedDriver.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">
-                                        <IconMail className="w-5 h-5 mr-2"/> Enviar Correo
-                                    </a>
-                                    <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)] shadow-sm">
-                                        <IconPrinter className="w-5 h-5 mr-2"/> Imprimir
-                                    </button>
-                                </>
-                            )}
-                        </div>
+                        <button 
+                            onClick={handleExportCSV} 
+                            disabled={isExporting}
+                            className={`inline-flex items-center px-6 py-3 text-sm font-bold text-white bg-green-600 rounded-xl hover:bg-green-700 shadow-lg transition-all disabled:opacity-50 ${isExporting ? 'animate-pulse' : ''}`}
+                        >
+                            <IconFileSpreadsheet className={`w-5 h-5 mr-2 ${isExporting ? 'animate-spin' : ''}`}/> 
+                            {isExporting ? 'Exportando...' : 'Exportar CSV'}
+                        </button>
+                        
+                        <a 
+                            href={`https://wa.me/${driverIdProp ? '' : selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} 
+                            target="_blank" 
+                            rel="noreferrer" 
+                            className="inline-flex items-center px-6 py-3 text-sm font-bold text-white bg-[#25D366] rounded-xl hover:bg-[#128C7E] shadow-lg transition-all"
+                        >
+                            <IconWhatsapp className="w-5 h-5 mr-2"/> {driverIdProp ? 'Compartir por WhatsApp' : 'Compartir Resumen'}
+                        </a>
+
+                        {!driverIdProp && (
+                            <>
+                                <a href={`mailto:${selectedDriver.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">
+                                    <IconMail className="w-5 h-5 mr-2"/> Enviar Correo
+                                </a>
+                                <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)] shadow-sm">
+                                    <IconPrinter className="w-5 h-5 mr-2"/> Imprimir
+                                </button>
+                            </>
+                        )}
+                    </div>
                     </div>
                 </div>
             )}
