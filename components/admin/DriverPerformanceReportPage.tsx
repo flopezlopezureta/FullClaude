@@ -748,15 +748,20 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                                 <IconFileSpreadsheet className={`w-5 h-5 mr-2 ${isExporting ? 'animate-spin' : ''}`}/> 
                                 {isExporting ? 'Exportando...' : 'Exportar CSV'}
                             </button>
-                            <a href={`https://wa.me/${selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#25D366] rounded-md hover:bg-[#128C7E] shadow-sm">
-                                <IconWhatsapp className="w-5 h-5 mr-2"/> Enviar Resumen WhatsApp
-                            </a>
-                            <a href={`mailto:${selectedDriver.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">
-                                <IconMail className="w-5 h-5 mr-2"/> Enviar Correo
-                            </a>
-                            <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)] shadow-sm">
-                                <IconPrinter className="w-5 h-5 mr-2"/> Imprimir
-                            </button>
+                            
+                            {!driverIdProp && (
+                                <>
+                                    <a href={`https://wa.me/${selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noreferrer" className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-[#25D366] rounded-md hover:bg-[#128C7E] shadow-sm">
+                                        <IconWhatsapp className="w-5 h-5 mr-2"/> Enviar Resumen WhatsApp
+                                    </a>
+                                    <a href={`mailto:${selectedDriver.email}?subject=${encodeURIComponent(emailSubject)}&body=${encodeURIComponent(emailBody)}`} className="inline-flex items-center px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 shadow-sm">
+                                        <IconMail className="w-5 h-5 mr-2"/> Enviar Correo
+                                    </a>
+                                    <button onClick={() => window.print()} className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-secondary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md hover:bg-[var(--background-hover)] shadow-sm">
+                                        <IconPrinter className="w-5 h-5 mr-2"/> Imprimir
+                                    </button>
+                                </>
+                            )}
                         </div>
                     </div>
                 </div>
