@@ -243,12 +243,17 @@ const DeliveryHistoryPage: React.FC = () => {
     }
   }, [auth?.user?.id]);
 
-  const fetchData = async (silent = false) => {
+  const fetchData = async (silent = false, currentStart = startDate, currentEnd = endDate) => {
     if (!auth?.user) return;
     if (!silent) setIsLoading(true);
     try {
-      // Fetch packages and users separately to prevent one failure from blocking the other
-      const packagesPromise = api.getPackages({ driverFilter: auth.user.id, limit: 0 });
+      // Pasamos explícitamente startDate y endDate para que el backend aplique el filtro y nos ahorre memoria
+      const packagesPromise = api.getPackages({ 
+          driverFilter: auth.user.id, 
+          limit: 0,
+          startDate: currentStart,
+          endDate: currentEnd
+      });
       const usersPromise = api.getUsers().catch(err => {
         console.warn("[Auth] Could not fetch users list, using cache if available.", err);
         const cachedUsers = localStorage.getItem(`driver_users`);
@@ -278,8 +283,8 @@ const DeliveryHistoryPage: React.FC = () => {
   };
 
   useEffect(() => {
-    fetchData(true); // Initial background fetch
-  }, [auth?.user]);
+    fetchData(true, startDate, endDate);
+  }, [auth?.user, startDate, endDate]);
 
   const { deliveredInRange, pickedUpInRange, returnedInRange, uniquePickupClientsCount } = useMemo(() => {
     const start = new Date(startDate.replace(/-/g, '/'));
