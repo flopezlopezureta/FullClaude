@@ -85,11 +85,6 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
     const targetDriverId = driverIdProp || selectedDriverId;
 
     const fetchData = async () => {
-        if (!targetDriverId && !driverIdProp) {
-            setIsLoading(false);
-            return;
-        }
-
         setIsLoading(true);
         try {
             // 1. Fetch users only if in admin mode (no fixed driverIdProp)
@@ -101,22 +96,28 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                 setUsers([auth.user]);
             }
 
-            // 2. Fetch all performance data
-            const [packagesResponse, allEvents, runs] = await Promise.all([
-                api.getPackages({ 
-                    limit: 0, 
-                    driverFilter: targetDriverId,
-                    startDate,
-                    endDate,
-                    statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
-                }),
-                api.getAssignmentHistory(),
-                api.getPickupRuns({ startDate, endDate })
-            ]);
-            
-            setPackages(packagesResponse.packages);
-            setAssignmentEvents(allEvents || []);
-            setPickupRuns(runs || []);
+            // 2. Fetch all performance data ONLY if we have a selected driver
+            if (targetDriverId) {
+                const [packagesResponse, allEvents, runs] = await Promise.all([
+                    api.getPackages({ 
+                        limit: 0, 
+                        driverFilter: targetDriverId,
+                        startDate,
+                        endDate,
+                        statusFilter: [PackageStatus.Delivered, PackageStatus.Problem, PackageStatus.Returned].join(',')
+                    }),
+                    api.getAssignmentHistory(),
+                    api.getPickupRuns({ startDate, endDate })
+                ]);
+                
+                setPackages(packagesResponse.packages);
+                setAssignmentEvents(allEvents || []);
+                setPickupRuns(runs || []);
+            } else {
+                setPackages([]);
+                setAssignmentEvents([]);
+                setPickupRuns([]);
+            }
         } catch (error) {
             console.error("Failed to fetch report data", error);
         } finally {
@@ -767,14 +768,25 @@ export const DriverPerformanceReportPage: React.FC<DriverPerformanceReportPagePr
                             {isExporting ? 'Exportando...' : 'Exportar CSV'}
                         </button>
                         
-                        <a 
-                            href={`https://wa.me/${driverIdProp ? '' : selectedDriver.phone?.replace(/\D/g, '')}?text=${encodeURIComponent(whatsappMessage)}`} 
-                            target="_blank" 
-                            rel="noreferrer" 
-                            className="inline-flex items-center px-6 py-3 text-sm font-bold text-white bg-[#25D366] rounded-xl hover:bg-[#128C7E] shadow-lg transition-all"
+                        <button 
+                            onClick={() => {
+                                const phone = driverIdProp ? '' : selectedDriver?.phone?.replace(/\D/g, '') || '';
+                                const url = `https://api.whatsapp.com/send?${phone ? `phone=${phone}&` : ''}text=${encodeURIComponent(whatsappMessage)}`;
+                                
+                                // Priority 1: Use native bridge if in Go Delivery App
+                                // @ts-ignore
+                                if (window.AndroidApp && window.AndroidApp.shareText) {
+                                    // @ts-ignore
+                                    window.AndroidApp.shareText(whatsappMessage, "Resumen de Pago");
+                                } else {
+                                    // Priority 2: Use direct location change (Better for WebViews than window.open)
+                                    window.location.href = url;
+                                }
+                            }}
+                            className="inline-flex items-center px-6 py-3 text-sm font-bold text-white bg-[#25D366] rounded-xl hover:bg-[#128C7E] shadow-lg transition-all active:scale-95"
                         >
                             <IconWhatsapp className="w-5 h-5 mr-2"/> {driverIdProp ? 'Compartir por WhatsApp' : 'Compartir Resumen'}
-                        </a>
+                        </button>
 
                         {!driverIdProp && (
                             <>

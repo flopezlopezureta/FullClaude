@@ -216,8 +216,16 @@ const DriverDashboard: React.FC = () => {
           if (creator) {
               const message = `Hola ${creator.name}, te informamos que tu paquete con ID ${updatedPackage.id} para ${updatedPackage.recipientName} ha sido entregado exitosamente.`;
               if (auth.systemSettings.messagingPlan === MessagingPlan.WhatsApp && creator.phone) {
-                  const whatsappUrl = `https://wa.me/${(creator.phone || '').replace(/\D/g, '')}?text=${encodeURIComponent(message)}`;
-                  window.open(whatsappUrl, '_blank');
+                  const phone = (creator.phone || '').replace(/\D/g, '');
+                  const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+                  
+                  // @ts-ignore
+                  if (window.AndroidApp && window.AndroidApp.shareText) {
+                      // @ts-ignore
+                      window.AndroidApp.shareText(message, "Notificación de Entrega");
+                  } else {
+                      window.location.href = url;
+                  }
               /* 
               } else if (auth.systemSettings.messagingPlan === MessagingPlan.Email && creator.email) {
                   const subject = `Paquete Entregado: ${updatedPackage.id}`;
