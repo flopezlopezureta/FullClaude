@@ -30,7 +30,7 @@ const NotificationService = {
             const pkg = pkgRows[0];
 
             // 3. Get integration settings (WhatsApp & SMTP)
-            const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from FROM integration_settings WHERE id = 1');
+            const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
             const integration = integrationRows.length > 0 ? integrationRows[0] : null;
 
             // 4. Prepare tracking URL
