@@ -112,6 +112,7 @@ const NotificationService = {
             const footerStyle = "padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;";
 
             switch (status) {
+                case 'ASIGNADO':
                 case 'EN_TRANSITO':
                     subject = `🚚 Tu pedido está en camino - ${settings.companyName}`;
                     html = `
