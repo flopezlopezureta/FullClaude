@@ -123,7 +123,7 @@ const NotificationService = {
                             </div>
                             <div style="${bodyStyle}">
                                 <p>Hola <strong>${pkg.recipientName}</strong>,</p>
-                                <p>Te informamos que tu pedido realizado en <strong>${settings.companyName}</strong> ya salió de nuestras bodegas y se encuentra en manos de uno de nuestros repartidores.</p>
+                                <p>Te informamos que tu pedido enviado por <strong>${settings.companyName}</strong> ya salió de nuestras bodegas y se encuentra en manos de uno de nuestros repartidores.</p>
                                 <p><strong>Dirección de entrega:</strong><br/>${pkg.recipientAddress}</p>
                                 <div style="text-align: center;">
                                     <a href="${trackingUrl}" style="${buttonStyle}">Seguir mi Envío</a>
