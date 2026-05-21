@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
-import TrackingMap from '../components/TrackingMap';
+import React, { useState, useEffect, useRef } from 'react';
+
+declare const L: any;
 
 interface TrackingHistory {
   status: string;
@@ -25,254 +26,275 @@ interface Package {
   driverLastUpdate?: string | null;
 }
 
+const STATUS_LABELS: Record<string, { label: string; color: string; bg: string; icon: string }> = {
+  PENDIENTE:   { label: 'Pendiente',     color: '#b45309', bg: '#fef3c7', icon: '⏳' },
+  RETIRADO:    { label: 'En Bodega',     color: '#1d4ed8', bg: '#dbeafe', icon: '📦' },
+  ASIGNADO:    { label: 'En Camino',     color: '#6d28d9', bg: '#ede9fe', icon: '🚚' },
+  EN_TRANSITO: { label: 'En Tránsito',   color: '#6d28d9', bg: '#ede9fe', icon: '🚚' },
+  ENTREGADO:   { label: 'Entregado',     color: '#065f46', bg: '#d1fae5', icon: '✅' },
+  DEVUELTO:    { label: 'Devuelto',      color: '#374151', bg: '#f3f4f6', icon: '↩️' },
+  PROBLEMA:    { label: 'Con Problema',  color: '#991b1b', bg: '#fee2e2', icon: '⚠️' },
+};
+
+// ── Map component (inline to avoid re-mount issues) ──────────────────────────
+const LiveMap: React.FC<{
+  destLat: number | null;
+  destLng: number | null;
+  driverLat?: number | null;
+  driverLng?: number | null;
+  status: string;
+}> = ({ destLat, destLng, driverLat, driverLng, status }) => {
+  const mapRef = useRef<any>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+  const groupRef = useRef<any>(null);
+
+  useEffect(() => {
+    if (containerRef.current && !mapRef.current) {
+      mapRef.current = L.map(containerRef.current, { zoomControl: true, attributionControl: false })
+        .setView([-33.4489, -70.6693], 12);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapRef.current);
+      groupRef.current = L.layerGroup().addTo(mapRef.current);
+    }
+    return () => {
+      if (mapRef.current) { mapRef.current.remove(); mapRef.current = null; }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!mapRef.current || !groupRef.current) return;
+    groupRef.current.clearLayers();
+    const bounds: [number, number][] = [];
+
+    if (destLat && destLng && destLat !== 0.000001) {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="width:16px;height:16px;background:#ef4444;border-radius:50%;border:3px solid white;box-shadow:0 2px 6px rgba(0,0,0,.35);"></div>`,
+        iconSize: [16, 16], iconAnchor: [8, 8],
+      });
+      L.marker([destLat, destLng], { icon }).addTo(groupRef.current).bindPopup('📍 Punto de entrega');
+      bounds.push([destLat, destLng]);
+    }
+
+    const active = status === 'EN_TRANSITO' || status === 'ASIGNADO';
+    if (active && driverLat && driverLng) {
+      const icon = L.divIcon({
+        className: '',
+        html: `<div style="position:relative;width:22px;height:22px;">
+          <div style="position:absolute;inset:0;background:#3b82f6;border-radius:50%;opacity:.35;animation:ripple 1.5s infinite;"></div>
+          <div style="position:absolute;inset:3px;background:#3b82f6;border-radius:50%;border:2px solid white;box-shadow:0 2px 8px rgba(59,130,246,.7);"></div>
+          <style>@keyframes ripple{0%{transform:scale(1);opacity:.35}100%{transform:scale(2.4);opacity:0}}</style>
+        </div>`,
+        iconSize: [22, 22], iconAnchor: [11, 11],
+      });
+      L.marker([driverLat, driverLng], { icon }).addTo(groupRef.current).bindPopup('🚚 Repartidor en tiempo real');
+      bounds.push([driverLat, driverLng]);
+    }
+
+    if (bounds.length === 1) mapRef.current.setView(bounds[0], 15);
+    else if (bounds.length > 1) mapRef.current.fitBounds(bounds, { padding: [60, 60] });
+  }, [destLat, destLng, driverLat, driverLng, status]);
+
+  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
+};
+
+// ── Main TrackingPage ─────────────────────────────────────────────────────────
 const TrackingPage: React.FC = () => {
-  const [trackingId, setTrackingId] = useState('');
+  const [inputId, setInputId] = useState('');
   const [pkg, setPkg] = useState<Package | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isDirectLink, setIsDirectLink] = useState(false);
+  const [lastUpdate, setLastUpdate] = useState<Date | null>(null);
 
-  // Auto-track if ID is in URL
-  useEffect(() => {
-    const path = window.location.pathname;
-    const match = path.match(/\/(?:track|tracking)\/(.+)/);
-    if (match && match[1]) {
-      const id = match[1];
-      setTrackingId(id);
-      setIsDirectLink(true);
-      handleTrack(id);
-    }
-  }, []);
-
-  // Polling for driver location if assigned or in transit
-  useEffect(() => {
-    let interval: any;
-    if (pkg && (pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO')) {
-      interval = setInterval(() => {
-        handleTrack(pkg.id);
-      }, 30000); // Poll every 30 seconds
-    }
-    return () => clearInterval(interval);
-  }, [pkg?.status, pkg?.id]);
-
-  const handleTrack = async (id: string = trackingId) => {
+  const fetchPackage = async (id: string) => {
     if (!id) return;
     setLoading(true);
     setError('');
-    setPkg(null);
-
     try {
-      const response = await fetch(`/api/packages/public/track/${id}`);
-      if (response.status === 403) {
-        const data = await response.json();
-        throw new Error(data.message || 'El seguimiento público está desactivado.');
-      }
-      if (!response.ok) {
-        throw new Error('No se encontró información para este código de seguimiento.');
-      }
-      const data = await response.json();
-      setPkg(data);
-    } catch (err: any) {
-      setError(err.message);
+      const res = await fetch(`/api/packages/public/track/${id}`);
+      if (res.status === 403) { const d = await res.json(); throw new Error(d.message); }
+      if (!res.ok) throw new Error('No se encontró el código de seguimiento.');
+      setPkg(await res.json());
+      setLastUpdate(new Date());
+    } catch (e: any) {
+      setError(e.message);
     } finally {
       setLoading(false);
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'PENDIENTE': return 'bg-yellow-100 text-yellow-800';
-      case 'RETIRADO': return 'bg-blue-100 text-blue-800';
-      case 'EN_TRANSITO': return 'bg-indigo-100 text-indigo-800';
-      case 'ENTREGADO': return 'bg-green-100 text-green-800';
-      case 'PROBLEMA': return 'bg-red-100 text-red-800';
-      case 'DEVUELTO': return 'bg-gray-100 text-gray-800';
-      default: return 'bg-gray-100 text-gray-800';
+  // Auto-load if tracking ID is in URL
+  useEffect(() => {
+    const match = window.location.pathname.match(/\/(?:track|tracking)\/(.+)/);
+    if (match?.[1]) {
+      setIsDirectLink(true);
+      setInputId(match[1]);
+      fetchPackage(match[1]);
     }
-  };
+  }, []);
 
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center py-12 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-md w-full space-y-8">
-        <div>
-          <h2 className="mt-6 text-center text-3xl font-extrabold text-gray-900">
-            Seguimiento de Pedido
-          </h2>
-          {!isDirectLink && (
-            <p className="mt-2 text-center text-sm text-gray-600">
-              Ingresa tu código de seguimiento para ver el estado de tu paquete.
-            </p>
+  // Poll every 30 s when driver is active
+  useEffect(() => {
+    if (!pkg || (pkg.status !== 'EN_TRANSITO' && pkg.status !== 'ASIGNADO')) return;
+    const t = setInterval(() => fetchPackage(pkg.id), 30000);
+    return () => clearInterval(t);
+  }, [pkg?.status, pkg?.id]);
+
+  const st = pkg ? (STATUS_LABELS[pkg.status] ?? { label: pkg.status, color: '#374151', bg: '#f3f4f6', icon: '📦' }) : null;
+  const hasCoords = pkg && (pkg.destLatitude || pkg.driverLatitude);
+  const isActive = pkg && (pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO');
+
+  // ── SEARCH SCREEN (no direct link) ────────────────────────────────────────
+  if (!isDirectLink && !pkg) {
+    return (
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg,#1e1b4b 0%,#312e81 50%,#4338ca 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: "'Segoe UI', system-ui, sans-serif" }}>
+        <div style={{ background: 'white', borderRadius: '24px', padding: '48px 40px', maxWidth: '420px', width: '100%', boxShadow: '0 25px 60px rgba(0,0,0,.35)', textAlign: 'center' }}>
+          <div style={{ fontSize: '52px', marginBottom: '16px' }}>📦</div>
+          <h1 style={{ margin: '0 0 8px', fontSize: '26px', fontWeight: 800, color: '#1e1b4b' }}>Seguimiento en Tiempo Real</h1>
+          <p style={{ margin: '0 0 32px', color: '#6b7280', fontSize: '15px' }}>Ingresa tu código para ver la ubicación de tu pedido.</p>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+            <input
+              value={inputId}
+              onChange={e => setInputId(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && fetchPackage(inputId)}
+              placeholder="Ej: ABC-12345"
+              style={{ padding: '14px 16px', borderRadius: '12px', border: '2px solid #e5e7eb', fontSize: '16px', outline: 'none', textAlign: 'center', letterSpacing: '1px', transition: 'border .2s' }}
+              onFocus={e => (e.target.style.borderColor = '#4338ca')}
+              onBlur={e => (e.target.style.borderColor = '#e5e7eb')}
+            />
+            <button
+              onClick={() => fetchPackage(inputId)}
+              disabled={loading || !inputId.trim()}
+              style={{ padding: '14px', borderRadius: '12px', background: loading ? '#a5b4fc' : '#4338ca', color: 'white', border: 'none', fontSize: '16px', fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', transition: 'background .2s' }}
+            >
+              {loading ? 'Buscando…' : '🔍 Consultar'}
+            </button>
+          </div>
+
+          {error && (
+            <div style={{ marginTop: '20px', padding: '12px 16px', background: '#fee2e2', borderRadius: '10px', color: '#991b1b', fontSize: '14px' }}>
+              {error}
+            </div>
           )}
         </div>
-        
-        {!isDirectLink && (
-          <div className="mt-8 space-y-6">
-            <div className="rounded-md shadow-sm -space-y-px">
-              <div>
-                <input
-                  type="text"
-                  required
-                  className="appearance-none rounded-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-t-md rounded-b-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm"
-                  placeholder="Código de seguimiento (ej: ML-12345)"
-                  value={trackingId}
-                  onChange={(e) => setTrackingId(e.target.value)}
-                  onKeyPress={(e) => e.key === 'Enter' && handleTrack()}
-                />
-              </div>
-            </div>
+      </div>
+    );
+  }
 
-            <div>
-              <button
-                onClick={() => handleTrack()}
-                disabled={loading}
-                className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
-              >
-                {loading ? 'Buscando...' : 'Consultar'}
-              </button>
-            </div>
+  // ── LOADING ───────────────────────────────────────────────────────────────
+  if (loading && !pkg) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '20px', fontFamily: 'system-ui' }}>
+        <div style={{ width: '48px', height: '48px', border: '4px solid #4338ca', borderTopColor: 'transparent', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+        <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+        <p style={{ color: '#94a3b8', fontSize: '15px' }}>Buscando tu pedido…</p>
+      </div>
+    );
+  }
+
+  // ── ERROR (direct link) ───────────────────────────────────────────────────
+  if (error && !pkg) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px', fontFamily: 'system-ui' }}>
+        <div style={{ background: '#1e293b', borderRadius: '20px', padding: '40px', maxWidth: '380px', textAlign: 'center', color: 'white' }}>
+          <div style={{ fontSize: '48px', marginBottom: '16px' }}>❌</div>
+          <h2 style={{ margin: '0 0 8px', fontSize: '20px' }}>No encontrado</h2>
+          <p style={{ color: '#94a3b8', margin: '0 0 24px', fontSize: '14px' }}>{error}</p>
+          <button onClick={() => { setIsDirectLink(false); setError(''); }} style={{ padding: '12px 24px', background: '#4338ca', color: 'white', border: 'none', borderRadius: '10px', fontWeight: 700, cursor: 'pointer' }}>Intentar de nuevo</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── FULL TRACKING VIEW ────────────────────────────────────────────────────
+  return (
+    <div style={{ minHeight: '100vh', background: '#0f172a', fontFamily: "'Segoe UI', system-ui, sans-serif", display: 'flex', flexDirection: 'column' }}>
+
+      {/* Top bar */}
+      <div style={{ background: '#1e293b', padding: '16px 20px', display: 'flex', alignItems: 'center', gap: '12px', borderBottom: '1px solid #334155' }}>
+        <span style={{ fontSize: '24px' }}>📦</span>
+        <div style={{ flex: 1 }}>
+          <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '1px' }}>Seguimiento en Tiempo Real</div>
+          {pkg && <div style={{ color: 'white', fontSize: '13px', fontWeight: 600, marginTop: '2px', letterSpacing: '.5px' }}>{pkg.id}</div>}
+        </div>
+        {isActive && (
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#064e3b', borderRadius: '20px', padding: '6px 12px' }}>
+            <div style={{ width: '8px', height: '8px', background: '#34d399', borderRadius: '50%', animation: 'pulse 2s infinite' }} />
+            <span style={{ color: '#34d399', fontSize: '11px', fontWeight: 700 }}>EN VIVO</span>
           </div>
         )}
+      </div>
 
-        {error && (
-          <div className="bg-red-50 border-l-4 border-red-400 p-4 mt-4">
-            <div className="flex">
-              <div className="ml-3">
-                <p className="text-sm text-red-700">{error}</p>
-              </div>
-            </div>
+      {/* Status card */}
+      {pkg && st && (
+        <div style={{ margin: '16px 16px 0', background: '#1e293b', borderRadius: '16px', padding: '16px 20px', border: `1px solid ${st.color}40`, display: 'flex', alignItems: 'center', gap: '14px' }}>
+          <div style={{ fontSize: '32px' }}>{st.icon}</div>
+          <div style={{ flex: 1 }}>
+            <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '.8px' }}>Estado del pedido</div>
+            <div style={{ color: 'white', fontSize: '18px', fontWeight: 800, marginTop: '2px' }}>{st.label}</div>
+            <div style={{ color: '#64748b', fontSize: '12px', marginTop: '2px' }}>{pkg.recipientName} · {pkg.recipientCommune}, {pkg.recipientCity}</div>
           </div>
-        )}
-
-        {pkg && (
-          <div className="space-y-6 mt-8">
-            {/* Informative Note */}
-            <div className="bg-blue-50 border-l-4 border-blue-400 p-4 rounded-md shadow-sm">
-              <div className="flex">
-                <div className="flex-shrink-0">
-                  <svg className="h-5 w-5 text-blue-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
-                  </svg>
-                </div>
-                <div className="ml-3">
-                  <p className="text-sm text-blue-800 leading-relaxed">
-                    Recuerde que el conductor tiene varios envíos por entregar en su ruta y el tiempo de entrega de su paquete puede variar por factores como el tránsito y orden de entrega. Si usted recibe este link, su paquete ya está en camino y pronto llegará, esté atento.
-                  </p>
-                </div>
-              </div>
+          {lastUpdate && (
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ color: '#64748b', fontSize: '10px' }}>Actualizado</div>
+              <div style={{ color: '#94a3b8', fontSize: '11px', fontWeight: 600 }}>{lastUpdate.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit' })}</div>
             </div>
-
-            {/* Map Section - Only show if assigned or in transit and we have coordinates */}
-            {pkg.status !== 'PENDIENTE' && (pkg.destLatitude || pkg.driverLatitude) ? (
-              <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-                <div className="px-4 py-5 sm:px-6">
-                  <h3 className="text-lg leading-6 font-medium text-gray-900 flex items-center gap-2">
-                    <span className={`flex h-2 w-2 rounded-full ${(pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO') ? 'bg-green-500 animate-pulse' : 'bg-indigo-500'}`}></span>
-                    Ubicación en Tiempo Real
-                  </h3>
-                  {(pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO') && pkg.driverLastUpdate && (
-                    <p className="mt-1 text-xs text-gray-500">
-                      Última actualización: {new Date(pkg.driverLastUpdate).toLocaleTimeString('es-CL')}
-                    </p>
-                  )}
-                </div>
-                <div className="p-4">
-                  <TrackingMap 
-                    destLat={pkg.destLatitude || null} 
-                    destLng={pkg.destLongitude || null} 
-                    driverLat={pkg.driverLatitude} 
-                    driverLng={pkg.driverLongitude} 
-                    status={pkg.status} 
-                  />
-                </div>
-              </div>
-            ) : (pkg.status === 'EN_TRANSITO' || pkg.status === 'ASIGNADO') && (
-              <div className="bg-white shadow sm:rounded-lg p-6 text-center">
-                <p className="text-gray-500 italic">La ubicación en tiempo real no está disponible en este momento.</p>
-              </div>
-            )}
-
-            <div className="bg-white shadow overflow-hidden sm:rounded-lg">
-            <div className="px-4 py-5 sm:px-6 flex justify-between items-center">
-              <div>
-                <h3 className="text-lg leading-6 font-medium text-gray-900">
-                  Detalles del Paquete
-                </h3>
-                <p className="mt-1 max-w-2xl text-sm text-gray-500">
-                  ID: {pkg.id}
-                </p>
-              </div>
-              <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStatusColor(pkg.status)}`}>
-                {pkg.status}
-              </span>
-            </div>
-            <div className="border-t border-gray-200 px-4 py-5 sm:p-0">
-              <dl className="sm:divide-y sm:divide-gray-200">
-                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Destinatario</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">{pkg.recipientName}</dd>
-                </div>
-                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Dirección</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {pkg.recipientAddress}, {pkg.recipientCommune}, {pkg.recipientCity}
-                  </dd>
-                </div>
-                <div className="py-4 sm:py-5 sm:grid sm:grid-cols-3 sm:gap-4 sm:px-6">
-                  <dt className="text-sm font-medium text-gray-500">Entrega Estimada</dt>
-                  <dd className="mt-1 text-sm text-gray-900 sm:mt-0 sm:col-span-2">
-                    {new Date(pkg.estimatedDelivery).toLocaleDateString('es-CL')}
-                  </dd>
-                </div>
-              </dl>
-            </div>
-
-            <div className="px-4 py-5 sm:px-6 border-t border-gray-200">
-              <h4 className="text-md font-medium text-gray-900 mb-4">Historial de Seguimiento</h4>
-              <div className="flow-root">
-                <ul className="-mb-8">
-                  {pkg.history.map((event, idx) => (
-                    <li key={idx}>
-                      <div className="relative pb-8">
-                        {idx !== pkg.history.length - 1 && (
-                          <span className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true"></span>
-                        )}
-                        <div className="relative flex space-x-3">
-                          <div>
-                            <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${idx === 0 ? 'bg-indigo-500' : 'bg-gray-400'}`}>
-                              <div className="h-2.5 w-2.5 rounded-full bg-white"></div>
-                            </span>
-                          </div>
-                          <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                            <div>
-                              <p className="text-sm text-gray-500">
-                                <span className="font-medium text-gray-900">{event.status}</span> - {event.details}
-                              </p>
-                              <p className="text-xs text-gray-400">{event.location}</p>
-                            </div>
-                            <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                              <time dateTime={event.timestamp}>
-                                {new Date(event.timestamp).toLocaleString('es-CL', { 
-                                  day: '2-digit', 
-                                  month: '2-digit', 
-                                  hour: '2-digit', 
-                                  minute: '2-digit' 
-                                })}
-                              </time>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </div>
-            </div>
-          </div>
+          )}
         </div>
       )}
+
+      {/* Map */}
+      <div style={{ flex: 1, margin: '12px 16px 16px', borderRadius: '16px', overflow: 'hidden', minHeight: '420px', boxShadow: '0 8px 32px rgba(0,0,0,.4)' }}>
+        {pkg && hasCoords ? (
+          <LiveMap
+            destLat={pkg.destLatitude ?? null}
+            destLng={pkg.destLongitude ?? null}
+            driverLat={pkg.driverLatitude}
+            driverLng={pkg.driverLongitude}
+            status={pkg.status}
+          />
+        ) : (
+          <div style={{ width: '100%', height: '100%', minHeight: '420px', background: '#1e293b', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+            <span style={{ fontSize: '48px' }}>🗺️</span>
+            <p style={{ color: '#64748b', fontSize: '14px', margin: 0 }}>Ubicación no disponible aún</p>
+          </div>
+        )}
+      </div>
+
+      {/* Legend */}
+      {pkg && (pkg.destLatitude || pkg.driverLatitude) && (
+        <div style={{ margin: '-8px 16px 16px', background: '#1e293b', borderRadius: '12px', padding: '12px 16px', display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
+          {pkg.destLatitude && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '12px', height: '12px', background: '#ef4444', borderRadius: '50%', border: '2px solid white' }} />
+              <span style={{ color: '#94a3b8', fontSize: '12px' }}>Punto de entrega</span>
+            </div>
+          )}
+          {isActive && pkg.driverLatitude && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <div style={{ width: '12px', height: '12px', background: '#3b82f6', borderRadius: '50%', border: '2px solid white' }} />
+              <span style={{ color: '#94a3b8', fontSize: '12px' }}>Repartidor en tiempo real</span>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Info note */}
+      {pkg && isActive && (
+        <div style={{ margin: '0 16px 24px', background: '#172554', border: '1px solid #1d4ed8', borderRadius: '12px', padding: '12px 16px', display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
+          <span style={{ fontSize: '16px', flexShrink: 0 }}>ℹ️</span>
+          <p style={{ color: '#93c5fd', fontSize: '12px', margin: 0, lineHeight: 1.6 }}>
+            Tu pedido está en camino. El conductor tiene varios envíos en su ruta, el mapa se actualiza automáticamente cada 30 segundos. ¡Esté atento, pronto llegará!
+          </p>
+        </div>
+      )}
+
+      <style>{`
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+      `}</style>
     </div>
-  </div>
-);
+  );
 };
 
 export default TrackingPage;
