@@ -23,7 +23,7 @@ const NotificationService = {
 
             // 2. Get package and recipient details
             const { rows: pkgRows } = await db.query(
-                `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", c.name as seller_name 
+                `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", p."deliveryPhotosBase64", c.name as seller_name 
                  FROM packages p 
                  LEFT JOIN clients c ON p."creatorId" = c.id 
                  WHERE p.id = $1`,
@@ -141,6 +141,28 @@ const NotificationService = {
                     `;
                     break;
                 case 'ENTREGADO':
+                    let photoHtml = '';
+                    if (pkg.deliveryPhotosBase64) {
+                        try {
+                            // deliveryPhotosBase64 is typically stored as a JSON string array
+                            const photos = typeof pkg.deliveryPhotosBase64 === 'string' 
+                                ? JSON.parse(pkg.deliveryPhotosBase64) 
+                                : pkg.deliveryPhotosBase64;
+                            
+                            if (Array.isArray(photos) && photos.length > 0) {
+                                const photoSrc = photos[0].startsWith('data:image') ? photos[0] : `data:image/jpeg;base64,${photos[0]}`;
+                                photoHtml = `
+                                    <div style="text-align: center; margin-top: 24px;">
+                                        <p style="font-size: 14px; font-weight: bold; color: #4b5563; margin-bottom: 12px;">Prueba de Entrega:</p>
+                                        <img src="${photoSrc}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Foto de entrega" />
+                                    </div>
+                                `;
+                            }
+                        } catch (e) {
+                            console.error('Error parsing delivery photos:', e);
+                        }
+                    }
+
                     subject = `✅ Tu pedido ha sido entregado - ${settings.companyName}`;
                     html = `
                         <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -150,9 +172,7 @@ const NotificationService = {
                             <div style="${bodyStyle}">
                                 <p>Hola <strong>${pkg.recipientName}</strong>,</p>
                                 <p>Esperamos que disfrutes tu compra. ¡Gracias por preferir a <strong>${sellerName}</strong>, entregado por <strong>${settings.companyName}</strong>!</p>
-                                <div style="text-align: center;">
-                                    <a href="${trackingUrl}" style="${buttonStyle}; background-color: #10b981;">Ver Detalle del Pedido</a>
-                                </div>
+                                ${photoHtml}
                             </div>
                             <div style="${footerStyle}">
                                 &copy; ${new Date().getFullYear()} ${settings.companyName} - Sistema de Logística.
