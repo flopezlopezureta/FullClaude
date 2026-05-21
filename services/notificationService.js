@@ -37,8 +37,8 @@ const NotificationService = {
             const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
             const integration = integrationRows.length > 0 ? integrationRows[0] : null;
 
-            // 4. Prepare tracking URL
-            const baseUrl = 'https://full2.fullenvios.cl';
+            // 4. Prepare tracking URL (Dinámico según el entorno)
+            const baseUrl = process.env.APP_URL || 'https://fullenvios.selcom.cl';
             const trackingUrl = `${baseUrl}/tracking/${pkg.trackingId || pkg.id}`;
 
             // --- 5. SEND WHATSAPP (SIMULATED/API) ---
