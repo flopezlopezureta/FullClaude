@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.12",
-  "versionComment": "Versión 2.6.12: Fix altura del mapa en vivo que se mostraba en blanco.",
+  "version": "2.6.13",
+  "versionComment": "Versión 2.6.13: Cambio de texto en el correo de 'realizado en' a 'enviado por'.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
