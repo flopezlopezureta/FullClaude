@@ -94,7 +94,7 @@ const LiveMap: React.FC<{
     else if (bounds.length > 1) mapRef.current.fitBounds(bounds, { padding: [60, 60] });
   }, [destLat, destLng, driverLat, driverLng, status]);
 
-  return <div ref={containerRef} style={{ width: '100%', height: '100%' }} />;
+  return <div ref={containerRef} style={{ width: '100%', height: '100%', minHeight: '420px' }} />;
 };
 
 // ── Main TrackingPage ─────────────────────────────────────────────────────────
