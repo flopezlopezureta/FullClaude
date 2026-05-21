@@ -868,6 +868,10 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
         await Promise.all(eventPromises);
 
         await client.query('COMMIT');
+        
+        // Notify recipients asynchronously
+        packageIds.forEach(id => NotificationService.notifyRecipient(id, targetStatus));
+        
         res.status(200).json({ message: `${packageIds.length} paquetes asignados correctamente.` });
 
     } catch (err) {
@@ -1022,6 +1026,8 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
         }
 
         await addTrackingEvent(id, statusForEvent, 'Centro de Distribución', detailsForEvent);
+        
+        NotificationService.notifyRecipient(id, targetStatus);
         
         const updatedPackage = rows[0];
         updatedPackage.history = await getHistory(id);
