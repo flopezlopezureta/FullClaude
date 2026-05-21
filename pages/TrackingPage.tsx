@@ -35,7 +35,7 @@ const TrackingPage: React.FC = () => {
   // Auto-track if ID is in URL
   useEffect(() => {
     const path = window.location.pathname;
-    const match = path.match(/\/track\/(.+)/);
+    const match = path.match(/\/(?:track|tracking)\/(.+)/);
     if (match && match[1]) {
       const id = match[1];
       setTrackingId(id);
