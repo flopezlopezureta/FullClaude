@@ -61,6 +61,12 @@ async function startServer() {
       res.json({ status: 'ok', message: 'Backend is running - V3 (Fix Egress Active)' });
     });
 
+    // Diagnostic endpoint to verify which code version is deployed
+    app.get('/api/version', (req, res) => {
+      const pkg = require('./package.json');
+      res.json({ version: pkg.version, comment: pkg.versionComment, repo: 'Fullenvios2 / CLIENTE2' });
+    });
+
     // [EMERGENCIA] Ruta directa para arreglar los egresos de hoy
     app.get('/api/fix-egress-today', async (req, res) => {
         try {

@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.8",
-  "versionComment": "Versión 2.6.8: Estabilización absoluta de reportes de conductor, fix de permisos de retiros y UI compacta.",
+  "version": "2.6.9",
+  "versionComment": "Versión 2.6.9: Envío de correos automáticos al cambiar estado a ASIGNADO con link de seguimiento.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
