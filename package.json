@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.13",
-  "versionComment": "Versión 2.6.13: Cambio de texto en el correo de 'realizado en' a 'enviado por'.",
+  "version": "2.6.14",
+  "versionComment": "Versión 2.6.14: Textos de correos dinámicos usando nombre del seller o GO DELIVERY.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

@@ -23,11 +23,15 @@ const NotificationService = {
 
             // 2. Get package and recipient details
             const { rows: pkgRows } = await db.query(
-                'SELECT "recipientName", "recipientPhone", "recipientEmail", "recipientAddress", "trackingId", "meliOrderId" FROM packages WHERE id = $1',
+                `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", c.name as seller_name 
+                 FROM packages p 
+                 LEFT JOIN clients c ON p."creatorId" = c.id 
+                 WHERE p.id = $1`,
                 [packageId]
             );
             if (pkgRows.length === 0) return;
             const pkg = pkgRows[0];
+            const sellerName = pkg.seller_name || settings.companyName;
 
             // 3. Get integration settings (WhatsApp & SMTP)
             const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
@@ -43,10 +47,10 @@ const NotificationService = {
                 switch (status) {
                     case 'ASIGNADO':
                     case 'EN_TRANSITO':
-                        waMessage = `¡Hola ${pkg.recipientName}! Tu pedido de ${settings.companyName} está en camino. Sigue el envío aquí: ${trackingUrl}`;
+                        waMessage = `¡Hola ${pkg.recipientName}! Tu compra a ${sellerName} está en camino. Sigue el envío aquí: ${trackingUrl}`;
                         break;
                     case 'ENTREGADO':
-                        waMessage = `Hola ${pkg.recipientName}, tu pedido de ${settings.companyName} ha sido entregado exitosamente. ¡Gracias!`;
+                        waMessage = `Hola ${pkg.recipientName}, esperamos que disfrutes tu compra. ¡Gracias por preferir a ${sellerName}, entregado por ${settings.companyName}!`;
                         break;
                 }
 
@@ -123,7 +127,7 @@ const NotificationService = {
                             </div>
                             <div style="${bodyStyle}">
                                 <p>Hola <strong>${pkg.recipientName}</strong>,</p>
-                                <p>Te informamos que tu pedido enviado por <strong>${settings.companyName}</strong> ya salió de nuestras bodegas y se encuentra en manos de uno de nuestros repartidores.</p>
+                                <p>Te informamos que tu compra a <strong>${sellerName}</strong> ya salió de nuestras bodegas y se encuentra en manos de uno de nuestros repartidores.</p>
                                 <p><strong>Dirección de entrega:</strong><br/>${pkg.recipientAddress}</p>
                                 <div style="text-align: center;">
                                     <a href="${trackingUrl}" style="${buttonStyle}">Seguir mi Envío</a>
@@ -145,8 +149,7 @@ const NotificationService = {
                             </div>
                             <div style="${bodyStyle}">
                                 <p>Hola <strong>${pkg.recipientName}</strong>,</p>
-                                <p>Confirmamos que tu pedido ha sido entregado exitosamente en la dirección registrada.</p>
-                                <p>Esperamos que disfrutes tu compra. ¡Gracias por preferir a <strong>${settings.companyName}</strong>!</p>
+                                <p>Esperamos que disfrutes tu compra. ¡Gracias por preferir a <strong>${sellerName}</strong>, entregado por <strong>${settings.companyName}</strong>!</p>
                                 <div style="text-align: center;">
                                     <a href="${trackingUrl}" style="${buttonStyle}; background-color: #10b981;">Ver Detalle del Pedido</a>
                                 </div>
