@@ -48,6 +48,12 @@ async function startServer() {
       res.json({ status: 'ok', message: 'Backend is running' });
     });
 
+    // Diagnostic endpoint to verify which code version is deployed
+    app.get('/api/version', (req, res) => {
+      const pkg = require('./package.json');
+      res.json({ version: pkg.version, comment: pkg.versionComment, repo: 'Fullenvios2 / CLIENTE2' });
+    });
+
     // Critical routes: use direct require so startup fails visibly if there are errors
     // --- Core Routes (Mandatory) ---
     app.use('/api/auth', require('./routes/auth.js'));
