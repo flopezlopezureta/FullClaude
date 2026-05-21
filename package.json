@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.10",
-  "versionComment": "Versión 2.6.10: Fix para que el link de tracking desde el correo auto-cargue el mapa en lugar de pedir el código de nuevo.",
+  "version": "2.6.11",
+  "versionComment": "Versión 2.6.11: Nueva página de seguimiento en tiempo real con mapa fullscreen y diseño moderno.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
