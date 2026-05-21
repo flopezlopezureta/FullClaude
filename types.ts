@@ -46,6 +46,7 @@ export interface SystemSettings {
     allowRedelivery?: boolean;
     timezone?: string;
     appEnv?: string;
+    recipientNotificationsEnabled?: boolean;
 }
 
 export interface ZonePricing {
