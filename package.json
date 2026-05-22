@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.16",
-  "versionComment": "Versión 2.6.16: Fix crítico para URL de tracking dinámica en Producción (evita usar URL de pruebas en correos).",
+  "version": "2.6.21",
+  "versionComment": "Versión 2.6.21: Fix crítico - Habilitar Service Worker passthrough sin caché para corregir la notificación molesta de copiar URL en la APK del conductor.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

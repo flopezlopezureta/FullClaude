@@ -25,7 +25,7 @@ const NotificationService = {
             const { rows: pkgRows } = await db.query(
                 `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", p."deliveryPhotosBase64", c.name as seller_name 
                  FROM packages p 
-                 LEFT JOIN clients c ON p."creatorId" = c.id 
+                 LEFT JOIN users c ON p."creatorId" = c.id 
                  WHERE p.id = $1`,
                 [packageId]
             );
@@ -65,7 +65,7 @@ const NotificationService = {
 
             // --- 6. SEND EMAIL (IF SMTP CONFIGURED) ---
             if (pkg.recipientEmail && integration && integration.smtp_host) {
-                await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl);
+                await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName);
             }
 
         } catch (err) {
@@ -76,7 +76,7 @@ const NotificationService = {
     /**
      * Helper to send email using Nodemailer
      */
-    async sendEmailNotification(pkg, status, settings, integration, trackingUrl) {
+    async sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName) {
         try {
             const transporterConfig = {
                 host: integration.smtp_host,
