@@ -65,7 +65,7 @@ const NotificationService = {
 
             // --- 6. SEND EMAIL (IF SMTP CONFIGURED) ---
             if (pkg.recipientEmail && integration && integration.smtp_host) {
-                await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl);
+                await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName);
             }
 
         } catch (err) {
@@ -76,7 +76,7 @@ const NotificationService = {
     /**
      * Helper to send email using Nodemailer
      */
-    async sendEmailNotification(pkg, status, settings, integration, trackingUrl) {
+    async sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName) {
         try {
             const transporterConfig = {
                 host: integration.smtp_host,
