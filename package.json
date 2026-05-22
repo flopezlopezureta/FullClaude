@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.18",
-  "versionComment": "Versión 2.6.18: Fix crítico - sellerName no se pasaba a sendEmailNotification causando que no llegaran correos.",
+  "version": "2.6.19",
+  "versionComment": "Versión 2.6.19: Fix crítico - JOIN usaba tabla 'clients' inexistente en vez de 'users', causando que no llegaran correos.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

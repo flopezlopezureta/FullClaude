@@ -25,7 +25,7 @@ const NotificationService = {
             const { rows: pkgRows } = await db.query(
                 `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", p."deliveryPhotosBase64", c.name as seller_name 
                  FROM packages p 
-                 LEFT JOIN clients c ON p."creatorId" = c.id 
+                 LEFT JOIN users c ON p."creatorId" = c.id 
                  WHERE p.id = $1`,
                 [packageId]
             );
