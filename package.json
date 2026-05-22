@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.19",
-  "versionComment": "Versión 2.6.19: Fix crítico - JOIN usaba tabla 'clients' inexistente en vez de 'users', causando que no llegaran correos.",
+  "version": "2.6.20",
+  "versionComment": "Versión 2.6.20: Fix crítico - Auto-destrucción de Service Worker para eliminar caché persistente y cargar la nueva UI de tracking.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
