@@ -58,6 +58,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     saveFlexLabelPhoto: false,
     meliAutoImport: false,
     shopifyAutoImport: false,
+    woocommerceAutoImport: false,
     publicTrackingEnabled: true,
     isRutRequired: true,
     labelFormat: LabelFormat.CompactThermal,

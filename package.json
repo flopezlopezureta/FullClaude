@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.22",
-  "versionComment": "Versión 2.6.22: Mejoras de seguridad - Validación de variables de entorno al startup, soporte opcional de DB_SSL y limpieza masiva de archivos pesados de Git.",
+  "version": "2.6.23",
+  "versionComment": "Versión 2.6.23: WooCommerce - Implementación de servicio en segundo plano para importación automática de pedidos pagados (procesando).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
