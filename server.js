@@ -3,6 +3,24 @@
 
 require('dotenv').config();
 process.env.TZ = 'America/Santiago';
+
+// --- Environment Variable Startup Validation ---
+const REQUIRED_DB_ENV = ['DB_HOST', 'DB_USER', 'DB_PASSWORD', 'DB_NAME'];
+const missingDbEnv = REQUIRED_DB_ENV.filter(key => !process.env[key]);
+if (missingDbEnv.length > 0) {
+  console.error(`\n❌ [CRITICAL STARTUP ERROR] Missing essential database environment variables: ${missingDbEnv.join(', ')}`);
+  console.error('Verify that your .env file or hosting provider (Coolify/Render) has these variables correctly configured.');
+  if (process.env.NODE_ENV === 'production') {
+    console.error('Forced shutdown: Database environment variables are required in production.\n');
+    process.exit(1);
+  }
+}
+
+if (!process.env.JWT_SECRET) {
+  console.warn('\n⚠️ [WARNING] JWT_SECRET environment variable is missing.');
+  console.warn('Using an emergency fallback secret. PLEASE set a unique JWT_SECRET in production settings!\n');
+  process.env.JWT_SECRET = 'emergency_fallback_secure_secret_key_2026_please_change_in_production';
+}
 const express = require('express');
 const cors = require('cors');
 const path = require('path');

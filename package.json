@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.21",
-  "versionComment": "Versión 2.6.21: Fix crítico - Habilitar Service Worker passthrough sin caché para corregir la notificación molesta de copiar URL en la APK del conductor.",
+  "version": "2.6.22",
+  "versionComment": "Versión 2.6.22: Mejoras de seguridad - Validación de variables de entorno al startup, soporte opcional de DB_SSL y limpieza masiva de archivos pesados de Git.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
