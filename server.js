@@ -273,6 +273,14 @@ async function startServer() {
             console.log(`Background Service: Jumpseller Polling scheduled (${jumpsellerDelay/1000}s delay).`);
         }
 
+        const woocommercePollingService = tryRequireRoute('./services/woocommercePollingService.js');
+        if (woocommercePollingService && typeof woocommercePollingService.start === 'function') {
+            // Offset WooCommerce by 4 minutes
+            const wooDelay = (POLL_INTERVAL / 2) + (90 * 1000);
+            woocommercePollingService.start(POLL_INTERVAL, wooDelay);
+            console.log(`Background Service: WooCommerce Polling scheduled (${wooDelay/1000}s delay).`);
+        }
+
       } catch (initErr) {
         console.error('Failed to initialize database during startup:', initErr);
       }
@@ -700,6 +708,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (timezone):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "woocommerceAutoImport" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "woocommerceAutoImport" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (woocommerceAutoImport):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -730,8 +744,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago')
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago')
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`
