@@ -29,7 +29,7 @@ function getPool() {
             max: 20, 
             idleTimeoutMillis: 30000,
             connectionTimeoutMillis: 20000, 
-            ssl: false
+            ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
         });
         
         // --- BLINDAJE DE ZONA HORARIA ---

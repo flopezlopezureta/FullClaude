@@ -24,3 +24,40 @@ driver-app/node_modules/
 driver-app/android/
 driver-app/ios/
 driver-app/.expo/
+
+# Scratch and temp directories
+/scratch/
+/tmp/
+/Newiastudio/
+/Nueva carpeta/
+/Imagenes/
+/Videos/
+
+# Root level heavy files, archives and loose debug scripts
+/*.zip
+/*.pdf
+/*.diff
+/*.PNG
+/*.txt
+/add_time_format.js
+/audit_system.js
+/check_active.js
+/check_duplicates.js
+/check_package.js
+/check_package_v2.js
+/create_indexes.js
+/debug_db_schema.js
+/debug_driver.js
+/debug_meli.js
+/find_meli_users.js
+/find_package.js
+/find_specific_clients.js
+/find_user.js
+/generate_hash.js
+/import_users.js
+/migrate.js
+/migrate_shopify_oauth.js
+/restore.js
+/search_package.js
+/simulate_driver.js
+
