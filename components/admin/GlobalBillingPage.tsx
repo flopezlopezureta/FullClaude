@@ -39,8 +39,25 @@ const GlobalBillingPage: React.FC = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const startOfMonth = new Date(year, month, 1);
+            const endOfMonth = new Date(year, month + 1, 0, 23, 59, 59, 999);
+
+            const getISODateStr = (date: Date) => {
+                const y = date.getFullYear();
+                const m = String(date.getMonth() + 1).padStart(2, '0');
+                const d = String(date.getDate()).padStart(2, '0');
+                return `${y}-${m}-${d}`;
+            };
+
             const [packagesResponse, allUsers, deliveryZones] = await Promise.all([
-                api.getPackages({ limit: 0 }),
+                api.getPackages({ 
+                    limit: 0,
+                    startDate: getISODateStr(startOfMonth),
+                    endDate: getISODateStr(endOfMonth),
+                    excludePhotos: 'true'
+                }),
                 api.getUsers(),
                 api.getDeliveryZones()
             ]);
@@ -56,7 +73,7 @@ const GlobalBillingPage: React.FC = () => {
     
     useEffect(() => {
         fetchData();
-    }, []);
+    }, [currentDate]);
     
     const handlePrevMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
     const handleNextMonth = () => setCurrentDate(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
