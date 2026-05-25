@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.24",
-  "versionComment": "Versión 2.6.24: Optimización de consultas de facturación filtrando por fecha en backend y excluyendo fotos base64, y corrección de consulta en routes/packages.js.",
+  "version": "2.6.25",
+  "versionComment": "Versión 2.6.25: Corrección de ruta ausente /api/zones en server.js que causaba error 404 y bloqueaba la carga de clientes en facturación.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
