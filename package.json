@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.23",
-  "versionComment": "Versión 2.6.23: WooCommerce - Implementación de servicio en segundo plano para importación automática de pedidos pagados (procesando).",
+  "version": "2.6.24",
+  "versionComment": "Versión 2.6.24: Optimización de consultas de facturación filtrando por fecha en backend y excluyendo fotos base64, y corrección de consulta en routes/packages.js.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
