@@ -1352,7 +1352,7 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                     }
 
                     // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
-                    if (!meliTimeStr && shipment.status_history) {
+                    if (!meliTimeStr && shipment.status_history && Array.isArray(shipment.status_history)) {
                         const deliveredEvent = shipment.status_history
                             .filter(h => h.status === 'delivered')
                             .sort((a, b) => new Date(b.date) - new Date(a.date))[0];

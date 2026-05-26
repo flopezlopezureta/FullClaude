@@ -132,7 +132,7 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
                             }
                             
                             // Extract delivery time from ML history
-                            if (shippingDetails.status_history) {
+                            if (shippingDetails.status_history && Array.isArray(shippingDetails.status_history)) {
                                 const deliveredEvent = shippingDetails.status_history.find(h => h.status === 'delivered');
                                 if (deliveredEvent && deliveredEvent.date) {
                                     meliDeliveredAt = new Date(deliveredEvent.date);
