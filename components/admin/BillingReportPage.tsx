@@ -50,12 +50,10 @@ const BillingReportPage: React.FC = () => {
     const fetchData = async () => {
         setIsLoading(true);
         try {
-            const [packagesResponse, allUsers, deliveryZones] = await Promise.all([
-                api.getPackages({ limit: 0 }), 
+            const [allUsers, deliveryZones] = await Promise.all([
                 api.getUsers(),
                 api.getDeliveryZones()
             ]);
-            setPackages(packagesResponse.packages);
             setUsers(allUsers);
             setZones(deliveryZones);
         } catch (error) {
@@ -68,6 +66,32 @@ const BillingReportPage: React.FC = () => {
     useEffect(() => {
         fetchData();
     }, []);
+
+    useEffect(() => {
+        const fetchClientPackages = async () => {
+            if (!selectedClientId) {
+                setPackages([]);
+                return;
+            }
+            setIsLoading(true);
+            try {
+                const response = await api.getPackages({
+                    limit: 0,
+                    clientFilter: selectedClientId,
+                    startDate: startDate,
+                    endDate: endDate,
+                    excludePhotos: 'true'
+                });
+                setPackages(response.packages);
+            } catch (error) {
+                console.error("Failed to fetch packages for client", error);
+                setPackages([]);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        fetchClientPackages();
+    }, [selectedClientId, startDate, endDate]);
 
     const clients = useMemo(() => 
         users.filter(u => u.role === Role.Client).sort((a, b) => a.name.localeCompare(b.name)),

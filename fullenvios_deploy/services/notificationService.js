@@ -34,7 +34,7 @@ const NotificationService = {
             const integration = integrationRows.length > 0 ? integrationRows[0] : null;
 
             // 4. Prepare tracking URL
-            const baseUrl = process.env.APP_URL || 'https://ais-dev-k6cwqf2wjap4uwk7nddh5p-110952431422.us-east1.run.app';
+            const baseUrl = process.env.APP_URL || 'https://full2.fullenvios.cl';
             const trackingUrl = `${baseUrl}/tracking/${pkg.trackingId || pkg.id}`;
 
             // --- 5. SEND WHATSAPP (SIMULATED/API) ---
@@ -112,6 +112,7 @@ const NotificationService = {
             const footerStyle = "padding: 20px; text-align: center; color: #9ca3af; font-size: 12px;";
 
             switch (status) {
+                case 'ASIGNADO':
                 case 'EN_TRANSITO':
                     subject = `🚚 Tu pedido está en camino - ${settings.companyName}`;
                     html = `

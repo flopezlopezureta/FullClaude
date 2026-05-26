@@ -58,6 +58,19 @@ const ClientDashboard: React.FC = () => {
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const [statusFilter, setStatusFilter] = useState<PackageStatus[]>([]);
   const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
   const [communeFilter, setCommuneFilter] = useState('');
@@ -84,7 +97,7 @@ const ClientDashboard: React.FC = () => {
         const params = {
             page: currentPage,
             limit: itemsPerPage,
-            searchQuery,
+            searchQuery: debouncedSearchQuery,
             statusFilter,
             flexFilter,
             communeFilter,
@@ -110,7 +123,7 @@ const ClientDashboard: React.FC = () => {
     if (activeTab === 'packages') {
         fetchData();
     }
-  }, [auth?.user, currentPage, itemsPerPage, searchQuery, statusFilter, flexFilter, communeFilter, accountIdFilter, startDate, endDate, activeTab, sortOrder]);
+  }, [auth?.user, currentPage, itemsPerPage, debouncedSearchQuery, statusFilter, flexFilter, communeFilter, accountIdFilter, startDate, endDate, activeTab, sortOrder]);
 
   useEffect(() => {
     const fetchAccounts = async () => {

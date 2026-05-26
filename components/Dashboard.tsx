@@ -112,6 +112,19 @@ const Dashboard: React.FC = () => {
 
   // Filter and View states
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState<string>('');
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearchQuery(searchQuery);
+    }, 400);
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [flexFilter, setFlexFilter] = useState<'all' | 'flexed' | 'not_flexed'>('all');
   const [sourceFilter, setSourceFilter] = useState<'all' | 'ml' | 'web'>('all');
@@ -262,13 +275,22 @@ const Dashboard: React.FC = () => {
     }
   }, [criticalAlerts, lastAlertId]);
 
+  const fetchUsers = useCallback(async () => {
+    try {
+        const allUsers = await api.getUsers();
+        setUsers(Array.isArray(allUsers) ? allUsers : []);
+    } catch (error) {
+        console.error("Failed to fetch users", error);
+    }
+  }, []);
+
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     try {
         const params = {
             page: currentPage,
             limit: itemsPerPage,
-            searchQuery,
+            searchQuery: debouncedSearchQuery,
             statusFilter: statusFilter.length > 0 ? statusFilter.join(',') : null,
             driverFilter,
             clientFilter,
@@ -283,24 +305,24 @@ const Dashboard: React.FC = () => {
             assignmentFilter: assignmentFilter !== 'all' ? assignmentFilter : null,
             dateType,
         };
-        const [packagesResult, allUsers] = await Promise.all([
-            api.getPackages(params),
-            api.getUsers()
-        ]);
+        const packagesResult = await api.getPackages(params);
         
         const pkgs = packagesResult?.packages || [];
         const total = packagesResult?.total || 0;
         
         setPackages(Array.isArray(pkgs) ? pkgs : []);
         setTotalPackages(total);
-        setUsers(Array.isArray(allUsers) ? allUsers : []);
     } catch (error: any) {
         console.error("Failed to fetch data", error);
         alert("Error al cargar los datos: " + (error.message || "Error desconocido"));
     } finally {
         setIsLoading(false);
     }
-  }, [currentPage, itemsPerPage, searchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder, assignmentFilter, dateType]);
+  }, [currentPage, itemsPerPage, debouncedSearchQuery, statusFilter, driverFilter, clientFilter, communeFilter, cityFilter, startDate, endDate, flexFilter, quickFilter, sourceFilter, sortOrder, assignmentFilter, dateType]);
+
+  useEffect(() => {
+    fetchUsers();
+  }, [fetchUsers]);
 
   useEffect(() => {
     fetchData();
@@ -433,8 +455,11 @@ const Dashboard: React.FC = () => {
 
   const handleRefreshAll = async () => {
     try {
-        await fetchData();
-        await fetchCriticalAlerts();
+        await Promise.all([
+            fetchData(),
+            fetchUsers(),
+            fetchCriticalAlerts()
+        ]);
     } catch (error: any) {
         console.error("Failed to refresh all data", error);
         alert("Error al refrescar los datos: " + (error.message || "Error desconocido"));

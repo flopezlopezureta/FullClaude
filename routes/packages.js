@@ -383,6 +383,7 @@ router.get('/', authMiddleware, async (req, res) => {
             limit = 25,
             sortOrder = 'desc',
             includeHistory = 'true', // 'true' or 'false'
+            excludePhotos = 'false', // 'true' or 'false'
         } = req.query;
 
         const { whereString, queryParams, paramIndex: initialParamIndex } = await buildPackageQuery(req);
@@ -402,8 +403,13 @@ router.get('/', authMiddleware, async (req, res) => {
         
         const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
+        
+        const selectFields = excludePhotos === 'true'
+            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", u.name as "clientName"`
+            : `p.*, u.name as "clientName"`;
+
         const packageQuery = `
-            SELECT p.*, u.name as "clientName"
+            SELECT ${selectFields}
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
@@ -423,7 +429,7 @@ router.get('/', authMiddleware, async (req, res) => {
         let eventsByPackageId = {};
         if (includeHistory !== 'false' && packageIds.length > 0) {
             const placeholders = packageIds.map((_, i) => `$${i + 1}`).join(',');
-            const { rows: allEvents } = await db.query(`SELECT * FROM tracking_events WHERE "packageId" IN (${placeholders}) ORDER BY timestamp DESC`, packageIds);
+            const { rows: allEvents } = await db.query(`SELECT "packageId", status, timestamp, location, details FROM tracking_events WHERE "packageId" IN (${placeholders}) ORDER BY timestamp DESC`, packageIds);
             
             eventsByPackageId = allEvents.reduce((acc, event) => {
                 if (!acc[event.packageId]) acc[event.packageId] = [];
@@ -1346,7 +1352,7 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                     }
 
                     // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
-                    if (!meliTimeStr && shipment.status_history) {
+                    if (!meliTimeStr && shipment.status_history && Array.isArray(shipment.status_history)) {
                         const deliveredEvent = shipment.status_history
                             .filter(h => h.status === 'delivered')
                             .sort((a, b) => new Date(b.date) - new Date(a.date))[0];

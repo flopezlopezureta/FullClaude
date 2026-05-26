@@ -197,6 +197,7 @@ async function startServer() {
     app.use('/api/users', require('./routes/users.js'));
     app.use('/api/packages', require('./routes/packages.js'));
     app.use('/api/settings', require('./routes/settings.js'));
+    app.use('/api/zones', require('./routes/zones.js'));
     
     // --- Optional/Integration Routes ---
     const invoicesRoute = tryRequireRoute('./routes/invoices.js'); if (invoicesRoute) app.use('/api/invoices', invoicesRoute);
