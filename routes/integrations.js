@@ -1491,11 +1491,21 @@ router.get('/:clientId/woocommerce/orders', authMiddleware, async (req, res) => 
                     account.credentials.wooUrl, 
                     account.credentials.wooConsumerKey, 
                     account.credentials.wooConsumerSecret, 
-                    '/orders?status=processing'
+                    '/orders?status=processing,completed'
                 );
                 
                 if (ordersData && Array.isArray(ordersData)) {
-                    const mapped = ordersData.map(order => ({
+                    // Evitar mostrar órdenes antiguas creadas antes de conectar la cuenta
+                    const connectionDate = new Date(account.connectedAt || 0);
+                    const buffer = 2 * 60 * 60 * 1000; // 2 horas de buffer
+                    
+                    const filtered = ordersData.filter(order => {
+                        const orderDateStr = order.date_created_gmt ? order.date_created_gmt + 'Z' : order.date_created;
+                        const orderDate = new Date(orderDateStr);
+                        return orderDate.getTime() >= (connectionDate.getTime() - buffer);
+                    });
+
+                    const mapped = filtered.map(order => ({
                         id: order.id.toString(),
                         recipientName: `${order.shipping?.first_name || ''} ${order.shipping?.last_name || ''}`.trim() || `${order.billing?.first_name || ''} ${order.billing?.last_name || ''}`.trim() || 'N/A',
                         recipientPhone: order.billing?.phone || 'N/A',
