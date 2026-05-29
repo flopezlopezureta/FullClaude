@@ -58,6 +58,20 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [sortBy, setSortBy] = useState<'name' | 'newest' | 'oldest' | 'packages'>('name');
   const auth = useContext(AuthContext);
 
+  const hasIntegration = (user: User, source: PackageSource) => {
+    const legacyMap: Record<string, string> = {
+      [PackageSource.MercadoLibre]: 'meli',
+      [PackageSource.Shopify]: 'shopify',
+      [PackageSource.WooCommerce]: 'woocommerce',
+      [PackageSource.Falabella]: 'falabella',
+      [PackageSource.Jumpseller]: 'jumpseller'
+    };
+    const legacyKey = legacyMap[source];
+    const hasLegacy = legacyKey ? (user.integrations as any)?.[legacyKey] : false;
+    const hasAccount = user.integrations?.accounts && Array.isArray(user.integrations.accounts) && user.integrations.accounts.some((acc: any) => acc.type === source);
+    return !!(hasLegacy || hasAccount);
+  };
+
   const fetchUsers = async () => {
     const canAccess = () => {
         if (auth?.user?.role === Role.Admin) return true;
@@ -438,7 +452,7 @@ const wb = XLSX.utils.book_new();
                         <IconPackage className="w-4 h-4" />
                         {user.packageCount || 0} paquetes
                     </span>
-                    {user.integrations?.meli && (
+                    {hasIntegration(user, PackageSource.MercadoLibre) && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-yellow-100 text-yellow-800 border border-yellow-300 shadow-sm">
                             <IconMercadoLibre className="w-4 h-4" />
                             <span>ML</span>
@@ -454,7 +468,7 @@ const wb = XLSX.utils.book_new();
                             </button>
                         </div>
                     )}
-                    {user.integrations?.shopify && (
+                    {hasIntegration(user, PackageSource.Shopify) && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-green-100 text-green-800 border border-green-300 shadow-sm">
                             <IconShopify className="w-4 h-4" />
                             <span>Shopify</span>
@@ -470,7 +484,7 @@ const wb = XLSX.utils.book_new();
                             </button>
                         </div>
                     )}
-                    {user.integrations?.woocommerce && (
+                    {hasIntegration(user, PackageSource.WooCommerce) && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300 shadow-sm">
                             <IconWoocommerce className="w-4 h-4" />
                             <span>Woo</span>
@@ -486,7 +500,7 @@ const wb = XLSX.utils.book_new();
                             </button>
                         </div>
                     )}
-                    {user.integrations?.falabella && (
+                    {hasIntegration(user, PackageSource.Falabella) && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-orange-100 text-orange-800 border border-orange-300 shadow-sm">
                             <IconFalabella className="w-4 h-4" />
                             <span>Falabella</span>
@@ -502,7 +516,7 @@ const wb = XLSX.utils.book_new();
                             </button>
                         </div>
                     )}
-                    {user.integrations?.jumpseller && (
+                    {hasIntegration(user, PackageSource.Jumpseller) && (
                         <div className="flex items-center gap-1.5 px-2 py-1 rounded text-xs font-bold bg-sky-100 text-sky-800 border border-sky-300 shadow-sm">
                             <IconJumpseller className="w-4 h-4" />
                             <span>Jumpseller</span>
@@ -645,15 +659,15 @@ const wb = XLSX.utils.book_new();
                 )}
                 {roleFilter === Role.Client && (
                     <>
-                    {user.integrations?.meli && 
+                    {hasIntegration(user, PackageSource.MercadoLibre) && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.MercadoLibre)} className="p-2 text-[var(--text-muted)] hover:text-yellow-600 hover:bg-yellow-100 rounded-md transition-colors" title="Importar de Mercado Libre"><IconMercadoLibre className="w-5 h-5" /></button>}
-                    {user.integrations?.shopify && 
+                    {hasIntegration(user, PackageSource.Shopify) && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.Shopify)} className="p-2 text-[var(--text-muted)] hover:text-green-600 hover:bg-green-100 rounded-md transition-colors" title="Importar de Shopify"><IconShopify className="w-5 h-5" /></button>}
-                    {user.integrations?.woocommerce && 
+                    {hasIntegration(user, PackageSource.WooCommerce) && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.WooCommerce)} className="p-2 text-[var(--text-muted)] hover:text-purple-600 hover:bg-purple-100 rounded-md transition-colors" title="Importar de WooCommerce"><IconWoocommerce className="w-5 h-5" /></button>}
-                    {user.integrations?.falabella && 
+                    {hasIntegration(user, PackageSource.Falabella) && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.Falabella)} className="p-2 text-[var(--text-muted)] hover:text-orange-600 hover:bg-orange-100 rounded-md transition-colors" title="Importar de Falabella"><IconFalabella className="w-5 h-5" /></button>}
-                    {user.integrations?.jumpseller && 
+                    {hasIntegration(user, PackageSource.Jumpseller) && 
                         <button onClick={() => handleOpenImportModal(user, PackageSource.Jumpseller)} className="p-2 text-[var(--text-muted)] hover:text-sky-600 hover:bg-sky-100 rounded-md transition-colors" title="Importar de Jumpseller"><IconJumpseller className="w-5 h-5" /></button>}
                     {auth?.user?.email === 'admin' && (
                         <button 
