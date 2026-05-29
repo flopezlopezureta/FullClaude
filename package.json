@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.28",
-  "versionComment": "Versión 2.6.28: Soportar visualización de integraciones multi-cuenta (accounts) en la gestión de usuarios del Administrador.",
+  "version": "2.6.29",
+  "versionComment": "Versión 2.6.29: Modificar consulta de WooCommerce para obtener tanto pedidos en 'processing' como 'completed', filtrando por fecha de vinculación (connectedAt) para evitar órdenes históricas.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

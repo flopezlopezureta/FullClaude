@@ -190,21 +190,31 @@ async function autoImportWooCommercePackages(activeCommunes = []) {
                                 await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
                             }
 
-                            // Fetch orders with status "processing"
+                            // Fetch orders with status "processing" and "completed"
                             const ordersData = await makeWooCommerceRequest(
                                 woo.wooUrl, 
                                 woo.wooConsumerKey, 
                                 woo.wooConsumerSecret, 
-                                '/orders?status=processing&per_page=50'
+                                '/orders?status=processing,completed&per_page=50'
                             );
                             
                             if (!ordersData || !Array.isArray(ordersData) || ordersData.length === 0) return;
 
-                            console.log(`[WooCommercePolling] Found ${ordersData.length} processing orders for client ${clientId} (${account.nickname})`);
+                            console.log(`[WooCommercePolling] Found ${ordersData.length} orders (processing/completed) for client ${clientId} (${account.nickname})`);
 
                             for (const order of ordersData) {
                                 try {
                                     const orderId = order.id.toString();
+                                    
+                                    // Evitar importar órdenes creadas antes de la vinculación de la cuenta
+                                    const orderDateStr = order.date_created_gmt ? order.date_created_gmt + 'Z' : order.date_created;
+                                    const orderDate = new Date(orderDateStr);
+                                    const connectionDate = new Date(account.connectedAt || 0);
+                                    const buffer = 2 * 60 * 60 * 1000; // 2 horas de buffer
+                                    if (orderDate.getTime() < (connectionDate.getTime() - buffer)) {
+                                        continue;
+                                    }
+
                                     const { rows: existing } = await db.query('SELECT id FROM packages WHERE "wooOrderId" = $1 OR "id" = $2', [orderId, orderId]);
                                     if (existing.length > 0) continue;
 
