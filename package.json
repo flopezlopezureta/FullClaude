@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.27",
-  "versionComment": "Versión 2.6.27: Agregar opción de importar WooCommerce al menú del cliente y documentar auto-importación global.",
+  "version": "2.6.28",
+  "versionComment": "Versión 2.6.28: Soportar visualización de integraciones multi-cuenta (accounts) en la gestión de usuarios del Administrador.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

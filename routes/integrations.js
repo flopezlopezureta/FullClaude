@@ -445,6 +445,21 @@ router.delete('/:clientId/:source', authMiddleware, async (req, res) => {
         const integrations = userRows[0].integrations || {};
         delete integrations[source];
 
+        // También eliminar de la estructura de múltiples cuentas si existe
+        if (integrations.accounts && Array.isArray(integrations.accounts)) {
+            const mapType = {
+                'meli': 'MERCADO_LIBRE',
+                'shopify': 'SHOPIFY',
+                'woocommerce': 'WOOCOMMERCE',
+                'falabella': 'FALABELLA',
+                'jumpseller': 'JUMPSELLER'
+            };
+            const accountType = mapType[source];
+            if (accountType) {
+                integrations.accounts = integrations.accounts.filter(acc => acc.type !== accountType);
+            }
+        }
+
         await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify(integrations), clientId]);
 
         res.json({ message: `IntegraciÃ³n ${source} eliminada con Ã©xito.` });
