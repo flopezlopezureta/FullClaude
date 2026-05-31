@@ -1,9 +1,10 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, useContext } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
 import { IconCheckCircle, IconAlertTriangle, IconChevronRight, IconSearch, IconTruck, IconChevronDown, IconLoader } from '../Icon';
 import type { User } from '../../types';
 import { Role } from '../../constants';
+import { AuthContext } from '../../contexts/AuthContext';
 
 const playBeep = () => {
     if (window.AudioContext || (window as any).webkitAudioContext) {
@@ -27,6 +28,9 @@ interface ScannerViewProps {
 }
 
 const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, onBack }) => {
+    const auth = useContext(AuthContext);
+    const saveFlexLabelPhoto = auth?.systemSettings?.saveFlexLabelPhoto ?? false;
+
     const [currentDriverId, setCurrentDriverId] = useState(initialDriver.id);
     const [stream, setStream] = useState<MediaStream | null>(null);
     const [scanResult, setScanResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
@@ -48,9 +52,9 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         const cleanRawCode = rawCode.trim();
         if (!isManual) setLastScannedRaw(cleanRawCode);
         
-        // Capture photo from canvas if not manual
+        // Capture photo from canvas if not manual and saveFlexLabelPhoto is enabled
         let photoBase64: string | undefined;
-        if (!isManual) {
+        if (!isManual && saveFlexLabelPhoto) {
             const canvas = canvasRef.current;
             // Reducimos calidad para mayor velocidad de despacho (0.5 es suficiente para QR/Etiquetas)
             photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.5) : undefined;
@@ -125,7 +129,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
             else setIsManualProcessing(false);
           }, 4000);
         }
-    }, [isScanning, currentDriverId, scannedCount, currentDriver.name]);
+    }, [isScanning, currentDriverId, scannedCount, currentDriver.name, saveFlexLabelPhoto]);
 
     const handleManualSubmit = (e: React.FormEvent) => {
         e.preventDefault();

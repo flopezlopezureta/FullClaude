@@ -1040,6 +1040,25 @@ async function initializeDatabase() {
         `);
         console.log('Table "daily_closures" is ready.');
 
+        // --- INDEXES FOR PERFORMANCE OPTIMIZATION ---
+        console.log('Ensuring database indexes exist...');
+        try {
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_driverid ON packages("driverId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_meli_order ON packages("meliOrderId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_meli_flex ON packages("meliFlexCode")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_tracking ON packages("trackingId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_shopify_order ON packages("shopifyOrderId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_jumpseller_order ON packages("jumpsellerOrderId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_woo_order ON packages("wooOrderId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_status ON packages(status)');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_createdat ON packages("createdAt")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_tracking_events_packageid ON tracking_events("packageId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_notifications_userid ON notifications("userId")');
+            console.log('Database indexes checked and created successfully.');
+        } catch (idxErr) {
+            console.error('Warning: Failed to ensure database indexes:', idxErr.message);
+        }
+
         console.log('Database schema initialization complete.');
     } catch (err) {
         console.error('FATAL: Could not initialize database schema.', err);

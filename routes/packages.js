@@ -383,7 +383,7 @@ router.get('/', authMiddleware, async (req, res) => {
             limit = 25,
             sortOrder = 'desc',
             includeHistory = 'true', // 'true' or 'false'
-            excludePhotos = 'false', // 'true' or 'false'
+            excludePhotos = 'true', // Default to true to optimize memory/speed
         } = req.query;
 
         const { whereString, queryParams, paramIndex: initialParamIndex } = await buildPackageQuery(req);
@@ -448,6 +448,27 @@ router.get('/', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error("Error in GET /api/packages:", err);
         res.status(500).json({ message: 'Error al obtener los paquetes.' });
+    }
+});
+
+// GET /api/packages/:id - Get details of a single package including history and photos
+router.get('/:id', authMiddleware, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { rows } = await db.query(
+            `SELECT p.*, u.name as "clientName" 
+             FROM packages p 
+             LEFT JOIN users u ON p."creatorId" = u.id 
+             WHERE p.id = $1`, 
+            [id]
+        );
+        if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
+        const pkg = rows[0];
+        pkg.history = await getHistory(id);
+        res.json(pkg);
+    } catch (err) {
+        console.error('Error in GET /api/packages/:id:', err);
+        res.status(500).json({ message: 'Error al obtener detalles del paquete.' });
     }
 });
 
@@ -1130,9 +1151,13 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const isFlexed = currentPkg.source === 'MERCADO_LIBRE';
         const now = new Date();
 
+        // Check if saveFlexLabelPhoto is enabled in system settings
+        const { rows: settingsRows } = await db.query('SELECT "saveFlexLabelPhoto" FROM system_settings WHERE id = 1');
+        const saveFlexLabelPhoto = settingsRows.length > 0 ? settingsRows[0].saveFlexLabelPhoto : false;
+
         const { rows } = await db.query(
             'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7, "assignedAt" = $3 WHERE id = $8 RETURNING *',
-            [driverId, 'EN_TRANSITO', now, flexCodeToSave, flexLabelPhotoBase64, isFlexed, notesUpdate, realId]
+            [driverId, 'EN_TRANSITO', now, flexCodeToSave, saveFlexLabelPhoto ? flexLabelPhotoBase64 : null, isFlexed, notesUpdate, realId]
         );
 
         await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details + (flexCode ? ` (QR: ${flexCode})` : ''));
@@ -1140,6 +1165,13 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         await logAction(req.user.id, req.user.name, 'DISPATCH_PACKAGE', { packageId: realId, driverId });
 
         const updatedPkg = rows[0];
+        
+        // Remove heavy photo fields from the scan response to save bandwidth
+        if (updatedPkg) {
+            delete updatedPkg.flexLabelPhotoBase64;
+            delete updatedPkg.deliveryPhotosBase64;
+        }
+
         updatedPkg.history = await getHistory(realId);
         
         // Notify recipient

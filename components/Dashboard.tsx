@@ -62,6 +62,17 @@ const Dashboard: React.FC = () => {
   
   // Modal states
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  const handleSelectPackageDetails = async (pkg: Package) => {
+    setSelectedPackage(pkg);
+    try {
+      const fullPkg = await api.getPackage(pkg.id);
+      setSelectedPackage(fullPkg);
+    } catch (err) {
+      console.error("Error fetching full package details:", err);
+    }
+  };
+
   const [assigningPackage, setAssigningPackage] = useState<Package | null>(null);
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
   const [isDeletePasswordModalOpen, setIsDeletePasswordModalOpen] = useState(false);
@@ -770,7 +781,7 @@ const Dashboard: React.FC = () => {
               {criticalAlerts.map(pkg => (
                 <div 
                   key={pkg.id}
-                  onClick={() => setSelectedPackage(pkg)}
+                  onClick={() => handleSelectPackageDetails(pkg)}
                   className={`flex-shrink-0 w-80 p-4 border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
                     pkg.status === 'CANCELADO' 
                       ? 'bg-red-50/30 border-red-100 hover:border-red-300' 
@@ -1151,7 +1162,7 @@ const Dashboard: React.FC = () => {
           packages={packages} 
           users={users}
           isLoading={isLoading}
-          onSelectPackage={setSelectedPackage}
+          onSelectPackage={handleSelectPackageDetails}
           onAssignPackage={(auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canBulkActions)) ? setAssigningPackage : undefined}
           onEditPackage={(auth?.user?.role === 'ADMIN' || (auth?.user?.role === Role.OperadorSistemas && auth?.user?.operatorPermissions?.canManagePackages)) ? setEditingPackage : undefined}
           onDeletePackage={(pkg) => { 
@@ -1238,7 +1249,7 @@ const Dashboard: React.FC = () => {
         <QuickStatusModal
             onClose={() => setIsQuickStatusModalOpen(false)}
             onViewDetails={(pkg) => {
-                setSelectedPackage(pkg);
+                handleSelectPackageDetails(pkg);
                 setIsQuickStatusModalOpen(false);
             }}
         />

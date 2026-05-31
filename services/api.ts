@@ -307,6 +307,7 @@ export const api = {
       });
       return get<{ packages: Package[], total: number }>(`/packages?${searchParams.toString()}`);
   },
+  getPackage: (pkgId: string) => get<Package>(`/packages/${encodeURIComponent(pkgId)}`),
   createPackage: (data: PackageCreationData) => post<Package>('/packages', data),
   createMultiplePackages: (packages: PackageCreationData[]) => post<{ 
       success: boolean, 
