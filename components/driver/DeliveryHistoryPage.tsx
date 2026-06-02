@@ -205,6 +205,16 @@ const DeliveryHistoryPage: React.FC = () => {
   const [allDriverPackages, setAllDriverPackages] = useState<Package[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  const handleSelectPackageDetails = async (pkg: Package) => {
+    setSelectedPackage(pkg);
+    try {
+      const fullPkg = await api.getPackage(pkg.id);
+      setSelectedPackage(fullPkg);
+    } catch (err) {
+      console.error("Error fetching full package details:", err);
+    }
+  };
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [historyView, setHistoryView] = useState<HistoryView>('delivered');
@@ -446,7 +456,7 @@ const DeliveryHistoryPage: React.FC = () => {
           </div>
         </div>
         <div className="bg-[var(--background-secondary)] shadow-md rounded-lg overflow-hidden">
-          <PackageList packages={packagesToShow} users={users} isLoading={isLoading} onSelectPackage={setSelectedPackage} isDateFiltering={true} />
+          <PackageList packages={packagesToShow} users={users} isLoading={isLoading} onSelectPackage={handleSelectPackageDetails} isDateFiltering={true} />
         </div>
         {selectedPackage && (
           <PackageDetailModal 

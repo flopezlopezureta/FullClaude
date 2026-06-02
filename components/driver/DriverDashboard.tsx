@@ -18,6 +18,16 @@ const DriverDashboard: React.FC = () => {
   const [myPackages, setMyPackages] = useState<Package[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  const handleSelectPackageDetails = async (pkg: Package) => {
+    setSelectedPackage(pkg);
+    try {
+      const fullPkg = await api.getPackage(pkg.id);
+      setSelectedPackage(fullPkg);
+    } catch (err) {
+      console.error("Error fetching full package details:", err);
+    }
+  };
   const [deliveringPackage, setDeliveringPackage] = useState<Package | null>(null);
   const [reportingProblemPackage, setReportingProblemPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -505,7 +515,7 @@ const DriverDashboard: React.FC = () => {
             packages={packagesToShow} 
             users={users}
             isLoading={isLoading}
-            onSelectPackage={setSelectedPackage}
+            onSelectPackage={handleSelectPackageDetails}
             hideDriverName={true}
             isFiltering={activeTab === 'history'}
         />

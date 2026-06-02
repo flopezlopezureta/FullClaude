@@ -36,6 +36,16 @@ const ClientDashboard: React.FC = () => {
   const [totalPackages, setTotalPackages] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  const handleSelectPackageDetails = async (pkg: Package) => {
+    setSelectedPackage(pkg);
+    try {
+      const fullPkg = await api.getPackage(pkg.id);
+      setSelectedPackage(fullPkg);
+    } catch (err) {
+      console.error("Error fetching full package details:", err);
+    }
+  };
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [isImportMenuOpen, setIsImportMenuOpen] = useState(false);
@@ -510,7 +520,7 @@ const ClientDashboard: React.FC = () => {
                             packages={packages} 
                             users={auth?.user ? [auth.user] as any[] : []} 
                             isLoading={isLoading}
-                            onSelectPackage={setSelectedPackage}
+                            onSelectPackage={handleSelectPackageDetails}
                             onEditPackage={setEditingPackage}
                             onDeletePackage={(pkg) => { setDeletingPackage(pkg); setIsDeletePasswordModalOpen(true); }}
                             onPrintLabel={(pkg) => setPrintingPackages([pkg])}

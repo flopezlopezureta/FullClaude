@@ -11,6 +11,16 @@ const ReturnsDashboard: React.FC = () => {
   const [returnPackages, setReturnPackages] = useState<Package[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedPackage, setSelectedPackage] = useState<Package | null>(null);
+
+  const handleSelectPackageDetails = async (pkg: Package) => {
+    setSelectedPackage(pkg);
+    try {
+      const fullPkg = await api.getPackage(pkg.id);
+      setSelectedPackage(fullPkg);
+    } catch (err) {
+      console.error("Error fetching full package details:", err);
+    }
+  };
   const [returningPackage, setReturningPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const auth = useContext(AuthContext);
@@ -98,7 +108,7 @@ const ReturnsDashboard: React.FC = () => {
             packages={returnPackages} 
             users={users}
             isLoading={isLoading}
-            onSelectPackage={setSelectedPackage}
+            onSelectPackage={handleSelectPackageDetails}
             hideDriverName={true}
         />
       </div>
