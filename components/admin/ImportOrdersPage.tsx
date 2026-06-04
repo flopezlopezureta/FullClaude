@@ -6,6 +6,7 @@ import type { User, MeliOrder } from '../../types';
 import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle, IconWoocommerce, IconFalabella, IconJumpseller } from '../Icon';
 import { PackageSource, ShippingType } from '../../constants';
 import SearchableSelect from '../SearchableSelect';
+import { getLogicalDate } from '../../utils/dateUtils';
 
 const ImportOrdersPage: React.FC = () => {
     const [allClients, setAllClients] = useState<User[]>([]);
@@ -147,6 +148,7 @@ const ImportOrdersPage: React.FC = () => {
             } else {
                 // Generic import for Shopify
                 const selectedOrdersList = orders.filter(o => selectedOrders.has(o.id));
+                const logicalNow = getLogicalDate();
                 
                 const packagesToCreate = selectedOrdersList.map(order => {
                     const client = allClients.find(c => c.id === selectedClientId);
@@ -161,9 +163,9 @@ const ImportOrdersPage: React.FC = () => {
                         recipientCommune: order.commune,
                         recipientCity: order.city || 'Santiago',
                         notes: order.notes,
-                        estimatedDelivery: new Date(),
-                        createdAt: new Date(),
-                        updatedAt: new Date(),
+                        estimatedDelivery: logicalNow,
+                        createdAt: logicalNow,
+                        updatedAt: logicalNow,
                         creatorId: selectedClientId,
                         source: source === PackageSource.Shopify ? 'SHOPIFY' : (source === PackageSource.Jumpseller ? 'JUMPSELLER' : 'WOOCOMMERCE'),
                         sourceAccountId: order.sourceAccountId,

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
-import { getLocalDateString } from '../../utils/dateUtils';
+import { getLocalDateString, getLogicalDateString } from '../../utils/dateUtils';
 import { IconX, IconPackage, IconUser, IconMapPin, IconPlus, IconCheck } from '../Icon';
 import { PackageCreationData } from '../../services/api';
 import { ShippingType } from '../../constants';
@@ -41,7 +41,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
   const [estimatedDelivery, setEstimatedDelivery] = useState(
     initialData?.estimatedDelivery 
       ? getLocalDateString(new Date(initialData.estimatedDelivery)) 
-      : getLocalDateString()
+      : getLogicalDateString()
   );
   const [shippingType, setShippingType] = useState<ShippingType>(initialData?.shippingType || ShippingType.SameDay);
 
@@ -160,7 +160,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
     }
   };
   
-  const today = getLocalDateString();
+  const today = getLogicalDateString();
   const inputClasses = "w-full px-4 py-2.5 border border-[var(--border-secondary)] rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-primary)] bg-[var(--background-secondary)] text-[var(--text-primary)] transition-all placeholder:text-[var(--text-muted)]";
   const errorInputClasses = "w-full px-4 py-2.5 border-2 border-red-500 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-red-500 bg-red-50 text-[var(--text-primary)] transition-all";
   const labelClasses = "block text-xs font-black text-[var(--text-secondary)] uppercase tracking-widest mb-1.5 ml-1";
@@ -313,7 +313,7 @@ const CreatePackageModal: React.FC<CreatePackageModalProps> = ({ onClose, onCrea
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label htmlFor="estimatedDelivery" className={labelClasses}>Fecha Programada</label>
-                        <input type="date" id="estimatedDelivery" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} min={today} className={errors.estimatedDelivery ? errorInputClasses : inputClasses} />
+                        <input type="date" id="estimatedDelivery" value={estimatedDelivery} onChange={(e) => setEstimatedDelivery(e.target.value)} className={errors.estimatedDelivery ? errorInputClasses : inputClasses} />
                         {errors.estimatedDelivery && <span className={errorLabelClasses}>{errors.estimatedDelivery}</span>}
                     </div>
                     <div>

@@ -86,3 +86,26 @@ export const getLocalTimeString = (dateObj: Date = new Date(), timezone: string 
     second: '2-digit'
   });
 };
+
+/**
+ * Returns a Date object representing the logical date (yesterday if before 02:00 AM local time).
+ */
+export const getLogicalDate = (dateObj: Date = new Date(), timezone: string = DEFAULT_TIMEZONE): Date => {
+  try {
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      hour: '2-digit',
+      hour12: false
+    });
+    const hour = parseInt(formatter.format(dateObj), 10);
+    if (hour < 2) {
+      return new Date(dateObj.getTime() - 24 * 60 * 60 * 1000);
+    }
+  } catch (e) {
+    // Fallback if timezone formatting fails
+    if (dateObj.getHours() < 2) {
+      return new Date(dateObj.getTime() - 24 * 60 * 60 * 1000);
+    }
+  }
+  return dateObj;
+};

@@ -6,6 +6,7 @@ import { PackageSource, ShippingType } from '../../constants';
 import { IconX, IconAlertTriangle, IconMercadoLibre, IconWoocommerce, IconInfo, IconFalabella, IconSearch, IconShopify, IconDownload, IconLoader, IconJumpseller, IconBan } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useContext } from 'react';
+import { getLogicalDate } from '../../utils/dateUtils';
 
 interface ExternalImportModalProps {
     client: User;
@@ -120,7 +121,7 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
                 recipientCommune: order.commune,
                 recipientCity: order.city,
                 notes: order.notes,
-                estimatedDelivery: new Date(), // Today by default
+                estimatedDelivery: getLogicalDate(), // Today (logical) by default
                 shippingType: ShippingType.SameDay, // Default
                 source: source,
                 sourceAccountId: order.sourceAccountId,

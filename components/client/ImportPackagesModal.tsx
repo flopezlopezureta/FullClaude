@@ -6,6 +6,7 @@ import { ShippingType } from '../../constants';
 import { User } from '../../types';
 import { AuthContext } from '../../contexts/AuthContext';
 import { useContext } from 'react';
+import { getLogicalDate } from '../../utils/dateUtils';
 
 declare const XLSX: any;
 
@@ -149,7 +150,7 @@ const ImportPackagesModal: React.FC<ImportPackagesModalProps> = ({ onClose, onIm
             recipientCommune: String(rowData.recipientCommune || ''),
             recipientCity: String(rowData.recipientCity || 'Santiago'),
             shippingType: validShippingType,
-            estimatedDelivery: new Date(),
+            estimatedDelivery: getLogicalDate(),
             recipientEmail: rowData.recipientEmail ? String(rowData.recipientEmail).toLowerCase().trim() : '',
             notes: rowData.notes || '',
             shopifyOrderId: rowData.shopifyOrderId ? String(rowData.shopifyOrderId).trim() : '',
