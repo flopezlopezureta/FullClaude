@@ -1059,6 +1059,80 @@ async function initializeDatabase() {
             console.error('Warning: Failed to ensure database indexes:', idxErr.message);
         }
 
+        // --- TRIGGER MIGRATIONS FOR PACKAGE DATES BETWEEN 00:00 AND 02:00 ---
+        try {
+            console.log('Ensuring package date adjustment triggers exist...');
+            
+            // 1. Create or replace the functions
+            await db.query(`
+                CREATE OR REPLACE FUNCTION adjust_package_timestamps()
+                RETURNS TRIGGER AS $$
+                DECLARE
+                    santiago_hour INTEGER;
+                BEGIN
+                    IF NEW."createdAt" IS NULL THEN
+                        NEW."createdAt" := CURRENT_TIMESTAMP;
+                    END IF;
+                    IF NEW."updatedAt" IS NULL THEN
+                        NEW."updatedAt" := NEW."createdAt";
+                    END IF;
+                    
+                    santiago_hour := EXTRACT(HOUR FROM (NEW."createdAt" AT TIME ZONE 'America/Santiago'));
+                    
+                    IF santiago_hour < 2 THEN
+                        NEW."createdAt" := NEW."createdAt" - INTERVAL '1 day';
+                        NEW."updatedAt" := NEW."updatedAt" - INTERVAL '1 day';
+                    END IF;
+                    
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            `);
+
+            await db.query(`
+                CREATE OR REPLACE FUNCTION adjust_event_timestamps()
+                RETURNS TRIGGER AS $$
+                DECLARE
+                    santiago_hour INTEGER;
+                BEGIN
+                    IF NEW.status = 'Creado' THEN
+                        IF NEW.timestamp IS NULL THEN
+                            NEW.timestamp := CURRENT_TIMESTAMP;
+                        END IF;
+                        
+                        santiago_hour := EXTRACT(HOUR FROM (NEW.timestamp AT TIME ZONE 'America/Santiago'));
+                        
+                        IF santiago_hour < 2 THEN
+                            NEW.timestamp := NEW.timestamp - INTERVAL '1 day';
+                        END IF;
+                    END IF;
+                    RETURN NEW;
+                END;
+                $$ LANGUAGE plpgsql;
+            `);
+
+            // 2. Drop and recreate triggers
+            await db.query('DROP TRIGGER IF EXISTS trg_adjust_package_timestamps ON packages');
+            await db.query(`
+                CREATE TRIGGER trg_adjust_package_timestamps
+                BEFORE INSERT ON packages
+                FOR EACH ROW
+                EXECUTE FUNCTION adjust_package_timestamps()
+            `);
+
+            await db.query('DROP TRIGGER IF EXISTS trg_adjust_event_timestamps ON tracking_events');
+            await db.query(`
+                CREATE TRIGGER trg_adjust_event_timestamps
+                BEFORE INSERT ON tracking_events
+                FOR EACH ROW
+                EXECUTE FUNCTION adjust_event_timestamps()
+            `);
+
+            console.log('Package date adjustment triggers set up successfully.');
+        } catch (trgErr) {
+            console.error('Warning: Failed to set up package date adjustment triggers:', trgErr.message);
+        }
+
         console.log('Database schema initialization complete.');
     } catch (err) {
         console.error('FATAL: Could not initialize database schema.', err);
