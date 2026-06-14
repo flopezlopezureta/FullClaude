@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.30",
-  "versionComment": "Versión 2.6.30: Añadir triggers de base de datos para ajustar las fechas de creación al día anterior si los paquetes se registran entre las 00:00 y las 02:00 AM (hora de Chile).",
+  "version": "2.6.31",
+  "versionComment": "Versión 2.6.31: Optimización de velocidad de despacho (foto de etiqueta en segundo plano y reducción de resolución a 600px/0.3). Autoasignación móvil con foto Flex de etiqueta.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
