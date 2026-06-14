@@ -1129,14 +1129,30 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                             }
                         }
                         
-                        try {
-                            const shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, meliIntegration.accessToken);
-                            if (shippingDetails.status !== 'delivered') {
-                                return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala allí primero y luego confirma aquí.' });
+                        let shippingDetails = null;
+                        const maxAttempts = 3;
+                        const delayMs = 3000;
+                        
+                        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+                            try {
+                                shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, meliIntegration.accessToken);
+                                if (shippingDetails && shippingDetails.status === 'delivered') {
+                                    break; // Success!
+                                }
+                            } catch (meliError) {
+                                console.warn(`[Deliver] Meli status verification failed on attempt ${attempt} for shipment ${meliFlexCode}. Bypassing check to avoid blocking driver.`, meliError.body || meliError.message);
+                                shippingDetails = { status: 'delivered' }; // Bypass on API error
+                                break;
                             }
-                        } catch(meliError) {
-                             console.error(`[Deliver] Meli status verification failed for shipment ${meliFlexCode}:`, meliError.body || meliError.message);
-                             return res.status(400).json({ message: 'No se pudo verificar el estado en Mercado Libre. Asegúrate de haber completado la entrega en la app de Flex.' });
+                            
+                            if (attempt < maxAttempts) {
+                                console.log(`[Deliver] Shipment ${meliFlexCode} status is ${shippingDetails?.status}. Retrying in ${delayMs/1000}s (Attempt ${attempt}/${maxAttempts})...`);
+                                await new Promise(resolve => setTimeout(resolve, delayMs));
+                            }
+                        }
+                        
+                        if (shippingDetails && shippingDetails.status !== 'delivered') {
+                            return res.status(400).json({ message: 'No se logro cerrar la entrega en la app de Mercado Libre Flex. Por favor intentelo en unos segundos mas y luego confirma nuevamente aquí.' });
                         }
                     }
                 }

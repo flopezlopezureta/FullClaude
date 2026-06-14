@@ -196,6 +196,11 @@ export const api = {
     return response.data;
   },
 
+  updatePackage: async (pkgId: string, data: any) => {
+    const response = await apiInstance.put(`/packages/${pkgId}`, data);
+    return response.data;
+  },
+
   getSystemSettings: async () => {
     const response = await apiInstance.get('/settings/system');
     return response.data;

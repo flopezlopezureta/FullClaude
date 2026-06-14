@@ -37,7 +37,7 @@ export default function DeliveriesScreen({ navigation }: any) {
     setLoading(true);
     try {
       const online = await OfflineManager.isConnected();
-      setIsOnline(online);
+      setIsOnline(!!online);
       const data = await api.getDriverPackages(user.id);
       setPackages(data);
     } catch (error) {

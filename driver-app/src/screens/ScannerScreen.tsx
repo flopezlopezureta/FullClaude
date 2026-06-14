@@ -87,7 +87,7 @@ export default function ScannerScreen({ navigation, route }: any) {
                                 setLoading(false);
                                 return;
                             }
-                            const photoBase64 = await PhotoService.takePhoto();
+                            const photoBase64 = await PhotoService.takePhoto(true);
                             if (photoBase64) {
                                 proceedWithPickup(extractedId, data, photoBase64);
                             } else {
@@ -103,13 +103,38 @@ export default function ScannerScreen({ navigation, route }: any) {
             await proceedWithPickup(extractedId, data);
         }
       } else {
-        // Dispatch Mode
-        await api.scanPackageForDispatch(extractedId, user.id, data);
-        setScannedIds(prev => [...prev, extractedId]);
-        setScannedCount(prev => prev + 1);
-        Alert.alert("¡Cargado!", `Paquete ${extractedId} asignado a tu ruta.`, [
-          { text: "Continuar", onPress: () => { setScanned(false); setLoading(false); } }
-        ]);
+        // Dispatch Mode (Auto-asignación)
+        const isMeli = extractedId.length > 20 || data.includes('ML') || data.includes('SHIPMENT');
+        if (settings?.saveFlexLabelPhoto && isMeli) {
+            Alert.alert(
+                "Meli Flex Detectado",
+                "Se requiere una foto de la etiqueta para este paquete.",
+                [
+                    { 
+                        text: "Capturar Foto", 
+                        onPress: async () => {
+                            const hasPermission = await PhotoService.requestPermissions();
+                            if (!hasPermission) {
+                                Alert.alert("Permisos", "Se requiere permiso de cámara.");
+                                setScanned(false);
+                                setLoading(false);
+                                return;
+                            }
+                            const photoBase64 = await PhotoService.takePhoto(true);
+                            if (photoBase64) {
+                                proceedWithDispatch(extractedId, user.id, data, photoBase64);
+                            } else {
+                                setScanned(false);
+                                setLoading(false);
+                            }
+                        }
+                    },
+                    { text: "Cancelar", onPress: () => { setScanned(false); setLoading(false); }, style: "cancel" }
+                ]
+            );
+        } else {
+            await proceedWithDispatch(extractedId, user.id, data);
+        }
       }
     } catch (error: any) {
       Alert.alert("Error", error.response?.data?.message || "No se pudo procesar el código.");
@@ -118,11 +143,39 @@ export default function ScannerScreen({ navigation, route }: any) {
     }
   };
 
+  const proceedWithDispatch = async (pkgId: string, driverId: string, flexCode: string, photo?: string) => {
+    try {
+        const response = await api.scanPackageForDispatch(pkgId, driverId, flexCode);
+        setScannedIds(prev => [...prev, pkgId]);
+        setScannedCount(prev => prev + 1);
+        
+        // Upload photo in background
+        if (photo && pkgId) {
+            api.updatePackage(pkgId, { flexLabelPhotoBase64: photo })
+               .catch(err => console.log("Error al subir foto de etiqueta en segundo plano (dispatch):", err));
+        }
+
+        Alert.alert("¡Cargado!", `Paquete ${pkgId} asignado a tu ruta.`, [
+          { text: "Continuar", onPress: () => { setScanned(false); setLoading(false); } }
+        ]);
+    } catch (error: any) {
+        Alert.alert("Error", error.response?.data?.message || "No se pudo procesar el código.");
+        setScanned(false);
+        setLoading(false);
+    }
+  };
+
   const proceedWithPickup = async (pkgId: string, flexCode: string, photo?: string) => {
     try {
         await api.markPackageAsPickedUp(pkgId, flexCode);
         setScannedIds(prev => [...prev, pkgId]);
         setScannedCount(prev => prev + 1);
+        
+        // Upload photo in background
+        if (photo && pkgId) {
+            api.updatePackage(pkgId, { flexLabelPhotoBase64: photo })
+               .catch(err => console.log("Error al subir foto de etiqueta en segundo plano (pickup):", err));
+        }
         
         Alert.alert("¡Escaneado!", `Paquete ${pkgId} retirado.`, [
             { text: "Continuar", onPress: () => { setScanned(false); setLoading(false); } }

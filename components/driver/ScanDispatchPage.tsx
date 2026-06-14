@@ -173,8 +173,8 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
           let width = img.width;
           let height = img.height;
           
-          // Max 1280px dimension
-          const MAX_SIZE = 1280;
+          // Max 600px dimension for faster uploads
+          const MAX_SIZE = 600;
           if (width > height) {
             if (width > MAX_SIZE) {
               height *= MAX_SIZE / width;
@@ -192,8 +192,8 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
           const ctx = canvas.getContext('2d');
           ctx?.drawImage(img, 0, 0, width, height);
           
-          // Compress to 0.6 quality
-          const compressed = canvas.toDataURL('image/jpeg', 0.6);
+          // Compress to 0.3 quality (lightweight yet readable)
+          const compressed = canvas.toDataURL('image/jpeg', 0.3);
           setFlexPhotoBase64(compressed);
         };
         img.src = reader.result as string;

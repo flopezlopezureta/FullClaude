@@ -80,7 +80,7 @@ export default function HomeScreen({ navigation }: any) {
     const initHomeScreen = async () => {
       // 1. Check network status
       const online = await OfflineManager.isConnected();
-      setIsOnline(online);
+      setIsOnline(!!online);
 
       // 2. Request Permissions
       try {
@@ -117,7 +117,7 @@ export default function HomeScreen({ navigation }: any) {
     // Check connection periodically or on focus
     const interval = setInterval(async () => {
       const online = await OfflineManager.isConnected();
-      if (online !== isOnline) setIsOnline(online);
+      if (!!online !== isOnline) setIsOnline(!!online);
       if (online && !syncing) {
         api.syncPendingActions();
       }

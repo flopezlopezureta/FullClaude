@@ -124,10 +124,10 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
                         try {
                             const shippingDetails = await makeMeliGetRequest(`/shipments/${meliOrderId}`, meliIntegration.accessToken);
                             if (shippingDetails.status !== 'delivered') {
-                                return res.status(400).json({ message: 'Aún no has finalizado la entrega en la app de Mercado Libre Flex. Por favor, complétala en la app Meli primero y luego confirma aquí.' });
+                                return res.status(400).json({ message: 'No se logro cerrar la entrega en la app de Mercado Libre Flex. Por favor intentelo en unos segundos mas y luego confirma nuevamente aquí.' });
                             }
                         } catch(meliError) {
-                             console.warn(`[Mobile Deliver] Could not verify Meli status. Allowing delivery.`, meliError.body || meliError.message);
+                             console.warn(`[Mobile Deliver] Could not verify Meli status. Bypassing check to avoid blocking driver.`, meliError.body || meliError.message);
                         }
                     }
                 }

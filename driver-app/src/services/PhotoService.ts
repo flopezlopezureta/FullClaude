@@ -22,7 +22,7 @@ export const PhotoService = {
   /**
    * Toma una foto con la cámara, la guarda en la galería y la comprime
    */
-  takePhoto: async () => {
+  takePhoto: async (isFlexPhoto = false) => {
     try {
       const result = await ImagePicker.launchCameraAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
@@ -44,7 +44,7 @@ export const PhotoService = {
       }
 
       // 2. Comprimir y redimensionar para la app
-      return await PhotoService.processImage(asset.uri);
+      return await PhotoService.processImage(asset.uri, isFlexPhoto);
     } catch (error) {
       console.error('Error al tomar foto:', error);
       Alert.alert('Error', 'No se pudo capturar la foto.');
@@ -87,14 +87,17 @@ export const PhotoService = {
 
   /**
    * Redimensiona y comprime la imagen para optimizar Base64
-   * Max 800px de ancho o alto.
+   * Max 800px (600px para Flex) de ancho o alto.
    */
-  processImage: async (uri: string) => {
+  processImage: async (uri: string, isFlexPhoto = false) => {
     try {
+      const width = isFlexPhoto ? 600 : 800;
+      const compress = isFlexPhoto ? 0.3 : 0.5;
+      
       const manipResult = await ImageManipulator.manipulateAsync(
         uri,
-        [{ resize: { width: 800 } }], // Reducido de 1024 a 800 para mayor velocidad en equipos antiguos
-        { compress: 0.5, format: ImageManipulator.SaveFormat.JPEG, base64: true } // Reducido de 0.6 a 0.5
+        [{ resize: { width } }],
+        { compress, format: ImageManipulator.SaveFormat.JPEG, base64: true }
       );
 
       return `data:image/jpeg;base64,${manipResult.base64}`;

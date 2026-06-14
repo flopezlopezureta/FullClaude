@@ -55,9 +55,24 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         // Capture photo from canvas if not manual and saveFlexLabelPhoto is enabled
         let photoBase64: string | undefined;
         if (!isManual && saveFlexLabelPhoto) {
-            const canvas = canvasRef.current;
-            // Reducimos calidad para mayor velocidad de despacho (0.5 es suficiente para QR/Etiquetas)
-            photoBase64 = canvas ? canvas.toDataURL('image/jpeg', 0.5) : undefined;
+            const video = videoRef.current;
+            if (video) {
+                const photoCanvas = document.createElement('canvas');
+                const maxDim = 600;
+                let width = video.videoWidth;
+                let height = video.videoHeight;
+                if (width > maxDim) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                }
+                photoCanvas.width = width;
+                photoCanvas.height = height;
+                const pCtx = photoCanvas.getContext('2d');
+                if (pCtx) {
+                    pCtx.drawImage(video, 0, 0, width, height);
+                    photoBase64 = photoCanvas.toDataURL('image/jpeg', 0.3);
+                }
+            }
             setLastScannedPhoto(photoBase64 || null);
         }
 
@@ -102,11 +117,17 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         }
 
         try {
-          await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode, photoBase64);
+          const result = await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode);
           playBeep();
           setScannedCount(prev => prev + 1);
           setScanResult({ type: 'success', message: `Paquete ${codeToUse} asignado a ${currentDriver.name}` });
           if (isManual) setManualId('');
+
+          // Upload photo in background
+          if (photoBase64 && result?.package?.id) {
+              api.updatePackage(result.package.id, { flexLabelPhotoBase64: photoBase64 })
+                 .catch(err => console.error("Error al subir foto de etiqueta en segundo plano:", err));
+          }
           
           setTimeout(() => {
               setScanResult(null);
