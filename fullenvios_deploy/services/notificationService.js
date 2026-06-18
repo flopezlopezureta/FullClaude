@@ -23,17 +23,21 @@ const NotificationService = {
 
             // 2. Get package and recipient details
             const { rows: pkgRows } = await db.query(
-                'SELECT "recipientName", "recipientPhone", "recipientEmail", "recipientAddress", "trackingId", "meliOrderId" FROM packages WHERE id = $1',
+                `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", p."deliveryPhotosBase64", c.name as seller_name 
+                 FROM packages p 
+                 LEFT JOIN users c ON p."creatorId" = c.id 
+                 WHERE p.id = $1`,
                 [packageId]
             );
             if (pkgRows.length === 0) return;
             const pkg = pkgRows[0];
+            const sellerName = pkg.seller_name || settings.companyName;
 
             // 3. Get integration settings (WhatsApp & SMTP)
             const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
             const integration = integrationRows.length > 0 ? integrationRows[0] : null;
 
-            // 4. Prepare tracking URL
+            // 4. Prepare tracking URL (Dinámico según el entorno)
             const baseUrl = process.env.APP_URL || 'https://full2.fullenvios.cl';
             const trackingUrl = `${baseUrl}/tracking/${pkg.trackingId || pkg.id}`;
 
@@ -41,11 +45,12 @@ const NotificationService = {
             if (pkg.recipientPhone) {
                 let waMessage = '';
                 switch (status) {
+                    case 'ASIGNADO':
                     case 'EN_TRANSITO':
-                        waMessage = `¡Hola ${pkg.recipientName}! Tu pedido de ${settings.companyName} está en camino. Sigue el envío aquí: ${trackingUrl}`;
+                        waMessage = `¡Hola ${pkg.recipientName}! Tu compra a ${sellerName} está en camino. Sigue el envío aquí: ${trackingUrl}`;
                         break;
                     case 'ENTREGADO':
-                        waMessage = `Hola ${pkg.recipientName}, tu pedido de ${settings.companyName} ha sido entregado exitosamente. ¡Gracias!`;
+                        waMessage = `Hola ${pkg.recipientName}, esperamos que disfrutes tu compra. ¡Gracias por preferir a ${sellerName}, entregado por ${settings.companyName}!`;
                         break;
                 }
 
@@ -60,7 +65,7 @@ const NotificationService = {
 
             // --- 6. SEND EMAIL (IF SMTP CONFIGURED) ---
             if (pkg.recipientEmail && integration && integration.smtp_host) {
-                await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl);
+                await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName);
             }
 
         } catch (err) {
@@ -71,7 +76,7 @@ const NotificationService = {
     /**
      * Helper to send email using Nodemailer
      */
-    async sendEmailNotification(pkg, status, settings, integration, trackingUrl) {
+    async sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName) {
         try {
             const transporterConfig = {
                 host: integration.smtp_host,
@@ -105,6 +110,7 @@ const NotificationService = {
 
             let subject = '';
             let html = '';
+            let mailAttachments = [];
 
             const headerStyle = "background-color: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;";
             const bodyStyle = "padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #374151; line-height: 1.6;";
@@ -122,7 +128,7 @@ const NotificationService = {
                             </div>
                             <div style="${bodyStyle}">
                                 <p>Hola <strong>${pkg.recipientName}</strong>,</p>
-                                <p>Te informamos que tu pedido realizado en <strong>${settings.companyName}</strong> ya salió de nuestras bodegas y se encuentra en manos de uno de nuestros repartidores.</p>
+                                <p>Te informamos que tu compra a <strong>${sellerName}</strong> ya salió de nuestras bodegas y se encuentra en manos de uno de nuestros repartidores.</p>
                                 <p><strong>Dirección de entrega:</strong><br/>${pkg.recipientAddress}</p>
                                 <div style="text-align: center;">
                                     <a href="${trackingUrl}" style="${buttonStyle}">Seguir mi Envío</a>
@@ -136,6 +142,39 @@ const NotificationService = {
                     `;
                     break;
                 case 'ENTREGADO':
+                    let photoHtml = '';
+                    if (pkg.deliveryPhotosBase64) {
+                        try {
+                            // deliveryPhotosBase64 is typically stored as a JSON string array
+                            const photos = typeof pkg.deliveryPhotosBase64 === 'string' 
+                                ? JSON.parse(pkg.deliveryPhotosBase64) 
+                                : pkg.deliveryPhotosBase64;
+                            
+                            if (Array.isArray(photos) && photos.length > 0) {
+                                // Extract clean base64 data to attach it
+                                const rawBase64 = photos[0].includes('base64,') 
+                                    ? photos[0].split('base64,')[1] 
+                                    : photos[0];
+                                
+                                const cidName = `delivery-photo-${pkg.id}`;
+                                photoHtml = `
+                                    <div style="text-align: center; margin-top: 24px;">
+                                        <p style="font-size: 14px; font-weight: bold; color: #4b5563; margin-bottom: 12px;">Prueba de Entrega:</p>
+                                        <img src="cid:${cidName}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Foto de entrega" />
+                                    </div>
+                                `;
+
+                                mailAttachments.push({
+                                    filename: 'prueba_entrega.jpg',
+                                    content: Buffer.from(rawBase64, 'base64'),
+                                    cid: cidName
+                                });
+                            }
+                        } catch (e) {
+                            console.error('Error parsing delivery photos:', e);
+                        }
+                    }
+
                     subject = `✅ Tu pedido ha sido entregado - ${settings.companyName}`;
                     html = `
                         <div style="max-width: 600px; margin: 0 auto; border: 1px solid #e5e7eb; border-radius: 8px;">
@@ -144,11 +183,8 @@ const NotificationService = {
                             </div>
                             <div style="${bodyStyle}">
                                 <p>Hola <strong>${pkg.recipientName}</strong>,</p>
-                                <p>Confirmamos que tu pedido ha sido entregado exitosamente en la dirección registrada.</p>
-                                <p>Esperamos que disfrutes tu compra. ¡Gracias por preferir a <strong>${settings.companyName}</strong>!</p>
-                                <div style="text-align: center;">
-                                    <a href="${trackingUrl}" style="${buttonStyle}; background-color: #10b981;">Ver Detalle del Pedido</a>
-                                </div>
+                                <p>Esperamos que disfrutes tu compra. ¡Gracias por preferir a <strong>${sellerName}</strong>, entregado por <strong>${settings.companyName}</strong>!</p>
+                                ${photoHtml}
                             </div>
                             <div style="${footerStyle}">
                                 &copy; ${new Date().getFullYear()} ${settings.companyName} - Sistema de Logística.
@@ -161,12 +197,18 @@ const NotificationService = {
             }
 
             if (html) {
-                await transporter.sendMail({
+                const mailOptions = {
                     from: integration.smtp_from || `"Notificaciones ${settings.companyName}" <${integration.smtp_user}>`,
                     to: pkg.recipientEmail,
                     subject: subject,
                     html: html
-                });
+                };
+
+                if (mailAttachments.length > 0) {
+                    mailOptions.attachments = mailAttachments;
+                }
+
+                await transporter.sendMail(mailOptions);
                 console.log(`[Email Sent] Success: ${status} notification sent to ${pkg.recipientEmail}`);
             }
 

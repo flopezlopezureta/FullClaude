@@ -110,6 +110,7 @@ const NotificationService = {
 
             let subject = '';
             let html = '';
+            let mailAttachments = [];
 
             const headerStyle = "background-color: #4f46e5; color: white; padding: 20px; text-align: center; border-radius: 8px 8px 0 0;";
             const bodyStyle = "padding: 20px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #374151; line-height: 1.6;";
@@ -150,13 +151,24 @@ const NotificationService = {
                                 : pkg.deliveryPhotosBase64;
                             
                             if (Array.isArray(photos) && photos.length > 0) {
-                                const photoSrc = photos[0].startsWith('data:image') ? photos[0] : `data:image/jpeg;base64,${photos[0]}`;
+                                // Extract clean base64 data to attach it
+                                const rawBase64 = photos[0].includes('base64,') 
+                                    ? photos[0].split('base64,')[1] 
+                                    : photos[0];
+                                
+                                const cidName = `delivery-photo-${pkg.id}`;
                                 photoHtml = `
                                     <div style="text-align: center; margin-top: 24px;">
                                         <p style="font-size: 14px; font-weight: bold; color: #4b5563; margin-bottom: 12px;">Prueba de Entrega:</p>
-                                        <img src="${photoSrc}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Foto de entrega" />
+                                        <img src="cid:${cidName}" style="max-width: 100%; border-radius: 8px; border: 1px solid #e5e7eb;" alt="Foto de entrega" />
                                     </div>
                                 `;
+
+                                mailAttachments.push({
+                                    filename: 'prueba_entrega.jpg',
+                                    content: Buffer.from(rawBase64, 'base64'),
+                                    cid: cidName
+                                });
                             }
                         } catch (e) {
                             console.error('Error parsing delivery photos:', e);
@@ -185,12 +197,18 @@ const NotificationService = {
             }
 
             if (html) {
-                await transporter.sendMail({
+                const mailOptions = {
                     from: integration.smtp_from || `"Notificaciones ${settings.companyName}" <${integration.smtp_user}>`,
                     to: pkg.recipientEmail,
                     subject: subject,
                     html: html
-                });
+                };
+
+                if (mailAttachments.length > 0) {
+                    mailOptions.attachments = mailAttachments;
+                }
+
+                await transporter.sendMail(mailOptions);
                 console.log(`[Email Sent] Success: ${status} notification sent to ${pkg.recipientEmail}`);
             }
 
