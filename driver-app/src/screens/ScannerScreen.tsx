@@ -61,14 +61,15 @@ export default function ScannerScreen({ navigation, route }: any) {
     // Logic for Meli Flex ID extraction
     const scaMatch = data.match(/[A-Z]{3}\d{2}-[A-Z0-9]{12}/);
     if (scaMatch && scaMatch[0]) extractedId = scaMatch[0];
+
+    // Impedir doble escaneo en la sesión actual
+    if (scannedIds.includes(extractedId)) {
+       Alert.alert("Ya escaneado", "Este paquete ya fue procesado en esta sesión.", [{ text: "Ok", onPress: () => { setScanned(false); setLoading(false); } }]);
+       return;
+    }
     
     try {
       if (type === 'PICKUP') {
-        if (scannedIds.includes(extractedId)) {
-           Alert.alert("Ya escaneado", "Este paquete ya fue procesado en esta sesión.", [{ text: "Ok", onPress: () => { setScanned(false); setLoading(false); } }]);
-           return;
-        }
-
         let flexLabelPhoto = undefined;
         const isMeli = extractedId.length > 20 || data.includes('ML') || data.includes('SHIPMENT');
         
@@ -143,15 +144,15 @@ export default function ScannerScreen({ navigation, route }: any) {
     }
   };
 
-  const proceedWithDispatch = async (pkgId: string, driverId: string, flexCode: string, photo?: string) => {
+  const proceedWithDispatch = async (pkgId: string, driverId: string, flexCode: string, photo?: string, forceReassign?: boolean) => {
     try {
-        const response = await api.scanPackageForDispatch(pkgId, driverId, flexCode);
+        const response = await api.scanPackageForDispatch(pkgId, driverId, flexCode, undefined, forceReassign);
         setScannedIds(prev => [...prev, pkgId]);
         setScannedCount(prev => prev + 1);
         
-        // Upload photo in background
-        if (photo && pkgId) {
-            api.updatePackage(pkgId, { flexLabelPhotoBase64: photo })
+        // Subida de foto en segundo plano usando el ID interno de base de datos
+        if (photo && response?.package?.id) {
+            api.updatePackage(response.package.id, { flexLabelPhotoBase64: photo })
                .catch(err => console.log("Error al subir foto de etiqueta en segundo plano (dispatch):", err));
         }
 
@@ -159,7 +160,26 @@ export default function ScannerScreen({ navigation, route }: any) {
           { text: "Continuar", onPress: () => { setScanned(false); setLoading(false); } }
         ]);
     } catch (error: any) {
-        Alert.alert("Error", error.response?.data?.message || "No se pudo procesar el código.");
+        const errorResponse = error.response?.data;
+        // Si el backend pide confirmación de reasignación (Código 409)
+        if (error.response?.status === 409 && errorResponse?.code === 'REASSIGN_PROMPT') {
+            Alert.alert(
+                "Confirmar Reasignación",
+                errorResponse.message,
+                [
+                    { 
+                        text: "Reasignar", 
+                        onPress: () => {
+                            proceedWithDispatch(pkgId, driverId, flexCode, photo, true);
+                        }
+                    },
+                    { text: "Cancelar", onPress: () => { setScanned(false); setLoading(false); }, style: "cancel" }
+                ]
+            );
+            return;
+        }
+
+        Alert.alert("Error", errorResponse?.message || "No se pudo procesar el código.");
         setScanned(false);
         setLoading(false);
     }
@@ -167,13 +187,13 @@ export default function ScannerScreen({ navigation, route }: any) {
 
   const proceedWithPickup = async (pkgId: string, flexCode: string, photo?: string) => {
     try {
-        await api.markPackageAsPickedUp(pkgId, flexCode);
+        const responsePkg = await api.markPackageAsPickedUp(pkgId, flexCode);
         setScannedIds(prev => [...prev, pkgId]);
         setScannedCount(prev => prev + 1);
         
-        // Upload photo in background
-        if (photo && pkgId) {
-            api.updatePackage(pkgId, { flexLabelPhotoBase64: photo })
+        // Subida de foto en segundo plano usando el ID interno de base de datos
+        if (photo && responsePkg?.id) {
+            api.updatePackage(responsePkg.id, { flexLabelPhotoBase64: photo })
                .catch(err => console.log("Error al subir foto de etiqueta en segundo plano (pickup):", err));
         }
         

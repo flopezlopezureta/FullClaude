@@ -242,11 +242,30 @@ const Dashboard: React.FC = () => {
         limit: 50, 
         excludeChecked 
       });
+      const { packages: duplicates } = await api.getPackages({ 
+        isDuplicate: 'true', 
+        startDate: targetDate, 
+        endDate: targetDate,
+        limit: 50, 
+        excludeChecked 
+      });
+      const { packages: reassigned } = await api.getPackages({ 
+        assignmentFilter: 'reassigned', 
+        startDate: targetDate, 
+        endDate: targetDate,
+        limit: 50, 
+        excludeChecked 
+      });
       
-      const merged = [...cancelled, ...rescheduled].sort((a, b) => 
+      const merged = [...cancelled, ...rescheduled, ...duplicates, ...reassigned].sort((a, b) => 
         new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime()
       );
-      setCriticalAlerts(merged);
+      
+      const uniqueMerged = merged.filter((pkg, index, self) => 
+        self.findIndex(p => p.id === pkg.id) === index
+      );
+
+      setCriticalAlerts(uniqueMerged);
     } catch (err) {
       console.error('Error fetching critical alerts:', err);
     }
@@ -785,16 +804,30 @@ const Dashboard: React.FC = () => {
                   className={`flex-shrink-0 w-80 p-4 border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${
                     pkg.status === 'CANCELADO' 
                       ? 'bg-red-50/30 border-red-100 hover:border-red-300' 
-                      : 'bg-amber-50/30 border-amber-100 hover:border-amber-300'
+                      : pkg.isDuplicate
+                        ? 'bg-orange-50/30 border-orange-100 hover:border-orange-300'
+                        : pkg.isReassigned
+                          ? 'bg-purple-50/30 border-purple-100 hover:border-purple-300'
+                          : 'bg-amber-50/30 border-amber-100 hover:border-amber-300'
                   }`}
                 >
                    <div className="flex items-center justify-between mb-3">
                       <span className={`px-2.5 py-1 text-[9px] font-black rounded-lg uppercase tracking-wider ${
                         pkg.status === 'CANCELADO' 
                           ? 'bg-red-100 text-red-700' 
-                          : 'bg-amber-100 text-amber-700'
+                          : pkg.isDuplicate
+                            ? 'bg-orange-100 text-orange-700'
+                            : pkg.isReassigned
+                              ? 'bg-purple-100 text-purple-700'
+                              : 'bg-amber-100 text-amber-700'
                       }`}>
-                        {pkg.status}
+                        {pkg.status === 'CANCELADO'
+                           ? 'CANCELADO'
+                           : pkg.isDuplicate
+                             ? 'DUPLICADO'
+                             : pkg.isReassigned
+                               ? 'REASIGNADO'
+                               : 'REPROGRAMADO'}
                       </span>
                       <span className="text-[10px] font-bold text-gray-400">
                         {new Date(pkg.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}

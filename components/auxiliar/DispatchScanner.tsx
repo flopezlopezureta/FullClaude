@@ -116,40 +116,52 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
             scannedInSession.current.add(rawCode);
         }
 
-        try {
-          const result = await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode);
-          playBeep();
-          setScannedCount(prev => prev + 1);
-          setScanResult({ type: 'success', message: `Paquete ${codeToUse} asignado a ${currentDriver.name}` });
-          if (isManual) setManualId('');
+        const performDispatch = async (force = false) => {
+            try {
+              const result = await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode, undefined, force);
+              playBeep();
+              setScannedCount(prev => prev + 1);
+              setScanResult({ type: 'success', message: `Paquete ${codeToUse} asignado a ${currentDriver.name}` });
+              if (isManual) setManualId('');
 
-          // Upload photo in background
-          if (photoBase64 && result?.package?.id) {
-              api.updatePackage(result.package.id, { flexLabelPhotoBase64: photoBase64 })
-                 .catch(err => console.error("Error al subir foto de etiqueta en segundo plano:", err));
-          }
-          
-          setTimeout(() => {
-              setScanResult(null);
-              if (!isManual) {
-                  setIsScanning(true);
-                  setLastScannedPhoto(null);
-              } else {
-                  setIsManualProcessing(false);
+              // Upload photo in background
+              if (photoBase64 && result?.package?.id) {
+                  api.updatePackage(result.package.id, { flexLabelPhotoBase64: photoBase64 })
+                     .catch(err => console.error("Error al subir foto de etiqueta en segundo plano:", err));
               }
-          }, 1500);
-        } catch (error: any) {
-          if (!isManual) {
-            scannedInSession.current.delete(codeToUse);
-            scannedInSession.current.delete(rawCode);
-          }
-          setScanResult({ type: 'error', message: error.message || 'Error al procesar el paquete.' });
-          setTimeout(() => {
-            setScanResult(null);
-            if (!isManual) setIsScanning(true);
-            else setIsManualProcessing(false);
-          }, 4000);
-        }
+              
+              setTimeout(() => {
+                  setScanResult(null);
+                  if (!isManual) {
+                      setIsScanning(true);
+                      setLastScannedPhoto(null);
+                  } else {
+                      setIsManualProcessing(false);
+                  }
+              }, 1500);
+            } catch (error: any) {
+              if (error.status === 409 && error.body?.code === 'REASSIGN_PROMPT') {
+                  const confirmReassign = window.confirm(error.message);
+                  if (confirmReassign) {
+                      await performDispatch(true);
+                      return;
+                  }
+              }
+
+              if (!isManual) {
+                scannedInSession.current.delete(codeToUse);
+                scannedInSession.current.delete(rawCode);
+              }
+              setScanResult({ type: 'error', message: error.message || 'Error al procesar el paquete.' });
+              setTimeout(() => {
+                setScanResult(null);
+                if (!isManual) setIsScanning(true);
+                else setIsManualProcessing(false);
+              }, 4000);
+            }
+        };
+
+        await performDispatch(false);
     }, [isScanning, currentDriverId, scannedCount, currentDriver.name, saveFlexLabelPhoto]);
 
     const handleManualSubmit = (e: React.FormEvent) => {
