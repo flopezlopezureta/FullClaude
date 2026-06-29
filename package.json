@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.31",
-  "versionComment": "Versión 2.6.31: Optimización de velocidad de despacho (foto de etiqueta en segundo plano y reducción de resolución a 600px/0.3). Autoasignación móvil con foto Flex de etiqueta.",
+  "version": "2.6.32",
+  "versionComment": "Versión 2.6.32: Control de duplicados, reasignaciones interactivas y corrección de autoasignación de chofer.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
