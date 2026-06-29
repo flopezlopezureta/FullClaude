@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.32",
-  "versionComment": "Versión 2.6.32: Control de duplicados, reasignaciones interactivas y corrección de autoasignación de chofer.",
+  "version": "2.6.33",
+  "versionComment": "Versión 2.6.33: Reemplazo de window.confirm nativo por diálogos modales de React para reasignación en WebView móvil.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
