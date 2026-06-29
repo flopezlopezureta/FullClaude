@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
-import { getLogicalDateString, formatLocalDisplayDate } from '../../utils/dateUtils';
+import { getLogicalDateString, formatLocalDisplayDate, getLocalDateString } from '../../utils/dateUtils';
 import DriverClosureModal from '../modals/DriverClosureModal';
 import { storageUtils } from '../../utils/storageUtils';
 import { PackageStatus, MessagingPlan } from '../../constants';
