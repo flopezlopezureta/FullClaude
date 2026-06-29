@@ -89,47 +89,58 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
     setIsScanning(false);
     setScannedInSession(prev => new Set(prev).add(packageId));
 
-    try {
-      const result = await api.scanPackageForDispatch(packageId, user.id);
-      playBeep();
-      setScannedCount(prev => prev + 1);
-      
-      const pkg = result.package;
-      const isMeli = pkg?.source === 'MERCADO_LIBRE';
-      const needsFlex = isMeli && !pkg?.isFlexed;
+    const performDispatch = async (force = false) => {
+        try {
+          const result = await api.scanPackageForDispatch(packageId, user.id, undefined, undefined, force);
+          playBeep();
+          setScannedCount(prev => prev + 1);
+          
+          const pkg = result.package;
+          const isMeli = pkg?.source === 'MERCADO_LIBRE';
+          const needsFlex = isMeli && !pkg?.isFlexed;
 
-      setScanResult({ 
-        type: 'success', 
-        message: `¡Paquete #${scannedCount + 1} despachado!`,
-        package: pkg
-      });
+          setScanResult({ 
+            type: 'success', 
+            message: `¡Paquete #${scannedCount + 1} despachado!`,
+            package: pkg
+          });
 
-      // If it doesn't need flex, clear result after 1.5s and resume scanning
-      if (!needsFlex) {
-        setTimeout(() => {
+          // If it doesn't need flex, clear result after 1.5s and resume scanning
+          if (!needsFlex) {
+            setTimeout(() => {
+                setScanResult(null);
+                setIsScanning(true);
+            }, 1500);
+          }
+        } catch (error: any) {
+          if (error.status === 409 && error.body?.code === 'REASSIGN_PROMPT') {
+              const confirmReassign = window.confirm(error.message);
+              if (confirmReassign) {
+                  await performDispatch(true);
+                  return;
+              }
+          }
+
+          setScannedInSession(prev => {
+              const newSet = new Set(prev);
+              newSet.delete(packageId);
+              return newSet;
+          });
+          const errorMessage = error.message || 'Error al procesar el paquete.';
+          setScanResult({ 
+            type: 'error', 
+            message: errorMessage.includes('no encontrado') 
+              ? `ID: ${packageId} - No encontrado en el sistema o clientes configurados.` 
+              : errorMessage 
+          });
+          setTimeout(() => {
             setScanResult(null);
             setIsScanning(true);
-        }, 1500);
-      }
-      // If it needs flex, we stay in the result state until they click "Marcar Flex" or "Continuar"
-    } catch (error: any) {
-      setScannedInSession(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(packageId);
-          return newSet;
-      });
-      const errorMessage = error.message || 'Error al procesar el paquete.';
-      setScanResult({ 
-        type: 'error', 
-        message: errorMessage.includes('no encontrado') 
-          ? `ID: ${packageId} - No encontrado en el sistema o clientes configurados.` 
-          : errorMessage 
-      });
-      setTimeout(() => {
-        setScanResult(null);
-        setIsScanning(true);
-      }, 4000);
-    }
+          }, 4000);
+        }
+    };
+
+    await performDispatch(false);
   }, [isScanning, user, scannedInSession, scannedCount]);
 
   const handleMarkAsFlexed = async () => {

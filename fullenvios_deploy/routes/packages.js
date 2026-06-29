@@ -226,6 +226,10 @@ router.get('/', authMiddleware, async (req, res) => {
             whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
         }
 
+        if (req.query.isDuplicate === 'true') {
+            whereClauses.push(`p."isDuplicate" = true`);
+        }
+
         const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         // Query for total count
@@ -242,7 +246,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         
         const selectFields = excludePhotos === 'true'
-            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", u.name as "clientName"`
+            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", p."isDuplicate", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", u.name as "clientName"`
             : `p.*, u.name as "clientName"`;
 
         const packageQuery = `
@@ -906,6 +910,35 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             return res.status(400).json({ message: `Paquete ya se encuentra ${currentPkg.status}.` });
         }
 
+        // Check duplicate and reassignment
+        const { forceReassign } = req.body;
+        if (['EN_TRANSITO', 'ASIGNADO'].includes(currentPkg.status)) {
+            if (currentPkg.driverId === driverId) {
+                // Duplicate scan (same driver)
+                const now = new Date();
+                await db.query(
+                    'UPDATE packages SET "isDuplicate" = true, "alertChecked" = false, "updatedAt" = $1 WHERE id = $2',
+                    [now, realId]
+                );
+                await addTrackingEvent(realId, 'ALERTA_DUPLICADO', 'Centro de Distribución', 'Alerta: Paquete escaneado como duplicado.');
+                await logAction(req.user.id, req.user.name, 'DISPATCH_DUPLICATE_ALERT', { packageId: realId, driverId });
+                return res.status(400).json({ 
+                    message: '¡PAQUETE DUPLICADO! Este paquete ya fue escaneado para este conductor. Por favor, sepáralo del despacho.' 
+                });
+            } else if (currentPkg.driverId) {
+                // Reassignment (different driver)
+                if (forceReassign !== true) {
+                    const { rows: oldDriverRows } = await db.query('SELECT name FROM users WHERE id = $1', [currentPkg.driverId]);
+                    const oldDriverName = oldDriverRows[0]?.name || 'desconocido';
+                    return res.status(409).json({
+                        code: 'REASSIGN_PROMPT',
+                        message: `Este paquete ya está asignado al conductor ${oldDriverName}. ¿Deseas reasignarlo al nuevo conductor?`,
+                        oldDriverName
+                    });
+                }
+            }
+        }
+
         // If a flexCode is explicitly provided in the body, use it.
         // Otherwise, if scanned ID is different from internal ID and we don't have a flex code, save it.
         let flexCodeToSave = flexCode || currentPkg.meliFlexCode;
@@ -945,9 +978,11 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const { rows: settingsRows } = await db.query('SELECT "saveFlexLabelPhoto" FROM system_settings WHERE id = 1');
         const saveFlexLabelPhoto = settingsRows.length > 0 ? settingsRows[0].saveFlexLabelPhoto : false;
 
+        const isReassignedVal = (currentPkg.driverId && currentPkg.driverId !== driverId) ? true : (currentPkg.isReassigned || false);
+
         const { rows } = await db.query(
-            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7 WHERE id = $8 RETURNING *',
-            [driverId, 'EN_TRANSITO', now, flexCodeToSave, saveFlexLabelPhoto ? flexLabelPhotoBase64 : null, isFlexed, notesUpdate, realId]
+            'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7, "assignedAt" = $3, "isReassigned" = $8, "alertChecked" = false, "isDuplicate" = false WHERE id = $9 RETURNING *',
+            [driverId, 'EN_TRANSITO', now, flexCodeToSave, saveFlexLabelPhoto ? flexLabelPhotoBase64 : null, isFlexed, notesUpdate, isReassignedVal, realId]
         );
 
         await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details + (flexCode ? ` (QR: ${flexCode})` : ''));

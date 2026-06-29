@@ -159,12 +159,12 @@ export const api = {
     return response.data.filter((u: any) => u.role === 'CLIENT');
   },
 
-  // Despacho / Carga de Ruta
-  scanPackageForDispatch: async (packageId: string, driverId: string, flexCode?: string, flexLabelPhotoBase64?: string) => {
+  scanPackageForDispatch: async (packageId: string, driverId: string, flexCode?: string, flexLabelPhotoBase64?: string, forceReassign?: boolean) => {
     const response = await apiInstance.post(`/packages/${packageId}/dispatch`, { 
         driverId, 
         flexCode, 
-        flexLabelPhotoBase64 
+        flexLabelPhotoBase64,
+        forceReassign
     });
     return response.data;
   },

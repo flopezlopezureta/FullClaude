@@ -451,7 +451,8 @@ async function initializeDatabase() {
                 'sourceAccountId TEXT',
                 'sourceAccountName TEXT',
                 'alertChecked BOOLEAN DEFAULT false',
-                'shopifyOrderNumber TEXT'
+                'shopifyOrderNumber TEXT',
+                'isDuplicate BOOLEAN DEFAULT false'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
