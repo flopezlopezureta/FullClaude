@@ -45,10 +45,16 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
     const [lastScannedRaw, setLastScannedRaw] = useState<string>('');
     const [manualId, setManualId] = useState('');
     const [isManualProcessing, setIsManualProcessing] = useState(false);
+    const [reassignConfirm, setReassignConfirm] = useState<{
+        message: string;
+        codeToUse: string;
+        rawCode: string;
+        isManual: boolean;
+    } | null>(null);
 
     const currentDriver = allDrivers.find(d => d.id === currentDriverId) || initialDriver;
 
-    const handleScan = useCallback(async (rawCode: string, isManual = false) => {
+    const handleScan = useCallback(async (rawCode: string, isManual = false, forceReassign = false) => {
         const cleanRawCode = rawCode.trim();
         if (!isManual) setLastScannedRaw(cleanRawCode);
         
@@ -106,7 +112,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
         
         const codeToUse = extractedId || cleanRawCode;
 
-        if (!isManual && (!isScanning || scannedInSession.current.has(codeToUse) || scannedInSession.current.has(rawCode))) return;
+        if (!isManual && !forceReassign && (!isScanning || scannedInSession.current.has(codeToUse) || scannedInSession.current.has(rawCode))) return;
 
         if (!isManual) setIsScanning(false);
         else setIsManualProcessing(true);
@@ -141,11 +147,13 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
               }, 1500);
             } catch (error: any) {
               if (error.status === 409 && error.body?.code === 'REASSIGN_PROMPT') {
-                  const confirmReassign = window.confirm(error.message);
-                  if (confirmReassign) {
-                      await performDispatch(true);
-                      return;
-                  }
+                  setReassignConfirm({
+                      message: error.message,
+                      codeToUse,
+                      rawCode,
+                      isManual
+                  });
+                  return;
               }
 
               if (!isManual) {
@@ -161,7 +169,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
             }
         };
 
-        await performDispatch(false);
+        await performDispatch(forceReassign);
     }, [isScanning, currentDriverId, scannedCount, currentDriver.name, saveFlexLabelPhoto]);
 
     const handleManualSubmit = (e: React.FormEvent) => {
@@ -315,6 +323,47 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
             >
                 Volver a la lista
             </button>
+
+            {reassignConfirm && (
+                <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[9999] flex items-center justify-center p-4">
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-gray-100">
+                        <div className="flex items-center justify-center w-12 h-12 rounded-full bg-amber-100 text-amber-600 mx-auto mb-4">
+                            <IconAlertTriangle className="w-6 h-6" />
+                        </div>
+                        <h3 className="text-lg font-bold text-gray-900 dark:text-white text-center mb-2">
+                            Confirmar Reasignación
+                        </h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-300 text-center mb-6">
+                            {reassignConfirm.message}
+                        </p>
+                        <div className="flex gap-3">
+                            <button
+                                onClick={() => {
+                                    if (!reassignConfirm.isManual) {
+                                        scannedInSession.current.delete(reassignConfirm.codeToUse);
+                                        scannedInSession.current.delete(reassignConfirm.rawCode);
+                                    }
+                                    setReassignConfirm(null);
+                                    if (!reassignConfirm.isManual) setIsScanning(true);
+                                }}
+                                className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                onClick={() => {
+                                    const { rawCode, isManual } = reassignConfirm;
+                                    setReassignConfirm(null);
+                                    handleScan(rawCode, isManual, true);
+                                }}
+                                className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold shadow-md transition-colors"
+                            >
+                                Reasignar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 };
