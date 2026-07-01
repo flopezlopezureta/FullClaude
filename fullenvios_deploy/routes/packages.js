@@ -306,6 +306,20 @@ router.get('/:id', authMiddleware, async (req, res) => {
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         const pkg = rows[0];
         pkg.history = await getHistory(id);
+        
+        // Map deliveryPhotosBase64 JSONB to photos array
+        if (pkg.deliveryPhotosBase64) {
+            try {
+                pkg.photos = typeof pkg.deliveryPhotosBase64 === 'string'
+                    ? JSON.parse(pkg.deliveryPhotosBase64)
+                    : pkg.deliveryPhotosBase64;
+            } catch (e) {
+                pkg.photos = [];
+            }
+        } else {
+            pkg.photos = [];
+        }
+        
         res.json(pkg);
     } catch (err) {
         console.error('Error in GET /api/packages/:id:', err);

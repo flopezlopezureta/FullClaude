@@ -28,16 +28,31 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
   const isCompleted = ['ENTREGADO', 'CANCELADO', 'DEVUELTO'].includes(pkg.status);
   const isFailedAttempt = ['PROBLEMA', 'REPROGRAMADO'].includes(pkg.status);
   
+  // Parse initial photos if any
+  const getInitialPhotos = () => {
+    if (pkg.photos && pkg.photos.length > 0) return pkg.photos;
+    if (pkg.deliveryPhotosBase64) {
+      try {
+        const parsed = typeof pkg.deliveryPhotosBase64 === 'string'
+          ? JSON.parse(pkg.deliveryPhotosBase64)
+          : pkg.deliveryPhotosBase64;
+        if (Array.isArray(parsed)) return parsed;
+      } catch (e) {}
+    }
+    return [];
+  };
+
   const [currentStatus, setCurrentStatus] = useState(pkg.status);
   const [isRetrying, setIsRetrying] = useState(false);
   const [receiverName, setReceiverName] = useState(pkg.receiverName || pkg.recipientName);
   const [receiverId, setReceiverId] = useState(pkg.receiverId || '');
-  const [photos, setPhotos] = useState<string[]>(pkg.photos || []);
+  const [photos, setPhotos] = useState<string[]>(getInitialPhotos());
+  const [serverPhotos, setServerPhotos] = useState<string[]>(getInitialPhotos());
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState<any>(null);
   const [packageHistory, setPackageHistory] = useState<any[]>(pkg.events || pkg.history || []);
 
-  // Sync settings
+  // Sync settings and package details
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -45,7 +60,44 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
         setSettings(data);
       } catch (e) {}
     };
+
+    const fetchPackageDetails = async () => {
+      try {
+        const fullPkg = await api.getPackageDetails(pkg.id);
+        if (fullPkg) {
+          if (fullPkg.status) setCurrentStatus(fullPkg.status);
+          if (fullPkg.receiverName || fullPkg.recipientName) {
+            setReceiverName(fullPkg.receiverName || fullPkg.recipientName);
+          }
+          if (fullPkg.receiverId) setReceiverId(fullPkg.receiverId);
+          if (fullPkg.history) setPackageHistory(fullPkg.history);
+          
+          let fetchedPhotos: string[] = [];
+          if (fullPkg.photos && fullPkg.photos.length > 0) {
+            fetchedPhotos = fullPkg.photos;
+          } else if (fullPkg.deliveryPhotosBase64) {
+            try {
+              const parsed = typeof fullPkg.deliveryPhotosBase64 === 'string'
+                ? JSON.parse(fullPkg.deliveryPhotosBase64)
+                : fullPkg.deliveryPhotosBase64;
+              if (Array.isArray(parsed)) {
+                fetchedPhotos = parsed;
+              }
+            } catch (err) {}
+          }
+          
+          if (fetchedPhotos.length > 0) {
+            setPhotos(fetchedPhotos);
+            setServerPhotos(fetchedPhotos);
+          }
+        }
+      } catch (err) {
+        console.log('Error fetching package details on mount:', err);
+      }
+    };
+
     fetchSettings();
+    fetchPackageDetails();
   }, []);
 
   // Helpers to get image URL
@@ -314,12 +366,12 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
           </View>
           
           {/* Fotos ya en el servidor */}
-          {pkg.photos && pkg.photos.length > 0 && (
+          {serverPhotos && serverPhotos.length > 0 && (
             <View style={{ marginTop: 20 }}>
               <Text style={styles.sectionTitle}>Fotos en Servidor</Text>
               <ScrollView horizontal showsHorizontalScrollIndicator={false}>
                 <View style={styles.photoGrid}>
-                  {pkg.photos.map((photoPath: string, index: number) => (
+                  {serverPhotos.map((photoPath: string, index: number) => (
                     <TouchableOpacity key={index} onPress={() => Linking.openURL(getImageUrl(photoPath))}>
                        <Image source={{ uri: getImageUrl(photoPath) }} style={styles.photoThumb} />
                     </TouchableOpacity>
