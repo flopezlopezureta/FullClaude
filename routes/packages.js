@@ -1340,41 +1340,7 @@ const makeMeliPostRequest = (path, postData) => makeMeliRequest({
 // --- END MELI HELPERS ---
 
 // --- FALABELLA SYNC LOGIC ---
-const crypto = require('crypto');
-
-// AES helpers to decrypt API key stored in db
-const PACKAGES_ENCRYPTION_KEY = crypto.createHash('sha256')
-    .update(process.env.JWT_SECRET || 'fullenvios_jwt_secret_2024')
-    .digest();
-
-function decryptPackagesKey(text) {
-    if (!text) return null;
-    try {
-        const textParts = text.split(':');
-        const iv = Buffer.from(textParts.shift(), 'hex');
-        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-cbc', PACKAGES_ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedText);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString('utf8');
-    } catch (e) {
-        return text;
-    }
-}
-
-function buildFalabellaPackagesSignature(params, apiKey) {
-    const sortedKeys = Object.keys(params).sort();
-    const sortedParams = {};
-    sortedKeys.forEach(key => {
-        sortedParams[key] = params[key];
-    });
-    const queryString = Object.entries(sortedParams)
-        .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
-        .join('&');
-    return crypto.createHmac('sha256', apiKey)
-        .update(queryString)
-        .digest('hex');
-}
+const { decrypt, buildFalabellaSignature } = require('../services/falabellaCrypto');
 
 async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
     const MAX_ATTEMPTS = 3;
@@ -1390,7 +1356,7 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
             throw new Error("Credenciales de Falabella no configuradas.");
         }
         
-        const apiKey = decryptPackagesKey(rows[0].falabella_api_key);
+        const apiKey = decrypt(rows[0].falabella_api_key);
         const sellerId = rows[0].falabella_seller_id;
         
         const timestamp = new Date().toISOString();
@@ -1404,7 +1370,7 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
             Status: 'delivered'
         };
         
-        const signature = buildFalabellaPackagesSignature(params, apiKey);
+        const signature = buildFalabellaSignature(params, apiKey);
         params.Signature = signature;
         
         const queryString = Object.entries(params)

@@ -545,43 +545,7 @@ const makeWooCommerceRequest = (wooUrl, consumerKey, consumerSecret, path, metho
 };
 
 // --- FALABELLA API HELPERS ---
-const crypto = require('crypto');
-
-// AES helpers to decrypt API key stored in db
-const INTEGRATION_ENCRYPTION_KEY = crypto.createHash('sha256')
-    .update(process.env.JWT_SECRET || 'fullenvios_jwt_secret_2024')
-    .digest();
-
-function decryptIntegrationKey(text) {
-    if (!text) return null;
-    try {
-        const textParts = text.split(':');
-        const iv = Buffer.from(textParts.shift(), 'hex');
-        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-cbc', INTEGRATION_ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedText);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString('utf8');
-    } catch (e) {
-        return text;
-    }
-}
-
-function buildFalabellaSignature(params, apiKey) {
-    const sortedKeys = Object.keys(params).sort();
-    const sortedParams = {};
-    sortedKeys.forEach(key => {
-        sortedParams[key] = params[key];
-    });
-
-    const queryString = Object.entries(sortedParams)
-        .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
-        .join('&');
-
-    return crypto.createHmac('sha256', apiKey)
-        .update(queryString)
-        .digest('hex');
-}
+const { decrypt, buildFalabellaSignature } = require('../services/falabellaCrypto');
 
 const makeFalabellaRequest = (apiKey, sellerId, action, method = 'GET', extraParams = null) => {
     return new Promise((resolve, reject) => {
@@ -589,7 +553,7 @@ const makeFalabellaRequest = (apiKey, sellerId, action, method = 'GET', extraPar
         if (!sellerId) return reject(new Error('El Seller ID de Falabella es requerido.'));
 
         // Decrypt API key if it is encrypted
-        const decryptedApiKey = apiKey.includes(':') ? decryptIntegrationKey(apiKey) : apiKey;
+        const decryptedApiKey = apiKey.includes(':') ? decrypt(apiKey) : apiKey;
 
         const timestamp = new Date().toISOString();
         const baseParams = {

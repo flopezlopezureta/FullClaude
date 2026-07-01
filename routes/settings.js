@@ -9,38 +9,7 @@ const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
 const shopifyPollingService = require('../services/shopifyPollingService');
 const woocommercePollingService = require('../services/woocommercePollingService');
-const crypto = require('crypto');
-
-// AES-256-CBC Encryption Helpers
-const ENCRYPTION_KEY = crypto.createHash('sha256')
-    .update(process.env.JWT_SECRET || 'fullenvios_jwt_secret_2024')
-    .digest();
-const IV_LENGTH = 16;
-
-function encrypt(text) {
-    if (!text) return null;
-    const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-    let encrypted = cipher.update(text, 'utf8');
-    encrypted = Buffer.concat([encrypted, cipher.final()]);
-    return iv.toString('hex') + ':' + encrypted.toString('hex');
-}
-
-function decrypt(text) {
-    if (!text) return null;
-    try {
-        const textParts = text.split(':');
-        const iv = Buffer.from(textParts.shift(), 'hex');
-        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
-        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
-        let decrypted = decipher.update(encryptedText);
-        decrypted = Buffer.concat([decrypted, decipher.final()]);
-        return decrypted.toString('utf8');
-    } catch (e) {
-        // Fallback for previously unencrypted plain text keys
-        return text;
-    }
-}
+const { encrypt, decrypt } = require('../services/falabellaCrypto');
 
 // Middleware to check for Admin role
 const adminOnly = (req, res, next) => {
