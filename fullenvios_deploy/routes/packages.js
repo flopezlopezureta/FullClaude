@@ -1136,6 +1136,15 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
     const MAX_ATTEMPTS = 3;
     const DELAY_MULTIPLIER = 3000;
     
+    if (attempts === 1) {
+        try {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [packageId, 'SYNC_FALABELLA_START', 'Falabella API', `Iniciando sincronización de entrega con Falabella Seller Center.`, new Date()]
+            );
+        } catch (e) { console.error(`[FalabellaSync] Start logging failed:`, e); }
+    }
+    
     try {
         const { rows } = await db.query(
             'SELECT settings.falabella_api_key, settings.falabella_seller_id ' +
