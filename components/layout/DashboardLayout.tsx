@@ -29,6 +29,7 @@ import DriverMobileLayout from '../driver/DriverMobileLayout';
 import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 import ClientSettingsPage from '../client/ClientSettingsPage';
 import ActivityAuditReport from '../admin/ActivityAuditReport';
+import SuperAdminBillingReportPage from '../admin/SuperAdminBillingReportPage';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
@@ -66,6 +67,7 @@ const DashboardLayout: React.FC = () => {
   const getDefaultView = () => {
     switch (user?.role) {
       case Role.Admin: return 'packages';
+      case 'ADMIN_SISTEMAS': return 'packages';
       case Role.OperadorSistemas: return 'packages';
       case Role.Client: return 'my-creations';
       case Role.Facturacion: return 'global-billing';
@@ -185,6 +187,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'billing-summary':
         if (isAdmin) return { title: 'Resumen Operativo de Cobro', content: <AdminBillingSummary /> };
+        break;
+
+      case 'superadmin-billing':
+        if (user?.role === 'ADMIN_SISTEMAS') return { title: 'Reporte de Cobro UF (Exclusivo Superadmin)', content: <SuperAdminBillingReportPage /> };
         break;
 
       case 'activity-audit':

@@ -111,6 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" /> },
     { id: 'billing-summary', label: 'Resumen Operativo de Cobro', icon: <IconChartBar className="h-6 w-6 text-emerald-600" /> },
     { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" /> },
+    ...(user?.role === 'ADMIN_SISTEMAS' ? [{ id: 'superadmin-billing', label: 'Reporte Cobro UF (Superadmin)', icon: <IconFileInvoice className="h-6 w-6 text-rose-600 font-bold" /> }] : []),
     {
       id: 'configuration',
       label: 'Configuración',
@@ -228,6 +229,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       'logistics', 
       'global-billing',
       'billing-summary',
+      'billing-report',
+      'superadmin-billing',
       'activity-audit',
       'late-deliveries',
       'configuration'
@@ -238,6 +241,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   let navItems;
   switch (user?.role) {
       case Role.Admin:
+      case 'ADMIN_SISTEMAS':
           navItems = filteredAdminNavItems;
           break;
       case Role.OperadorSistemas:
