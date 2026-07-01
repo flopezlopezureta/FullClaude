@@ -529,22 +529,76 @@ const makeWooCommerceRequest = (wooUrl, consumerKey, consumerSecret, path, metho
 };
 
 // --- FALABELLA API HELPERS ---
-const makeFalabellaRequest = (apiKey, sellerId, path, method = 'GET', postData = null) => {
+const crypto = require('crypto');
+
+// AES helpers to decrypt API key stored in db
+const INTEGRATION_ENCRYPTION_KEY = crypto.createHash('sha256')
+    .update(process.env.JWT_SECRET || 'fullenvios_jwt_secret_2024')
+    .digest();
+
+function decryptIntegrationKey(text) {
+    if (!text) return null;
+    try {
+        const textParts = text.split(':');
+        const iv = Buffer.from(textParts.shift(), 'hex');
+        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', INTEGRATION_ENCRYPTION_KEY, iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString('utf8');
+    } catch (e) {
+        return text;
+    }
+}
+
+function buildFalabellaSignature(params, apiKey) {
+    const sortedKeys = Object.keys(params).sort();
+    const sortedParams = {};
+    sortedKeys.forEach(key => {
+        sortedParams[key] = params[key];
+    });
+
+    const queryString = Object.entries(sortedParams)
+        .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+        .join('&');
+
+    return crypto.createHmac('sha256', apiKey)
+        .update(queryString)
+        .digest('hex');
+}
+
+const makeFalabellaRequest = (apiKey, sellerId, action, method = 'GET', extraParams = null) => {
     return new Promise((resolve, reject) => {
         if (!apiKey) return reject(new Error('La API Key de Falabella es requerida.'));
         if (!sellerId) return reject(new Error('El Seller ID de Falabella es requerido.'));
 
-        // This is a placeholder for Falabella (Seller Center) API
-        // In a real scenario, this would involve specific headers and signature
+        // Decrypt API key if it is encrypted
+        const decryptedApiKey = apiKey.includes(':') ? decryptIntegrationKey(apiKey) : apiKey;
+
+        const timestamp = new Date().toISOString();
+        const baseParams = {
+            Action: action,
+            Timestamp: timestamp,
+            UserID: sellerId,
+            Version: '1.0',
+            Format: 'JSON',
+            ...extraParams
+        };
+
+        const signature = buildFalabellaSignature(baseParams, decryptedApiKey);
+        baseParams.Signature = signature;
+
+        const queryString = Object.entries(baseParams)
+            .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+            .join('&');
+
         const options = {
             hostname: 'sellercenter-api.falabella.com',
-            path: `/${path}`,
+            path: `/?${queryString}`,
             method: method,
             headers: {
-                'Api-Key': apiKey,
-                'Seller-Id': sellerId,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'Content-Type': 'application/json'
             }
         };
 
@@ -565,7 +619,6 @@ const makeFalabellaRequest = (apiKey, sellerId, path, method = 'GET', postData =
             });
         });
         req.on('error', (e) => reject(e));
-        if (postData) req.write(postData);
         req.end();
     });
 };
@@ -1215,13 +1268,27 @@ router.post('/test/falabella', authMiddleware, async (req, res) => {
     }
 
     try {
-        // Placeholder for Falabella test
-        // In a real scenario, we would call a "ping" or "status" endpoint.
-        // For now, we'll simulate a successful connection if the fields are provided.
-        res.json({ message: 'ConfiguraciÃ³n de Falabella guardada (Prueba de conexiÃ³n pendiente de implementaciÃ³n exacta).' });
+        let apiKey = falabellaApiKey;
+        if (falabellaApiKey === '************************') {
+            const { rows } = await db.query('SELECT falabella_api_key FROM integration_settings WHERE id = 1');
+            if (rows.length > 0) {
+                apiKey = rows[0].falabella_api_key;
+            }
+        }
+        
+        await makeFalabellaRequest(apiKey, falabellaSellerId, 'GetDocumentTemplates');
+        res.json({ message: 'Conexión exitosa con Falabella Seller Center (API Key y Seller ID válidos).' });
     } catch (err) {
         console.error("Falabella Test Connection Error:", err);
-        res.status(500).json({ message: 'Error al conectar con Falabella: ' + (err.message || 'Error desconocido') });
+        let errorMsg = 'Error desconocido al conectar con Falabella';
+        if (err.body && err.body.ErrorResponse && err.body.ErrorResponse.Head) {
+            errorMsg = err.body.ErrorResponse.Head.ErrorMessage;
+        } else if (err.message) {
+            errorMsg = err.message;
+        } else if (err.body) {
+            errorMsg = typeof err.body === 'string' ? err.body : JSON.stringify(err.body);
+        }
+        res.status(500).json({ message: 'Error al conectar con Falabella: ' + errorMsg });
     }
 });
 

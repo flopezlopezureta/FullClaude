@@ -8,6 +8,38 @@ const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
 const shopifyPollingService = require('../services/shopifyPollingService');
+const crypto = require('crypto');
+
+// AES-256-CBC Encryption Helpers
+const ENCRYPTION_KEY = crypto.createHash('sha256')
+    .update(process.env.JWT_SECRET || 'fullenvios_jwt_secret_2024')
+    .digest();
+const IV_LENGTH = 16;
+
+function encrypt(text) {
+    if (!text) return null;
+    const iv = crypto.randomBytes(IV_LENGTH);
+    const cipher = crypto.createCipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+    let encrypted = cipher.update(text, 'utf8');
+    encrypted = Buffer.concat([encrypted, cipher.final()]);
+    return iv.toString('hex') + ':' + encrypted.toString('hex');
+}
+
+function decrypt(text) {
+    if (!text) return null;
+    try {
+        const textParts = text.split(':');
+        const iv = Buffer.from(textParts.shift(), 'hex');
+        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', ENCRYPTION_KEY, iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString('utf8');
+    } catch (e) {
+        // Fallback for previously unencrypted plain text keys
+        return text;
+    }
+}
 
 // Middleware to check for Admin role
 const adminOnly = (req, res, next) => {
@@ -352,7 +384,7 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             wooUrl: rows[0].woo_url,
             wooConsumerKey: rows[0].woo_consumer_key,
             wooConsumerSecret: rows[0].woo_consumer_secret,
-            falabellaApiKey: rows[0].falabella_api_key,
+            falabellaApiKey: rows[0].falabella_api_key ? '************************' : '',
             falabellaSellerId: rows[0].falabella_seller_id,
             smtpFrom: rows[0].smtp_from,
             smtpGoogleEmail: rows[0].smtp_google_email,
@@ -432,9 +464,9 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`woo_consumer_secret = $${idx++}`);
             values.push(wooConsumerSecret);
         }
-        if (falabellaApiKey !== undefined) {
+        if (falabellaApiKey !== undefined && falabellaApiKey !== '************************') {
             updates.push(`falabella_api_key = $${idx++}`);
-            values.push(falabellaApiKey);
+            values.push(encrypt(falabellaApiKey));
         }
         if (falabellaSellerId !== undefined) {
             updates.push(`falabella_seller_id = $${idx++}`);
@@ -481,7 +513,7 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 wooUrl: saved.woo_url,
                 wooConsumerKey: saved.woo_consumer_key,
                 wooConsumerSecret: saved.woo_consumer_secret,
-                falabellaApiKey: saved.falabella_api_key,
+                falabellaApiKey: saved.falabella_api_key ? '************************' : '',
                 falabellaSellerId: saved.falabella_seller_id,
                 smtpFrom: saved.smtp_from,
                 smtpGoogleEmail: saved.smtp_google_email,
