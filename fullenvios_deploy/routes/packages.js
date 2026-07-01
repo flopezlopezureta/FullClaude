@@ -246,7 +246,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         
         const selectFields = excludePhotos === 'true'
-            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", p."isDuplicate", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", u.name as "clientName"`
+            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", p."isDuplicate", p."falabellaOrderId", p."falabellaTrackingId", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", u.name as "clientName"`
             : `p.*, u.name as "clientName"`;
 
         const packageQuery = `
@@ -1129,6 +1129,132 @@ const makeMeliPostRequest = (path, postData) => makeMeliRequest({
 }, postData);
 // --- END MELI HELPERS ---
 
+// --- FALABELLA SYNC LOGIC ---
+const crypto = require('crypto');
+
+// AES helpers to decrypt API key stored in db
+const PACKAGES_ENCRYPTION_KEY = crypto.createHash('sha256')
+    .update(process.env.JWT_SECRET || 'fullenvios_jwt_secret_2024')
+    .digest();
+
+function decryptPackagesKey(text) {
+    if (!text) return null;
+    try {
+        const textParts = text.split(':');
+        const iv = Buffer.from(textParts.shift(), 'hex');
+        const encryptedText = Buffer.from(textParts.join(':'), 'hex');
+        const decipher = crypto.createDecipheriv('aes-256-cbc', PACKAGES_ENCRYPTION_KEY, iv);
+        let decrypted = decipher.update(encryptedText);
+        decrypted = Buffer.concat([decrypted, decipher.final()]);
+        return decrypted.toString('utf8');
+    } catch (e) {
+        return text;
+    }
+}
+
+function buildFalabellaPackagesSignature(params, apiKey) {
+    const sortedKeys = Object.keys(params).sort();
+    const sortedParams = {};
+    sortedKeys.forEach(key => {
+        sortedParams[key] = params[key];
+    });
+    const queryString = Object.entries(sortedParams)
+        .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+        .join('&');
+    return crypto.createHmac('sha256', apiKey)
+        .update(queryString)
+        .digest('hex');
+}
+
+async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
+    const MAX_ATTEMPTS = 3;
+    const DELAY_MULTIPLIER = 3000;
+    
+    try {
+        const { rows } = await db.query(
+            'SELECT settings.falabella_api_key, settings.falabella_seller_id ' +
+            'FROM integration_settings settings WHERE settings.id = 1'
+        );
+        
+        if (rows.length === 0 || !rows[0].falabella_api_key) {
+            throw new Error("Credenciales de Falabella no configuradas.");
+        }
+        
+        const apiKey = decryptPackagesKey(rows[0].falabella_api_key);
+        const sellerId = rows[0].falabella_seller_id;
+        
+        const timestamp = new Date().toISOString();
+        const params = {
+            Action: 'UpdateOrderItems',
+            Timestamp: timestamp,
+            UserID: sellerId,
+            Version: '1.0',
+            Format: 'JSON',
+            OrderItemIds: JSON.stringify([trackingId]),
+            Status: 'delivered'
+        };
+        
+        const signature = buildFalabellaPackagesSignature(params, apiKey);
+        params.Signature = signature;
+        
+        const queryString = Object.entries(params)
+            .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+            .join('&');
+
+        const https = require('https');
+        await new Promise((resolve, reject) => {
+            const options = {
+                hostname: 'sellercenter-api.falabella.com',
+                path: `/?${queryString}`,
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json'
+                }
+            };
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(`Falabella API returned HTTP ${res.statusCode}: ${data}`));
+                    }
+                });
+            });
+            req.on('error', reject);
+            req.end();
+        });
+        
+        await db.query(
+            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+            [packageId, 'SYNC_FALABELLA_OK', 'Falabella API', `Pedido sincronizado exitosamente en Falabella.`, new Date()]
+        );
+        console.log(`[FalabellaSync] Package ${packageId} synced successfully with Falabella.`);
+        
+    } catch (error) {
+        console.error(`[FalabellaSync] Fallo en intento ${attempts}/${MAX_ATTEMPTS} para paquete ${packageId}:`, error.message);
+        
+        if (attempts < MAX_ATTEMPTS) {
+            const nextDelay = attempts * DELAY_MULTIPLIER;
+            setTimeout(() => syncDeliveryToFalabella(packageId, trackingId, attempts + 1), nextDelay);
+        } else {
+            // Save in retry queue
+            await db.query(
+                'INSERT INTO integration_sync_queue ("packageId", integration, action, payload, error, "nextAttemptAt") ' +
+                'VALUES ($1, $2, $3, $4, $5, NOW() + INTERVAL \'15 minutes\')',
+                [packageId, 'FALABELLA', 'DELIVERY_CONFIRM', JSON.stringify({ trackingId }), error.message]
+            );
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [packageId, 'SYNC_FALABELLA_ERROR', 'Falabella API', `Error al sincronizar: ${error.message}. Guardado en cola.`, new Date()]
+            );
+        }
+    }
+}
+// --- END FALABELLA SYNC LOGIC ---
+
 // POST /api/packages/:id/deliver
 router.post('/:id/deliver', authMiddleware, async (req, res) => {
     const { id } = req.params;
@@ -1226,7 +1352,12 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                 console.error(`[Deliver] Failed to update Jumpseller order ${updatedPackage.jumpsellerOrderId}`);
             }
         }
-        // --- END JUMPSELLER NOTIFICATION ---
+        // --- NEW FALABELLA NOTIFICATION ---
+        if (updatedPackage.source === 'FALABELLA' && updatedPackage.falabellaTrackingId) {
+            syncDeliveryToFalabella(updatedPackage.id, updatedPackage.falabellaTrackingId)
+                .catch(err => console.error(`[Deliver] Falabella sync trigger error:`, err));
+        }
+        // --- END FALABELLA NOTIFICATION ---
 
         // Notify recipient
         NotificationService.notifyRecipient(id, 'ENTREGADO');

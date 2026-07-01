@@ -321,7 +321,9 @@ async function initializeDatabase() {
                 'sourceAccountId TEXT',
                 'sourceAccountName TEXT',
                 'alertChecked BOOLEAN DEFAULT false',
-                'isDuplicate BOOLEAN DEFAULT false'
+                'isDuplicate BOOLEAN DEFAULT false',
+                'falabellaOrderId TEXT',
+                'falabellaTrackingId TEXT'
             ];
             for (const spec of pkgCols) {
                 const col = spec.split(' ')[0];
@@ -643,6 +645,22 @@ async function initializeDatabase() {
             );
         `);
         console.log('Table "integration_settings" is ready.');
+
+        // --- NEW INTEGRATION SYNC QUEUE TABLE ---
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS integration_sync_queue (
+                id SERIAL PRIMARY KEY,
+                "packageId" TEXT NOT NULL,
+                integration TEXT NOT NULL,
+                action TEXT NOT NULL,
+                payload JSONB,
+                error TEXT,
+                attempts INTEGER DEFAULT 1,
+                "nextAttemptAt" TIMESTAMPTZ,
+                "createdAt" TIMESTAMPTZ DEFAULT NOW()
+            );
+        `);
+        console.log('Table "integration_sync_queue" is ready.');
 
         // --- MIGRATIONS: Add Shopify fields ---
         try {
