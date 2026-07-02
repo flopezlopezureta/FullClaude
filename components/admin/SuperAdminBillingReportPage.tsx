@@ -127,7 +127,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
 
             csvContent += escapeCSV("Resumen de Cobro") + '\n';
             csvContent += escapeCSV("Total Creados") + ',' + escapeCSV(reportData.summary.totalCreated) + '\n';
-            csvContent += escapeCSV("Quedaron en Bodega") + ',' + escapeCSV(reportData.summary.totalAssignedToBodega) + '\n';
+            csvContent += escapeCSV("Sin Procesar") + ',' + escapeCSV(reportData.summary.totalAssignedToBodega) + '\n';
             csvContent += escapeCSV("Total Despachados/Facturables") + ',' + escapeCSV(reportData.summary.totalPackages) + '\n';
             csvContent += escapeCSV("Tarifa Unitaria UF") + ',' + escapeCSV(reportData.summary.ratePerPackageUf) + '\n';
             csvContent += escapeCSV("Total UF") + ',' + escapeCSV(reportData.summary.totalCostUf) + '\n';
@@ -136,7 +136,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
             csvContent += escapeCSV("Total Bruto CLP") + ',' + escapeCSV(reportData.summary.totalCostClpGross) + '\n\n';
 
             csvContent += escapeCSV("Detalle Diario") + '\n';
-            csvContent += escapeCSV("Fecha") + ',' + escapeCSV("Creados") + ',' + escapeCSV("Quedaron en Bodega") + ',' + escapeCSV("Despachados (Facturables)") + ',' + escapeCSV("Total UF") + ',' + escapeCSV("Total CLP") + '\n';
+            csvContent += escapeCSV("Fecha") + ',' + escapeCSV("Creados") + ',' + escapeCSV("Sin Procesar") + ',' + escapeCSV("Despachados (Facturables)") + ',' + escapeCSV("Total UF") + ',' + escapeCSV("Total CLP") + '\n';
             
             reportData.dailyDetails.forEach((day: any) => {
                 csvContent += escapeCSV(day.date) + ',' + 
@@ -280,7 +280,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             icon={<IconPackage className="w-6 h-6 text-blue-800"/>} 
                             title="Despachos Cobrados" 
                             value={reportData.summary.totalPackages} 
-                            subtext={`Creados: ${reportData.summary.totalCreated} / Bodega: ${reportData.summary.totalAssignedToBodega}`}
+                            subtext={`Creados: ${reportData.summary.totalCreated} / Sin Procesar: ${reportData.summary.totalAssignedToBodega}`}
                             colorClass="bg-blue-100" 
                         />
                         <KpiCard 
@@ -332,7 +332,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                     <tr>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Fecha</th>
                                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Ingresados</th>
-                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">En Bodega</th>
+                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Sin Procesar</th>
                                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Despachados (Facturar)</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Costo UF</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Neto CLP</th>
@@ -414,7 +414,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                         <span className="text-lg font-bold text-gray-900">{reportData.summary.totalCreated}</span>
                     </div>
                     <div>
-                        <span className="block text-rose-600 text-xs font-semibold">Quedaron en Bodega</span>
+                        <span className="block text-rose-600 text-xs font-semibold">Sin Procesar</span>
                         <span className="text-lg font-bold text-rose-600">{reportData.summary.totalAssignedToBodega}</span>
                     </div>
                     <div>
@@ -453,7 +453,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                         <tr>
                             <th className="p-2 text-left">Fecha</th>
                             <th className="p-2 text-center">Ingresados</th>
-                            <th className="p-2 text-center">En Bodega / Excluidos</th>
+                            <th className="p-2 text-center">Sin Procesar / Excluidos</th>
                             <th className="p-2 text-center">Despachados (Facturables)</th>
                             <th className="p-2 text-right">Costo UF</th>
                             <th className="p-2 text-right">Costo Neto CLP</th>

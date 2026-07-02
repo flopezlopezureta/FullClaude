@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.36",
-  "versionComment": "Versión 2.6.36: Corrige impresión de reporte UF a formato multi-página y remueve subtítulo rojo.",
+  "version": "2.6.37",
+  "versionComment": "Versión 2.6.37: Cambia etiqueta 'Quedaron en Bodega' por 'Sin Procesar' en reporte UF.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
