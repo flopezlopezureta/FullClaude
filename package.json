@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.35",
-  "versionComment": "Versión 2.6.35: Corrige cálculo de facturación mensual de Go Delivery para evaluar métricas globales de la plataforma.",
+  "version": "2.6.36",
+  "versionComment": "Versión 2.6.36: Corrige impresión de reporte UF a formato multi-página y remueve subtítulo rojo.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

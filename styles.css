@@ -328,6 +328,14 @@ body {
     padding: 0;
   }
   
+  /* Hide sidebar, header and screen-only elements during print */
+  aside,
+  header,
+  .print-hidden,
+  .print\:hidden {
+    display: none !important;
+  }
+
   /* Hide everything by default in print */
   body * {
     visibility: hidden;
@@ -338,27 +346,32 @@ body {
     visibility: visible;
   }
   
+  /* Use relative positioning for natural page flow and split */
   .print-container {
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 100%;
-    margin: 0;
-    padding: 0;
+    position: relative !important;
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
   }
   
-  /* Helper class to hide elements during print */
-  .print-hidden {
-    display: none !important;
-  }
-
-  /* Ensure the root element doesn't constrain the printable area */
-  #root, main {
-    visibility: visible;
+  /* Ensure the root element and intermediate wrappers don't constrain the printable area */
+  #root, 
+  #root > div, 
+  #root > div > div, 
+  main, 
+  main > div {
+    visibility: visible !important;
     overflow: visible !important;
     height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    display: block !important;
+    position: static !important;
     padding: 0 !important;
     margin: 0 !important;
+    border: none !important;
+    box-shadow: none !important;
+    background: transparent !important;
   }
   
   /* New print-specific classes */

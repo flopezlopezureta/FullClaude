@@ -391,7 +391,6 @@ const SuperAdminBillingReportPage: React.FC = () => {
                     </div>
                     <div className="text-right">
                         <h2 className="text-lg font-bold text-gray-800">{reportData.client.name.toUpperCase()}</h2>
-                        <p className="text-xs text-rose-600 font-bold uppercase">Superadministración Full Envios</p>
                     </div>
                 </header>
 
