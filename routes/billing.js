@@ -129,31 +129,65 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
         }
 
         // Fetch daily count of packages, filtering out those assigned to driver 'Bodega', pending, cancelled, or never assigned
-        const query = `
-            WITH bodega_user AS (
-                SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
-            )
-            SELECT 
-                DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
-                COUNT(*) as total_created,
-                COUNT(*) FILTER (
-                    WHERE p."driverId" = (SELECT id FROM bodega_user)
-                       OR p.status IN ('PENDIENTE', 'CANCELADO')
-                       OR p."driverId" IS NULL
-                ) as assigned_to_bodega,
-                COUNT(*) - COUNT(*) FILTER (
-                    WHERE p."driverId" = (SELECT id FROM bodega_user)
-                       OR p.status IN ('PENDIENTE', 'CANCELADO')
-                       OR p."driverId" IS NULL
-                ) as net_dispatched
-            FROM packages p
-            WHERE p."creatorId" = $1 
-              AND p."createdAt" >= ($2::timestamp AT TIME ZONE 'America/Santiago')
-              AND p."createdAt" < ($3::timestamp AT TIME ZONE 'America/Santiago')
-            GROUP BY DATE(p."createdAt" AT TIME ZONE 'America/Santiago')
-            ORDER BY date ASC;
-        `;
-        const { rows } = await db.query(query, [clientId, startMonthStr, endMonthStr]);
+        // If the selected client is Go Delivery Interno, we query globally for all packages processed on the platform
+        const isGoDelivery = clientId === 'user-ebe23460-0205-4e30-80b4-6d1ea42085b7';
+        let query;
+        let queryParams;
+
+        if (isGoDelivery) {
+            query = `
+                WITH bodega_user AS (
+                    SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
+                )
+                SELECT 
+                    DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
+                    COUNT(*) as total_created,
+                    COUNT(*) FILTER (
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
+                    ) as assigned_to_bodega,
+                    COUNT(*) - COUNT(*) FILTER (
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
+                    ) as net_dispatched
+                FROM packages p
+                WHERE p."createdAt" >= ($1::timestamp AT TIME ZONE 'America/Santiago')
+                  AND p."createdAt" < ($2::timestamp AT TIME ZONE 'America/Santiago')
+                GROUP BY DATE(p."createdAt" AT TIME ZONE 'America/Santiago')
+                ORDER BY date ASC;
+            `;
+            queryParams = [startMonthStr, endMonthStr];
+        } else {
+            query = `
+                WITH bodega_user AS (
+                    SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
+                )
+                SELECT 
+                    DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
+                    COUNT(*) as total_created,
+                    COUNT(*) FILTER (
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
+                    ) as assigned_to_bodega,
+                    COUNT(*) - COUNT(*) FILTER (
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
+                    ) as net_dispatched
+                FROM packages p
+                WHERE p."creatorId" = $1 
+                  AND p."createdAt" >= ($2::timestamp AT TIME ZONE 'America/Santiago')
+                  AND p."createdAt" < ($3::timestamp AT TIME ZONE 'America/Santiago')
+                GROUP BY DATE(p."createdAt" AT TIME ZONE 'America/Santiago')
+                ORDER BY date ASC;
+            `;
+            queryParams = [clientId, startMonthStr, endMonthStr];
+        }
+
+        const { rows } = await db.query(query, queryParams);
 
         // Fetch client details
         const { rows: clientRows } = await db.query('SELECT name, "companyName", email FROM users WHERE id = $1', [clientId]);

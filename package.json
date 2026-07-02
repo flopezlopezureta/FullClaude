@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.34",
-  "versionComment": "Versión 2.6.34: Incorpora reporte de cobro UF mensual para superadmin con deducción de bodega, formato factura y corrección de márgenes.",
+  "version": "2.6.35",
+  "versionComment": "Versión 2.6.35: Corrige cálculo de facturación mensual de Go Delivery para evaluar métricas globales de la plataforma.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
