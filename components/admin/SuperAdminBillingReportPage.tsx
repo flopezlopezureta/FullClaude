@@ -407,12 +407,33 @@ const SuperAdminBillingReportPage: React.FC = () => {
                     </div>
                 </div>
 
+                <div className="border border-gray-300 rounded-lg p-4 mb-6 bg-gray-50 text-sm">
+                    <h3 className="font-bold text-gray-800 uppercase tracking-wider text-xs mb-3 border-b pb-2">Detalle de Facturación (Formato Factura)</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                            <p><span className="text-gray-500">Servicio:</span> <span className="font-semibold text-gray-800">Despacho de Envíos Mensuales</span></p>
+                            <p><span className="text-gray-500">Tarifa Unitaria:</span> <span className="font-semibold text-gray-800">{reportData.summary.ratePerPackageUf} UF / envío</span></p>
+                            <p><span className="text-gray-500">Envíos Cobrados:</span> <span className="font-semibold text-gray-800">{reportData.summary.totalPackages} despachos</span></p>
+                            <p><span className="text-gray-500">Total UF Acumulado:</span> <span className="font-semibold text-gray-800">{reportData.summary.totalCostUf.toFixed(5)} UF</span></p>
+                        </div>
+                        <div className="space-y-1 text-right border-l pl-4">
+                            <p><span className="text-gray-500">UF de Referencia:</span> <span className="font-semibold text-gray-800">${reportData.uf.value?.toLocaleString('es-CL')} CLP</span></p>
+                            <p><span className="text-gray-500">Subtotal Neto:</span> <span className="font-semibold text-gray-800">{formatCLP(reportData.summary.totalCostClpNet)}</span></p>
+                            <p><span className="text-gray-500">IVA (19%):</span> <span className="font-semibold text-gray-800">{formatCLP(reportData.summary.totalCostClpIva)}</span></p>
+                            <div className="border-t pt-1 mt-2 text-base font-bold text-emerald-800">
+                                <span>TOTAL FACTURA: {formatCLP(reportData.summary.totalCostClpGross)}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 className="font-bold text-gray-700 text-sm mb-2">Desglose Diario de Envíos</h3>
                 <table className="w-full text-xs mb-6">
                     <thead className="bg-gray-200">
                         <tr>
                             <th className="p-2 text-left">Fecha</th>
                             <th className="p-2 text-center">Ingresados</th>
-                            <th className="p-2 text-center">En Bodega</th>
+                            <th className="p-2 text-center">En Bodega / Excluidos</th>
                             <th className="p-2 text-center">Despachados (Facturables)</th>
                             <th className="p-2 text-right">Costo UF</th>
                             <th className="p-2 text-right">Costo Neto CLP</th>
@@ -444,7 +465,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             <td className="p-2 text-right text-gray-500 font-medium">{formatCLP(reportData.summary.totalCostClpIva)}</td>
                         </tr>
                         <tr className="border-t-2 border-gray-500 bg-gray-100 text-sm">
-                            <td colSpan={5} className="p-3 text-right font-bold text-gray-900">TOTAL BRUTO A COBRAR (+IVA)</td>
+                            <td colSpan={5} className="p-3 text-right font-bold text-gray-900">TOTAL BRUTO FACTURA (+IVA)</td>
                             <td className="p-3 text-right font-bold text-gray-900">{formatCLP(reportData.summary.totalCostClpGross)}</td>
                         </tr>
                     </tfoot>
