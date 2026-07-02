@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { api } from '../../services/api';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconPrinter, IconCalendar, IconPackage, IconDollarSign, IconFileSpreadsheet, IconTrendingUp, IconLock } from '../Icon';
+import { IconPrinter, IconCalendar, IconPackage, IconDollarSign, IconFileSpreadsheet, IconTrendingUp, IconLock, IconCube } from '../Icon';
 
 const KpiCard: React.FC<{ icon: React.ReactNode, title: string, value: string | number, subtext?: string, colorClass: string }> = ({ icon, title, value, subtext, colorClass }) => (
     <div className="bg-[var(--background-secondary)] rounded-lg p-4 shadow-sm border border-[var(--border-primary)] flex items-center">
@@ -31,12 +31,20 @@ const SuperAdminBillingReportPage: React.FC = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [isExporting, setIsExporting] = useState(false);
 
-    // Fetch clients list
+    // Fetch clients list and auto-select Go Delivery Interno
     useEffect(() => {
         const fetchClients = async () => {
             try {
                 const allUsers = await api.getUsers();
                 setUsers(allUsers);
+                
+                // Auto-select Go Delivery Interno if present
+                const goDelivery = allUsers.find((u: any) => 
+                    u.role === 'CLIENT' && u.name.toLowerCase().includes('go delivery')
+                );
+                if (goDelivery) {
+                    setSelectedClientId(goDelivery.id);
+                }
             } catch (error) {
                 console.error("Failed to fetch clients", error);
             }
@@ -118,7 +126,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
             csvContent += escapeCSV("UF de Referencia (1º del mes siguiente):") + ',' + escapeCSV(reportData.uf.value) + ` (${reportData.uf.source})` + '\n\n';
 
             csvContent += escapeCSV("Resumen de Cobro") + '\n';
-            csvContent += escapeCSV("Total Paquetes Procesados") + ',' + escapeCSV(reportData.summary.totalPackages) + '\n';
+            csvContent += escapeCSV("Total Creados") + ',' + escapeCSV(reportData.summary.totalCreated) + '\n';
+            csvContent += escapeCSV("Quedaron en Bodega") + ',' + escapeCSV(reportData.summary.totalAssignedToBodega) + '\n';
+            csvContent += escapeCSV("Total Despachados/Facturables") + ',' + escapeCSV(reportData.summary.totalPackages) + '\n';
             csvContent += escapeCSV("Tarifa Unitaria UF") + ',' + escapeCSV(reportData.summary.ratePerPackageUf) + '\n';
             csvContent += escapeCSV("Total UF") + ',' + escapeCSV(reportData.summary.totalCostUf) + '\n';
             csvContent += escapeCSV("Subtotal Neto CLP") + ',' + escapeCSV(reportData.summary.totalCostClpNet) + '\n';
@@ -126,10 +136,12 @@ const SuperAdminBillingReportPage: React.FC = () => {
             csvContent += escapeCSV("Total Bruto CLP") + ',' + escapeCSV(reportData.summary.totalCostClpGross) + '\n\n';
 
             csvContent += escapeCSV("Detalle Diario") + '\n';
-            csvContent += escapeCSV("Fecha") + ',' + escapeCSV("Cantidad Envíos") + ',' + escapeCSV("Total UF") + ',' + escapeCSV("Total CLP") + '\n';
+            csvContent += escapeCSV("Fecha") + ',' + escapeCSV("Creados") + ',' + escapeCSV("Quedaron en Bodega") + ',' + escapeCSV("Despachados (Facturables)") + ',' + escapeCSV("Total UF") + ',' + escapeCSV("Total CLP") + '\n';
             
             reportData.dailyDetails.forEach((day: any) => {
                 csvContent += escapeCSV(day.date) + ',' + 
+                              escapeCSV(day.totalCreated) + ',' + 
+                              escapeCSV(day.assignedToBodega) + ',' + 
                               escapeCSV(day.packagesCount) + ',' + 
                               escapeCSV(day.costUf) + ',' + 
                               escapeCSV(day.costClp || '-') + '\n';
@@ -178,7 +190,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             id="super-client-search"
                             value={clientSearchQuery}
                             onChange={e => setClientSearchQuery(e.target.value)}
-                            placeholder="Ej: Razas Pet..."
+                            placeholder="Ej: Go Delivery..."
                             className={inputClasses}
                         />
                     </div>
@@ -245,9 +257,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                         <KpiCard 
                             icon={<IconPackage className="w-6 h-6 text-blue-800"/>} 
-                            title="Paquetes Procesados" 
+                            title="Despachos Cobrados" 
                             value={reportData.summary.totalPackages} 
-                            subtext={`Tarifa fija: ${reportData.summary.ratePerPackageUf} UF`}
+                            subtext={`Creados: ${reportData.summary.totalCreated} / Bodega: ${reportData.summary.totalAssignedToBodega}`}
                             colorClass="bg-blue-100" 
                         />
                         <KpiCard 
@@ -298,21 +310,25 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                 <thead className="bg-[var(--background-muted)]">
                                     <tr>
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Fecha</th>
-                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Envíos Procesados</th>
+                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Ingresados</th>
+                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">En Bodega</th>
+                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Despachados (Facturar)</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Costo UF</th>
-                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Costo Neto CLP</th>
+                                        <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Neto CLP</th>
                                     </tr>
                                 </thead>
                                 <tbody className="bg-[var(--background-secondary)] divide-y divide-[var(--border-primary)]">
                                     {reportData.dailyDetails.length === 0 ? (
-                                        <tr><td colSpan={4} className="px-6 py-4 text-center text-[var(--text-muted)]">No se registraron despachos en el período seleccionado.</td></tr>
+                                        <tr><td colSpan={6} className="px-6 py-4 text-center text-[var(--text-muted)]">No se registraron despachos en el período seleccionado.</td></tr>
                                     ) : (
                                         reportData.dailyDetails.map((day: any) => (
                                             <tr key={day.date}>
-                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--text-primary)]">
-                                                    {new Date(day.date + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}
+                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-[var(--text-primary)] font-medium">
+                                                    {new Date(day.date + 'T00:00:00').toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                                                 </td>
-                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-[var(--text-secondary)] font-semibold">{day.packagesCount}</td>
+                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-[var(--text-secondary)]">{day.totalCreated}</td>
+                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-rose-500 font-semibold">{day.assignedToBodega}</td>
+                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-emerald-600 font-bold">{day.packagesCount}</td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-right text-[var(--text-secondary)] font-mono">{day.costUf.toFixed(6)}</td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-right text-[var(--text-primary)] font-semibold">{formatCLP(day.costClp)}</td>
                                             </tr>
@@ -321,18 +337,20 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                 </tbody>
                                 <tfoot className="bg-[var(--background-muted)] font-semibold text-sm">
                                     <tr className="border-t-2 border-[var(--border-primary)]">
-                                        <td className="px-6 py-3 text-right text-[var(--text-primary)]">TOTAL PAQUETES / UF</td>
-                                        <td className="px-6 py-3 text-center text-[var(--text-primary)] font-bold">{reportData.summary.totalPackages}</td>
+                                        <td className="px-6 py-3 text-right text-[var(--text-primary)] font-bold">TOTALES</td>
+                                        <td className="px-6 py-3 text-center text-[var(--text-secondary)] font-bold">{reportData.summary.totalCreated}</td>
+                                        <td className="px-6 py-3 text-center text-rose-500 font-bold">{reportData.summary.totalAssignedToBodega}</td>
+                                        <td className="px-6 py-3 text-center text-emerald-600 font-bold">{reportData.summary.totalPackages}</td>
                                         <td className="px-6 py-3 text-right text-[var(--text-primary)] font-mono font-bold">{reportData.summary.totalCostUf.toFixed(5)} UF</td>
                                         <td className="px-6 py-3 text-right text-[var(--text-primary)] font-bold">{formatCLP(reportData.summary.totalCostClpNet)}</td>
                                     </tr>
                                     <tr>
-                                        <td colSpan={3} className="px-6 py-2 text-right text-xs text-[var(--text-muted)]">IVA (19.0%)</td>
+                                        <td colSpan={5} className="px-6 py-2 text-right text-xs text-[var(--text-muted)]">IVA (19.0%)</td>
                                         <td className="px-6 py-2 text-right text-xs text-[var(--text-muted)] font-semibold">{formatCLP(reportData.summary.totalCostClpIva)}</td>
                                     </tr>
-                                    <tr className="border-t border-[var(--border-primary)]">
-                                        <td colSpan={3} className="px-6 py-4 text-right font-bold text-base text-[var(--brand-primary)]">TOTAL BRUTO CLP</td>
-                                        <td className="px-6 py-4 text-right font-bold text-base text-[var(--brand-primary)]">{formatCLP(reportData.summary.totalCostClpGross)}</td>
+                                    <tr className="border-t border-[var(--border-primary)] bg-[var(--brand-muted)]">
+                                        <td colSpan={5} className="px-6 py-4 text-right font-bold text-base text-[var(--brand-text)]">TOTAL BRUTO A COBRAR (+IVA)</td>
+                                        <td className="px-6 py-4 text-right font-bold text-base text-[var(--brand-text)]">{formatCLP(reportData.summary.totalCostClpGross)}</td>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -347,12 +365,12 @@ const SuperAdminBillingReportPage: React.FC = () => {
             <div className="hidden print:block print-container font-sans bg-white text-gray-800 p-8" style={{ width: '8.5in', minHeight: '11in' }}>
                 <header className="flex justify-between items-start pb-4 border-b-2 border-gray-800">
                     <div className="flex items-center gap-4">
-                        <IconPackage className="w-10 h-10 text-gray-800"/>
+                        <IconCube className="w-10 h-10 text-gray-800"/>
                         <h1 className="text-2xl font-bold text-gray-900">REPORTE DE COBRO MENSUAL UF</h1>
                     </div>
                     <div className="text-right">
-                        <h2 className="text-lg font-bold text-gray-800">DOCUMENTO INTERNO</h2>
-                        <p className="text-xs text-rose-600 font-bold uppercase">Superadministrador</p>
+                        <h2 className="text-lg font-bold text-gray-800">{reportData.client.name.toUpperCase()}</h2>
+                        <p className="text-xs text-rose-600 font-bold uppercase">Superadministración Full Envios</p>
                     </div>
                 </header>
 
@@ -365,27 +383,27 @@ const SuperAdminBillingReportPage: React.FC = () => {
                     <div className="text-right bg-gray-50 p-3 rounded-lg">
                         <p className="text-gray-500 text-xs">Período de Facturación:</p>
                         <p className="font-semibold text-gray-800">{month}/{year}</p>
-                        <p className="text-gray-500 text-xs mt-2">UF de Cierre ({reportData.uf.date}):</p>
+                        <p className="text-gray-500 text-xs mt-2">UF al 1º del mes siguiente ({reportData.uf.date}):</p>
                         <p className="font-semibold text-gray-800">${reportData.uf.value?.toLocaleString('es-CL')} CLP</p>
                     </div>
                 </section>
 
                 <div className="bg-gray-100 p-4 rounded-lg mb-6 grid grid-cols-4 gap-4 text-center">
                     <div>
-                        <span className="block text-gray-500 text-xs">Total Paquetes</span>
-                        <span className="text-lg font-bold text-gray-900">{reportData.summary.totalPackages}</span>
+                        <span className="block text-gray-500 text-xs">Ingresados</span>
+                        <span className="text-lg font-bold text-gray-900">{reportData.summary.totalCreated}</span>
                     </div>
                     <div>
-                        <span className="block text-gray-500 text-xs">Tarifa Unitaria</span>
-                        <span className="text-lg font-bold text-gray-900">{reportData.summary.ratePerPackageUf} UF</span>
+                        <span className="block text-rose-600 text-xs font-semibold">Quedaron en Bodega</span>
+                        <span className="text-lg font-bold text-rose-600">{reportData.summary.totalAssignedToBodega}</span>
                     </div>
                     <div>
-                        <span className="block text-gray-500 text-xs">Monto Total UF</span>
-                        <span className="text-lg font-bold text-gray-900">{reportData.summary.totalCostUf.toFixed(5)}</span>
+                        <span className="block text-emerald-700 text-xs font-semibold">Neto Despachados</span>
+                        <span className="text-lg font-bold text-emerald-700">{reportData.summary.totalPackages}</span>
                     </div>
                     <div>
                         <span className="block text-gray-500 text-xs">Total Bruto CLP (+IVA)</span>
-                        <span className="text-lg font-bold text-emerald-700">{formatCLP(reportData.summary.totalCostClpGross)}</span>
+                        <span className="text-lg font-bold text-gray-900">{formatCLP(reportData.summary.totalCostClpGross)}</span>
                     </div>
                 </div>
 
@@ -393,7 +411,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
                     <thead className="bg-gray-200">
                         <tr>
                             <th className="p-2 text-left">Fecha</th>
-                            <th className="p-2 text-center">Envíos</th>
+                            <th className="p-2 text-center">Ingresados</th>
+                            <th className="p-2 text-center">En Bodega</th>
+                            <th className="p-2 text-center">Despachados (Facturables)</th>
                             <th className="p-2 text-right">Costo UF</th>
                             <th className="p-2 text-right">Costo Neto CLP</th>
                         </tr>
@@ -402,26 +422,30 @@ const SuperAdminBillingReportPage: React.FC = () => {
                         {reportData.dailyDetails.map((day: any) => (
                             <tr key={day.date} className="border-b border-gray-200">
                                 <td className="p-2">{day.date}</td>
-                                <td className="p-2 text-center font-semibold">{day.packagesCount}</td>
+                                <td className="p-2 text-center">{day.totalCreated}</td>
+                                <td className="p-2 text-center text-rose-600 font-semibold">{day.assignedToBodega}</td>
+                                <td className="p-2 text-center text-emerald-700 font-bold">{day.packagesCount}</td>
                                 <td className="p-2 text-right font-mono">{day.costUf.toFixed(6)}</td>
                                 <td className="p-2 text-right">{formatCLP(day.costClp)}</td>
                             </tr>
                         ))}
                     </tbody>
-                    <tfoot className="bg-gray-50 font-bold">
+                    <tfoot className="bg-gray-50 font-bold text-xs">
                         <tr className="border-t-2 border-gray-400">
-                            <td className="p-2 text-right">SUBTOTAL NETO</td>
-                            <td className="p-2 text-center">{reportData.summary.totalPackages}</td>
+                            <td className="p-2 text-right">TOTALES</td>
+                            <td className="p-2 text-center">{reportData.summary.totalCreated}</td>
+                            <td className="p-2 text-center text-rose-600">{reportData.summary.totalAssignedToBodega}</td>
+                            <td className="p-2 text-center text-emerald-700">{reportData.summary.totalPackages}</td>
                             <td className="p-2 text-right font-mono">{reportData.summary.totalCostUf.toFixed(5)} UF</td>
                             <td className="p-2 text-right">{formatCLP(reportData.summary.totalCostClpNet)}</td>
                         </tr>
                         <tr>
-                            <td colSpan={3} className="p-2 text-right text-gray-500">IVA (19.0%)</td>
-                            <td className="p-2 text-right text-gray-500">{formatCLP(reportData.summary.totalCostClpIva)}</td>
+                            <td colSpan={5} className="p-2 text-right text-gray-500 font-medium">IVA (19.0%)</td>
+                            <td className="p-2 text-right text-gray-500 font-medium">{formatCLP(reportData.summary.totalCostClpIva)}</td>
                         </tr>
-                        <tr className="border-t-2 border-gray-500">
-                            <td colSpan={3} className="p-2 text-right text-lg text-emerald-800">TOTAL BRUTO CLP</td>
-                            <td className="p-2 text-right text-lg text-emerald-800">{formatCLP(reportData.summary.totalCostClpGross)}</td>
+                        <tr className="border-t-2 border-gray-500 bg-gray-100 text-sm">
+                            <td colSpan={5} className="p-3 text-right font-bold text-gray-900">TOTAL BRUTO A COBRAR (+IVA)</td>
+                            <td className="p-3 text-right font-bold text-gray-900">{formatCLP(reportData.summary.totalCostClpGross)}</td>
                         </tr>
                     </tfoot>
                 </table>

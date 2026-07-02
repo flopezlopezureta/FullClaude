@@ -94,6 +94,7 @@ function getUfValueFromApi(dateStr) {
 /**
  * GET /api/billing/superadmin-monthly-report
  * Exclusively for ADMIN_SISTEMAS. Returns daily detail of dispatches, costs in UF, and conversions to CLP using the UF value of the 1st day of the next month.
+ * Subtracts packages that remained in warehouse (assigned to 'Bodega' driver user).
  */
 router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
     if (req.user.role !== 'ADMIN_SISTEMAS') {
@@ -127,11 +128,16 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
             ufSource = 'API (mindicador.cl)';
         }
 
-        // Fetch daily count of packages for client in range
+        // Fetch daily count of packages, filtering out those assigned to driver 'Bodega'
         const query = `
+            WITH bodega_user AS (
+                SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
+            )
             SELECT 
                 DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
-                COUNT(*) as count
+                COUNT(*) as total_created,
+                COUNT(*) FILTER (WHERE p."driverId" = (SELECT id FROM bodega_user)) as assigned_to_bodega,
+                COUNT(*) - COUNT(*) FILTER (WHERE p."driverId" = (SELECT id FROM bodega_user)) as net_dispatched
             FROM packages p
             WHERE p."creatorId" = $1 
               AND p."createdAt" >= ($2::timestamp AT TIME ZONE 'America/Santiago')
@@ -148,19 +154,28 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
 
         // Calculate values
         const ratePerPackageUf = 0.00099667;
-        let totalPackages = 0;
+        let totalPackages = 0; // Net billed packages (Dispatched)
+        let totalCreated = 0;
+        let totalAssignedToBodega = 0;
         const dailyDetails = [];
 
         rows.forEach(row => {
-            const count = parseInt(row.count, 10);
+            const count = parseInt(row.net_dispatched, 10);
+            const created = parseInt(row.total_created, 10);
+            const bodega = parseInt(row.assigned_to_bodega, 10);
+
             totalPackages += count;
+            totalCreated += created;
+            totalAssignedToBodega += bodega;
 
             const costUf = count * ratePerPackageUf;
             const costClp = finalUfValue ? costUf * finalUfValue : null;
 
             dailyDetails.push({
                 date: row.date.toISOString().split('T')[0],
-                packagesCount: count,
+                totalCreated: created,
+                assignedToBodega: bodega,
+                packagesCount: count, // Net dispatched
                 costUf: parseFloat(costUf.toFixed(8)),
                 costClp: costClp ? Math.round(costClp) : null
             });
@@ -185,7 +200,9 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                 source: ufSource
             },
             summary: {
-                totalPackages,
+                totalCreated,
+                totalAssignedToBodega,
+                totalPackages, // net dispatched
                 ratePerPackageUf,
                 totalCostUf: parseFloat(totalCostUf.toFixed(8)),
                 totalCostClpNet: totalCostClp ? Math.round(totalCostClp) : null,
