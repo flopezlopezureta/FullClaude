@@ -93,21 +93,22 @@ function getUfValueFromApi(dateStr) {
 
 /**
  * GET /api/billing/superadmin-monthly-report
- * Exclusively for ADMIN_SISTEMAS. Returns daily detail of dispatches, costs in UF, and conversions to CLP using the UF value of the 1st day of the next month.
+ * Exclusively for user with email = 'admin'. Returns daily detail of dispatches, costs in UF, and conversions to CLP using the UF value of the 1st day of the next month.
  * Subtracts packages that remained in warehouse (assigned to 'Bodega' driver user) and those that were never dispatched.
  */
 router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
-    if (req.user.role !== 'ADMIN_SISTEMAS') {
-        return res.status(403).json({ message: 'Acceso denegado. Exclusivo para el Superadministrador.' });
-    }
-
-    const { clientId, year, month, ufValue } = req.query;
-
-    if (!clientId || !year || !month) {
-        return res.status(400).json({ message: 'Se requieren clientId, year y month.' });
-    }
-
     try {
+        const { rows: userRows } = await db.query('SELECT email FROM users WHERE id = $1', [req.user.id]);
+        if (userRows.length === 0 || userRows[0].email !== 'admin') {
+            return res.status(403).json({ message: 'Acceso denegado. Exclusivo para el Administrador Principal.' });
+        }
+
+        const { clientId, year, month, ufValue } = req.query;
+
+        if (!clientId || !year || !month) {
+            return res.status(400).json({ message: 'Se requieren clientId, year y month.' });
+        }
+
         // Calculate date ranges
         const startMonthStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
         let nextMonth = parseInt(month) + 1;

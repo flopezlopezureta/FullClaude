@@ -111,7 +111,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     { id: 'global-billing', label: 'Facturación Masiva', icon: <IconFileInvoice className="h-6 w-6" /> },
     { id: 'billing-summary', label: 'Resumen Operativo de Cobro', icon: <IconChartBar className="h-6 w-6 text-emerald-600" /> },
     { id: 'billing-report', label: 'Informe por Cliente', icon: <IconFileText className="h-6 w-6" /> },
-    ...(user?.role === 'ADMIN_SISTEMAS' ? [{ id: 'superadmin-billing', label: 'Reporte Cobro UF (Superadmin)', icon: <IconFileInvoice className="h-6 w-6 text-rose-600 font-bold" /> }] : []),
+    ...(user?.email === 'admin' ? [{ id: 'superadmin-billing', label: 'Reporte Cobro UF (Superadmin)', icon: <IconFileInvoice className="h-6 w-6 text-rose-600 font-bold" /> }] : []),
     {
       id: 'configuration',
       label: 'Configuración',

@@ -190,7 +190,7 @@ const DashboardLayout: React.FC = () => {
         break;
 
       case 'superadmin-billing':
-        if (user?.role === 'ADMIN_SISTEMAS') return { title: 'Reporte de Cobro UF (Exclusivo Superadmin)', content: <SuperAdminBillingReportPage /> };
+        if (user?.email === 'admin') return { title: 'Reporte de Cobro UF (Exclusivo Superadmin)', content: <SuperAdminBillingReportPage /> };
         break;
 
       case 'activity-audit':
