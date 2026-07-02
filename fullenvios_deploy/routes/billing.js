@@ -94,7 +94,7 @@ function getUfValueFromApi(dateStr) {
 /**
  * GET /api/billing/superadmin-monthly-report
  * Exclusively for ADMIN_SISTEMAS. Returns daily detail of dispatches, costs in UF, and conversions to CLP using the UF value of the 1st day of the next month.
- * Subtracts packages that remained in warehouse (assigned to 'Bodega' driver user).
+ * Subtracts packages that remained in warehouse (assigned to 'Bodega' driver user) and those that were never dispatched.
  */
 router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
     if (req.user.role !== 'ADMIN_SISTEMAS') {
@@ -128,7 +128,7 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
             ufSource = 'API (mindicador.cl)';
         }
 
-        // Fetch daily count of packages, filtering out those assigned to driver 'Bodega'
+        // Fetch daily count of packages, filtering out those assigned to driver 'Bodega', pending, cancelled, or never assigned
         const query = `
             WITH bodega_user AS (
                 SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
@@ -136,8 +136,16 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
             SELECT 
                 DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
                 COUNT(*) as total_created,
-                COUNT(*) FILTER (WHERE p."driverId" = (SELECT id FROM bodega_user)) as assigned_to_bodega,
-                COUNT(*) - COUNT(*) FILTER (WHERE p."driverId" = (SELECT id FROM bodega_user)) as net_dispatched
+                COUNT(*) FILTER (
+                    WHERE p."driverId" = (SELECT id FROM bodega_user)
+                       OR p.status IN ('PENDIENTE', 'CANCELADO')
+                       OR p."driverId" IS NULL
+                ) as assigned_to_bodega,
+                COUNT(*) - COUNT(*) FILTER (
+                    WHERE p."driverId" = (SELECT id FROM bodega_user)
+                       OR p.status IN ('PENDIENTE', 'CANCELADO')
+                       OR p."driverId" IS NULL
+                ) as net_dispatched
             FROM packages p
             WHERE p."creatorId" = $1 
               AND p."createdAt" >= ($2::timestamp AT TIME ZONE 'America/Santiago')
