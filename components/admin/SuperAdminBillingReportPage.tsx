@@ -170,6 +170,23 @@ const SuperAdminBillingReportPage: React.FC = () => {
 
     return (
         <>
+        <style dangerouslySetInnerHTML={{__html: `
+            @media print {
+                @page {
+                    margin: 2cm !important;
+                }
+                body {
+                    margin: 0 !important;
+                    background: white !important;
+                }
+                .print-container {
+                    width: 100% !important;
+                    min-height: auto !important;
+                    padding: 0 !important;
+                    margin: 0 !important;
+                }
+            }
+        `}} />
         <div className="space-y-6 print:hidden">
             {/* Access Disclaimer Header */}
             <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/20 dark:border-rose-900 rounded-lg p-4 flex items-center gap-3">
