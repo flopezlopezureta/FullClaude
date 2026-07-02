@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.33",
-  "versionComment": "Versión 2.6.33: Reemplazo de window.confirm nativo por diálogos modales de React para reasignación en WebView móvil.",
+  "version": "2.6.34",
+  "versionComment": "Versión 2.6.34: Incorpora reporte de cobro UF mensual para superadmin con deducción de bodega, formato factura y corrección de márgenes.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
