@@ -173,17 +173,21 @@ const SuperAdminBillingReportPage: React.FC = () => {
         <style dangerouslySetInnerHTML={{__html: `
             @media print {
                 @page {
-                    margin: 2cm !important;
+                    margin: 0 !important;
                 }
                 body {
                     margin: 0 !important;
+                    padding: 0 !important;
                     background: white !important;
                 }
                 .print-container {
+                    display: block !important;
                     width: 100% !important;
-                    min-height: auto !important;
-                    padding: 0 !important;
+                    box-sizing: border-box !important;
+                    padding: 2cm !important;
                     margin: 0 !important;
+                    background: white !important;
+                    min-height: auto !important;
                 }
             }
         `}} />
@@ -379,7 +383,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
 
         {/* --- Printable PDF Layout --- */}
         {reportData && (
-            <div className="hidden print:block print-container font-sans bg-white text-gray-800 p-8" style={{ width: '8.5in', minHeight: '11in' }}>
+            <div className="hidden print:block print-container font-sans bg-white text-gray-800">
                 <header className="flex justify-between items-start pb-4 border-b-2 border-gray-800">
                     <div className="flex items-center gap-4">
                         <IconCube className="w-10 h-10 text-gray-800"/>
