@@ -180,3 +180,318 @@ export const exportToCSV = (packages: Package[], filename: string, users: User[]
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 };
+
+export const exportSuperAdminBillingToExcel = async (reportData: any, filename: string) => {
+    const workbook = new ExcelJS.Workbook();
+    
+    // 1. Cover summary sheet: "Resumen General"
+    const summarySheet = workbook.addWorksheet('Resumen General');
+    summarySheet.views = [{ showGridLines: true }];
+    
+    // Add Client Info & Summary block
+    summarySheet.addRow([]);
+    const titleRow = summarySheet.addRow(['', 'REPORTE DE COBRO MENSUAL UF']);
+    titleRow.getCell(2).font = { size: 16, bold: true, color: { argb: 'FF1F497D' } };
+    summarySheet.addRow([]);
+    
+    // Client Metadata
+    summarySheet.addRow(['', 'Cliente:', reportData.client.companyName || reportData.client.name]);
+    summarySheet.addRow(['', 'Período:', `${reportData.period.month}/${reportData.period.year}`]);
+    summarySheet.addRow(['', 'UF de Referencia:', reportData.uf.value]);
+    summarySheet.addRow(['', 'Fecha UF:', reportData.uf.date]);
+    summarySheet.addRow(['', 'Fuente UF:', reportData.uf.source]);
+    summarySheet.addRow([]);
+
+    // Style Metadata labels
+    for (let r = 4; r <= 8; r++) {
+        const row = summarySheet.getRow(r);
+        row.getCell(2).font = { bold: true };
+        row.getCell(3).alignment = { horizontal: 'left' };
+    }
+
+    // Financial summary table headers
+    const financeHeaderRow = summarySheet.addRow(['', 'Detalle Factura', 'Valor CLP', 'Valor UF']);
+    financeHeaderRow.height = 24;
+    financeHeaderRow.eachCell((cell, colNum) => {
+        if (colNum < 2) return;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1F497D' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+        cell.border = { bottom: { style: 'medium' } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    // Add financial lines
+    const rowNet = summarySheet.addRow(['', 'Total Costo Neto', reportData.summary.totalCostClpNet || 0, reportData.summary.totalCostUf]);
+    rowNet.getCell(3).numFmt = '$#,##0';
+    rowNet.getCell(4).numFmt = '0.00000000';
+    
+    const rowIva = summarySheet.addRow(['', 'IVA (19%)', reportData.summary.totalCostClpIva || 0, '']);
+    rowIva.getCell(3).numFmt = '$#,##0';
+    
+    const rowGross = summarySheet.addRow(['', 'Total Bruto CLP', reportData.summary.totalCostClpGross || 0, '']);
+    rowGross.getCell(3).numFmt = '$#,##0';
+    rowGross.getCell(2).font = { bold: true };
+    rowGross.getCell(3).font = { bold: true };
+
+    // Format financial cells
+    for (let r = 11; r <= 13; r++) {
+        const row = summarySheet.getRow(r);
+        row.getCell(2).border = { bottom: { style: 'thin' } };
+        row.getCell(3).border = { bottom: { style: 'thin' } };
+        row.getCell(3).alignment = { horizontal: 'right' };
+        row.getCell(4).alignment = { horizontal: 'right' };
+    }
+    summarySheet.addRow([]);
+    summarySheet.addRow([]);
+
+    // Add daily breakdown table headers
+    const dailyHeaderRow = summarySheet.addRow(['', 'Fecha', 'Ingresados', 'Sin Procesar', 'Cobrados (Despachados)', 'Costo UF', 'Costo Neto CLP']);
+    dailyHeaderRow.height = 24;
+    dailyHeaderRow.eachCell((cell, colNum) => {
+        if (colNum < 2) return;
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF4F81BD' } };
+        cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+    });
+
+    // Add daily details rows
+    reportData.dailyDetails.forEach((day: any) => {
+        const row = summarySheet.addRow([
+            '',
+            day.date,
+            day.totalCreated,
+            day.assignedToBodega,
+            day.packagesCount,
+            day.costUf,
+            day.costClp || 0
+        ]);
+        row.getCell(2).alignment = { horizontal: 'center' };
+        row.getCell(3).alignment = { horizontal: 'center' };
+        row.getCell(4).alignment = { horizontal: 'center' };
+        row.getCell(5).alignment = { horizontal: 'center' };
+        row.getCell(6).alignment = { horizontal: 'right' };
+        row.getCell(7).alignment = { horizontal: 'right' };
+        row.getCell(6).numFmt = '0.00000000';
+        row.getCell(7).numFmt = '$#,##0';
+    });
+
+    // Add total daily details row
+    const totalRow = summarySheet.addRow([
+        '',
+        'Total General',
+        reportData.summary.totalCreated,
+        reportData.summary.totalAssignedToBodega,
+        reportData.summary.totalPackages,
+        reportData.summary.totalCostUf,
+        reportData.summary.totalCostClpNet || 0
+    ]);
+    totalRow.eachCell((cell, colNum) => {
+        if (colNum < 2) return;
+        cell.font = { bold: true };
+        cell.border = { top: { style: 'thin' }, bottom: { style: 'double' } };
+    });
+    totalRow.getCell(2).alignment = { horizontal: 'center' };
+    totalRow.getCell(3).alignment = { horizontal: 'center' };
+    totalRow.getCell(4).alignment = { horizontal: 'center' };
+    totalRow.getCell(5).alignment = { horizontal: 'center' };
+    totalRow.getCell(6).alignment = { horizontal: 'right' };
+    totalRow.getCell(7).alignment = { horizontal: 'right' };
+    totalRow.getCell(6).numFmt = '0.00000000';
+    totalRow.getCell(7).numFmt = '$#,##0';
+
+    // Set widths for Summary Sheet columns
+    summarySheet.getColumn(1).width = 4;
+    summarySheet.getColumn(2).width = 25;
+    summarySheet.getColumn(3).width = 20;
+    summarySheet.getColumn(4).width = 18;
+    summarySheet.getColumn(5).width = 25;
+    summarySheet.getColumn(6).width = 18;
+    summarySheet.getColumn(7).width = 20;
+
+    // 2. Daily detail sheets
+    // Group package details by date
+    const packagesByDate: { [date: string]: any[] } = {};
+    if (reportData.packagesDetail && Array.isArray(reportData.packagesDetail)) {
+        reportData.packagesDetail.forEach((pkg: any) => {
+            if (!packagesByDate[pkg.date]) {
+                packagesByDate[pkg.date] = [];
+            }
+            packagesByDate[pkg.date].push(pkg);
+        });
+    }
+
+    // Sort dates ascending
+    const dates = Object.keys(packagesByDate).sort();
+
+    // Create a sheet for each date
+    dates.forEach(dateStr => {
+        const datePkgs = packagesByDate[dateStr];
+        const chargedPkgs = datePkgs.filter(p => p.isCharged);
+        const unchargedPkgs = datePkgs.filter(p => !p.isCharged);
+
+        // Sheet name is just the date (e.g. 2026-07-01), which is 10 chars
+        const sheet = workbook.addWorksheet(dateStr);
+        sheet.views = [{ showGridLines: true }];
+
+        // Style helper for columns
+        const setupColumns = (s: any) => {
+            s.getColumn(1).width = 5;   // #
+            s.getColumn(2).width = 20;  // ID Paquete
+            s.getColumn(3).width = 15;  // Pedido
+            s.getColumn(4).width = 18;  // Tracking
+            s.getColumn(5).width = 25;  // Destinatario
+            s.getColumn(6).width = 30;  // Dirección
+            s.getColumn(7).width = 15;  // Comuna
+            s.getColumn(8).width = 18;  // Conductor
+            s.getColumn(9).width = 12;  // Estado
+            s.getColumn(10).width = 18; // Creación
+            s.getColumn(11).width = 18; // Asignación
+            s.getColumn(12).width = 18; // Entrega
+            s.getColumn(13).width = 12; // Tarifa UF
+            s.getColumn(14).width = 12; // Tarifa CLP
+            s.getColumn(15).width = 25; // Motivo Exclusión
+        };
+        setupColumns(sheet);
+
+        // Date Title at the top
+        const pageTitleRow = sheet.addRow([`DETALLE DE ENVÍOS - DÍA: ${dateStr}`]);
+        pageTitleRow.getCell(1).font = { size: 14, bold: true, color: { argb: 'FF1F497D' } };
+        sheet.addRow([]);
+
+        // Table 1: Charged Packages
+        const section1Row = sheet.addRow(['1. DETALLE DE ENVÍOS COBRADOS (FACTURABLES)']);
+        section1Row.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF2E75B6' } };
+
+        const headerRow1 = sheet.addRow([
+            '#', 'ID Paquete', 'Nº Pedido', 'Código Seguimiento', 'Destinatario', 'Dirección', 'Comuna', 
+            'Conductor', 'Estado', 'Fecha Creación', 'Fecha Asignación', 'Fecha Entrega', 'Tarifa (UF)', 'Valor (CLP)'
+        ]);
+        headerRow1.height = 24;
+        headerRow1.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFD9E1F2' } }; // Soft blue
+            cell.font = { bold: true, size: 9, color: { argb: 'FF1F497D' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        });
+
+        let idx1 = 1;
+        chargedPkgs.forEach(pkg => {
+            const rowValUf = reportData.summary.ratePerPackageUf;
+            const rowValClp = reportData.uf.value ? rowValUf * reportData.uf.value : 0;
+            const row = sheet.addRow([
+                idx1++,
+                pkg.id,
+                pkg.orderId,
+                pkg.trackingId || '',
+                pkg.recipientName,
+                pkg.recipientPhone,
+                pkg.recipientAddress,
+                pkg.recipientCommune,
+                pkg.driverName || 'No asignado',
+                pkg.status,
+                pkg.createdAt || '',
+                pkg.assignedAt || '',
+                pkg.updatedAt || '',
+                rowValUf,
+                Math.round(rowValClp)
+            ]);
+            row.eachCell((cell, colNum) => {
+                cell.font = { size: 9 };
+                cell.border = { bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } } };
+                if (colNum <= 4 || colNum === 7 || colNum === 9 || colNum >= 10) {
+                    cell.alignment = { horizontal: 'center' };
+                }
+            });
+            row.getCell(13).numFmt = '0.00000000';
+            row.getCell(14).numFmt = '$#,##0';
+        });
+
+        // Add summary row for Charged Packages
+        const sumRow1 = sheet.addRow([
+            'TOTAL COBRADOS', '', '', '', '', '', '', '', '', '', '', '',
+            `=${reportData.summary.ratePerPackageUf}*${chargedPkgs.length}`,
+            `=${Math.round(reportData.uf.value ? reportData.summary.ratePerPackageUf * reportData.uf.value : 0)}*${chargedPkgs.length}`
+        ]);
+        sumRow1.getCell(1).font = { bold: true };
+        sumRow1.getCell(13).font = { bold: true };
+        sumRow1.getCell(14).font = { bold: true };
+        sumRow1.getCell(13).numFmt = '0.00000000';
+        sumRow1.getCell(14).numFmt = '$#,##0';
+        sumRow1.getCell(1).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow1.getCell(13).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow1.getCell(14).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+
+        sheet.addRow([]);
+        sheet.addRow([]);
+
+        // Table 2: Uncharged Packages
+        const section2Row = sheet.addRow(['2. DETALLE DE ENVÍOS NO COBRADOS (EXCLUIDOS)']);
+        section2Row.getCell(1).font = { bold: true, size: 11, color: { argb: 'FFC00000' } };
+
+        const headerRow2 = sheet.addRow([
+            '#', 'ID Paquete', 'Nº Pedido', 'Código Seguimiento', 'Destinatario', 'Dirección', 'Comuna', 
+            'Conductor', 'Estado', 'Fecha Creación', 'Fecha Asignación', 'Fecha Entrega', 'Tarifa (UF)', 'Valor (CLP)', 'Motivo Exclusión'
+        ]);
+        headerRow2.height = 24;
+        headerRow2.eachCell((cell) => {
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFCE4D6' } }; // Soft peach/red
+            cell.font = { bold: true, size: 9, color: { argb: 'FFC00000' } };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        });
+
+        let idx2 = 1;
+        unchargedPkgs.forEach(pkg => {
+            const row = sheet.addRow([
+                idx2++,
+                pkg.id,
+                pkg.orderId,
+                pkg.trackingId || '',
+                pkg.recipientName,
+                pkg.recipientAddress,
+                pkg.recipientCommune,
+                pkg.driverName || 'No asignado',
+                pkg.status,
+                pkg.createdAt || '',
+                pkg.assignedAt || '',
+                pkg.updatedAt || '',
+                0.0,
+                0,
+                pkg.exclusionReason || 'Otro'
+            ]);
+            row.eachCell((cell, colNum) => {
+                cell.font = { size: 9 };
+                cell.border = { bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } } };
+                if (colNum <= 4 || colNum === 7 || colNum === 9 || colNum >= 10) {
+                    cell.alignment = { horizontal: 'center' };
+                }
+            });
+            row.getCell(13).numFmt = '0.00000000';
+            row.getCell(14).numFmt = '$#,##0';
+            row.getCell(15).font = { italic: true, bold: true, color: { argb: 'FFC00000' } };
+        });
+
+        // Add summary row for Uncharged Packages
+        const sumRow2 = sheet.addRow([
+            'TOTAL EXCLUIDOS', '', '', '', '', '', '', '', '', '', '', '', 0.0, 0, ''
+        ]);
+        sumRow2.getCell(1).font = { bold: true };
+        sumRow2.getCell(13).font = { bold: true };
+        sumRow2.getCell(14).font = { bold: true };
+        sumRow2.getCell(13).numFmt = '0.00000000';
+        sumRow2.getCell(14).numFmt = '$#,##0';
+        sumRow2.getCell(1).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow2.getCell(13).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow2.getCell(14).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+    });
+
+    // Generate and download
+    const buffer = await workbook.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = window.URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href = url;
+    anchor.download = filename;
+    anchor.click();
+    window.URL.revokeObjectURL(url);
+};

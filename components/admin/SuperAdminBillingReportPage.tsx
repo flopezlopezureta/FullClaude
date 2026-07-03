@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { api } from '../../services/api';
 import { AuthContext } from '../../contexts/AuthContext';
 import { IconPrinter, IconCalendar, IconPackage, IconDollarSign, IconFileSpreadsheet, IconTrendingUp, IconLock, IconCube } from '../Icon';
+import { exportSuperAdminBillingToExcel } from '../../services/exportService';
 
 const KpiCard: React.FC<{ icon: React.ReactNode, title: string, value: string | number, subtext?: string, colorClass: string }> = ({ icon, title, value, subtext, colorClass }) => (
     <div className="bg-[var(--background-secondary)] rounded-lg p-4 shadow-sm border border-[var(--border-primary)] flex items-center">
@@ -106,60 +107,18 @@ const SuperAdminBillingReportPage: React.FC = () => {
         fetchReport();
     };
 
-    const handleExportCSV = async () => {
+    const handleExportExcel = async () => {
         if (!reportData || isExporting) return;
         
         setIsExporting(true);
         try {
-            await new Promise(resolve => setTimeout(resolve, 100));
-
-            const escapeCSV = (val: any) => {
-                const str = String(val || '').replace(/"/g, '""');
-                return `"${str}"`;
-            };
-
-            let csvContent = '\uFEFF'; // BOM for Excel
-
-            csvContent += escapeCSV("Reporte de Cobro UF (Exclusivo Superadmin)") + '\n';
-            csvContent += escapeCSV("Cliente:") + ',' + escapeCSV(`${reportData.client.name} (${reportData.client.companyName || ''})`) + '\n';
-            csvContent += escapeCSV("Período:") + ',' + escapeCSV(`${month}/${year}`) + '\n';
-            csvContent += escapeCSV("UF de Referencia (1º del mes siguiente):") + ',' + escapeCSV(reportData.uf.value) + ` (${reportData.uf.source})` + '\n\n';
-
-            csvContent += escapeCSV("Resumen de Cobro") + '\n';
-            csvContent += escapeCSV("Total Creados") + ',' + escapeCSV(reportData.summary.totalCreated) + '\n';
-            csvContent += escapeCSV("Sin Procesar") + ',' + escapeCSV(reportData.summary.totalAssignedToBodega) + '\n';
-            csvContent += escapeCSV("Total Despachados/Facturables") + ',' + escapeCSV(reportData.summary.totalPackages) + '\n';
-            csvContent += escapeCSV("Tarifa Unitaria UF") + ',' + escapeCSV(reportData.summary.ratePerPackageUf) + '\n';
-            csvContent += escapeCSV("Total UF") + ',' + escapeCSV(reportData.summary.totalCostUf) + '\n';
-            csvContent += escapeCSV("Subtotal Neto CLP") + ',' + escapeCSV(reportData.summary.totalCostClpNet) + '\n';
-            csvContent += escapeCSV("IVA (19%)") + ',' + escapeCSV(reportData.summary.totalCostClpIva) + '\n';
-            csvContent += escapeCSV("Total Bruto CLP") + ',' + escapeCSV(reportData.summary.totalCostClpGross) + '\n\n';
-
-            csvContent += escapeCSV("Detalle Diario") + '\n';
-            csvContent += escapeCSV("Fecha") + ',' + escapeCSV("Creados") + ',' + escapeCSV("Sin Procesar") + ',' + escapeCSV("Despachados (Facturables)") + ',' + escapeCSV("Total UF") + ',' + escapeCSV("Total CLP") + '\n';
-            
-            reportData.dailyDetails.forEach((day: any) => {
-                csvContent += escapeCSV(day.date) + ',' + 
-                              escapeCSV(day.totalCreated) + ',' + 
-                              escapeCSV(day.assignedToBodega) + ',' + 
-                              escapeCSV(day.packagesCount) + ',' + 
-                              escapeCSV(day.costUf) + ',' + 
-                              escapeCSV(day.costClp || '-') + '\n';
-            });
-
-            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            
-            link.setAttribute("href", url);
-            link.setAttribute("download", `Reporte_Cobro_UF_${reportData.client.name.replace(/\s+/g, '_')}_${month}_${year}.csv`);
-            link.style.visibility = 'hidden';
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            const dateStr = `${String(month).padStart(2, '0')}_${year}`;
+            const clientNameClean = reportData.client.name.replace(/\s+/g, '_');
+            const filename = `Reporte_Cobro_UF_${clientNameClean}_${dateStr}.xlsx`;
+            await exportSuperAdminBillingToExcel(reportData, filename);
         } catch (error) {
-            console.error("Export failed", error);
-            alert("Error al exportar.");
+            console.error("Export to Excel failed:", error);
+            alert("Error al exportar a Excel.");
         } finally {
             setIsExporting(false);
         }
@@ -310,12 +269,12 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             <h3 className="text-lg font-semibold text-[var(--text-primary)]">Detalle de Cobro Diario</h3>
                             <div className="flex gap-2">
                                 <button 
-                                    onClick={handleExportCSV} 
+                                    onClick={handleExportExcel} 
                                     disabled={isExporting}
                                     className="inline-flex items-center px-4 py-2 text-sm font-medium text-[var(--text-primary)] bg-[var(--background-secondary)] border border-[var(--border-secondary)] rounded-md shadow-sm hover:bg-[var(--background-hover)] disabled:opacity-50"
                                 >
                                     <IconFileSpreadsheet className={`w-4 h-4 mr-2 ${isExporting ? 'animate-spin' : ''}`}/>
-                                    {isExporting ? 'Exportando...' : 'Exportar CSV'}
+                                    {isExporting ? 'Exportando...' : 'Exportar Excel'}
                                 </button>
                                 <button 
                                     onClick={() => window.print()} 

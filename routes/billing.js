@@ -226,6 +226,95 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
         const totalCostUf = totalPackages * ratePerPackageUf;
         const totalCostClp = finalUfValue ? totalCostUf * finalUfValue : null;
 
+        // Fetch detailed packages for Excel export
+        let detailQuery;
+        let detailParams;
+
+        if (isGoDelivery) {
+            detailQuery = `
+                WITH bodega_user AS (
+                    SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
+                )
+                SELECT 
+                    p.id,
+                    COALESCE(p."meliOrderId", p."shopifyOrderId", p."wooOrderId", p."jumpsellerOrderId", p.id) as "orderId",
+                    p."trackingId",
+                    p."recipientName",
+                    p."recipientPhone",
+                    p."recipientAddress",
+                    p."recipientCommune",
+                    p.status,
+                    TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "createdAt",
+                    TO_CHAR(p."updatedAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "updatedAt",
+                    TO_CHAR(p."assignedAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "assignedAt",
+                    p."driverId",
+                    u.name as "driverName",
+                    TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as "date",
+                    CASE 
+                        WHEN p."driverId" = (SELECT id FROM bodega_user)
+                          OR p.status IN ('PENDIENTE', 'CANCELADO')
+                          OR p."driverId" IS NULL THEN false
+                        ELSE true
+                    END as "isCharged",
+                    CASE
+                        WHEN p."driverId" = (SELECT id FROM bodega_user) THEN 'En Bodega'
+                        WHEN p.status = 'PENDIENTE' THEN 'Pendiente'
+                        WHEN p.status = 'CANCELADO' THEN 'Cancelado'
+                        WHEN p."driverId" IS NULL THEN 'Sin Conductor Asignado'
+                        ELSE ''
+                    END as "exclusionReason"
+                FROM packages p
+                LEFT JOIN users u ON p."driverId" = u.id
+                WHERE p."createdAt" >= ($1::timestamp AT TIME ZONE 'America/Santiago')
+                  AND p."createdAt" < ($2::timestamp AT TIME ZONE 'America/Santiago')
+                ORDER BY p."createdAt" ASC;
+            `;
+            detailParams = [startMonthStr, endMonthStr];
+        } else {
+            detailQuery = `
+                WITH bodega_user AS (
+                    SELECT id FROM users WHERE name = 'Bodega' OR name ILIKE '%bodega%' LIMIT 1
+                )
+                SELECT 
+                    p.id,
+                    COALESCE(p."meliOrderId", p."shopifyOrderId", p."wooOrderId", p."jumpsellerOrderId", p.id) as "orderId",
+                    p."trackingId",
+                    p."recipientName",
+                    p."recipientPhone",
+                    p."recipientAddress",
+                    p."recipientCommune",
+                    p.status,
+                    TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "createdAt",
+                    TO_CHAR(p."updatedAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "updatedAt",
+                    TO_CHAR(p."assignedAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "assignedAt",
+                    p."driverId",
+                    u.name as "driverName",
+                    TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as "date",
+                    CASE 
+                        WHEN p."driverId" = (SELECT id FROM bodega_user)
+                          OR p.status IN ('PENDIENTE', 'CANCELADO')
+                          OR p."driverId" IS NULL THEN false
+                        ELSE true
+                    END as "isCharged",
+                    CASE
+                        WHEN p."driverId" = (SELECT id FROM bodega_user) THEN 'En Bodega'
+                        WHEN p.status = 'PENDIENTE' THEN 'Pendiente'
+                        WHEN p.status = 'CANCELADO' THEN 'Cancelado'
+                        WHEN p."driverId" IS NULL THEN 'Sin Conductor Asignado'
+                        ELSE ''
+                    END as "exclusionReason"
+                FROM packages p
+                LEFT JOIN users u ON p."driverId" = u.id
+                WHERE p."creatorId" = $1
+                  AND p."createdAt" >= ($2::timestamp AT TIME ZONE 'America/Santiago')
+                  AND p."createdAt" < ($3::timestamp AT TIME ZONE 'America/Santiago')
+                ORDER BY p."createdAt" ASC;
+            `;
+            detailParams = [clientId, startMonthStr, endMonthStr];
+        }
+
+        const { rows: detailRows } = await db.query(detailQuery, detailParams);
+
         res.json({
             client: {
                 id: clientId,
@@ -252,7 +341,8 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                 totalCostClpIva: totalCostClp ? Math.round(totalCostClp * 0.19) : null,
                 totalCostClpGross: totalCostClp ? Math.round(totalCostClp * 1.19) : null
             },
-            dailyDetails
+            dailyDetails,
+            packagesDetail: detailRows
         });
 
     } catch (err) {
