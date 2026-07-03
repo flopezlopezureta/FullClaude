@@ -182,7 +182,7 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 ${format === LabelFormat.A4Half ? 'size: letter; margin: 0;' : ''}
                 ${format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
               }
-              body > *:not(.label-print-container) {
+              body > *:not(.label-print-container), #root {
                 display: none !important;
                 visibility: hidden !important;
               }
