@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.38",
-  "versionComment": "Versión 2.6.38: Agrega exportación a Excel detallada (.xlsx) con pestañas diarias para el reporte de cobro UF.",
+  "version": "2.6.39",
+  "versionComment": "Versión 2.6.39: Corrige bug de impresión de etiqueta única usando React Portal y ocultación estricta de elementos.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

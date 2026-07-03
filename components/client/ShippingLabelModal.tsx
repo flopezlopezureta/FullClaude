@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useContext } from 'react';
+import { createPortal } from 'react-dom';
 import { IconX, IconCheck, IconSettings } from '../Icon';
 import { Package } from '../../types';
 import ShippingLabel from './ShippingLabel';
@@ -28,6 +29,12 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
     const [format, setFormat] = useState<LabelFormat>(systemSettings.labelFormat || LabelFormat.CompactThermal);
     const [loadingTracking, setLoadingTracking] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [mounted, setMounted] = useState(false);
+
+    useEffect(() => {
+        setMounted(true);
+        return () => setMounted(false);
+    }, []);
 
     // Effect to fetch authentic ML tracking ID if missing
     useEffect(() => {
@@ -144,10 +151,25 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
             </div>
         </div>
         
-        {/* Printable Area */}
-        <div className={`hidden print:block label-print-container format-${format}`}>
-            <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
-        </div>
+        {mounted && createPortal(
+            <div 
+                className={`label-print-container format-${format}`}
+                style={{
+                    position: 'fixed',
+                    top: '0',
+                    left: '0',
+                    width: '100%',
+                    height: '100vh',
+                    overflow: 'hidden',
+                    visibility: 'hidden',
+                    pointerEvents: 'none',
+                    zIndex: -100
+                }}
+            >
+                <ShippingLabel pkg={pkg} creatorName={creatorName} format={format} />
+            </div>,
+            document.body
+        )}
 
         <style>{`
             @media print {
@@ -160,26 +182,31 @@ const ShippingLabelModal: React.FC<ShippingLabelModalProps> = ({ pkg: initialPkg
                 ${format === LabelFormat.A4Half ? 'size: letter; margin: 0;' : ''}
                 ${format === LabelFormat.MinimalSticker ? 'size: 105mm 148mm; margin: 0;' : ''}
               }
-              body * {
-                visibility: hidden;
-              }
-              .label-print-container, .label-print-container * {
-                visibility: visible !important;
+              body > *:not(.label-print-container) {
+                display: none !important;
+                visibility: hidden !important;
               }
               .label-print-container {
-                position: fixed;
-                left: 0;
-                top: 0;
-                width: 100%;
-                height: 100%;
+                visibility: visible !important;
                 display: flex !important;
                 align-items: center;
                 justify-content: center;
+                position: relative !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                height: 100vh !important;
                 margin: 0 !important;
                 padding: 5mm 0 0 0 !important; /* Anti-cut safety margin */
                 box-sizing: border-box;
                 transform: scale(0.95);
                 transform-origin: center center;
+                background: white !important;
+                pointer-events: auto !important;
+                z-index: 999999 !important;
+              }
+              .label-print-container * {
+                visibility: visible !important;
               }
             }
         `}</style>
