@@ -143,21 +143,17 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                     DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
                     COUNT(*) as total_created,
                     COUNT(*) FILTER (
-                        WHERE (
-                            p."driverId" = (SELECT id FROM bodega_user)
-                            OR p.status IN ('PENDIENTE', 'CANCELADO')
-                            OR p."driverId" IS NULL
-                        ) AND (p."isFlexed" IS NULL OR p."isFlexed" = false)
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
                     ) as assigned_to_bodega,
                     COUNT(*) FILTER (
                         WHERE p."isReassigned" = true
                     ) as total_reassigned,
                     COUNT(*) - COUNT(*) FILTER (
-                        WHERE (
-                            p."driverId" = (SELECT id FROM bodega_user)
-                            OR p.status IN ('PENDIENTE', 'CANCELADO')
-                            OR p."driverId" IS NULL
-                        ) AND (p."isFlexed" IS NULL OR p."isFlexed" = false)
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
                     ) as net_dispatched
                 FROM packages p
                 WHERE p."createdAt" >= ($1::timestamp AT TIME ZONE 'America/Santiago')
@@ -175,21 +171,17 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                     DATE(p."createdAt" AT TIME ZONE 'America/Santiago') as date,
                     COUNT(*) as total_created,
                     COUNT(*) FILTER (
-                        WHERE (
-                            p."driverId" = (SELECT id FROM bodega_user)
-                            OR p.status IN ('PENDIENTE', 'CANCELADO')
-                            OR p."driverId" IS NULL
-                        ) AND (p."isFlexed" IS NULL OR p."isFlexed" = false)
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
                     ) as assigned_to_bodega,
                     COUNT(*) FILTER (
                         WHERE p."isReassigned" = true
                     ) as total_reassigned,
                     COUNT(*) - COUNT(*) FILTER (
-                        WHERE (
-                            p."driverId" = (SELECT id FROM bodega_user)
-                            OR p.status IN ('PENDIENTE', 'CANCELADO')
-                            OR p."driverId" IS NULL
-                        ) AND (p."isFlexed" IS NULL OR p."isFlexed" = false)
+                        WHERE p."driverId" = (SELECT id FROM bodega_user)
+                           OR p.status IN ('PENDIENTE', 'CANCELADO')
+                           OR p."driverId" IS NULL
                     ) as net_dispatched
                 FROM packages p
                 WHERE p."creatorId" = $1 
@@ -270,14 +262,12 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                     p."isReassigned",
                     TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as "date",
                     CASE 
-                        WHEN p."isFlexed" = true THEN true
                         WHEN p."driverId" = (SELECT id FROM bodega_user)
                           OR p.status IN ('PENDIENTE', 'CANCELADO')
                           OR p."driverId" IS NULL THEN false
                         ELSE true
                     END as "isCharged",
                     CASE
-                        WHEN p."isFlexed" = true THEN ''
                         WHEN p."driverId" = (SELECT id FROM bodega_user) THEN 'En Bodega'
                         WHEN p.status = 'PENDIENTE' THEN 'Pendiente'
                         WHEN p.status = 'CANCELADO' THEN 'Cancelado'
@@ -313,14 +303,12 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                     p."isReassigned",
                     TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as "date",
                     CASE 
-                        WHEN p."isFlexed" = true THEN true
                         WHEN p."driverId" = (SELECT id FROM bodega_user)
                           OR p.status IN ('PENDIENTE', 'CANCELADO')
                           OR p."driverId" IS NULL THEN false
                         ELSE true
                     END as "isCharged",
                     CASE
-                        WHEN p."isFlexed" = true THEN ''
                         WHEN p."driverId" = (SELECT id FROM bodega_user) THEN 'En Bodega'
                         WHEN p.status = 'PENDIENTE' THEN 'Pendiente'
                         WHEN p.status = 'CANCELADO' THEN 'Cancelado'
