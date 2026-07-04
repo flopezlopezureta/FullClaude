@@ -147,6 +147,9 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                            OR p.status IN ('PENDIENTE', 'CANCELADO')
                            OR p."driverId" IS NULL
                     ) as assigned_to_bodega,
+                    COUNT(*) FILTER (
+                        WHERE p."isReassigned" = true
+                    ) as total_reassigned,
                     COUNT(*) - COUNT(*) FILTER (
                         WHERE p."driverId" = (SELECT id FROM bodega_user)
                            OR p.status IN ('PENDIENTE', 'CANCELADO')
@@ -172,6 +175,9 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                            OR p.status IN ('PENDIENTE', 'CANCELADO')
                            OR p."driverId" IS NULL
                     ) as assigned_to_bodega,
+                    COUNT(*) FILTER (
+                        WHERE p."isReassigned" = true
+                    ) as total_reassigned,
                     COUNT(*) - COUNT(*) FILTER (
                         WHERE p."driverId" = (SELECT id FROM bodega_user)
                            OR p.status IN ('PENDIENTE', 'CANCELADO')
@@ -199,16 +205,19 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
         let totalPackages = 0; // Net billed packages (Dispatched)
         let totalCreated = 0;
         let totalAssignedToBodega = 0;
+        let totalReassigned = 0;
         const dailyDetails = [];
 
         rows.forEach(row => {
             const count = parseInt(row.net_dispatched, 10);
             const created = parseInt(row.total_created, 10);
             const bodega = parseInt(row.assigned_to_bodega, 10);
+            const reassigned = parseInt(row.total_reassigned || 0, 10);
 
             totalPackages += count;
             totalCreated += created;
             totalAssignedToBodega += bodega;
+            totalReassigned += reassigned;
 
             const costUf = count * ratePerPackageUf;
             const costClp = finalUfValue ? costUf * finalUfValue : null;
@@ -217,6 +226,7 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                 date: row.date.toISOString().split('T')[0],
                 totalCreated: created,
                 assignedToBodega: bodega,
+                reassignedCount: reassigned,
                 packagesCount: count, // Net dispatched
                 costUf: parseFloat(costUf.toFixed(8)),
                 costClp: costClp ? Math.round(costClp) : null
@@ -249,6 +259,7 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                     TO_CHAR(p."assignedAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "assignedAt",
                     p."driverId",
                     u.name as "driverName",
+                    p."isReassigned",
                     TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as "date",
                     CASE 
                         WHEN p."driverId" = (SELECT id FROM bodega_user)
@@ -289,6 +300,7 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                     TO_CHAR(p."assignedAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD HH24:MI:SS') as "assignedAt",
                     p."driverId",
                     u.name as "driverName",
+                    p."isReassigned",
                     TO_CHAR(p."createdAt" AT TIME ZONE 'America/Santiago', 'YYYY-MM-DD') as "date",
                     CASE 
                         WHEN p."driverId" = (SELECT id FROM bodega_user)
@@ -333,6 +345,7 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
             summary: {
                 totalCreated,
                 totalAssignedToBodega,
+                totalReassigned,
                 totalPackages, // net dispatched
                 ratePerPackageUf,
                 totalCostUf: parseFloat(totalCostUf.toFixed(8)),

@@ -292,6 +292,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                         <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Fecha</th>
                                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Ingresados</th>
                                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Sin Procesar</th>
+                                        <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Reasignados</th>
                                         <th scope="col" className="px-6 py-3 text-center text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Despachados (Facturar)</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Costo UF</th>
                                         <th scope="col" className="px-6 py-3 text-right text-xs font-medium text-[var(--text-muted)] uppercase tracking-wider">Neto CLP</th>
@@ -299,7 +300,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                 </thead>
                                 <tbody className="bg-[var(--background-secondary)] divide-y divide-[var(--border-primary)]">
                                     {reportData.dailyDetails.length === 0 ? (
-                                        <tr><td colSpan={6} className="px-6 py-4 text-center text-[var(--text-muted)]">No se registraron despachos en el período seleccionado.</td></tr>
+                                        <tr><td colSpan={7} className="px-6 py-4 text-center text-[var(--text-muted)]">No se registraron despachos en el período seleccionado.</td></tr>
                                     ) : (
                                         reportData.dailyDetails.map((day: any) => (
                                             <tr key={day.date}>
@@ -308,6 +309,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                                 </td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-[var(--text-secondary)]">{day.totalCreated}</td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-rose-500 font-semibold">{day.assignedToBodega}</td>
+                                                <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-purple-600 font-semibold">{day.reassignedCount || 0}</td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-center text-emerald-600 font-bold">{day.packagesCount}</td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-right text-[var(--text-secondary)] font-mono">{day.costUf.toFixed(6)}</td>
                                                 <td className="px-6 py-3 whitespace-nowrap text-sm text-right text-[var(--text-primary)] font-semibold">{formatCLP(day.costClp)}</td>
@@ -320,16 +322,17 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                         <td className="px-6 py-3 text-right text-[var(--text-primary)] font-bold">TOTALES</td>
                                         <td className="px-6 py-3 text-center text-[var(--text-secondary)] font-bold">{reportData.summary.totalCreated}</td>
                                         <td className="px-6 py-3 text-center text-rose-500 font-bold">{reportData.summary.totalAssignedToBodega}</td>
+                                        <td className="px-6 py-3 text-center text-purple-600 font-bold">{reportData.summary.totalReassigned || 0}</td>
                                         <td className="px-6 py-3 text-center text-emerald-600 font-bold">{reportData.summary.totalPackages}</td>
                                         <td className="px-6 py-3 text-right text-[var(--text-primary)] font-mono font-bold">{reportData.summary.totalCostUf.toFixed(5)} UF</td>
                                         <td className="px-6 py-3 text-right text-[var(--text-primary)] font-bold">{formatCLP(reportData.summary.totalCostClpNet)}</td>
                                     </tr>
                                     <tr>
-                                        <td colSpan={5} className="px-6 py-2 text-right text-xs text-[var(--text-muted)]">IVA (19.0%)</td>
+                                        <td colSpan={6} className="px-6 py-2 text-right text-xs text-[var(--text-muted)]">IVA (19.0%)</td>
                                         <td className="px-6 py-2 text-right text-xs text-[var(--text-muted)] font-semibold">{formatCLP(reportData.summary.totalCostClpIva)}</td>
                                     </tr>
                                     <tr className="border-t border-[var(--border-primary)] bg-[var(--brand-muted)]">
-                                        <td colSpan={5} className="px-6 py-4 text-right font-bold text-base text-[var(--brand-text)]">TOTAL BRUTO A COBRAR (+IVA)</td>
+                                        <td colSpan={6} className="px-6 py-4 text-right font-bold text-base text-[var(--brand-text)]">TOTAL BRUTO A COBRAR (+IVA)</td>
                                         <td className="px-6 py-4 text-right font-bold text-base text-[var(--brand-text)]">{formatCLP(reportData.summary.totalCostClpGross)}</td>
                                     </tr>
                                 </tfoot>
@@ -413,6 +416,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             <th className="p-2 text-left">Fecha</th>
                             <th className="p-2 text-center">Ingresados</th>
                             <th className="p-2 text-center">Sin Procesar / Excluidos</th>
+                            <th className="p-2 text-center">Reasignados</th>
                             <th className="p-2 text-center">Despachados (Facturables)</th>
                             <th className="p-2 text-right">Costo UF</th>
                             <th className="p-2 text-right">Costo Neto CLP</th>
@@ -424,6 +428,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
                                 <td className="p-2">{day.date}</td>
                                 <td className="p-2 text-center">{day.totalCreated}</td>
                                 <td className="p-2 text-center text-rose-600 font-semibold">{day.assignedToBodega}</td>
+                                <td className="p-2 text-center text-purple-600 font-semibold">{day.reassignedCount || 0}</td>
                                 <td className="p-2 text-center text-emerald-700 font-bold">{day.packagesCount}</td>
                                 <td className="p-2 text-right font-mono">{day.costUf.toFixed(6)}</td>
                                 <td className="p-2 text-right">{formatCLP(day.costClp)}</td>
@@ -435,16 +440,17 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             <td className="p-2 text-right">TOTALES</td>
                             <td className="p-2 text-center">{reportData.summary.totalCreated}</td>
                             <td className="p-2 text-center text-rose-600">{reportData.summary.totalAssignedToBodega}</td>
+                            <td className="p-2 text-center text-purple-600">{reportData.summary.totalReassigned || 0}</td>
                             <td className="p-2 text-center text-emerald-700">{reportData.summary.totalPackages}</td>
                             <td className="p-2 text-right font-mono">{reportData.summary.totalCostUf.toFixed(5)} UF</td>
                             <td className="p-2 text-right">{formatCLP(reportData.summary.totalCostClpNet)}</td>
                         </tr>
                         <tr>
-                            <td colSpan={5} className="p-2 text-right text-gray-500 font-medium">IVA (19.0%)</td>
+                            <td colSpan={6} className="p-2 text-right text-gray-500 font-medium">IVA (19.0%)</td>
                             <td className="p-2 text-right text-gray-500 font-medium">{formatCLP(reportData.summary.totalCostClpIva)}</td>
                         </tr>
                         <tr className="border-t-2 border-gray-500 bg-gray-100 text-sm">
-                            <td colSpan={5} className="p-3 text-right font-bold text-gray-900">TOTAL BRUTO FACTURA (+IVA)</td>
+                            <td colSpan={6} className="p-3 text-right font-bold text-gray-900">TOTAL BRUTO FACTURA (+IVA)</td>
                             <td className="p-3 text-right font-bold text-gray-900">{formatCLP(reportData.summary.totalCostClpGross)}</td>
                         </tr>
                     </tfoot>

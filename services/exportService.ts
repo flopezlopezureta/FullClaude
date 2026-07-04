@@ -245,7 +245,7 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
     summarySheet.addRow([]);
 
     // Add daily breakdown table headers
-    const dailyHeaderRow = summarySheet.addRow(['', 'Fecha', 'Ingresados', 'Sin Procesar', 'Cobrados (Despachados)', 'Costo UF', 'Costo Neto CLP']);
+    const dailyHeaderRow = summarySheet.addRow(['', 'Fecha', 'Ingresados', 'Sin Procesar', 'Reasignados', 'Cobrados (Despachados)', 'Costo UF', 'Costo Neto CLP']);
     dailyHeaderRow.height = 24;
     dailyHeaderRow.eachCell((cell, colNum) => {
         if (colNum < 2) return;
@@ -261,6 +261,7 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
             day.date,
             day.totalCreated,
             day.assignedToBodega,
+            day.reassignedCount || 0,
             day.packagesCount,
             day.costUf,
             day.costClp || 0
@@ -269,10 +270,11 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
         row.getCell(3).alignment = { horizontal: 'center' };
         row.getCell(4).alignment = { horizontal: 'center' };
         row.getCell(5).alignment = { horizontal: 'center' };
-        row.getCell(6).alignment = { horizontal: 'right' };
+        row.getCell(6).alignment = { horizontal: 'center' };
         row.getCell(7).alignment = { horizontal: 'right' };
-        row.getCell(6).numFmt = '0.00000000';
-        row.getCell(7).numFmt = '$#,##0';
+        row.getCell(8).alignment = { horizontal: 'right' };
+        row.getCell(7).numFmt = '0.00000000';
+        row.getCell(8).numFmt = '$#,##0';
     });
 
     // Add total daily details row
@@ -281,6 +283,7 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
         'Total General',
         reportData.summary.totalCreated,
         reportData.summary.totalAssignedToBodega,
+        reportData.summary.totalReassigned || 0,
         reportData.summary.totalPackages,
         reportData.summary.totalCostUf,
         reportData.summary.totalCostClpNet || 0
@@ -294,19 +297,21 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
     totalRow.getCell(3).alignment = { horizontal: 'center' };
     totalRow.getCell(4).alignment = { horizontal: 'center' };
     totalRow.getCell(5).alignment = { horizontal: 'center' };
-    totalRow.getCell(6).alignment = { horizontal: 'right' };
+    totalRow.getCell(6).alignment = { horizontal: 'center' };
     totalRow.getCell(7).alignment = { horizontal: 'right' };
-    totalRow.getCell(6).numFmt = '0.00000000';
-    totalRow.getCell(7).numFmt = '$#,##0';
+    totalRow.getCell(8).alignment = { horizontal: 'right' };
+    totalRow.getCell(7).numFmt = '0.00000000';
+    totalRow.getCell(8).numFmt = '$#,##0';
 
     // Set widths for Summary Sheet columns
     summarySheet.getColumn(1).width = 4;
     summarySheet.getColumn(2).width = 25;
     summarySheet.getColumn(3).width = 20;
     summarySheet.getColumn(4).width = 18;
-    summarySheet.getColumn(5).width = 25;
-    summarySheet.getColumn(6).width = 18;
-    summarySheet.getColumn(7).width = 20;
+    summarySheet.getColumn(5).width = 18; // Reasignados
+    summarySheet.getColumn(6).width = 25; // Cobrados
+    summarySheet.getColumn(7).width = 18; // Costo UF
+    summarySheet.getColumn(8).width = 20; // Costo Neto CLP
 
     // 2. Daily detail sheets
     // Group package details by date
@@ -340,16 +345,18 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
             s.getColumn(3).width = 15;  // Pedido
             s.getColumn(4).width = 18;  // Tracking
             s.getColumn(5).width = 25;  // Destinatario
-            s.getColumn(6).width = 30;  // Dirección
-            s.getColumn(7).width = 15;  // Comuna
-            s.getColumn(8).width = 18;  // Conductor
-            s.getColumn(9).width = 12;  // Estado
-            s.getColumn(10).width = 18; // Creación
-            s.getColumn(11).width = 18; // Asignación
-            s.getColumn(12).width = 18; // Entrega
-            s.getColumn(13).width = 12; // Tarifa UF
-            s.getColumn(14).width = 12; // Tarifa CLP
-            s.getColumn(15).width = 25; // Motivo Exclusión
+            s.getColumn(6).width = 15;  // Teléfono (Added/Fixed)
+            s.getColumn(7).width = 30;  // Dirección
+            s.getColumn(8).width = 15;  // Comuna
+            s.getColumn(9).width = 18;  // Conductor
+            s.getColumn(10).width = 12; // Reasignado (Added)
+            s.getColumn(11).width = 12; // Estado
+            s.getColumn(12).width = 18; // Creación
+            s.getColumn(13).width = 18; // Asignación
+            s.getColumn(14).width = 18; // Entrega
+            s.getColumn(15).width = 12; // Tarifa UF
+            s.getColumn(16).width = 12; // Tarifa CLP
+            s.getColumn(17).width = 25; // Motivo Exclusión (Table 2 only)
         };
         setupColumns(sheet);
 
@@ -363,8 +370,8 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
         section1Row.getCell(1).font = { bold: true, size: 11, color: { argb: 'FF2E75B6' } };
 
         const headerRow1 = sheet.addRow([
-            '#', 'ID Paquete', 'Nº Pedido', 'Código Seguimiento', 'Destinatario', 'Dirección', 'Comuna', 
-            'Conductor', 'Estado', 'Fecha Creación', 'Fecha Asignación', 'Fecha Entrega', 'Tarifa (UF)', 'Valor (CLP)'
+            '#', 'ID Paquete', 'Nº Pedido', 'Código Seguimiento', 'Destinatario', 'Teléfono', 'Dirección', 'Comuna', 
+            'Conductor', 'Reasignado', 'Estado', 'Fecha Creación', 'Fecha Asignación', 'Fecha Entrega', 'Tarifa (UF)', 'Valor (CLP)'
         ]);
         headerRow1.height = 24;
         headerRow1.eachCell((cell) => {
@@ -384,10 +391,11 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
                 pkg.orderId,
                 pkg.trackingId || '',
                 pkg.recipientName,
-                pkg.recipientPhone,
+                pkg.recipientPhone || '',
                 pkg.recipientAddress,
                 pkg.recipientCommune,
                 pkg.driverName || 'No asignado',
+                pkg.isReassigned ? 'Sí' : 'No',
                 pkg.status,
                 pkg.createdAt || '',
                 pkg.assignedAt || '',
@@ -398,28 +406,28 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
             row.eachCell((cell, colNum) => {
                 cell.font = { size: 9 };
                 cell.border = { bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } } };
-                if (colNum <= 4 || colNum === 7 || colNum === 9 || colNum >= 10) {
+                if (colNum <= 4 || colNum === 6 || colNum === 8 || colNum === 10 || colNum === 11 || colNum >= 12) {
                     cell.alignment = { horizontal: 'center' };
                 }
             });
-            row.getCell(13).numFmt = '0.00000000';
-            row.getCell(14).numFmt = '$#,##0';
+            row.getCell(15).numFmt = '0.00000000';
+            row.getCell(16).numFmt = '$#,##0';
         });
 
         // Add summary row for Charged Packages
         const sumRow1 = sheet.addRow([
-            'TOTAL COBRADOS', '', '', '', '', '', '', '', '', '', '', '',
+            'TOTAL COBRADOS', '', '', '', '', '', '', '', '', '', '', '', '', '',
             `=${reportData.summary.ratePerPackageUf}*${chargedPkgs.length}`,
             `=${Math.round(reportData.uf.value ? reportData.summary.ratePerPackageUf * reportData.uf.value : 0)}*${chargedPkgs.length}`
         ]);
         sumRow1.getCell(1).font = { bold: true };
-        sumRow1.getCell(13).font = { bold: true };
-        sumRow1.getCell(14).font = { bold: true };
-        sumRow1.getCell(13).numFmt = '0.00000000';
-        sumRow1.getCell(14).numFmt = '$#,##0';
+        sumRow1.getCell(15).font = { bold: true };
+        sumRow1.getCell(16).font = { bold: true };
+        sumRow1.getCell(15).numFmt = '0.00000000';
+        sumRow1.getCell(16).numFmt = '$#,##0';
         sumRow1.getCell(1).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
-        sumRow1.getCell(13).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
-        sumRow1.getCell(14).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow1.getCell(15).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow1.getCell(16).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
 
         sheet.addRow([]);
         sheet.addRow([]);
@@ -429,8 +437,8 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
         section2Row.getCell(1).font = { bold: true, size: 11, color: { argb: 'FFC00000' } };
 
         const headerRow2 = sheet.addRow([
-            '#', 'ID Paquete', 'Nº Pedido', 'Código Seguimiento', 'Destinatario', 'Dirección', 'Comuna', 
-            'Conductor', 'Estado', 'Fecha Creación', 'Fecha Asignación', 'Fecha Entrega', 'Tarifa (UF)', 'Valor (CLP)', 'Motivo Exclusión'
+            '#', 'ID Paquete', 'Nº Pedido', 'Código Seguimiento', 'Destinatario', 'Teléfono', 'Dirección', 'Comuna', 
+            'Conductor', 'Reasignado', 'Estado', 'Fecha Creación', 'Fecha Asignación', 'Fecha Entrega', 'Tarifa (UF)', 'Valor (CLP)', 'Motivo Exclusión'
         ]);
         headerRow2.height = 24;
         headerRow2.eachCell((cell) => {
@@ -448,9 +456,11 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
                 pkg.orderId,
                 pkg.trackingId || '',
                 pkg.recipientName,
+                pkg.recipientPhone || '',
                 pkg.recipientAddress,
                 pkg.recipientCommune,
                 pkg.driverName || 'No asignado',
+                pkg.isReassigned ? 'Sí' : 'No',
                 pkg.status,
                 pkg.createdAt || '',
                 pkg.assignedAt || '',
@@ -462,27 +472,27 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
             row.eachCell((cell, colNum) => {
                 cell.font = { size: 9 };
                 cell.border = { bottom: { style: 'thin', color: { argb: 'FFE0E0E0' } } };
-                if (colNum <= 4 || colNum === 7 || colNum === 9 || colNum >= 10) {
+                if (colNum <= 4 || colNum === 6 || colNum === 8 || colNum === 10 || colNum === 11 || colNum >= 12) {
                     cell.alignment = { horizontal: 'center' };
                 }
             });
-            row.getCell(13).numFmt = '0.00000000';
-            row.getCell(14).numFmt = '$#,##0';
-            row.getCell(15).font = { italic: true, bold: true, color: { argb: 'FFC00000' } };
+            row.getCell(15).numFmt = '0.00000000';
+            row.getCell(16).numFmt = '$#,##0';
+            row.getCell(17).font = { italic: true, bold: true, color: { argb: 'FFC00000' } };
         });
 
         // Add summary row for Uncharged Packages
         const sumRow2 = sheet.addRow([
-            'TOTAL EXCLUIDOS', '', '', '', '', '', '', '', '', '', '', '', 0.0, 0, ''
+            'TOTAL EXCLUIDOS', '', '', '', '', '', '', '', '', '', '', '', '', '', 0.0, 0, ''
         ]);
         sumRow2.getCell(1).font = { bold: true };
-        sumRow2.getCell(13).font = { bold: true };
-        sumRow2.getCell(14).font = { bold: true };
-        sumRow2.getCell(13).numFmt = '0.00000000';
-        sumRow2.getCell(14).numFmt = '$#,##0';
+        sumRow2.getCell(15).font = { bold: true };
+        sumRow2.getCell(16).font = { bold: true };
+        sumRow2.getCell(15).numFmt = '0.00000000';
+        sumRow2.getCell(16).numFmt = '$#,##0';
         sumRow2.getCell(1).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
-        sumRow2.getCell(13).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
-        sumRow2.getCell(14).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow2.getCell(15).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
+        sumRow2.getCell(16).border = { top: { style: 'thin' }, bottom: { style: 'medium' } };
     });
 
     // Generate and download

@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.40",
-  "versionComment": "Versión 2.6.40: Soluciona conflicto de especificidad CSS con #root en la impresión de etiquetas únicas.",
+  "version": "2.6.41",
+  "versionComment": "Versión 2.6.41: Agrega detalle de paquetes reasignados al desglose diario y archivo Excel de cobro, solucionando diferencia de conteo.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
