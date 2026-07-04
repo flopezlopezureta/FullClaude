@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.43",
-  "versionComment": "Versión 2.6.43: Revierte lógica de isFlexed en la facturación y retorna al comportamiento limpio de la versión 2.6.41.",
+  "version": "2.6.44",
+  "versionComment": "Versión 2.6.44: Refactoriza el escáner de auto-despacho de conductor para equipararlo 100% al de auxiliar con capturas automáticas de etiqueta en segundo plano y soporte de códigos lineales.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

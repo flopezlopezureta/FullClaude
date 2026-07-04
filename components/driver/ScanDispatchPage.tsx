@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useRef, useCallback, useContext } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useContext, useMemo } from 'react';
 import jsQR from 'jsqr';
 import { api } from '../../services/api';
-import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft, IconRefresh, IconCamera } from '../Icon';
+import { IconCheckCircle, IconAlertTriangle, IconPencil, IconX, IconChevronLeft, IconLoader, IconTruck } from '../Icon';
 import { AuthContext } from '../../contexts/AuthContext';
 import type { Package } from '../../types';
 
@@ -14,7 +14,7 @@ const playBeep = () => {
         gainNode.gain.setValueAtTime(0.5, audioCtx.currentTime);
         oscillator.connect(gainNode);
         oscillator.type = 'sine';
-        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime); // A4 pitch
+        oscillator.frequency.setValueAtTime(880, audioCtx.currentTime);
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.1);
     }
@@ -25,7 +25,7 @@ interface ScanDispatchPageProps {
 }
 
 export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) => {
-  const { user } = useContext(AuthContext)!;
+  const { user, systemSettings } = useContext(AuthContext)!;
   const [stream, setStream] = useState<MediaStream | null>(null);
   const [scanResult, setScanResult] = useState<{ type: 'success' | 'error'; message: string; package?: Package } | null>(null);
   const [isScanning, setIsScanning] = useState(true);
@@ -37,210 +37,187 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const [scannedInSession, setScannedInSession] = useState<Set<string>>(new Set());
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualCode, setManualCode] = useState('');
-  const [isFlexing, setIsFlexing] = useState(false);
-  const [flexPhotoBase64, setFlexPhotoBase64] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isManualProcessing, setIsManualProcessing] = useState(false);
+  const [lastScannedPhoto, setLastScannedPhoto] = useState<string | null>(null);
+  const [lastScannedRaw, setLastScannedRaw] = useState<string>('');
+
   const [reassignConfirm, setReassignConfirm] = useState<{
     message: string;
     packageId: string;
     rawCode: string;
+    isManual: boolean;
   } | null>(null);
 
-  const { systemSettings } = useContext(AuthContext)!;
   const saveFlexLabelPhoto = systemSettings?.saveFlexLabelPhoto || false;
 
-  const handleScan = useCallback(async (data: string, forceReassign = false) => {
-    if (!forceReassign && (!isScanning || !user)) return;
+  const handleScan = useCallback(async (rawCode: string, isManual = false, forceReassign = false) => {
+    const cleanRawCode = rawCode.trim();
+    if (!isManual) setLastScannedRaw(cleanRawCode);
 
-    // Extraer ID si es una URL de Flex (Meli), 
-    // o un ID numérico largo (SCA barcode),
-    // o un JSON con campos específicos (h_code, shipment_id).
-    let packageId = data.trim();
+    // Capture photo from canvas if not manual and saveFlexLabelPhoto is enabled
+    let photoBase64: string | undefined;
+    if (!isManual && saveFlexLabelPhoto) {
+        const video = videoRef.current;
+        if (video) {
+            const photoCanvas = document.createElement('canvas');
+            const maxDim = 600;
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            if (width > maxDim) {
+                height = Math.round((height * maxDim) / width);
+                width = maxDim;
+            }
+            photoCanvas.width = width;
+            photoCanvas.height = height;
+            const pCtx = photoCanvas.getContext('2d');
+            if (pCtx) {
+                pCtx.drawImage(video, 0, 0, width, height);
+                photoBase64 = photoCanvas.toDataURL('image/jpeg', 0.3);
+            }
+        }
+        setLastScannedPhoto(photoBase64 || null);
+    }
+
+    let extractedId: string | null = null;
     
     // 1. Check if it is a JSON string
-    if (data.trim().startsWith('{')) {
+    if (cleanRawCode.startsWith('{')) {
         try {
-            const jsonData = JSON.parse(data.trim());
-            const extractedId = jsonData.shipment_id || jsonData.id || jsonData.s || jsonData.order_id;
-            if (extractedId) {
-                packageId = String(extractedId);
+            const jsonData = JSON.parse(cleanRawCode);
+            extractedId = jsonData.shipment_id || jsonData.id || jsonData.s || jsonData.order_id;
+        } catch (e) {}
+    }
+
+    if (!extractedId) {
+        // Priority 1: Check for Alphanumeric 'SCA...' format
+        const scaMatch = cleanRawCode.match(/[A-Z]{3}\d{2}-[A-Z0-9]{12}/);
+        if (scaMatch && scaMatch[0]) {
+            extractedId = scaMatch[0];
+        } 
+        // Priority 2: Check for long numeric string (typical tracking ID)
+        else {
+            const numericMatches = cleanRawCode.match(/\d+/g);
+            if (numericMatches) {
+                const longestNumber = numericMatches.sort((a, b) => b.length - a.length)[0];
+                if (longestNumber && longestNumber.length >= 10) {
+                    extractedId = longestNumber;
+                }
             }
-        } catch (e) {
-            console.warn("[Scanner] Failed to parse QR as JSON, falling back to regex.", e);
         }
     }
 
-    // 2. Fallback to Regex for URL
-    const meliUrlMatch = packageId.match(/\/flex\/shipping\/(\d+)/i);
-    // 3. Fallback to Regex for JSON field (if unparsed or still contains JSON string)
-    const meliFieldMatch = packageId.match(/["'](?:shipment_id|id|s|order_id)["']\s*:\s*(\d+)/i);
-    // 4. Barcode SCA (Only Numbers)
-    const meliScaMatch = packageId.match(/^[0-9]{11,15}$/);
+    const codeToUse = extractedId || cleanRawCode;
 
-    if (meliUrlMatch) {
-        packageId = meliUrlMatch[1];
-    } else if (meliFieldMatch) {
-        packageId = meliFieldMatch[1];
-    } else if (meliScaMatch) {
-        packageId = packageId.trim();
-    } else if (packageId.includes('/flex/shipping/')) {
-        const parts = packageId.split('/');
-        const lastPart = parts.filter(p => p.trim() !== '').pop() || packageId;
-        packageId = lastPart.split('?')[0];
+    if (!isManual && !forceReassign && (!isScanning || scannedInSession.has(codeToUse) || scannedInSession.has(rawCode))) return;
+
+    if (!isManual) setIsScanning(false);
+    else setIsManualProcessing(true);
+
+    if (!isManual) {
+        setScannedInSession(prev => {
+            const newSet = new Set(prev);
+            newSet.add(codeToUse);
+            newSet.add(rawCode);
+            return newSet;
+        });
     }
-
-    if (!forceReassign && scannedInSession.has(packageId)) return;
-    
-    setIsScanning(false);
-    setScannedInSession(prev => new Set(prev).add(packageId));
 
     const performDispatch = async (force = false) => {
         try {
-          const result = await api.scanPackageForDispatch(packageId, user.id, undefined, undefined, force);
+          const result = await api.scanPackageForDispatch(codeToUse, user.id, rawCode, undefined, force);
           playBeep();
           setScannedCount(prev => prev + 1);
-          
-          const pkg = result.package;
-          const isMeli = pkg?.source === 'MERCADO_LIBRE';
-          const needsFlex = isMeli && !pkg?.isFlexed;
-
           setScanResult({ 
             type: 'success', 
-            message: `¡Paquete #${scannedCount + 1} despachado!`,
-            package: pkg
+            message: `Paquete ${codeToUse} asignado a tu ruta`,
+            package: result.package
           });
+          if (isManual) setManualCode('');
 
-          // If it doesn't need flex, clear result after 1.5s and resume scanning
-          if (!needsFlex) {
-            setTimeout(() => {
-                setScanResult(null);
-                setIsScanning(true);
-            }, 1500);
+          // Upload photo in background
+          if (photoBase64 && result?.package?.id) {
+              api.updatePackage(result.package.id, { flexLabelPhotoBase64: photoBase64 })
+                 .catch(err => console.error("Error al subir foto de etiqueta en segundo plano:", err));
           }
+          
+          setTimeout(() => {
+              setScanResult(null);
+              if (!isManual) {
+                  setIsScanning(true);
+                  setLastScannedPhoto(null);
+              } else {
+                  setIsManualProcessing(false);
+              }
+          }, 1500);
         } catch (error: any) {
           if (error.status === 409 && error.body?.code === 'REASSIGN_PROMPT') {
               setReassignConfirm({
                   message: error.message,
-                  packageId,
-                  rawCode: data
+                  packageId: codeToUse,
+                  rawCode,
+                  isManual
               });
               return;
           }
 
-          setScannedInSession(prev => {
-              const newSet = new Set(prev);
-              newSet.delete(packageId);
-              return newSet;
-          });
-          const errorMessage = error.message || 'Error al procesar el paquete.';
-          setScanResult({ 
-            type: 'error', 
-            message: errorMessage.includes('no encontrado') 
-              ? `ID: ${packageId} - No encontrado en el sistema o clientes configurados.` 
-              : errorMessage 
-          });
+          if (!isManual) {
+              setScannedInSession(prev => {
+                  const newSet = new Set(prev);
+                  newSet.delete(codeToUse);
+                  newSet.delete(rawCode);
+                  return newSet;
+              });
+          }
+          setScanResult({ type: 'error', message: error.message || 'Error al procesar el paquete.' });
           setTimeout(() => {
             setScanResult(null);
-            setIsScanning(true);
+            if (!isManual) setIsScanning(true);
+            else setIsManualProcessing(false);
           }, 4000);
         }
     };
 
     await performDispatch(forceReassign);
-  }, [isScanning, user, scannedInSession, scannedCount]);
+  }, [isScanning, user, scannedInSession, scannedCount, saveFlexLabelPhoto]);
 
-  const handleMarkAsFlexed = async () => {
-    if (!scanResult?.package || isFlexing) return;
-    
-    if (saveFlexLabelPhoto && !flexPhotoBase64) {
-      alert("Por favor, toma una foto de la etiqueta antes de marcar como Flex.");
-      return;
-    }
-
-    setIsFlexing(true);
-    try {
-      await api.markPackageAsFlexed(scanResult.package.id, true, flexPhotoBase64 || undefined);
-      setScanResult(null);
-      setFlexPhotoBase64(null);
-      setIsScanning(true);
-    } catch (error: any) {
-      console.error("Error marking as flexed:", error);
-      setScanResult({
-        type: 'error',
-        message: error.message || 'Error al marcar como Flex.'
-      });
-      // Clear error after 4s and resume scanning
-      setTimeout(() => {
-        setScanResult(null);
-        setIsScanning(true);
-      }, 4000);
-    } finally {
-      setIsFlexing(false);
-    }
+  const handleManualSubmit = (e: React.FormEvent) => {
+      e.preventDefault();
+      if (!manualCode.trim() || isManualProcessing) return;
+      handleScan(manualCode, true);
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        const img = new Image();
-        img.onload = () => {
-          const canvas = document.createElement('canvas');
-          let width = img.width;
-          let height = img.height;
-          
-          // Max 600px dimension for faster uploads
-          const MAX_SIZE = 600;
-          if (width > height) {
-            if (width > MAX_SIZE) {
-              height *= MAX_SIZE / width;
-              width = MAX_SIZE;
-            }
-          } else {
-            if (height > MAX_SIZE) {
-              width *= MAX_SIZE / height;
-              height = MAX_SIZE;
-            }
-          }
-          
-          canvas.width = width;
-          canvas.height = height;
-          const ctx = canvas.getContext('2d');
-          ctx?.drawImage(img, 0, 0, width, height);
-          
-          // Compress to 0.3 quality (lightweight yet readable)
-          const compressed = canvas.toDataURL('image/jpeg', 0.3);
-          setFlexPhotoBase64(compressed);
-        };
-        img.src = reader.result as string;
-      };
-      reader.readAsDataURL(file);
-    }
-  };
-
-  const handleContinue = () => {
-    setScanResult(null);
-    setFlexPhotoBase64(null);
-    setIsScanning(true);
-  };
-
-  const scanLoop = useCallback(() => {
+  const scanLoop = useCallback(async () => {
     if (!isScanning) return;
-    if (videoRef.current && videoRef.current.readyState === videoRef.current.HAVE_ENOUGH_DATA && canvasRef.current) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
+    
+    if (video && video.readyState === video.HAVE_ENOUGH_DATA && canvas) {
         const context = canvas.getContext('2d');
-
         canvas.height = video.videoHeight;
         canvas.width = video.videoWidth;
-        context?.drawImage(video, 0, 0, canvas.width, canvas.height);
-        const imageData = context?.getImageData(0, 0, canvas.width, canvas.height);
+        if (!context) return;
+        context.drawImage(video, 0, 0, canvas.width, canvas.height);
+        
+        // --- Strategy 1: Native BarcodeDetector (Supports linear barcodes + QR) ---
+        if ('BarcodeDetector' in window) {
+            try {
+                // @ts-ignore - BarcodeDetector might not be in types yet
+                const detector = new window.BarcodeDetector({ formats: ['code_128', 'ean_13', 'qr_code', 'code_39', 'pdf417'] });
+                const barcodes = await detector.detect(canvas);
+                if (barcodes.length > 0) {
+                    handleScan(barcodes[0].rawValue);
+                    return; // Found something, stop this frame
+                }
+            } catch (e) {
+                console.error("BarcodeDetector error", e);
+            }
+        }
+
+        // --- Strategy 2: jsQR Fallback (QR only) ---
+        const imageData = context.getImageData(0, 0, canvas.width, canvas.height);
         if (imageData) {
             const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-            if (code) {
-                handleScan(code.data);
-            }
+            if (code) handleScan(code.data);
         }
     }
     requestRef.current = requestAnimationFrame(scanLoop);
@@ -250,56 +227,22 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
     let mediaStream: MediaStream | null = null;
     const startCamera = async () => {
         try {
-            try {
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
-            } catch (err) {
-                console.warn("Could not get environment camera, falling back to default.", err);
-                mediaStream = await navigator.mediaDevices.getUserMedia({ video: true });
-            }
+            mediaStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
             setStream(mediaStream);
-            const video = videoRef.current;
-            if (video) {
-                video.srcObject = mediaStream;
-                video.onloadedmetadata = () => {
-                    const playPromise = video.play();
-                    if (playPromise !== undefined) {
-                        playPromise.catch(err => {
-                            console.error("Video play failed:", err);
-                            setCameraError("No se pudo iniciar la reproducción de la cámara.");
-                        });
-                    }
-                };
-            }
-        } catch (err: any) {
-            console.error("Camera Error:", err.name, err.message);
-            let message = "No se pudo acceder a la cámara. Revisa los permisos.";
-            if (err.name === "NotAllowedError") {
-                message = "Permiso de cámara denegado. Habilítalo en la configuración del navegador.";
-            } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
-                message = "No se encontró una cámara en este dispositivo.";
-            } else if (err.name === "NotReadableError" || err.name === "TrackStartError") {
-                message = "La cámara está ocupada o no se puede leer. Cierra otras apps que la usen.";
-            }
-            setCameraError(message);
+            if (videoRef.current) videoRef.current.srcObject = mediaStream;
+        } catch (err) {
+            setCameraError("No se pudo acceder a la cámara. Revisa los permisos.");
         }
     };
     startCamera();
-
-    return () => {
-      mediaStream?.getTracks().forEach(track => track.stop());
-    };
+    return () => mediaStream?.getTracks().forEach(track => track.stop());
   }, []);
-
 
   useEffect(() => {
     if (isScanning && stream) {
       requestRef.current = requestAnimationFrame(scanLoop);
-    } else if(requestRef.current) {
-      cancelAnimationFrame(requestRef.current);
     }
-    return () => {
-        if(requestRef.current) cancelAnimationFrame(requestRef.current);
-    }
+    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
   }, [isScanning, stream, scanLoop]);
   
   return (
@@ -319,72 +262,54 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
         </div>
       </div>
       
-      <div className="text-center my-4 p-4 bg-[var(--background-muted)] rounded-lg">
-        <span className="text-lg font-bold text-[var(--text-primary)]">Total Despachado:</span>
-        <span className="ml-2 text-3xl font-extrabold text-[var(--brand-primary)]">{scannedCount}</span>
+      <form onSubmit={handleManualSubmit} className="mb-4">
+          <label className="block text-[10px] font-black text-[var(--text-muted)] uppercase tracking-widest mb-1.5">Ingreso Manual (Si el código no es legible)</label>
+          <div className="flex gap-2">
+              <input 
+                  type="text"
+                  placeholder="Ingresa ID o Código de Envío..."
+                  value={manualCode}
+                  onChange={(e) => setManualCode(e.target.value)}
+                  className="flex-1 px-4 py-2.5 bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg text-sm font-bold focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+              <button 
+                  type="submit"
+                  disabled={!manualCode.trim() || isManualProcessing}
+                  className="px-6 py-2.5 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+              >
+                  {isManualProcessing ? <IconLoader className="w-4 h-4 animate-spin" /> : <IconChevronLeft className="w-4 h-4 rotate-180" />}
+                  Asignar
+              </button>
+          </div>
+      </form>
+
+      <div className="text-center my-4 p-3 bg-[var(--background-muted)] rounded-lg flex justify-between items-center px-6">
+        <div className="text-left">
+            <span className="text-sm font-semibold text-[var(--text-secondary)] block">Total Despachado</span>
+            <span className="text-3xl font-extrabold text-[var(--brand-primary)] text-center">{scannedCount}</span>
+        </div>
+        {lastScannedPhoto && (
+            <div className="w-16 h-16 rounded-md overflow-hidden border-2 border-[var(--brand-primary)] animate-pulse">
+                <img src={lastScannedPhoto} alt="Label scan" className="w-full h-full object-cover" />
+            </div>
+        )}
       </div>
+
+      {lastScannedRaw && (
+          <div className="mb-4 p-2 bg-[var(--background-muted)] rounded border border-[var(--border-secondary)] overflow-hidden">
+              <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold mb-1">Código Leído:</p>
+              <p className="text-xs font-mono text-[var(--text-primary)] break-all truncate">{lastScannedRaw}</p>
+          </div>
+      )}
       
-      <div className="h-24 mt-4 flex items-center justify-center">
+      <div className="h-16 mt-2 flex items-center justify-center">
         {scanResult ? (
-            <div className={`flex flex-col items-center p-4 rounded-md text-white animate-fade-in-up w-full ${scanResult.type === 'success' ? 'bg-green-500' : 'bg-red-500'}`}>
-                <div className="flex items-center">
-                    {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : <IconAlertTriangle className="w-6 h-6 mr-3" />}
-                    <span className="font-medium">{scanResult.message}</span>
-                </div>
-                {scanResult.type === 'success' && scanResult.package?.source === 'MERCADO_LIBRE' && !scanResult.package?.isFlexed && (
-                    <div className="mt-3 flex flex-col gap-2 w-full">
-                        {saveFlexLabelPhoto && (
-                            <div className="flex flex-col gap-2">
-                                {flexPhotoBase64 ? (
-                                    <div className="relative w-full aspect-video bg-black rounded overflow-hidden border border-white/30">
-                                        <img src={flexPhotoBase64} alt="Respaldo Etiqueta" className="w-full h-full object-contain" />
-                                        <button 
-                                            onClick={() => setFlexPhotoBase64(null)}
-                                            className="absolute top-2 right-2 p-1 bg-black/60 rounded-full text-white"
-                                        >
-                                            <IconX className="w-4 h-4" />
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <button 
-                                        onClick={() => fileInputRef.current?.click()}
-                                        className="w-full px-3 py-2 bg-blue-600 text-white rounded font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors"
-                                    >
-                                        <IconCamera className="w-5 h-5" />
-                                        TOMAR FOTO ETIQUETA
-                                    </button>
-                                )}
-                                <input 
-                                    type="file" 
-                                    ref={fileInputRef} 
-                                    onChange={handleFileChange} 
-                                    accept="image/*" 
-                                    capture="environment" 
-                                    className="hidden" 
-                                />
-                            </div>
-                        )}
-                        <div className="flex gap-2 w-full">
-                            <button 
-                                onClick={handleMarkAsFlexed}
-                                disabled={isFlexing || (saveFlexLabelPhoto && !flexPhotoBase64)}
-                                className={`flex-grow px-3 py-1.5 bg-white text-green-600 rounded font-bold text-sm flex items-center justify-center gap-1 hover:bg-green-50 transition-colors ${(saveFlexLabelPhoto && !flexPhotoBase64) ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                                {isFlexing ? <IconRefresh className="w-4 h-4 animate-spin" /> : <IconCheckCircle className="w-4 h-4" />}
-                                MARCAR FLEX
-                            </button>
-                            <button 
-                                onClick={handleContinue}
-                                className="px-3 py-1.5 bg-green-600 text-white border border-white/30 rounded font-medium text-sm hover:bg-green-700 transition-colors"
-                            >
-                                Continuar
-                            </button>
-                        </div>
-                    </div>
-                )}
+            <div className={`flex items-center p-4 rounded-md text-white shadow-lg transition-all transform scale-105 ${scanResult.type === 'success' ? 'bg-green-600' : 'bg-red-500'}`}>
+                {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : <IconAlertTriangle className="w-6 h-6 mr-3" />}
+                <span className="font-medium text-lg">{scanResult.message}</span>
             </div>
         ) : (
-             <p className="text-center text-[var(--text-muted)]">Apunta la cámara al código QR para agregarlo a tu ruta de despacho.</p>
+             <p className="text-center text-[var(--text-muted)] text-sm animate-pulse">Apunta la cámara al código del paquete para agregarlo a tu ruta de despacho.</p>
         )}
       </div>
 
@@ -393,7 +318,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
           onClick={() => setIsManualEntryOpen(true)}
           className="w-full px-4 py-3 text-base font-semibold text-white bg-[var(--brand-primary)] rounded-lg hover:bg-[var(--brand-hover)] transition-all shadow-sm flex items-center justify-center gap-2"
         >
-          <IconPencil className="w-5 h-5" /> Ingreso Manual
+          <IconPencil className="w-5 h-5" /> Ingreso Manual Rápido
         </button>
         <button 
           onClick={onBack}
@@ -422,7 +347,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
 
                 <button 
                     onClick={() => {
-                        handleScan(manualCode);
+                        handleScan(manualCode, true);
                         setManualCode('');
                         setIsManualEntryOpen(false);
                     }}
@@ -450,13 +375,16 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
                   <div className="flex gap-3">
                       <button
                           onClick={() => {
-                              setScannedInSession(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(reassignConfirm.packageId);
-                                  return newSet;
-                              });
+                              if (!reassignConfirm.isManual) {
+                                  setScannedInSession(prev => {
+                                      const newSet = new Set(prev);
+                                      newSet.delete(reassignConfirm.packageId);
+                                      newSet.delete(reassignConfirm.rawCode);
+                                      return newSet;
+                                  });
+                              }
                               setReassignConfirm(null);
-                              setIsScanning(true);
+                              if (!reassignConfirm.isManual) setIsScanning(true);
                           }}
                           className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-200 rounded-xl text-sm font-semibold hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
                       >
@@ -464,9 +392,9 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
                       </button>
                       <button
                           onClick={() => {
-                              const { rawCode } = reassignConfirm;
+                              const { rawCode, isManual } = reassignConfirm;
                               setReassignConfirm(null);
-                              handleScan(rawCode, true);
+                              handleScan(rawCode, isManual, true);
                           }}
                           className="flex-1 px-4 py-2.5 bg-amber-600 hover:bg-amber-700 text-white rounded-xl text-sm font-semibold shadow-md transition-colors"
                       >
