@@ -48,6 +48,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     return menus;
   });
 
+  const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
+
   const toggleMenu = (id: string) => {
     setOpenMenus(prev => {
       const newMenus = new Set(prev);
@@ -284,7 +286,20 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       <nav className="flex-1 px-4 py-4 space-y-1 custom-scrollbar overflow-y-auto lg:overflow-y-visible">
         {navItems.map(item => (
           'subItems' in item ? (
-            <div key={item.id} className="relative group">
+            <div 
+              key={item.id} 
+              className="relative"
+              onMouseEnter={() => {
+                if (window.innerWidth >= 1024) {
+                  setHoveredMenu(item.id);
+                }
+              }}
+              onMouseLeave={() => {
+                if (window.innerWidth >= 1024) {
+                  setHoveredMenu(null);
+                }
+              }}
+            >
               <button
                 onClick={() => {
                   if (window.innerWidth < 1024) {
@@ -325,24 +340,29 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
               )}
 
               {/* Desktop Flyout */}
-              <div className="hidden lg:group-hover:block lg:absolute lg:left-full lg:top-0 lg:pl-2 lg:w-56 lg:z-50">
-                <div className="lg:bg-[var(--background-secondary)] lg:border lg:border-[var(--border-primary)] lg:rounded-lg lg:shadow-lg lg:p-2 lg:space-y-1">
-                  {(item.subItems as any[]).map(subItem => (
-                    <button
-                      key={subItem.id}
-                      onClick={() => onNavigate(subItem.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeView === subItem.id
-                          ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]'
-                          : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      {subItem.icon}
-                      <span>{subItem.label}</span>
-                    </button>
-                  ))}
+              {hoveredMenu === item.id && (
+                <div className="hidden lg:block lg:absolute lg:left-full lg:top-0 lg:pl-2 lg:w-56 lg:z-50 animate-fade-in-up">
+                  <div className="lg:bg-[var(--background-secondary)] lg:border lg:border-[var(--border-primary)] lg:rounded-lg lg:shadow-lg lg:p-2 lg:space-y-1">
+                    {(item.subItems as any[]).map(subItem => (
+                      <button
+                        key={subItem.id}
+                        onClick={() => {
+                          onNavigate(subItem.id);
+                          setHoveredMenu(null);
+                        }}
+                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                          activeView === subItem.id
+                            ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]'
+                            : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)]'
+                        }`}
+                      >
+                        {subItem.icon}
+                        <span>{subItem.label}</span>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
           ) : (
             <button

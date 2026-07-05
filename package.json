@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.45",
-  "versionComment": "Versión 2.6.45: Cambia la visualización de los submenús del panel lateral en escritorio a estilo flotante (flyout) lateral por hover, manteniendo el diseño de acordeón deslizable en móvil.",
+  "version": "2.6.46",
+  "versionComment": "Versión 2.6.46: Modifica el comportamiento de submenús flotantes reactivos en escritorio para que se cierren de inmediato tras seleccionar una opción del submenú.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
