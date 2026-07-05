@@ -281,12 +281,16 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         </button>
       </div>
 
-      <nav className="flex-1 px-4 py-4 space-y-1 custom-scrollbar overflow-y-auto">
+      <nav className="flex-1 px-4 py-4 space-y-1 custom-scrollbar overflow-y-auto lg:overflow-y-visible">
         {navItems.map(item => (
           'subItems' in item ? (
-            <div key={item.id}>
+            <div key={item.id} className="relative group">
               <button
-                onClick={() => toggleMenu(item.id)}
+                onClick={() => {
+                  if (window.innerWidth < 1024) {
+                    toggleMenu(item.id);
+                  }
+                }}
                 className={`w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-sm font-medium transition-colors ${
                   (item.subItems as any[])?.some(sub => sub.id === activeView) || openMenus.has(item.id)
                     ? 'bg-[var(--background-hover)] text-[var(--text-primary)]'
@@ -297,10 +301,12 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
                   {item.icon}
                   <span>{item.label}</span>
                 </div>
-                <IconChevronDown className={`w-5 h-5 transform transition-transform duration-200 ${openMenus.has(item.id) ? 'rotate-180' : ''}`} />
+                <IconChevronDown className={`w-5 h-5 transform transition-transform duration-200 lg:-rotate-90 ${openMenus.has(item.id) ? 'rotate-180' : ''}`} />
               </button>
+              
+              {/* Mobile Accordion */}
               {openMenus.has(item.id) && (
-                <div className="pl-6 pt-1 mt-1 space-y-1">
+                <div className="pl-6 pt-1 mt-1 space-y-1 lg:hidden">
                   {(item.subItems as any[]).map(subItem => (
                     <button
                       key={subItem.id}
@@ -317,6 +323,26 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
                   ))}
                 </div>
               )}
+
+              {/* Desktop Flyout */}
+              <div className="hidden lg:group-hover:block lg:absolute lg:left-full lg:top-0 lg:pl-2 lg:w-56 lg:z-50">
+                <div className="lg:bg-[var(--background-secondary)] lg:border lg:border-[var(--border-primary)] lg:rounded-lg lg:shadow-lg lg:p-2 lg:space-y-1">
+                  {(item.subItems as any[]).map(subItem => (
+                    <button
+                      key={subItem.id}
+                      onClick={() => onNavigate(subItem.id)}
+                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        activeView === subItem.id
+                          ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]'
+                          : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)]'
+                      }`}
+                    >
+                      {subItem.icon}
+                      <span>{subItem.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
           ) : (
             <button

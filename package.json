@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.44",
-  "versionComment": "Versión 2.6.44: Refactoriza el escáner de auto-despacho de conductor para equipararlo 100% al de auxiliar con capturas automáticas de etiqueta en segundo plano y soporte de códigos lineales.",
+  "version": "2.6.45",
+  "versionComment": "Versión 2.6.45: Cambia la visualización de los submenús del panel lateral en escritorio a estilo flotante (flyout) lateral por hover, manteniendo el diseño de acordeón deslizable en móvil.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
