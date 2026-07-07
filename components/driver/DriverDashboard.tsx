@@ -181,13 +181,8 @@ const DriverDashboard: React.FC = () => {
 
     const unflexed = allPending.filter(p => !p.isFlexed).length; 
     
-    // Solo contar asignados de la jornada actual (según zona horaria lógica)
-    const assignedToday = myPackages.filter(p => {
-        const dateToCheck = p.assignedAt || p.createdAt;
-        if (!dateToCheck) return false;
-        // Use standard YYYY-MM-DD comparison
-        return getLogicalDateString(new Date(dateToCheck), auth?.systemSettings?.timezone) === todayStr;
-    }).length;
+    // Calcular asignados totales de la jornada actual sumando pendientes y cerrados hoy de forma reactiva
+    const assignedToday = allPending.length + allHistory.length;
 
     return { 
         pendingPackages: pending, 

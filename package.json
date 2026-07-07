@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.49",
-  "versionComment": "Versión 2.6.49: Implementación completa de la importación y mapeo de órdenes desde la API de Falabella a la base de datos.",
+  "version": "2.6.50",
+  "versionComment": "Versión 2.6.50: Corregido el bug del contador de asignados del chofer (ahora se calcula reactivamente en base a las listas pendientes y cerradas).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
