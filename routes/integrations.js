@@ -1561,6 +1561,22 @@ router.get('/:clientId/woocommerce/orders', authMiddleware, async (req, res) => 
     }
 });
 
+function decodeHtmlEntities(str) {
+    if (!str) return '';
+    const htmlEntitiesMap = {
+        '&style;': ' ', '&nbsp;': ' ', '&deg;': '°', '&ordm;': '°',
+        '&value;': ' ', '&amp;': '&', '&lt;': '<', '&gt;': '>',
+        '&quot;': '"', '&apos;': "'",
+        '&aacute;': 'á', '&eacute;': 'é', '&iacute;': 'í', '&oacute;': 'ó', '&uacute;': 'ú',
+        '&Aacute;': 'Á', '&Eacute;': 'É', '&Iacute;': 'Í', '&Oacute;': 'Ó', '&Uacute;': 'Ú',
+        '&ntilde;': 'ñ', '&Ntilde;': 'Ñ', '&uuml;': 'ü', '&Uuml;': 'Ü'
+    };
+    return str
+        .replace(/&#(\d+);/g, (match, dec) => String.fromCharCode(parseInt(dec, 10)))
+        .replace(/&#x([a-fA-F0-9]+);/g, (match, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/&[a-zA-Z0-9#]+;/g, (match) => htmlEntitiesMap[match] || match);
+}
+
 // GET /api/integrations/:clientId/falabella/orders
 router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
     const { clientId } = req.params;
@@ -1570,12 +1586,79 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
     }
 
     try {
-        const falabellaIntegration = await getValidFalabellaIntegration(clientId);
+        const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [clientId]);
+        if (userRows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado.' });
         
-        // Placeholder for Falabella fetch orders
-        // In a real scenario, we would call the Falabella Seller Center API
-        // For now, we'll return an empty list or a simulated list if needed
-        res.json([]);
+        const integrations = ensureMultiAccountStructure(userRows[0].integrations || {});
+        const falabellaAccounts = integrations.accounts.filter(acc => acc.type === 'FALABELLA');
+
+        if (falabellaAccounts.length === 0) {
+            // Check legacy integration credentials or global settings as fallback
+            try {
+                const legacyFalabella = await getValidFalabellaIntegration(clientId);
+                if (legacyFalabella) {
+                    falabellaAccounts.push({
+                        id: 'legacy-falabella',
+                        nickname: 'Falabella (Principal)',
+                        credentials: {
+                            falabellaApiKey: legacyFalabella.falabellaApiKey,
+                            falabellaSellerId: legacyFalabella.falabellaSellerId
+                        }
+                    });
+                }
+            } catch (e) {
+                return res.json([]);
+            }
+        }
+
+        let allOrders = [];
+        const createdAfter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+
+        for (const account of falabellaAccounts) {
+            try {
+                const response = await makeFalabellaRequest(
+                    account.credentials.falabellaApiKey,
+                    account.credentials.falabellaSellerId,
+                    'GetOrders',
+                    'GET',
+                    { CreatedAfter: createdAfter }
+                );
+
+                const ordersContainer = response?.SuccessResponse?.Body?.Orders?.Order;
+                if (ordersContainer) {
+                    const ordersList = Array.isArray(ordersContainer) ? ordersContainer : [ordersContainer];
+                    
+                    const mapped = ordersList.map(order => {
+                        const rawFirstName = order.CustomerFirstName || '';
+                        const rawLastName = order.CustomerLastName || '';
+                        const fullName = decodeHtmlEntities(`${rawFirstName} ${rawLastName}`.trim());
+
+                        const address1 = order.AddressBilling?.Address1 || '';
+                        const address2 = order.AddressBilling?.Address2 || '';
+                        const fullAddress = decodeHtmlEntities([address1, address2].filter(Boolean).join(', ').trim());
+
+                        return {
+                            id: order.OrderId ? order.OrderId.toString() : uuidv4(),
+                            recipientName: fullName || 'N/A',
+                            recipientPhone: order.AddressBilling?.Phone || order.CustomerPhone || 'N/A',
+                            address: fullAddress || 'N/A',
+                            commune: decodeHtmlEntities(order.Ward || 'N/A').toUpperCase().trim(),
+                            city: decodeHtmlEntities(order.City || 'N/A').toUpperCase().trim(),
+                            notes: decodeHtmlEntities(order.Remarks || order.Notes || `Falabella Order: ${order.OrderNumber || order.OrderId}`),
+                            orderNumber: order.OrderNumber ? order.OrderNumber.toString() : (order.OrderId ? order.OrderId.toString() : 'N/A'),
+                            sourceAccountId: account.id,
+                            sourceAccountName: account.nickname
+                        };
+                    });
+                    
+                    allOrders = [...allOrders, ...mapped];
+                }
+            } catch (err) {
+                console.error(`Error fetching Falabella orders for ${account.nickname}:`, err.message || err);
+            }
+        }
+
+        res.json(allOrders);
     } catch (err) {
         console.error("Falabella Fetch Orders Error:", err);
         res.status(500).json({ message: 'Error al obtener pedidos de Falabella: ' + (err.message || 'Error desconocido') });

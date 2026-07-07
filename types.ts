@@ -303,6 +303,8 @@ export interface Package {
   alertChecked?: boolean;
   alertCheckedAt?: Date;
   shopifyOrderNumber?: string;
+  falabellaOrderId?: string;
+  falabellaTrackingId?: string;
 }
 
 export interface Notification {

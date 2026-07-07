@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.48",
-  "versionComment": "Versión 2.6.48: Agrega la opción de importación de Falabella en el menú desplegable del Dashboard del cliente.",
+  "version": "2.6.49",
+  "versionComment": "Versión 2.6.49: Implementación completa de la importación y mapeo de órdenes desde la API de Falabella a la base de datos.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

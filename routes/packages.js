@@ -560,7 +560,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
     }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, shopifyOrderNumber, wooOrderId, jumpsellerOrderId, trackingId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, shopifyOrderNumber, wooOrderId, jumpsellerOrderId, trackingId, falabellaOrderId, falabellaTrackingId } = req.body;
     
     // Validation
     const requiredFields = {
@@ -635,7 +635,9 @@ router.post('/', authMiddleware, async (req, res) => {
             trackingId,
             recipientEmail,
             destLatitude: coords.lat,
-            destLongitude: coords.lng
+            destLongitude: coords.lng,
+            falabellaOrderId,
+            falabellaTrackingId
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
@@ -713,7 +715,9 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     shopifyOrderNumber,
                     wooOrderId, 
                     jumpsellerOrderId,
-                    trackingId 
+                    trackingId,
+                    falabellaOrderId,
+                    falabellaTrackingId
                 } = pkgData;
                 
                 // Validate required fields for each package
@@ -797,7 +801,9 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     trackingId: cleanTrackingId,
                     recipientEmail,
                     destLatitude: coords.lat,
-                    destLongitude: coords.lng
+                    destLongitude: coords.lng,
+                    falabellaOrderId,
+                    falabellaTrackingId
                 };
                 
                 const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');

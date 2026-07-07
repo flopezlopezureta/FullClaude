@@ -114,19 +114,27 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
         
         try {
             const selectedOrdersList = orders.filter(o => selectedOrderIds.has(o.id));
-            const packagesToCreate: Omit<PackageCreationData, 'creatorId' | 'origin'>[] = selectedOrdersList.map(order => ({
-                recipientName: order.recipientName,
-                recipientPhone: order.recipientPhone || '',
-                recipientAddress: order.address,
-                recipientCommune: order.commune,
-                recipientCity: order.city,
-                notes: order.notes,
-                estimatedDelivery: getLogicalDate(), // Today (logical) by default
-                shippingType: ShippingType.SameDay, // Default
-                source: source,
-                sourceAccountId: order.sourceAccountId,
-                [config.orderIdField]: order.id
-            }));
+            const packagesToCreate: Omit<PackageCreationData, 'creatorId' | 'origin'>[] = selectedOrdersList.map(order => {
+                const pkg: any = {
+                    recipientName: order.recipientName,
+                    recipientPhone: order.recipientPhone || '',
+                    recipientAddress: order.address,
+                    recipientCommune: order.commune,
+                    recipientCity: order.city,
+                    notes: order.notes,
+                    estimatedDelivery: getLogicalDate(), // Today (logical) by default
+                    shippingType: ShippingType.SameDay, // Default
+                    source: source,
+                    sourceAccountId: order.sourceAccountId
+                };
+                if (source === 'FALABELLA') {
+                    pkg.falabellaOrderId = order.id;
+                    pkg.falabellaTrackingId = order.orderNumber;
+                } else {
+                    pkg[config.orderIdField] = order.id;
+                }
+                return pkg;
+            });
 
             await onImport(packagesToCreate);
             onClose();
