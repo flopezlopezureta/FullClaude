@@ -10,7 +10,7 @@ import CreatePackageModal from '../modals/CreatePackageModal';
 import ClientPackageFilters from './ClientPackageFilters';
 import ShippingLabelModal from './ShippingLabelModal';
 import BatchShippingLabelModal from './BatchShippingLabelModal';
-import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconTrash, IconDownload, IconFileText, IconShopify, IconMercadoLibre, IconJumpseller, IconWoocommerce } from '../Icon';
+import { IconPlus, IconChevronLeft, IconChevronRight, IconChevronDown, IconFileSpreadsheet, IconPrinter, IconTrash, IconDownload, IconFileText, IconShopify, IconMercadoLibre, IconJumpseller, IconWoocommerce, IconFalabella } from '../Icon';
 import ImportPackagesModal from './ImportPackagesModal';
 import ExternalImportModal from '../modals/ExternalImportModal';
 import EditPackageModal from '../modals/EditPackageModal';
@@ -360,6 +360,12 @@ const ClientDashboard: React.FC = () => {
                                             <IconWoocommerce className="w-4 h-4 text-purple-600"/>
                                         </div>
                                         WooCommerce
+                                    </button>
+                                    <button onClick={() => handleOpenExternalImport(PackageSource.Falabella)} className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
+                                        <div className="p-1.5 bg-orange-100 rounded-lg">
+                                            <IconFalabella className="w-4 h-4 text-orange-600"/>
+                                        </div>
+                                        Falabella
                                     </button>
                                     <button onClick={() => handleOpenExternalImport(PackageSource.Jumpseller)} className="w-full text-left px-4 py-3 text-sm font-semibold text-gray-700 hover:bg-gray-50 flex items-center gap-3 transition-colors">
                                         <div className="p-1.5 bg-sky-100 rounded-lg">

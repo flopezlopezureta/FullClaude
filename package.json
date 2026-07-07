@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.47",
-  "versionComment": "Versión 2.6.47: Fix de cámara en negro al autoasignarse paquetes en Mi Despacho y optimizaciones de compilación.",
+  "version": "2.6.48",
+  "versionComment": "Versión 2.6.48: Agrega la opción de importación de Falabella en el menú desplegable del Dashboard del cliente.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
