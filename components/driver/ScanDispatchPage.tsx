@@ -254,7 +254,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
         {cameraError ? (
             <div className="flex items-center justify-center h-full text-white p-4 text-center">{cameraError}</div>
         ) : (
-            <video ref={videoRef} playsInline muted className="w-full h-full object-cover" />
+            <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover" />
         )}
         <canvas ref={canvasRef} className="hidden" />
         <div className="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center p-8 pointer-events-none">
