@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.46",
-  "versionComment": "Versión 2.6.46: Modifica el comportamiento de submenús flotantes reactivos en escritorio para que se cierren de inmediato tras seleccionar una opción del submenú.",
+  "version": "2.6.47",
+  "versionComment": "Versión 2.6.47: Fix de cámara en negro al autoasignarse paquetes en Mi Despacho y optimizaciones de compilación.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
