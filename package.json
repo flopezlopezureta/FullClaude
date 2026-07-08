@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.54",
-  "versionComment": "Versión 2.6.54: Reemplazada la exclusión permanente de códigos escaneados (scannedInSession) por un candado sincrónico temporal (scanLock con 1.5s de cooldown) en los escáneres de Chofer y Auxiliar, permitiendo que paquetes físicos duplicados sí puedan volver a escanearse e identificarse correctamente por el servidor.",
+  "version": "2.6.55",
+  "versionComment": "Versión 2.6.55: Integrado el motor de validación espacial de polígonos GIS en Node.js (gisService) y configurada la visualización dinámica del sector/comuna del paquete al escanear desde el móvil en los escáneres de Chofer y Auxiliar.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

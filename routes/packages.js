@@ -11,6 +11,7 @@ const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
 const jumpsellerPollingService = require('../services/jumpsellerPollingService');
 const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geocodingService');
+const gisService = require('../services/gisService');
 
 // [EMERGENCIA] Ruta para normalizar todas las comunas y ciudades del historial
 router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
@@ -1225,6 +1226,10 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         if (updatedPkg) {
             delete updatedPkg.flexLabelPhotoBase64;
             delete updatedPkg.deliveryPhotosBase64;
+            
+            if (updatedPkg.destLatitude && updatedPkg.destLongitude) {
+                updatedPkg.sectorName = gisService.getSectorForCoordinates(updatedPkg.destLatitude, updatedPkg.destLongitude);
+            }
         }
 
         updatedPkg.history = await getHistory(realId);

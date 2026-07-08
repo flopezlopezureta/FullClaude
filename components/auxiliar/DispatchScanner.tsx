@@ -33,7 +33,7 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
 
     const [currentDriverId, setCurrentDriverId] = useState(initialDriver.id);
     const [stream, setStream] = useState<MediaStream | null>(null);
-    const [scanResult, setScanResult] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+    const [scanResult, setScanResult] = useState<{ type: 'success' | 'error'; message: string; package?: any } | null>(null);
     const [isScanning, setIsScanning] = useState(true);
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -126,7 +126,11 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
               const result = await api.scanPackageForDispatch(codeToUse, currentDriverId, rawCode, undefined, force);
               playBeep();
               setScannedCount(prev => prev + 1);
-              setScanResult({ type: 'success', message: `Paquete ${codeToUse} asignado a ${currentDriver.name}` });
+              setScanResult({ 
+                type: 'success', 
+                message: `Paquete ${codeToUse} asignado a ${currentDriver.name}`,
+                package: result?.package
+              });
               if (isManual) setManualId('');
 
               // Upload photo in background
@@ -306,11 +310,19 @@ const ScannerView: React.FC<ScannerViewProps> = ({ initialDriver, allDrivers, on
                 </div>
             )}
             
-            <div className="h-16 mt-2 flex items-center justify-center">
+             <div className="min-h-[4rem] mt-2 flex items-center justify-center py-2">
                 {scanResult ? (
                     <div className={`flex items-center p-4 rounded-md text-white shadow-lg transition-all transform scale-105 ${scanResult.type === 'success' ? 'bg-green-600' : 'bg-red-500'}`}>
                         {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : <IconAlertTriangle className="w-6 h-6 mr-3" />}
-                        <span className="font-medium text-lg">{scanResult.message}</span>
+                        <div className="flex flex-col">
+                            <span className="font-medium text-lg">{scanResult.message}</span>
+                            {scanResult.type === 'success' && scanResult.package?.recipientCommune && (
+                                <span className="text-xs font-bold bg-black bg-opacity-20 px-2 py-0.5 rounded mt-1 text-yellow-200 w-fit">
+                                    Comuna: {scanResult.package.recipientCommune}
+                                    {scanResult.package.sectorName ? ` | ${scanResult.package.sectorName}` : ''}
+                                </span>
+                            )}
+                        </div>
                     </div>
                 ) : (
                     <p className="text-center text-[var(--text-muted)] text-sm animate-pulse">Escanea el código QR del paquete...</p>
