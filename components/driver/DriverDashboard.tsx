@@ -151,12 +151,19 @@ const DriverDashboard: React.FC = () => {
     }
 
     // Base collections: Use status checks first
+    const CLOSED_STATUSES = [
+        PackageStatus.Delivered,
+        PackageStatus.Problem,
+        PackageStatus.Returned,
+        PackageStatus.Cancelled
+    ];
+
     const allPending = myPackages.filter(p => 
-        p && p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem && p.status !== PackageStatus.Returned
+        p && !CLOSED_STATUSES.includes(p.status)
     );
 
     const allHistory = myPackages.filter(p => {
-        if (!p || (p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem)) return false;
+        if (!p || !CLOSED_STATUSES.includes(p.status)) return false;
         const closureEvent = p.history?.[0];
         if (!closureEvent) return false; 
         // Compare using logical date strings (YYYY-MM-DD)

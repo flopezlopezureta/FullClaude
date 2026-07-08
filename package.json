@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.51",
-  "versionComment": "Versión 2.6.51: Corregido bug donde paquetes ASIGNADOS mostraban el badge ESCANEADO, corregida condición de carrera con useState en el escáner de chofer a useRef, y solucionado el bug de captura de foto para códigos de 11 dígitos en la app móvil.",
+  "version": "2.6.52",
+  "versionComment": "Versión 2.6.52: Corregida inconsistencia y desfase en contador de asignados del chofer (se incluyeron los estados de 'PROBLEMA', 'DEVUELTO' y 'CANCELADO' de forma coherente en ambas vistas web y móvil).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

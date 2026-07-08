@@ -89,7 +89,7 @@ export default function DeliveriesScreen({ navigation }: any) {
   };
 
   const filteredPackages = useMemo(() => {
-    const CLOSED_STATUSES = ['ENTREGADO', 'DEVUELTO', 'CANCELADO'];
+    const CLOSED_STATUSES = ['ENTREGADO', 'PROBLEMA', 'DEVUELTO', 'CANCELADO'];
     const today = new Date().toISOString().split('T')[0];
     
     let result = packages;
@@ -242,7 +242,7 @@ export default function DeliveriesScreen({ navigation }: any) {
           onPress={() => setActiveTab('pending')}
         >
           <Text style={[styles.tabText, activeTab === 'pending' && styles.activeTabText]}>
-            Pendientes ({packages.filter(p => !['ENTREGADO', 'DEVUELTO'].includes(p.status)).length})
+            Pendientes ({packages.filter(p => !['ENTREGADO', 'PROBLEMA', 'DEVUELTO', 'CANCELADO'].includes(p.status)).length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity 
@@ -250,7 +250,7 @@ export default function DeliveriesScreen({ navigation }: any) {
           onPress={() => setActiveTab('closed')}
         >
           <Text style={[styles.tabText, activeTab === 'closed' && styles.activeTabText]}>
-            Cerrados ({packages.filter(p => ['ENTREGADO', 'DEVUELTO'].includes(p.status)).length})
+            Cerrados ({packages.filter(p => ['ENTREGADO', 'PROBLEMA', 'DEVUELTO', 'CANCELADO'].includes(p.status)).length})
           </Text>
         </TouchableOpacity>
       </View>
