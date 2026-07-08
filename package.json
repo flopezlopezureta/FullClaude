@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.58",
-  "versionComment": "Versión 2.6.58: ZoningScanner rediseñado con escaneo acumulativo — todos los paquetes escaneados en la sesión se muestran simultáneamente en el mapa Leaflet con polígono de sector y marcador de coordenada. Cada ítem tiene un color único y puede eliminarse individualmente del mapa.",
+  "version": "2.6.59",
+  "versionComment": "Versión 2.6.59: Editor visual de Sectores GIS — admins pueden dibujar polígonos de sectores dentro de cualquier comuna directamente en un mapa Leaflet. Los sectores se guardan en sectors_custom.json y el ZoningScanner los usa automáticamente con prioridad sobre los límites comunales base.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

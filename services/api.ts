@@ -445,4 +445,11 @@ export const api = {
   },
   bulkMarkAllProcessed: () => post<{message: string, updatedCount: number}>('/packages/sys/bulk-mark-processed', {}),
   forceCloseOldPackages: (days: number) => post<{message: string, updatedCount: number}>('/packages/sys/force-close-old', { days }),
+
+  // GIS Sectors
+  getGisSectors: (comuna?: string) => get<any[]>(`/gis/sectors${comuna ? `?comuna=${encodeURIComponent(comuna)}` : ''}`),
+  getGisSectorComunas: () => get<{ comuna: string; count: number }[]>('/gis/sectors/comunas'),
+  createGisSector: (data: { comuna: string; sector: string; geometry: any }) => post<any>('/gis/sectors', data),
+  updateGisSector: (id: string, data: { sector?: string; geometry?: any }) => put<any>(`/gis/sectors/${id}`, data),
+  deleteGisSector: (id: string) => del<void>(`/gis/sectors/${id}`),
 };

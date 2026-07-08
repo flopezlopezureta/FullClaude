@@ -44,7 +44,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     if (['assign-pickups', 'pickup-report'].includes(activeView)) menus.add('pickups');
     if (['settings', 'integrations'].includes(activeView)) menus.add('configuration');
     if (['delivery-analytics', 'late-deliveries', 'activity-audit'].includes(activeView)) menus.add('reports');
-    if (['geolocate', 'zone-settings', 'live-map'].includes(activeView)) menus.add('logistics');
+    if (['geolocate', 'zone-settings', 'live-map', 'sector-editor'].includes(activeView)) menus.add('logistics');
     return menus;
   });
 
@@ -83,6 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       subItems: [
         { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-5 w-5" /> },
         { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-5 w-5" /> },
+        { id: 'sector-editor', label: 'Sectores GIS', icon: <IconMap className="h-5 w-5 text-violet-600" /> },
         { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-5 w-5" /> },
       ]
     },

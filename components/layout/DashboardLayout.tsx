@@ -14,6 +14,7 @@ import SystemLogsPage from '../admin/SystemLogsPage';
 import ImportOrdersPage from '../admin/ImportOrdersPage';
 import BillingReportPage from '../admin/BillingReportPage';
 import ZoneSettingsPage from '../admin/ZoneSettingsPage';
+import SectorEditorPage from '../admin/SectorEditorPage';
 import { DriverPerformanceReportPage } from '../admin/DriverPerformanceReportPage';
 import ClientPerformanceReportPage from '../client/ClientPerformanceReportPage';
 import GlobalBillingPage from '../admin/GlobalBillingPage';
@@ -166,6 +167,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'zone-settings':
         if (isAdmin || (isOp && user?.operatorPermissions?.canManageZones)) return { title: 'Configuración de Zonas', content: <ZoneSettingsPage /> };
+        break;
+
+      case 'sector-editor':
+        if (isAdmin) return { title: 'Editor de Sectores GIS', content: <SectorEditorPage /> };
         break;
 
       case 'live-map':
