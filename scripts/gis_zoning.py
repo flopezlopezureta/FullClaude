@@ -13,6 +13,7 @@ Date: 2026-07-08
 """
 
 import json
+import os
 from typing import Dict, Any, Tuple, List, Optional
 import pandas as pd
 from shapely.geometry import Point, Polygon, shape
@@ -143,46 +144,70 @@ if __name__ == "__main__":
     print("INICIANDO MOTOR DE ZONIFICACION GIS - FULLENVIOS")
     print("=" * 70)
 
-    # 1. Configuración de límites comunales (Santiago Bounding Boxes de Prueba)
-    config_data = {
-        "Las Condes": {
-            "type": "bbox",
-            "lat_min": -33.4300,
-            "lat_max": -33.3500,
-            "lon_min": -70.5800,
-            "lon_max": -70.4000
-        },
-        "Providencia": {
-            "type": "bbox",
-            "lat_min": -33.4500,
-            "lat_max": -33.4100,
-            "lon_min": -70.6300,
-            "lon_max": -70.5800
-        },
-        "Santiago": {
-            "type": "bbox",
-            "lat_min": -33.4800,
-            "lat_max": -33.4200,
-            "lon_min": -70.7000,
-            "lon_max": -70.6200
-        },
-        # Ejemplo de comuna con geometría GeoJSON real (Polígono en forma de L simple para demo)
-        "Vitacura": {
-            "type": "geojson",
-            "geometry": {
-                "type": "Polygon",
-                "coordinates": [
-                    [
-                        [-70.5800, -33.4000],
-                        [-70.5000, -33.4000],
-                        [-70.5000, -33.3500],
-                        [-70.5800, -33.3500],
-                        [-70.5800, -33.4000] # Cerrar el loop
+    # 1. Configuración de límites comunales (Carga dinámica de GeoJSON real o Mock simplificado)
+    config_data = {}
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    geojson_path = os.path.join(script_dir, "comunas_rm.geojson")
+    
+    if os.path.exists(geojson_path):
+        print(f"[INFO] Detectado archivo GeoJSON oficial: {geojson_path}")
+        print("[INFO] Cargando limites comunales de alta precision para la RM...")
+        try:
+            with open(geojson_path, "r", encoding="utf-8") as f:
+                geojson_data = json.load(f)
+            
+            for feature in geojson_data["features"]:
+                comuna_name = feature["properties"]["Comuna"]
+                config_data[comuna_name] = {
+                    "type": "geojson",
+                    "geometry": feature["geometry"]
+                }
+            print(f"[INFO] Exito: Cargadas {len(config_data)} comunas reales de la Region Metropolitana.")
+        except Exception as e:
+            print(f"[WARNING] Error al cargar GeoJSON ({str(e)}). Usando limites de demo...")
+            config_data = {}
+            
+    if not config_data:
+        # Fallback a límites Bounding Box de demostración si el GeoJSON no está disponible
+        print("[INFO] Usando limites simplificados (bbox) de demo...")
+        config_data = {
+            "Las Condes": {
+                "type": "bbox",
+                "lat_min": -33.4300,
+                "lat_max": -33.3500,
+                "lon_min": -70.5800,
+                "lon_max": -70.4000
+            },
+            "Providencia": {
+                "type": "bbox",
+                "lat_min": -33.4500,
+                "lat_max": -33.4100,
+                "lon_min": -70.6300,
+                "lon_max": -70.5800
+            },
+            "Santiago": {
+                "type": "bbox",
+                "lat_min": -33.4800,
+                "lat_max": -33.4200,
+                "lon_min": -70.7000,
+                "lon_max": -70.6200
+            },
+            "Vitacura": {
+                "type": "geojson",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [
+                        [
+                            [-70.5800, -33.4000],
+                            [-70.5000, -33.4000],
+                            [-70.5000, -33.3500],
+                            [-70.5800, -33.3500],
+                            [-70.5800, -33.4000]
+                        ]
                     ]
-                ]
+                }
             }
         }
-    }
     
     # Cargar la configuración en el validador
     zConfig = ZoningConfig(config_data)
