@@ -153,7 +153,7 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
       ? (pkg.origin || 'Sin Origen') 
       : (pkg.recipientAddress || 'Sin Dirección');
 
-    const isScanned = pkg.status !== PackageStatus.Pending;
+    const isScanned = pkg.status !== PackageStatus.Pending && pkg.status !== PackageStatus.Assigned;
     
     let displaySource = pkg.source;
     if (displaySource === PackageSource.Manual || !displaySource) {

@@ -82,7 +82,7 @@ for (let i = 4; i <= 20; i++) {
         status: UserStatus.Approved,
         personalRut: generateRut(),
         pricing: { sameDay: 1800, express: 2500, nextDay: 1500, pickup: 5000 },
-        driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false }
+        driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false, canAuxiliar: false }
     });
 }
 
@@ -156,7 +156,7 @@ export const MOCK_USERS: User[] = [
     status: UserStatus.Approved,
     personalRut: '18.123.456-7',
     pricing: { sameDay: 1800, express: 2500, nextDay: 1500, pickup: 5000 },
-    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: true, canColecta: false }
+    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: true, canColecta: false, canAuxiliar: false }
   },
   {
     id: 'user-driver-2',
@@ -167,7 +167,7 @@ export const MOCK_USERS: User[] = [
     status: UserStatus.Approved,
     personalRut: '19.876.543-2',
     pricing: { sameDay: 1800, express: 2500, nextDay: 1500, pickup: 5000 },
-    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false }
+    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false, canAuxiliar: false }
   },
   {
     id: 'user-driver-3',
@@ -177,7 +177,7 @@ export const MOCK_USERS: User[] = [
     role: Role.Driver,
     status: UserStatus.Pending,
     personalRut: '17.555.444-3',
-    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false }
+    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false, canAuxiliar: false }
   },
   {
     id: 'user-driver-4',
@@ -193,7 +193,7 @@ export const MOCK_USERS: User[] = [
     licenseExpiry: '',
     backgroundCheckNotes: '',
     pricing: { sameDay: 1800, express: 2500, nextDay: 1500, pickup: 5000 },
-    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: true, canColecta: false }
+    driverPermissions: { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: true, canColecta: false, canAuxiliar: false }
   },
   {
     id: 'user-facturacion',

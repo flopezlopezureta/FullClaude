@@ -71,7 +71,7 @@ export default function ScannerScreen({ navigation, route }: any) {
     try {
       if (type === 'PICKUP') {
         let flexLabelPhoto = undefined;
-        const isMeli = extractedId.length > 20 || data.includes('ML') || data.includes('SHIPMENT');
+        const isMeli = extractedId.length > 20 || data.includes('ML') || data.includes('SHIPMENT') || /^\d{11}$/.test(extractedId);
         
         if (settings?.saveFlexLabelPhoto && isMeli) {
             Alert.alert(
@@ -105,7 +105,7 @@ export default function ScannerScreen({ navigation, route }: any) {
         }
       } else {
         // Dispatch Mode (Auto-asignación)
-        const isMeli = extractedId.length > 20 || data.includes('ML') || data.includes('SHIPMENT');
+        const isMeli = extractedId.length > 20 || data.includes('ML') || data.includes('SHIPMENT') || /^\d{11}$/.test(extractedId);
         if (settings?.saveFlexLabelPhoto && isMeli) {
             Alert.alert(
                 "Meli Flex Detectado",

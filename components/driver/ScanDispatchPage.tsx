@@ -34,7 +34,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
   const requestRef = useRef<number | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [scannedCount, setScannedCount] = useState(0);
-  const [scannedInSession, setScannedInSession] = useState<Set<string>>(new Set());
+  const scannedInSession = useRef(new Set<string>());
   const [isManualEntryOpen, setIsManualEntryOpen] = useState(false);
   const [manualCode, setManualCode] = useState('');
   const [isManualProcessing, setIsManualProcessing] = useState(false);
@@ -108,18 +108,14 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
 
     const codeToUse = extractedId || cleanRawCode;
 
-    if (!isManual && !forceReassign && (!isScanning || scannedInSession.has(codeToUse) || scannedInSession.has(rawCode))) return;
+    if (!isManual && !forceReassign && (!isScanning || scannedInSession.current.has(codeToUse) || scannedInSession.current.has(rawCode))) return;
 
     if (!isManual) setIsScanning(false);
     else setIsManualProcessing(true);
 
     if (!isManual) {
-        setScannedInSession(prev => {
-            const newSet = new Set(prev);
-            newSet.add(codeToUse);
-            newSet.add(rawCode);
-            return newSet;
-        });
+        scannedInSession.current.add(codeToUse);
+        scannedInSession.current.add(rawCode);
     }
 
     const performDispatch = async (force = false) => {
@@ -161,12 +157,8 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
           }
 
           if (!isManual) {
-              setScannedInSession(prev => {
-                  const newSet = new Set(prev);
-                  newSet.delete(codeToUse);
-                  newSet.delete(rawCode);
-                  return newSet;
-              });
+              scannedInSession.current.delete(codeToUse);
+              scannedInSession.current.delete(rawCode);
           }
           setScanResult({ type: 'error', message: error.message || 'Error al procesar el paquete.' });
           setTimeout(() => {
@@ -178,7 +170,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
     };
 
     await performDispatch(forceReassign);
-  }, [isScanning, user, scannedInSession, scannedCount, saveFlexLabelPhoto]);
+  }, [isScanning, user, scannedCount, saveFlexLabelPhoto]);
 
   const handleManualSubmit = (e: React.FormEvent) => {
       e.preventDefault();
@@ -376,12 +368,8 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
                       <button
                           onClick={() => {
                               if (!reassignConfirm.isManual) {
-                                  setScannedInSession(prev => {
-                                      const newSet = new Set(prev);
-                                      newSet.delete(reassignConfirm.packageId);
-                                      newSet.delete(reassignConfirm.rawCode);
-                                      return newSet;
-                                  });
+                                  scannedInSession.current.delete(reassignConfirm.packageId);
+                                  scannedInSession.current.delete(reassignConfirm.rawCode);
                               }
                               setReassignConfirm(null);
                               if (!reassignConfirm.isManual) setIsScanning(true);
