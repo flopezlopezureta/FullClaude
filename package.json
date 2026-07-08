@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.52",
-  "versionComment": "Versión 2.6.52: Corregida inconsistencia y desfase en contador de asignados del chofer (se incluyeron los estados de 'PROBLEMA', 'DEVUELTO' y 'CANCELADO' de forma coherente en ambas vistas web y móvil).",
+  "version": "2.6.53",
+  "versionComment": "Versión 2.6.53: Optimizada la captura de fotos desde la cámara web (redimensión a 800px máx y compresión de calidad a 0.4) para evitar errores de 'Failed to Fetch' causados por payloads excesivamente pesados (imágenes sin compresión de 2-5MB) al confirmar entregas o reportar problemas.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

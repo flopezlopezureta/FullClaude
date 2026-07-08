@@ -45,9 +45,26 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.6);
+            
+            const maxDim = 800;
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext('2d');
+            context?.drawImage(video, 0, 0, width, height);
+            
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
             onCapture(dataUrl);
         }
     };

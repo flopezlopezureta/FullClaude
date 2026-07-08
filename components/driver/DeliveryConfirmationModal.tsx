@@ -56,13 +56,27 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
         if (videoRef.current && canvasRef.current) {
             const video = videoRef.current;
             const canvas = canvasRef.current;
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
+            
+            const maxDim = 800;
+            let width = video.videoWidth;
+            let height = video.videoHeight;
+            if (width > maxDim || height > maxDim) {
+                if (width > height) {
+                    height = Math.round((height * maxDim) / width);
+                    width = maxDim;
+                } else {
+                    width = Math.round((width * maxDim) / height);
+                    height = maxDim;
+                }
+            }
+            
+            canvas.width = width;
+            canvas.height = height;
             const context = canvas.getContext('2d');
-            context?.drawImage(video, 0, 0, canvas.width, canvas.height);
+            context?.drawImage(video, 0, 0, width, height);
             
             // 1. Generar la imagen para la App (con calidad reducida para subir)
-            const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.4);
             
             // 2. Intentar auto-descarga en el teléfono para que quede en la galería
             try {
