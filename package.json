@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.57",
-  "versionComment": "Versión 2.6.57: Implementado el módulo 'Zonificación' (ZoningScanner) — escáner de consulta independiente sin asignación que identifica la comuna y el sector GIS del paquete mostrándolo en un mapa interactivo de Leaflet en tiempo real.",
+  "version": "2.6.58",
+  "versionComment": "Versión 2.6.58: ZoningScanner rediseñado con escaneo acumulativo — todos los paquetes escaneados en la sesión se muestran simultáneamente en el mapa Leaflet con polígono de sector y marcador de coordenada. Cada ítem tiene un color único y puede eliminarse individualmente del mapa.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

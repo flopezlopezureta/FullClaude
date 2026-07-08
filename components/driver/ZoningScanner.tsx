@@ -1,327 +1,430 @@
-import React, { useEffect, useRef, useState, useContext } from 'react';
+// ZoningScanner — Consulta GIS acumulativa. Sin asignación.
+// Cada paquete escaneado se agrega al mapa y a la lista.
+// Todos los paquetes de una misma sesión se muestran simultáneamente en el mapa.
+
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '../../services/api';
-import { AuthContext } from '../../contexts/AuthContext';
-import { IconCheckCircle, IconAlertTriangle, IconX, IconMapPin, IconQrcode, IconLoader, IconPackage } from '../Icon';
 import jsQR from 'jsqr';
 
-// Declare Leaflet globally to avoid TypeScript errors
 declare const L: any;
 
-interface ScanResult {
-  type: 'success' | 'error';
-  message: string;
-  pkg?: any;
-  sectorDetails?: {
+// ---- Colores por sector (cíclicos) -----------------------------------------
+const SECTOR_COLORS = [
+  { fill: '#818cf8', border: '#4f46e5' }, // indigo
+  { fill: '#34d399', border: '#059669' }, // emerald
+  { fill: '#f472b6', border: '#db2777' }, // pink
+  { fill: '#fbbf24', border: '#d97706' }, // amber
+  { fill: '#60a5fa', border: '#2563eb' }, // blue
+  { fill: '#a78bfa', border: '#7c3aed' }, // violet
+  { fill: '#f87171', border: '#dc2626' }, // red
+  { fill: '#2dd4bf', border: '#0d9488' }, // teal
+];
+
+// ---- Types ------------------------------------------------------------------
+interface ScannedItem {
+  id: string;         // internal scan ID (timestamp+code)
+  rawCode: string;
+  pkg: any;
+  sectorDetails: {
     comuna: string;
     sector: string;
     sectorLabel: string;
     geometry?: any;
   } | null;
+  colorIdx: number;   // index into SECTOR_COLORS
+  error?: string;
 }
 
 interface ZoningScannerProps {
   onBack: () => void;
 }
 
+// ---- Component --------------------------------------------------------------
 const ZoningScanner: React.FC<ZoningScannerProps> = ({ onBack }) => {
-  const auth = useContext(AuthContext);
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const requestRef = useRef<number | null>(null);
+  const rafRef = useRef<number | null>(null);
   const scanLock = useRef(false);
+  const scannedCodesRef = useRef<Set<string>>(new Set()); // avoid duplicate scans
+
   const mapRef = useRef<any>(null);
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const sectorLayerRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const layersRef = useRef<any[]>([]); // leaflet layers per scanned item
 
-  const [stream, setStream] = useState<MediaStream | null>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [scanResult, setScanResult] = useState<ScanResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [lastScannedRaw, setLastScannedRaw] = useState('');
   const [manualCode, setManualCode] = useState('');
-  const [isManualMode, setIsManualMode] = useState(false);
+  const [showManual, setShowManual] = useState(false);
+  const [scannedItems, setScannedItems] = useState<ScannedItem[]>([]);
+  const [colorCounter, setColorCounter] = useState(0);
+  const [lastStatusMsg, setLastStatusMsg] = useState<{ text: string; ok: boolean } | null>(null);
 
-  // --- Camera Setup ---
+  // ---- Camera ---------------------------------------------------------------
   useEffect(() => {
-    let streamRef: MediaStream | null = null;
-    const startCamera = async () => {
-      try {
-        const s = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } });
-        streamRef = s;
-        setStream(s);
+    let stream: MediaStream | null = null;
+    navigator.mediaDevices
+      .getUserMedia({ video: { facingMode: 'environment', width: { ideal: 1280 } } })
+      .then(s => {
+        stream = s;
         if (videoRef.current) {
           videoRef.current.srcObject = s;
           videoRef.current.play();
         }
-      } catch {
-        setCameraError('No se pudo acceder a la cámara. Usa el ingreso manual.');
-      }
-    };
-    startCamera();
+      })
+      .catch(() => setCameraError('Sin acceso a cámara. Usa ingreso manual.'));
     return () => {
-      streamRef?.getTracks().forEach(t => t.stop());
-      if (requestRef.current) cancelAnimationFrame(requestRef.current);
+      stream?.getTracks().forEach(t => t.stop());
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
     };
   }, []);
 
-  // --- QR Scanning Loop ---
+  // ---- QR scan loop ---------------------------------------------------------
   useEffect(() => {
-    if (!stream) return;
-    const scan = () => {
+    if (cameraError) return;
+    const tick = () => {
       if (videoRef.current && canvasRef.current && videoRef.current.readyState === 4) {
-        const video = videoRef.current;
-        const canvas = canvasRef.current;
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-        const ctx = canvas.getContext('2d');
+        const v = videoRef.current;
+        const c = canvasRef.current;
+        c.width = v.videoWidth;
+        c.height = v.videoHeight;
+        const ctx = c.getContext('2d');
         if (ctx) {
-          ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-          const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-          const code = jsQR(imageData.data, imageData.width, imageData.height, { inversionAttempts: 'dontInvert' });
-          if (code && code.data && !scanLock.current) {
-            handleQuery(code.data);
-          }
+          ctx.drawImage(v, 0, 0);
+          const img = ctx.getImageData(0, 0, c.width, c.height);
+          const code = jsQR(img.data, img.width, img.height, { inversionAttempts: 'dontInvert' });
+          if (code?.data && !scanLock.current) handleScan(code.data);
         }
       }
-      requestRef.current = requestAnimationFrame(scan);
+      rafRef.current = requestAnimationFrame(tick);
     };
-    requestRef.current = requestAnimationFrame(scan);
-    return () => { if (requestRef.current) cancelAnimationFrame(requestRef.current); };
-  }, [stream]);
+    rafRef.current = requestAnimationFrame(tick);
+    return () => { if (rafRef.current) cancelAnimationFrame(rafRef.current); };
+  }, [cameraError]);
 
-  // --- Map Setup (once) ---
+  // ---- Map init -------------------------------------------------------------
   useEffect(() => {
-    if (!mapContainerRef.current || mapRef.current) return;
+    if (mapRef.current || !mapContainerRef.current) return;
     try {
-      mapRef.current = L.map(mapContainerRef.current, { zoomControl: true, attributionControl: false }).setView([-33.4489, -70.6693], 12);
+      mapRef.current = L.map(mapContainerRef.current, { zoomControl: true, attributionControl: false })
+        .setView([-33.4489, -70.6693], 11);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mapRef.current);
-      sectorLayerRef.current = L.layerGroup().addTo(mapRef.current);
     } catch {}
   }, []);
 
-  // --- Draw Sector on Map ---
-  const drawSectorOnMap = (pkg: any, sectorDetails: any) => {
-    if (!mapRef.current || !sectorLayerRef.current) return;
-    sectorLayerRef.current.clearLayers();
-    if (markerRef.current) {
-      sectorLayerRef.current.removeLayer(markerRef.current);
-    }
-
-    if (sectorDetails?.geometry) {
-      try {
-        // Draw sector polygon
-        const layer = L.geoJSON(
-          { type: 'Feature', geometry: sectorDetails.geometry, properties: {} },
-          {
-            style: {
-              color: '#4f46e5',
-              weight: 3,
-              fillColor: '#818cf8',
-              fillOpacity: 0.3,
-            },
-          }
-        );
-        sectorLayerRef.current.addLayer(layer);
-        // Fit map to sector bounds
-        try { mapRef.current.fitBounds(layer.getBounds(), { padding: [30, 30] }); } catch {}
-      } catch {}
-    }
-
-    if (pkg?.destLatitude && pkg?.destLongitude) {
-      const lat = parseFloat(pkg.destLatitude);
-      const lon = parseFloat(pkg.destLongitude);
-      if (!isNaN(lat) && !isNaN(lon)) {
-        const marker = L.circleMarker([lat, lon], {
-          radius: 10,
-          fillColor: '#ef4444',
-          color: '#fff',
-          weight: 2,
-          fillOpacity: 1,
-        }).bindPopup(`<b>${pkg.id}</b><br>${pkg.recipientAddress}<br><b>${sectorDetails?.sectorLabel || pkg.recipientCommune}</b>`);
-        sectorLayerRef.current.addLayer(marker);
-        marker.openPopup();
-        markerRef.current = marker;
-      }
-    }
-  };
-
-  const handleQuery = async (rawCode: string) => {
-    if (scanLock.current || isLoading) return;
+  // ---- Core scan handler ----------------------------------------------------
+  const handleScan = useCallback(async (rawCode: string) => {
     const code = rawCode.trim();
-    if (!code) return;
+    if (!code || scanLock.current) return;
+
+    // Avoid re-scanning the same code in this session
+    if (scannedCodesRef.current.has(code)) {
+      setLastStatusMsg({ text: `⚠️ Ya escaneado: ${code.slice(0, 30)}`, ok: false });
+      return;
+    }
 
     scanLock.current = true;
     setIsLoading(true);
-    setLastScannedRaw(code);
-    setScanResult(null);
+    setLastStatusMsg(null);
 
     try {
       const res = await api.queryPackageSector(code);
       const pkg = res.package;
       const sectorDetails = res.sectorDetails;
 
-      let sectorLabel = pkg.recipientCommune || 'Sin datos de zona';
-      if (sectorDetails?.sectorLabel) sectorLabel = sectorDetails.sectorLabel;
+      scannedCodesRef.current.add(code);
 
-      setScanResult({
-        type: 'success',
-        message: `✅ ${pkg.id}`,
+      const colorIdx = colorCounter % SECTOR_COLORS.length;
+      setColorCounter(prev => prev + 1);
+
+      const item: ScannedItem = {
+        id: `${Date.now()}-${code}`,
+        rawCode: code,
         pkg,
         sectorDetails,
-      });
+        colorIdx,
+      };
 
-      drawSectorOnMap(pkg, sectorDetails);
+      setScannedItems(prev => [item, ...prev]);
+      addToMap(item);
+      setLastStatusMsg({ text: `✅ ${pkg.id} → ${sectorDetails?.sectorLabel || pkg.recipientCommune || 'Sin zona'}`, ok: true });
     } catch (err: any) {
-      setScanResult({ type: 'error', message: err.message || 'Paquete no encontrado.' });
+      setLastStatusMsg({ text: `❌ No encontrado: ${code.slice(0, 30)}`, ok: false });
     } finally {
       setIsLoading(false);
-      setTimeout(() => { scanLock.current = false; }, 2500);
+      // Short lock to avoid double-reading the same QR frame
+      setTimeout(() => { scanLock.current = false; }, 1500);
     }
-  };
+  }, [colorCounter]);
 
+  // ---- Draw item on map (cumulative) ----------------------------------------
+  const addToMap = useCallback((item: ScannedItem) => {
+    if (!mapRef.current) return;
+    const color = SECTOR_COLORS[item.colorIdx];
+    const bounds: any[] = [];
+
+    // Sector polygon
+    if (item.sectorDetails?.geometry) {
+      try {
+        const layer = L.geoJSON(
+          { type: 'Feature', geometry: item.sectorDetails.geometry, properties: {} },
+          { style: { color: color.border, weight: 2, fillColor: color.fill, fillOpacity: 0.22 } }
+        ).addTo(mapRef.current);
+        layersRef.current.push(layer);
+        try { const b = layer.getBounds(); if (b.isValid()) bounds.push(b); } catch {}
+      } catch {}
+    }
+
+    // Package coordinate marker
+    const lat = parseFloat(item.pkg?.destLatitude);
+    const lon = parseFloat(item.pkg?.destLongitude);
+    if (!isNaN(lat) && !isNaN(lon)) {
+      const marker = L.circleMarker([lat, lon], {
+        radius: 9,
+        fillColor: color.border,
+        color: '#fff',
+        weight: 2,
+        fillOpacity: 1,
+      })
+        .bindPopup(
+          `<div style="font-size:12px;line-height:1.4">
+             <b>${item.pkg?.id}</b><br>
+             ${item.pkg?.recipientName || ''}<br>
+             ${item.pkg?.recipientAddress || ''}<br>
+             <span style="font-weight:700;color:${color.border}">${item.sectorDetails?.sectorLabel || item.pkg?.recipientCommune || ''}</span>
+           </div>`
+        )
+        .addTo(mapRef.current);
+      layersRef.current.push(marker);
+      bounds.push(L.latLngBounds([[lat, lon], [lat, lon]]));
+    }
+
+    // Fit map to show all accumulated layers
+    try {
+      const allBounds = layersRef.current.reduce<any>((acc, layer) => {
+        try {
+          if (layer.getBounds) {
+            const b = layer.getBounds();
+            if (b.isValid()) return acc ? acc.extend(b) : b;
+          }
+          if (layer.getLatLng) {
+            const p = layer.getLatLng();
+            return acc ? acc.extend(p) : L.latLngBounds([p, p]);
+          }
+        } catch {}
+        return acc;
+      }, null);
+      if (allBounds && allBounds.isValid()) {
+        mapRef.current.fitBounds(allBounds, { padding: [30, 30], maxZoom: 14 });
+      }
+    } catch {}
+  }, []);
+
+  // ---- Remove single item ---------------------------------------------------
+  const removeItem = useCallback((item: ScannedItem) => {
+    // We can't easily track which layers belong to which item without a registry,
+    // so we clear all and re-draw the remaining items
+    layersRef.current.forEach(l => { try { mapRef.current?.removeLayer(l); } catch {} });
+    layersRef.current = [];
+
+    setScannedItems(prev => {
+      const remaining = prev.filter(i => i.id !== item.id);
+      // Re-add all remaining to map
+      scannedCodesRef.current.delete(item.rawCode);
+      setTimeout(() => remaining.forEach(i => addToMap(i)), 0);
+      return remaining;
+    });
+  }, [addToMap]);
+
+  // ---- Clear all ------------------------------------------------------------
+  const clearAll = useCallback(() => {
+    layersRef.current.forEach(l => { try { mapRef.current?.removeLayer(l); } catch {} });
+    layersRef.current = [];
+    scannedCodesRef.current.clear();
+    setScannedItems([]);
+    setColorCounter(0);
+    setLastStatusMsg(null);
+  }, []);
+
+  // ---- Manual submit --------------------------------------------------------
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (manualCode.trim()) {
-      handleQuery(manualCode.trim());
+      handleScan(manualCode.trim());
       setManualCode('');
-      setIsManualMode(false);
+      setShowManual(false);
     }
   };
 
+  // ---- Render ---------------------------------------------------------------
   return (
-    <div className="flex flex-col h-full bg-[var(--background-primary)]">
-      {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 bg-indigo-700 text-white flex-shrink-0 safe-area-top">
-        <button onClick={onBack} className="p-2 rounded-full hover:bg-indigo-600 transition-colors">
-          <IconX className="w-6 h-6" />
-        </button>
-        <div className="text-center">
-          <h1 className="text-base font-bold">Consulta de Zona</h1>
-          <p className="text-[10px] text-indigo-200">Escaneo sin asignación</p>
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', background: 'var(--background-primary)' }}>
+
+      {/* ---- Header ---- */}
+      <div style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '10px 14px', background: '#4f46e5', color: '#fff', flexShrink: 0,
+      }}>
+        <button onClick={onBack} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', fontSize: 22, lineHeight: 1 }}>✕</button>
+        <div style={{ textAlign: 'center' }}>
+          <div style={{ fontWeight: 700, fontSize: 15 }}>Consulta de Zona</div>
+          <div style={{ fontSize: 10, color: '#c7d2fe' }}>Sin asignación · {scannedItems.length} escaneado{scannedItems.length !== 1 ? 's' : ''}</div>
         </div>
-        <button
-          onClick={() => setIsManualMode(m => !m)}
-          className="p-2 rounded-full hover:bg-indigo-600 transition-colors"
-          title="Ingresar código manual"
-        >
-          <IconQrcode className="w-6 h-6" />
-        </button>
+        <div style={{ display: 'flex', gap: 6 }}>
+          {scannedItems.length > 0 && (
+            <button
+              onClick={clearAll}
+              style={{ background: '#dc2626', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
+            >
+              Limpiar
+            </button>
+          )}
+          <button
+            onClick={() => setShowManual(m => !m)}
+            style={{ background: '#6366f1', border: 'none', color: '#fff', borderRadius: 8, padding: '4px 10px', fontSize: 11, cursor: 'pointer', fontWeight: 700 }}
+          >
+            Manual
+          </button>
+        </div>
       </div>
 
-      {/* Manual entry bar */}
-      {isManualMode && (
-        <form onSubmit={handleManualSubmit} className="flex gap-2 px-3 py-2 bg-indigo-800 flex-shrink-0">
+      {/* ---- Manual input ---- */}
+      {showManual && (
+        <form onSubmit={handleManualSubmit} style={{ display: 'flex', gap: 6, padding: '8px 12px', background: '#3730a3', flexShrink: 0 }}>
           <input
             type="text"
             value={manualCode}
             onChange={e => setManualCode(e.target.value)}
-            placeholder="Ingresa código o ID del paquete..."
-            className="flex-1 px-3 py-2 text-sm rounded-md bg-white text-gray-900 placeholder-gray-500 focus:outline-none"
+            placeholder="ID, Meli, Shopify, Tracking…"
             autoFocus
+            style={{ flex: 1, padding: '7px 10px', borderRadius: 8, border: 'none', fontSize: 13, outline: 'none' }}
           />
-          <button
-            type="submit"
-            className="px-4 py-2 text-sm font-bold bg-yellow-400 text-indigo-900 rounded-md hover:bg-yellow-300"
-          >
+          <button type="submit" style={{ background: '#fbbf24', border: 'none', color: '#1e1b4b', borderRadius: 8, padding: '7px 14px', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}>
             Buscar
           </button>
         </form>
       )}
 
-      {/* Camera viewfinder */}
-      <div className="relative bg-black flex-shrink-0" style={{ height: '200px' }}>
+      {/* ---- Camera viewfinder ---- */}
+      <div style={{ position: 'relative', background: '#000', height: 160, flexShrink: 0 }}>
         {cameraError ? (
-          <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-gray-900 p-4">
-            <IconAlertTriangle className="w-8 h-8 text-yellow-400 mb-2" />
-            <p className="text-xs text-center text-gray-300">{cameraError}</p>
-            <button
-              onClick={() => setIsManualMode(true)}
-              className="mt-3 px-4 py-2 text-xs font-bold bg-indigo-600 text-white rounded-md"
-            >
-              Usar Ingreso Manual
+          <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', color: '#fff', gap: 8, padding: 16 }}>
+            <span style={{ fontSize: 28 }}>📷</span>
+            <span style={{ fontSize: 12, color: '#d1d5db', textAlign: 'center' }}>{cameraError}</span>
+            <button onClick={() => setShowManual(true)} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 8, padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
+              Ingreso Manual
             </button>
           </div>
         ) : (
           <>
-            <video ref={videoRef} className="absolute inset-0 w-full h-full object-cover" playsInline muted />
-            <canvas ref={canvasRef} className="hidden" />
-            {/* Scanning overlay */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-              <div className="border-2 border-yellow-400 rounded-lg" style={{ width: 160, height: 100 }}>
-                <div className="absolute top-0 left-0 w-4 h-4 border-t-4 border-l-4 border-yellow-400 rounded-tl" />
-                <div className="absolute top-0 right-0 w-4 h-4 border-t-4 border-r-4 border-yellow-400 rounded-tr" />
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-b-4 border-l-4 border-yellow-400 rounded-bl" />
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-b-4 border-r-4 border-yellow-400 rounded-br" />
+            <video ref={videoRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', objectFit: 'cover' }} playsInline muted />
+            <canvas ref={canvasRef} style={{ display: 'none' }} />
+            {/* Targeting box */}
+            <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+              <div style={{ width: 150, height: 90, border: '2px solid #fbbf24', borderRadius: 8, position: 'relative' }}>
+                {[['top','left'],['top','right'],['bottom','left'],['bottom','right']].map(([v,h]) => (
+                  <div key={v+h} style={{
+                    position: 'absolute', [v]: -1, [h]: -1,
+                    width: 14, height: 14,
+                    borderTop: v === 'top' ? '4px solid #fbbf24' : 'none',
+                    borderBottom: v === 'bottom' ? '4px solid #fbbf24' : 'none',
+                    borderLeft: h === 'left' ? '4px solid #fbbf24' : 'none',
+                    borderRight: h === 'right' ? '4px solid #fbbf24' : 'none',
+                    borderRadius: v === 'top' && h === 'left' ? '3px 0 0 0' : v === 'top' && h === 'right' ? '0 3px 0 0' : v === 'bottom' && h === 'left' ? '0 0 0 3px' : '0 0 3px 0',
+                  }} />
+                ))}
               </div>
             </div>
             {isLoading && (
-              <div className="absolute top-2 right-2">
-                <IconLoader className="w-6 h-6 text-yellow-400 animate-spin" />
-              </div>
+              <div style={{ position: 'absolute', top: 8, right: 10, fontSize: 20, animation: 'spin 1s linear infinite' }}>⏳</div>
             )}
           </>
         )}
       </div>
 
-      {/* Last scanned code pill */}
-      {lastScannedRaw && (
-        <div className="px-3 py-1 bg-[var(--background-muted)] border-b border-[var(--border-secondary)] flex-shrink-0">
-          <p className="text-[10px] text-[var(--text-muted)] uppercase font-bold">Último código leído:</p>
-          <p className="text-xs font-mono text-[var(--text-primary)] truncate">{lastScannedRaw}</p>
+      {/* ---- Status bar ---- */}
+      {lastStatusMsg && (
+        <div style={{
+          padding: '5px 12px', fontSize: 12, fontWeight: 600, flexShrink: 0,
+          background: lastStatusMsg.ok ? '#d1fae5' : '#fee2e2',
+          color: lastStatusMsg.ok ? '#065f46' : '#991b1b',
+          borderBottom: `1px solid ${lastStatusMsg.ok ? '#6ee7b7' : '#fca5a5'}`,
+        }}>
+          {lastStatusMsg.text}
         </div>
       )}
 
-      {/* Result card */}
-      {scanResult && (
-        <div className={`mx-3 mt-2 p-3 rounded-xl border flex-shrink-0 ${scanResult.type === 'success' ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-700' : 'bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-700'}`}>
-          {scanResult.type === 'success' ? (
-            <div className="flex flex-col gap-1">
-              <div className="flex items-center gap-2">
-                <IconCheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
-                <span className="font-bold text-green-800 dark:text-green-300 text-sm truncate">{scanResult.pkg?.id}</span>
-              </div>
-              <div className="flex items-start gap-2 mt-1">
-                <IconPackage className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-xs font-medium text-[var(--text-primary)]">{scanResult.pkg?.recipientName}</p>
-                  <p className="text-[11px] text-[var(--text-muted)]">{scanResult.pkg?.recipientAddress}</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-1 px-2 py-1 bg-indigo-100 dark:bg-indigo-900/40 rounded-lg">
-                <IconMapPin className="w-4 h-4 text-indigo-600 flex-shrink-0" />
-                <div>
-                  <p className="text-xs font-black text-indigo-800 dark:text-indigo-300">
-                    {scanResult.sectorDetails?.sectorLabel || scanResult.pkg?.recipientCommune || 'Zona no identificada'}
-                  </p>
-                  {!scanResult.sectorDetails && (
-                    <p className="text-[10px] text-indigo-500">Sin coordenadas geocodificadas — se muestra la comuna declarada</p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ) : (
-            <div className="flex items-center gap-2">
-              <IconAlertTriangle className="w-5 h-5 text-red-500 flex-shrink-0" />
-              <p className="text-sm text-red-700 dark:text-red-300">{scanResult.message}</p>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Map */}
-      <div className="flex-1 flex flex-col min-h-0 px-3 pb-3 mt-2">
-        <div className="flex items-center gap-2 mb-1">
-          <IconMapPin className="w-4 h-4 text-indigo-600" />
-          <h2 className="text-xs font-bold text-[var(--text-secondary)] uppercase tracking-wider">Mapa del Sector</h2>
-        </div>
-        <div ref={mapContainerRef} className="flex-1 rounded-xl overflow-hidden border border-[var(--border-secondary)] z-0 min-h-[180px]" />
-        {!scanResult && (
-          <p className="text-center text-[10px] text-[var(--text-muted)] mt-1">
-            Escanea un paquete para ver su sector en el mapa
-          </p>
+      {/* ---- Map (flex-1) ---- */}
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <div ref={mapContainerRef} style={{ position: 'absolute', inset: 0 }} />
+        {scannedItems.length === 0 && (
+          <div style={{
+            position: 'absolute', bottom: 10, left: '50%', transform: 'translateX(-50%)',
+            background: 'rgba(0,0,0,0.55)', color: '#fff', borderRadius: 20, padding: '4px 14px',
+            fontSize: 11, pointerEvents: 'none', whiteSpace: 'nowrap',
+          }}>
+            Escanea paquetes para ver sectores
+          </div>
         )}
       </div>
+
+      {/* ---- Scanned items list ---- */}
+      {scannedItems.length > 0 && (
+        <div style={{
+          flexShrink: 0, maxHeight: 210, overflowY: 'auto',
+          borderTop: '1px solid var(--border-primary)',
+          background: 'var(--background-secondary)',
+        }}>
+          {/* Legend header */}
+          <div style={{ padding: '5px 12px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px solid var(--border-secondary)' }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              {scannedItems.length} paquete{scannedItems.length !== 1 ? 's' : ''} en mapa
+            </span>
+          </div>
+
+          {scannedItems.map(item => {
+            const color = SECTOR_COLORS[item.colorIdx];
+            return (
+              <div
+                key={item.id}
+                style={{
+                  display: 'flex', alignItems: 'center', gap: 10,
+                  padding: '7px 12px',
+                  borderBottom: '1px solid var(--border-secondary)',
+                }}
+              >
+                {/* Color dot */}
+                <div style={{ width: 12, height: 12, borderRadius: '50%', background: color.border, flexShrink: 0 }} />
+
+                {/* Info */}
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontWeight: 700, fontSize: 12, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.pkg?.id}
+                    {item.pkg?.meliOrderId && <span style={{ fontWeight: 400, fontSize: 10, color: 'var(--text-muted)', marginLeft: 4 }}>ML</span>}
+                  </div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.sectorDetails?.sectorLabel || item.pkg?.recipientCommune || 'Sin zona'}
+                    {item.sectorDetails?.sector && item.sectorDetails.sector !== item.sectorDetails.sectorLabel &&
+                      <span style={{ marginLeft: 4, color: 'var(--text-muted)', fontSize: 10 }}>· {item.sectorDetails.sector}</span>
+                    }
+                  </div>
+                  <div style={{ fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    {item.pkg?.recipientAddress}
+                  </div>
+                </div>
+
+                {/* Remove button */}
+                <button
+                  onClick={() => removeItem(item)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, color: 'var(--text-muted)', flexShrink: 0, lineHeight: 1 }}
+                  title="Quitar del mapa"
+                >
+                  ✕
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 };
