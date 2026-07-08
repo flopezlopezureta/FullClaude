@@ -132,6 +132,7 @@ export interface DriverPermissions {
   canBulkPickup: boolean;
   canColecta: boolean;
   canAuxiliar: boolean;
+  canZoning?: boolean;
 }
 
 export interface OperatorPermissions {

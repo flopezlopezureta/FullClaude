@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.55",
-  "versionComment": "Versión 2.6.55: Integrado el motor de validación espacial de polígonos GIS en Node.js (gisService) y configurada la visualización dinámica del sector/comuna del paquete al escanear desde el móvil en los escáneres de Chofer y Auxiliar.",
+  "version": "2.6.56",
+  "versionComment": "Versión 2.6.56: Añadido el permiso 'Zonificación' (canZoning) en la administración de conductores, permitiendo habilitar o deshabilitar la visualización del sector GIS y comuna al escanear individualmente para cada conductor.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

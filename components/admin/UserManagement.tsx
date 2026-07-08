@@ -3,7 +3,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import { Role, UserStatus, PackageSource } from '../../constants';
 import type { User, DriverPermissions, OperatorPermissions } from '../../types';
 import { api, UserCreationData, UserUpdateData, PackageCreationData } from '../../services/api';
-import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconJumpseller, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck, IconUsers, IconDownload } from '../Icon';
+import { IconUserCheck, IconPencil, IconTrash, IconUserPlus, IconHistory, IconUserOff, IconDollarSign, IconFileInvoice, IconMercadoLibre, IconWoocommerce, IconShopify, IconFalabella, IconJumpseller, IconQrcode, IconTruck, IconArrowUturnLeft, IconChecklist, IconPackage, IconSearch, IconCopy, IconCheck, IconUsers, IconDownload, IconMapPin } from '../Icon';
 import * as XLSX from 'xlsx';
 import CreateUserModal from '../modals/CreateUserModal';
 import EditUserModal from '../modals/EditUserModal';
@@ -252,6 +252,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
         canBulkPickup: false,
         canColecta: false,
         canAuxiliar: false,
+        canZoning: false,
     };
 
     const newPermissions = {
@@ -553,7 +554,7 @@ const wb = XLSX.utils.book_new();
                 )}
                 {roleFilter === Role.Driver && (
                     (() => {
-                        const permissions = user.driverPermissions || { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false, canAuxiliar: false };
+                        const permissions = user.driverPermissions || { canDeliver: true, canPickup: true, canDispatch: true, canReturn: true, canViewHistory: true, canBulkPickup: false, canColecta: false, canAuxiliar: false, canZoning: false };
                         const permissionItems: { key: keyof DriverPermissions, label: string, icon: React.ReactNode }[] = [
                             { key: 'canDeliver', label: 'Entregar', icon: <IconTruck className="w-4 h-4"/> },
                             { key: 'canPickup', label: 'Retirar', icon: <IconQrcode className="w-4 h-4"/> },
@@ -563,6 +564,7 @@ const wb = XLSX.utils.book_new();
                             { key: 'canReturn', label: 'Devoluciones', icon: <IconArrowUturnLeft className="w-4 h-4"/> },
                             { key: 'canAuxiliar', label: 'Auxiliar', icon: <IconUsers className="w-4 h-4"/> },
                             { key: 'canViewHistory', label: 'Historial', icon: <IconHistory className="w-4 h-4"/> },
+                            { key: 'canZoning', label: 'Zonificación', icon: <IconMapPin className="w-4 h-4"/> },
                         ];
                         return (
                             <div className="mt-3 pt-3 border-t border-[var(--border-primary)]">

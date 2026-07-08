@@ -300,7 +300,7 @@ export const ScanDispatchPage: React.FC<ScanDispatchPageProps> = ({ onBack }) =>
                 {scanResult.type === 'success' ? <IconCheckCircle className="w-6 h-6 mr-3" /> : <IconAlertTriangle className="w-6 h-6 mr-3" />}
                 <div className="flex flex-col">
                     <span className="font-medium text-lg">{scanResult.message}</span>
-                    {scanResult.type === 'success' && scanResult.package?.recipientCommune && (
+                    {scanResult.type === 'success' && user?.driverPermissions?.canZoning === true && scanResult.package?.recipientCommune && (
                         <span className="text-xs font-bold bg-black bg-opacity-20 px-2 py-0.5 rounded mt-1 text-yellow-200 w-fit">
                             Comuna: {scanResult.package.recipientCommune}
                             {scanResult.package.sectorName ? ` | ${scanResult.package.sectorName}` : ''}
