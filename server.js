@@ -247,6 +247,16 @@ async function startServer() {
         // await importUsersFromFile(); // Disabled to prevent deleted users from reappearing
         await ensureAdminUser();
         await seedDatabase();
+
+        // Load GIS custom sectors from DB
+        try {
+            const gisService = require('./services/gisService');
+            if (typeof gisService.reloadSectors === 'function') {
+                await gisService.reloadSectors();
+            }
+        } catch (e) {
+            console.error('[System] Error reloading sectors on startup:', e);
+        }
         
         // Start background services with coordinated offsets to prevent overlap
         // Default interval is 5 minutes (300,000ms)
@@ -1152,6 +1162,19 @@ async function initializeDatabase() {
         } catch (trgErr) {
             console.error('Warning: Failed to set up package date adjustment triggers:', trgErr.message);
         }
+
+        // --- GIS SECTORS: Table for custom GIS sectors ---
+        await db.query(`
+            CREATE TABLE IF NOT EXISTS gis_sectors (
+                id TEXT PRIMARY KEY,
+                comuna TEXT NOT NULL,
+                sector TEXT NOT NULL,
+                geometry JSONB NOT NULL,
+                "createdAt" TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP,
+                "updatedAt" TIMESTAMPTZ
+            );
+        `);
+        console.log('Table "gis_sectors" is ready.');
 
         console.log('Database schema initialization complete.');
     } catch (err) {

@@ -3,14 +3,14 @@
 
 const fs = require('fs');
 const path = require('path');
+const db = require('../db');
 
 // ── Archivos de datos ─────────────────────────────────────────────────────────
 const COMUNAS_FILE = path.join(__dirname, '../scripts/comunas_rm.geojson');
-const SECTORS_FILE = path.join(__dirname, '../scripts/sectors_custom.json');
 
 // ── Cache en memoria ──────────────────────────────────────────────────────────
 let comunasGeojson = null;   // comunas_rm.geojson (polígonos de comunas base)
-let customSectors = [];       // sectors_custom.json (sectores definidos por admin)
+let customSectors = [];       // sectors_custom in DB (sectores definidos por admin)
 
 // ── Carga inicial ─────────────────────────────────────────────────────────────
 function loadComunas() {
@@ -27,29 +27,24 @@ function loadComunas() {
     }
 }
 
-function loadSectors() {
+async function loadSectors() {
     try {
-        if (fs.existsSync(SECTORS_FILE)) {
-            const raw = fs.readFileSync(SECTORS_FILE, 'utf8');
-            customSectors = JSON.parse(raw);
-            console.log(`[GIS Service] Loaded ${customSectors.length} custom sectors.`);
-        } else {
-            customSectors = [];
-            console.log('[GIS Service] sectors_custom.json not found — starting with empty custom sectors.');
-        }
+        const { rows } = await db.query('SELECT * FROM gis_sectors');
+        customSectors = rows;
+        console.log(`[GIS Service] Loaded ${customSectors.length} custom sectors from DB.`);
     } catch (e) {
-        console.error('[GIS Service] Failed to load sectors_custom.json:', e);
+        console.warn('[GIS Service] Failed to load custom sectors from DB (table might not exist yet).', e.message);
         customSectors = [];
     }
 }
 
 // Carga inicial al arrancar
 loadComunas();
-loadSectors();
+loadSectors().catch(() => {});
 
 // ── Exportable para recarga en caliente (llamado desde routes/gis.js) ─────────
-function reloadSectors() {
-    loadSectors();
+async function reloadSectors() {
+    await loadSectors();
 }
 
 // ── Algoritmo Ray-Casting ─────────────────────────────────────────────────────

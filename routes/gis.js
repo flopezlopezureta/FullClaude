@@ -1,5 +1,5 @@
 // routes/gis.js — CRUD de sectores GIS personalizados
-// Los sectores se persisten en scripts/sectors_custom.json
+// Los sectores se persisten en la base de datos (tabla: gis_sectors)
 // El gisService los usa con prioridad sobre comunas_rm.geojson
 
 const express = require('express');
@@ -10,9 +10,17 @@ const { v4: uuidv4 } = require('uuid');
 const authMiddleware = require('../middleware/auth');
 const { logAction } = require('../services/logger');
 const gisService = require('../services/gisService');
+const db = require('../db');
 
-const SECTORS_FILE = path.join(__dirname, '../scripts/sectors_custom.json');
 const COMUNAS_FILE = path.join(__dirname, '../scripts/comunas_rm.geojson');
+
+// Admin-only guard
+const adminOnly = (req, res, next) => {
+    if (req.user.role !== 'ADMIN') {
+        return res.status(403).json({ message: 'Acceso denegado.' });
+    }
+    next();
+};
 
 let comunasCache = null;
 function getComunasGeojson() {
@@ -24,6 +32,23 @@ function getComunasGeojson() {
         } catch (e) { console.error('[GIS Route] Failed to load comunas_rm.geojson:', e); }
     }
     return comunasCache;
+}
+
+// Helper: read sectors from DB
+async function readSectors(comuna) {
+    try {
+        let q = 'SELECT * FROM gis_sectors';
+        let params = [];
+        if (comuna) {
+            q += ' WHERE LOWER(comuna) = LOWER($1)';
+            params.push(comuna);
+        }
+        const { rows } = await db.query(q, params);
+        return rows;
+    } catch (e) {
+        console.error('[GIS Route] Error reading sectors from DB:', e);
+        return [];
+    }
 }
 
 // ─── GET /api/gis/comunas ─────────────────────────────────────────────────────
@@ -46,40 +71,11 @@ router.get('/comunas/:name/geometry', authMiddleware, (req, res) => {
     res.json(feature);
 });
 
-
-// Admin-only guard
-const adminOnly = (req, res, next) => {
-    if (req.user.role !== 'ADMIN') {
-        return res.status(403).json({ message: 'Acceso denegado.' });
-    }
-    next();
-};
-
-// Helper: read sectors file
-function readSectors() {
-    try {
-        if (!fs.existsSync(SECTORS_FILE)) return [];
-        return JSON.parse(fs.readFileSync(SECTORS_FILE, 'utf8'));
-    } catch (e) {
-        console.error('[GIS Route] Error reading sectors_custom.json:', e);
-        return [];
-    }
-}
-
-// Helper: write sectors file
-function writeSectors(sectors) {
-    fs.writeFileSync(SECTORS_FILE, JSON.stringify(sectors, null, 2), 'utf8');
-}
-
 // ─── GET /api/gis/sectors ────────────────────────────────────────────────────
 // Devuelve todos los sectores (opcionalmente filtrados por ?comuna=)
-router.get('/sectors', authMiddleware, (req, res) => {
+router.get('/sectors', authMiddleware, async (req, res) => {
     try {
-        let sectors = readSectors();
-        if (req.query.comuna) {
-            const q = req.query.comuna.toLowerCase();
-            sectors = sectors.filter(s => s.comuna.toLowerCase() === q);
-        }
+        const sectors = await readSectors(req.query.comuna);
         res.json(sectors);
     } catch (e) {
         res.status(500).json({ message: 'Error al leer sectores.' });
@@ -88,12 +84,12 @@ router.get('/sectors', authMiddleware, (req, res) => {
 
 // ─── GET /api/gis/sectors/comunas ────────────────────────────────────────────
 // Devuelve lista de comunas que tienen al menos un sector definido, con count
-router.get('/sectors/comunas', authMiddleware, (req, res) => {
+router.get('/sectors/comunas', authMiddleware, async (req, res) => {
     try {
-        const sectors = readSectors();
-        const counts = {};
-        sectors.forEach(s => { counts[s.comuna] = (counts[s.comuna] || 0) + 1; });
-        const result = Object.entries(counts).map(([comuna, count]) => ({ comuna, count }));
+        const { rows } = await db.query(
+            'SELECT comuna, COUNT(*) as count FROM gis_sectors GROUP BY comuna'
+        );
+        const result = rows.map(r => ({ comuna: r.comuna, count: parseInt(r.count) }));
         res.json(result);
     } catch (e) {
         res.status(500).json({ message: 'Error al leer sectores.' });
@@ -102,30 +98,32 @@ router.get('/sectors/comunas', authMiddleware, (req, res) => {
 
 // ─── POST /api/gis/sectors ───────────────────────────────────────────────────
 // Crea un nuevo sector con geometría dibujada en el frontend
-router.post('/sectors', authMiddleware, adminOnly, (req, res) => {
+router.post('/sectors', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { comuna, sector, geometry } = req.body;
         if (!comuna || !sector || !geometry) {
             return res.status(400).json({ message: 'comuna, sector y geometry son requeridos.' });
         }
 
-        const sectors = readSectors();
-        const newSector = {
-            id: uuidv4(),
+        const id = uuidv4();
+        const createdAt = new Date().toISOString();
+        await db.query(
+            'INSERT INTO gis_sectors (id, comuna, sector, geometry, "createdAt") VALUES ($1, $2, $3, $4, $5)',
+            [id, comuna.trim(), sector.trim(), JSON.stringify(geometry), createdAt]
+        );
+
+        // Reload gisService in-memory cache
+        if (typeof gisService.reloadSectors === 'function') await gisService.reloadSectors();
+
+        logAction(req.user.id, req.user.name, 'CREATE_GIS_SECTOR', { id, comuna, sector }).catch(() => {});
+        
+        res.status(201).json({
+            id,
             comuna: comuna.trim(),
             sector: sector.trim(),
             geometry,
-            createdAt: new Date().toISOString(),
-        };
-
-        sectors.push(newSector);
-        writeSectors(sectors);
-
-        // Reload gisService in-memory cache
-        if (typeof gisService.reloadSectors === 'function') gisService.reloadSectors();
-
-        logAction(req.user.id, req.user.name, 'CREATE_GIS_SECTOR', { id: newSector.id, comuna, sector }).catch(() => {});
-        res.status(201).json(newSector);
+            createdAt
+        });
     } catch (e) {
         console.error('[GIS Route] Error creating sector:', e);
         res.status(500).json({ message: 'Error al crear el sector.' });
@@ -134,24 +132,43 @@ router.post('/sectors', authMiddleware, adminOnly, (req, res) => {
 
 // ─── PUT /api/gis/sectors/:id ────────────────────────────────────────────────
 // Renombra un sector (o actualiza su geometría)
-router.put('/sectors/:id', authMiddleware, adminOnly, (req, res) => {
+router.put('/sectors/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { id } = req.params;
         const { sector, geometry } = req.body;
 
-        const sectors = readSectors();
-        const idx = sectors.findIndex(s => s.id === id);
-        if (idx === -1) return res.status(404).json({ message: 'Sector no encontrado.' });
+        const { rows } = await db.query('SELECT * FROM gis_sectors WHERE id = $1', [id]);
+        if (rows.length === 0) return res.status(404).json({ message: 'Sector no encontrado.' });
 
-        if (sector) sectors[idx].sector = sector.trim();
-        if (geometry) sectors[idx].geometry = geometry;
-        sectors[idx].updatedAt = new Date().toISOString();
+        const updatedAt = new Date().toISOString();
+        let q = 'UPDATE gis_sectors SET "updatedAt" = $1';
+        let params = [updatedAt];
+        let paramIdx = 2;
 
-        writeSectors(sectors);
-        if (typeof gisService.reloadSectors === 'function') gisService.reloadSectors();
+        if (sector) {
+            q += `, sector = $${paramIdx++}`;
+            params.push(sector.trim());
+        }
+        if (geometry) {
+            q += `, geometry = $${paramIdx++}`;
+            params.push(JSON.stringify(geometry));
+        }
+        q += ` WHERE id = $${paramIdx}`;
+        params.push(id);
+
+        await db.query(q, params);
+
+        if (typeof gisService.reloadSectors === 'function') await gisService.reloadSectors();
 
         logAction(req.user.id, req.user.name, 'UPDATE_GIS_SECTOR', { id, sector }).catch(() => {});
-        res.json(sectors[idx]);
+        
+        res.json({
+            id,
+            comuna: rows[0].comuna,
+            sector: sector ? sector.trim() : rows[0].sector,
+            geometry: geometry || rows[0].geometry,
+            updatedAt
+        });
     } catch (e) {
         console.error('[GIS Route] Error updating sector:', e);
         res.status(500).json({ message: 'Error al actualizar el sector.' });
@@ -159,18 +176,16 @@ router.put('/sectors/:id', authMiddleware, adminOnly, (req, res) => {
 });
 
 // ─── DELETE /api/gis/sectors/:id ─────────────────────────────────────────────
-router.delete('/sectors/:id', authMiddleware, adminOnly, (req, res) => {
+router.delete('/sectors/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { id } = req.params;
-        const sectors = readSectors();
-        const filtered = sectors.filter(s => s.id !== id);
+        const { rowCount } = await db.query('DELETE FROM gis_sectors WHERE id = $1', [id]);
 
-        if (filtered.length === sectors.length) {
+        if (rowCount === 0) {
             return res.status(404).json({ message: 'Sector no encontrado.' });
         }
 
-        writeSectors(filtered);
-        if (typeof gisService.reloadSectors === 'function') gisService.reloadSectors();
+        if (typeof gisService.reloadSectors === 'function') await gisService.reloadSectors();
 
         logAction(req.user.id, req.user.name, 'DELETE_GIS_SECTOR', { id }).catch(() => {});
         res.status(204).send();

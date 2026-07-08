@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.59",
-  "versionComment": "Versión 2.6.59: Editor visual de Sectores GIS — admins pueden dibujar polígonos de sectores dentro de cualquier comuna directamente en un mapa Leaflet. Los sectores se guardan en sectors_custom.json y el ZoningScanner los usa automáticamente con prioridad sobre los límites comunales base.",
+  "version": "2.6.60",
+  "versionComment": "Versión 2.6.60: Los Sectores GIS personalizados ahora se guardan de forma persistente en la base de datos PostgreSQL (tabla gis_sectors) en lugar de un archivo JSON local, resolviendo problemas de permisos de escritura y pérdida de datos en contenedores Docker/Render.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
