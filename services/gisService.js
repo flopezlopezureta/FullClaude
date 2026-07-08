@@ -77,6 +77,30 @@ function getSectorForCoordinates(lat, lon) {
     return null;
 }
 
+function getSectorDetailsForCoordinates(lat, lon) {
+    if (!geojson || !lat || !lon) return null;
+    const pLat = parseFloat(lat);
+    const pLon = parseFloat(lon);
+    
+    if (isNaN(pLat) || isNaN(pLon)) return null;
+    const point = [pLon, pLat];
+    
+    for (const feature of geojson.features) {
+        if (feature.geometry && isPointInGeometry(point, feature.geometry)) {
+            const comuna = feature.properties.Comuna || '';
+            const sector = feature.properties.Sector || '';
+            return {
+                comuna,
+                sector: sector || comuna,
+                sectorLabel: sector ? `${comuna} (${sector})` : comuna,
+                geometry: feature.geometry
+            };
+        }
+    }
+    return null;
+}
+
 module.exports = {
-    getSectorForCoordinates
+    getSectorForCoordinates,
+    getSectorDetailsForCoordinates
 };

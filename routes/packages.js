@@ -491,6 +491,53 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+// GET /api/packages/query/:searchId - Consulta de sector sin asignación
+router.get('/query/:searchId', authMiddleware, async (req, res) => {
+    try {
+        const { searchId } = req.params;
+        
+        // Búsqueda extendida por ID, ML, Shopify, Tracking ID, etc.
+        const { rows } = await db.query(
+            `SELECT p.*, u.name as "clientName" 
+             FROM packages p 
+             LEFT JOIN users u ON p."creatorId" = u.id 
+             WHERE p.id = $1 
+                OR p."meliOrderId" = $1 
+                OR p."shopifyOrderId" = $1 
+                OR p."wooOrderId" = $1 
+                OR p."jumpsellerOrderId" = $1 
+                OR p."trackingId" = $1 
+                OR p."meliFlexCode" = $1`, 
+            [searchId]
+        );
+        
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Paquete no encontrado para consulta.' });
+        }
+        
+        const pkg = rows[0];
+        pkg.history = await getHistory(pkg.id);
+        
+        // Remove heavy photo fields
+        delete pkg.flexLabelPhotoBase64;
+        delete pkg.deliveryPhotosBase64;
+        
+        // Calcular información GIS y geometría del sector
+        let sectorDetails = null;
+        if (pkg.destLatitude && pkg.destLongitude) {
+            sectorDetails = gisService.getSectorDetailsForCoordinates(pkg.destLatitude, pkg.destLongitude);
+        }
+        
+        res.json({
+            package: pkg,
+            sectorDetails
+        });
+    } catch (err) {
+        console.error('Error in GET /api/packages/query/:searchId:', err);
+        res.status(500).json({ message: 'Error al consultar sector del paquete.' });
+    }
+});
+
 
 
 

@@ -325,6 +325,7 @@ export const api = {
   confirmReturn: (pkgId: string, data: DeliveryConfirmationData) => post<Package>(`/packages/${encodeURIComponent(pkgId)}/return`, data),
   markPackagesAsBilled: (packageIds: string[]) => post<void>('/packages/mark-billed', { packageIds }),
   scanPackageForDispatch: (packageId: string, driverId: string, flexCode?: string, flexLabelPhotoBase64?: string, forceReassign?: boolean) => post<{message: string, package: Package}>(`/packages/${encodeURIComponent(packageId)}/dispatch`, { driverId, flexCode, flexLabelPhotoBase64, forceReassign }),
+  queryPackageSector: (searchId: string) => get<{ package: Package; sectorDetails: { comuna: string; sector: string; sectorLabel: string; geometry: any } | null }>(`/packages/query/${encodeURIComponent(searchId)}`),
   markPackageAsFlexed: (packageId: string, isFlexed: boolean, flexLabelPhotoBase64?: string) => post<Package>(`/packages/${encodeURIComponent(packageId)}/flex`, { isFlexed, flexLabelPhotoBase64 }),
   syncPackageWithMeli: (packageId: string) => post<Package & { noChange?: boolean; mlStatus?: string; mlSubstatus?: string }>(`/packages/${encodeURIComponent(packageId)}/sync-meli`, {}),
   syncAllMeliPackages: () => post<{ message: string; result: any }>('/packages/sync-meli-all', {}),
