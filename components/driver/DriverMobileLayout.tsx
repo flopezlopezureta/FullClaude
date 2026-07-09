@@ -258,7 +258,9 @@ const DriverMobileLayout: React.FC = () => {
                 </div>
             )}
 
-            <main className="flex-1 overflow-y-auto no-scrollbar bg-gray-50">
+            <main className={`flex-1 bg-gray-50 flex flex-col ${
+                ['zona', 'meli-flex-test'].includes(activeView) ? 'overflow-hidden' : 'overflow-y-auto no-scrollbar'
+            }`}>
                 {activeView === 'menu' ? (
                     <div className="p-4">
                         <div className="mb-6 rounded-3xl bg-gradient-to-r from-blue-700 to-indigo-600 p-6 text-white shadow-lg relative overflow-hidden">
@@ -290,9 +292,13 @@ const DriverMobileLayout: React.FC = () => {
                         </div>
                     </div>
                 ) : (
-                    <div className="p-4">
-                        {renderContent()}
-                    </div>
+                    ['zona', 'meli-flex-test'].includes(activeView) ? (
+                        renderContent()
+                    ) : (
+                        <div className="p-4">
+                            {renderContent()}
+                        </div>
+                    )
                 )}
             </main>
         </div>

@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.62",
-  "versionComment": "Versión 2.6.62: Agregado buscador interactivo de comunas (SearchableSelect) en el panel de Editor de Sectores GIS, facilitando la localización rápida de comunas de la RM.",
+  "version": "2.6.63",
+  "versionComment": "Versión 2.6.63: Corregido bug de colapso de altura en vistas de mapa/escáner de conductor. Se eliminó la envoltura de padding auto-colapsable en DriverMobileLayout.tsx para la vista 'zona', permitiendo que el mapa Leaflet se renderice y se visualice en pantalla completa en dispositivos móviles.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
