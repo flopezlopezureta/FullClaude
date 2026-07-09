@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.61",
-  "versionComment": "Versión 2.6.61: Solución a bug crítico de re-egreso de paquetes. Se permite re-despachar paquetes en tránsito/asignados de días anteriores al mismo conductor sin gatillar el bloqueo de 'Paquete Duplicado', actualizando correctamente la fecha de egreso (assignedAt) al día de hoy.",
+  "version": "2.6.62",
+  "versionComment": "Versión 2.6.62: Agregado buscador interactivo de comunas (SearchableSelect) en el panel de Editor de Sectores GIS, facilitando la localización rápida de comunas de la RM.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

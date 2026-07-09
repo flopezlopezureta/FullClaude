@@ -3,6 +3,7 @@
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '../../services/api';
+import SearchableSelect from '../SearchableSelect';
 import { IconTrash, IconPencil, IconMapPin, IconCheckCircle, IconAlertTriangle, IconLoader } from '../Icon';
 
 declare const L: any;
@@ -314,18 +315,14 @@ const SectorEditorPage: React.FC = () => {
           <label style={{ display: 'block', fontSize: 11, fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: 6 }}>
             Seleccionar Comuna
           </label>
-          <select
-            value={selectedComuna}
-            onChange={e => setSelectedComuna(e.target.value)}
-            style={{
-              width: '100%', padding: '8px 12px', borderRadius: 8, fontSize: 14,
-              background: 'var(--background-primary)', color: 'var(--text-primary)',
-              border: '1.5px solid var(--border-primary)', outline: 'none',
-            }}
-          >
-            <option value="">— elige una comuna —</option>
-            {COMUNAS_RM.map(c => <option key={c} value={c}>{c}</option>)}
-          </select>
+          <SearchableSelect
+            items={COMUNAS_RM.map(c => ({ id: c, name: c }))}
+            selectedId={selectedComuna}
+            onSelect={setSelectedComuna}
+            placeholder="— elige una comuna —"
+            searchPlaceholder="Buscar comuna..."
+            showNoneOption={false}
+          />
         </div>
 
         {/* Draw button */}
