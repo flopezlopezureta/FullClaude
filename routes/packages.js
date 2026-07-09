@@ -989,6 +989,13 @@ router.put('/:id', authMiddleware, async (req, res) => {
         const updateData = { ...req.body };
         updateData.updatedAt = new Date();
 
+        // [NUEVO] Actualizar la fecha de egreso si el paquete se asigna o despacha manualmente
+        if (updateData.status === 'EN_TRANSITO' || updateData.status === 'ASIGNADO') {
+            updateData.assignedAt = new Date();
+        } else if (updateData.driverId && updateData.driverId !== 'none' && !updateData.assignedAt) {
+            updateData.assignedAt = new Date();
+        }
+
         // Security: Only admins can change the package creator (seller)
         if (updateData.creatorId && req.user.role !== 'ADMIN') {
             delete updateData.creatorId;
@@ -1144,7 +1151,7 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
     try {
         // [NUEVO] Búsqueda extendida: Intentar encontrar por ID interno, ID de Mercado Libre, Shopify, Woo o Tracking ID
         let { rows: pkgRows } = await db.query(
-            'SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "jumpsellerOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
+            'SELECT id, status, "driverId", "meliFlexCode", source, "assignedAt" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "jumpsellerOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
             [id]
         );
         
@@ -1189,17 +1196,31 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const { forceReassign } = req.body;
         if (['EN_TRANSITO', 'ASIGNADO'].includes(currentPkg.status)) {
             if (currentPkg.driverId === driverId) {
-                // Duplicate scan (same driver)
-                const now = new Date();
-                await db.query(
-                    'UPDATE packages SET "isDuplicate" = true, "alertChecked" = false, "updatedAt" = $1 WHERE id = $2',
-                    [now, realId]
-                );
-                await addTrackingEvent(realId, 'ALERTA_DUPLICADO', 'Centro de Distribución', 'Alerta: Paquete escaneado como duplicado.');
-                await logAction(req.user.id, req.user.name, 'DISPATCH_DUPLICATE_ALERT', { packageId: realId, driverId });
-                return res.status(400).json({ 
-                    message: '¡PAQUETE DUPLICADO! Este paquete ya fue escaneado para este conductor. Por favor, sepáralo del despacho.' 
-                });
+                // Check if it was assigned on a different logical date
+                let isSameDay = false;
+                if (currentPkg.assignedAt) {
+                    const assignedDateStr = await timeService.getLogicalDate(currentPkg.assignedAt);
+                    const todayStr = await timeService.getLogicalDate();
+                    if (assignedDateStr === todayStr) {
+                        isSameDay = true;
+                    }
+                }
+                
+                if (isSameDay) {
+                    // Duplicate scan (same driver, same day)
+                    const now = new Date();
+                    await db.query(
+                        'UPDATE packages SET "isDuplicate" = true, "alertChecked" = false, "updatedAt" = $1 WHERE id = $2',
+                        [now, realId]
+                    );
+                    await addTrackingEvent(realId, 'ALERTA_DUPLICADO', 'Centro de Distribución', 'Alerta: Paquete escaneado como duplicado.');
+                    await logAction(req.user.id, req.user.name, 'DISPATCH_DUPLICATE_ALERT', { packageId: realId, driverId });
+                    return res.status(400).json({ 
+                        message: '¡PAQUETE DUPLICADO! Este paquete ya fue escaneado para este conductor. Por favor, sepáralo del despacho.' 
+                    });
+                } else {
+                    console.log(`[Dispatch] Package ${realId} was assigned on a different day (${currentPkg.assignedAt}). Treating as re-egress.`);
+                }
             } else if (currentPkg.driverId) {
                 // Reassignment (different driver)
                 if (forceReassign !== true) {
@@ -1313,7 +1334,7 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
         }
 
         const { rows } = await db.query(
-            `UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4${isFlexed ? ", status = 'EN_TRANSITO'" : ""} WHERE id = $5 RETURNING *`,
+            `UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4${isFlexed ? ", status = 'EN_TRANSITO', \"assignedAt\" = $3" : ""} WHERE id = $5 RETURNING *`,
             [isFlexed, isFlexed ? new Date() : null, new Date(), flexLabelPhotoBase64 || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -2008,11 +2029,17 @@ router.post('/bulk-update-status', authMiddleware, async (req, res) => {
         const billed = status === 'ENTREGADO' || status === 'CANCELADO' || status === 'DEVUELTO';
         const placeholders = packageIds.map((_, i) => `$${i + 3}`).join(', ');
         
+        let assignedAtClause = '';
+        if (status === 'ASIGNADO' || status === 'EN_TRANSITO') {
+            assignedAtClause = ', "assignedAt" = NOW()';
+        }
+
         await db.query(`
             UPDATE packages 
             SET status = $1, 
                 billed = $2, 
                 "updatedAt" = NOW() 
+                ${assignedAtClause}
             WHERE id IN (${placeholders})
         `, [status, billed, ...packageIds]);
 

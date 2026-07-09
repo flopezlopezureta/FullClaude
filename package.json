@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.60",
-  "versionComment": "Versión 2.6.60: Los Sectores GIS personalizados ahora se guardan de forma persistente en la base de datos PostgreSQL (tabla gis_sectors) en lugar de un archivo JSON local, resolviendo problemas de permisos de escritura y pérdida de datos en contenedores Docker/Render.",
+  "version": "2.6.61",
+  "versionComment": "Versión 2.6.61: Solución a bug crítico de re-egreso de paquetes. Se permite re-despachar paquetes en tránsito/asignados de días anteriores al mismo conductor sin gatillar el bloqueo de 'Paquete Duplicado', actualizando correctamente la fecha de egreso (assignedAt) al día de hoy.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
