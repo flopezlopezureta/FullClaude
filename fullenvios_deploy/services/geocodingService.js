@@ -28,7 +28,7 @@ async function geocodeAddress(address, commune, city) {
             }
         }
         
-        // --- Fallback retry with "Pasaje" prefix ---
+        // --- Fallback retry with "Pasaje" and "Calle" prefixes ---
         const cleanAddress = address.trim().toLowerCase();
         const hasPrefix = cleanAddress.startsWith('pasaje') || 
                           cleanAddress.startsWith('pje') || 
@@ -56,6 +56,30 @@ async function geocodeAddress(address, commune, city) {
                     return {
                         lat: parseFloat(retryData[0].lat),
                         lng: parseFloat(retryData[0].lon)
+                    };
+                }
+            }
+
+            // Retry with "Calle" prefix if Pasaje retry also failed
+            console.log(`[Geocoding] Pasaje retry yielded no results. Retrying with "Calle" prefix for: ${address}`);
+            await new Promise(r => setTimeout(r, 1200));
+
+            const calleQuery = `Calle ${address}, ${commune}, Chile`;
+            const calleUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(calleQuery)}&limit=1`;
+
+            const calleResponse = await fetch(calleUrl, {
+                headers: {
+                    'User-Agent': 'FullEnviosApp/1.0'
+                }
+            });
+
+            if (calleResponse.ok) {
+                const calleData = await calleResponse.json();
+                if (calleData && calleData.length > 0) {
+                    console.log(`[Geocoding] Success with "Calle" prefix retry: ${calleQuery}`);
+                    return {
+                        lat: parseFloat(calleData[0].lat),
+                        lng: parseFloat(calleData[0].lon)
                     };
                 }
             }

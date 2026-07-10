@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.66",
-  "versionComment": "Versión 2.6.66: Implementada búsqueda extendida con prefijo de 'Pasaje' en el geocodificador automático (geocodeAddress) cuando la dirección inicial no arroja resultados, resolviendo problemas de localización de direcciones en comunas de Chile.",
+  "version": "2.6.67",
+  "versionComment": "Versión 2.6.67: Expandido el flujo de geocodificación automática secuencial (geocodeAddress) de modo que, si una dirección no es encontrada de manera estándar, el sistema reintenta primero agregando el prefijo 'Pasaje' y, si continúa sin éxito, realiza un tercer intento agregando el prefijo 'Calle' antes de dar por fallida la búsqueda.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
