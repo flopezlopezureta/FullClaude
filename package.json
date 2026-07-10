@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.64",
-  "versionComment": "Versión 2.6.64: Agregada importación bajo demanda (JIT) en la consulta de zona del paquete. Cuando se consulta un código de Mercado Libre que no existe en el sistema local, el servidor lo busca e importa directamente de la API de Mercado Libre en tiempo real, permitiendo su visualización en el mapa del chofer de inmediato.",
+  "version": "2.6.65",
+  "versionComment": "Versión 2.6.65: Corregido bug de posicionamiento de marcadores en el mar (Null Island). Ahora, cuando el geocodificador falla y guarda las coordenadas centinela de 0.000001, las interfaces de mapas (ZoningScanner, GeolocatePage, RouteOptimizerModal y el optimizador de rutas) lo detectan automáticamente y posicionan el paquete en el centro de su respectiva comuna (por ejemplo, San Miguel) con un indicador visual de ubicación aproximada.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

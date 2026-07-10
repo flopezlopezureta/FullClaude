@@ -177,7 +177,7 @@ const ZoningScanner: React.FC<ZoningScannerProps> = ({ onBack }) => {
     // Package coordinate marker
     const lat = parseFloat(item.pkg?.destLatitude);
     const lon = parseFloat(item.pkg?.destLongitude);
-    if (!isNaN(lat) && !isNaN(lon)) {
+    if (!isNaN(lat) && !isNaN(lon) && lat !== 0.000001) {
       const marker = L.circleMarker([lat, lon], {
         radius: 9,
         fillColor: color.border,
@@ -409,6 +409,9 @@ const ZoningScanner: React.FC<ZoningScannerProps> = ({ onBack }) => {
                   </div>
                   <div style={{ fontSize: 10, color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                     {item.pkg?.recipientAddress}
+                    {(!item.pkg?.destLatitude || parseFloat(item.pkg.destLatitude) === 0.000001) && (
+                      <span style={{ color: '#f59e0b', fontWeight: 'bold', marginLeft: 6 }}>⚠️ Ubicación no encontrada</span>
+                    )}
                   </div>
                 </div>
 

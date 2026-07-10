@@ -199,13 +199,24 @@ const GeolocatePage: React.FC = () => {
             let lng = pkg.destLongitude;
             let isApprox = false;
 
-            // Fallback if no precise coords
-            if ((!lat || !lng) && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
-                    const base = cityCoordinates[pkg.recipientCity];
-                    const offset = (Math.random() - 0.5) * 0.02; 
-                    lat = base[0] + offset;
-                    lng = base[1] + offset;
-                    isApprox = true;
+            // Fallback if no precise coords or geocoding failed (0.000001)
+            if (!lat || !lng || lat === 0.000001) {
+                let base = null;
+                if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune]) {
+                    base = cityCoordinates[pkg.recipientCommune];
+                } else if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune.toUpperCase()]) {
+                    base = cityCoordinates[pkg.recipientCommune.toUpperCase()];
+                }
+                if (!base && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
+                    base = cityCoordinates[pkg.recipientCity];
+                }
+                if (!base) {
+                    base = [-33.4489, -70.6693]; // Santiago default
+                }
+                const offset = (Math.random() - 0.5) * 0.02; 
+                lat = base[0] + offset;
+                lng = base[1] + offset;
+                isApprox = true;
             }
 
             if (!lat || !lng) return;

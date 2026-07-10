@@ -38,11 +38,22 @@ export const optimizeRoute = (packages: Package[], startLocation?: { lat: number
         let lat = pkg.destLatitude;
         let lng = pkg.destLongitude;
 
-        // Fallback to city coordinates with jitter if specific coords missing
-        if ((!lat || !lng) && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
-             const baseCoords = cityCoordinates[pkg.recipientCity];
-             lat = baseCoords[0] + (Math.random() - 0.5) * 0.02;
-             lng = baseCoords[1] + (Math.random() - 0.5) * 0.02;
+        // Fallback to city/commune coordinates with jitter if specific coords missing or failed (0.000001)
+        if (!lat || !lng || lat === 0.000001) {
+             let base = null;
+             if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune]) {
+                 base = cityCoordinates[pkg.recipientCommune];
+             } else if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune.toUpperCase()]) {
+                 base = cityCoordinates[pkg.recipientCommune.toUpperCase()];
+             }
+             if (!base && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
+                 base = cityCoordinates[pkg.recipientCity];
+             }
+             if (!base) {
+                 base = [-33.4489, -70.6693];
+             }
+             lat = base[0] + (Math.random() - 0.5) * 0.02;
+             lng = base[1] + (Math.random() - 0.5) * 0.02;
         }
 
         if (lat && lng) {
@@ -114,10 +125,22 @@ export const optimizeMultiDriverRoute = (packages: Package[], driverCount: numbe
         let lat = pkg.destLatitude;
         let lng = pkg.destLongitude;
 
-        if ((!lat || !lng) && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
-             const baseCoords = cityCoordinates[pkg.recipientCity];
-             lat = baseCoords[0] + (Math.random() - 0.5) * 0.02;
-             lng = baseCoords[1] + (Math.random() - 0.5) * 0.02;
+        // Fallback to city/commune coordinates with jitter if specific coords missing or failed (0.000001)
+        if (!lat || !lng || lat === 0.000001) {
+             let base = null;
+             if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune]) {
+                 base = cityCoordinates[pkg.recipientCommune];
+             } else if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune.toUpperCase()]) {
+                 base = cityCoordinates[pkg.recipientCommune.toUpperCase()];
+             }
+             if (!base && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
+                 base = cityCoordinates[pkg.recipientCity];
+             }
+             if (!base) {
+                 base = [-33.4489, -70.6693];
+             }
+             lat = base[0] + (Math.random() - 0.5) * 0.02;
+             lng = base[1] + (Math.random() - 0.5) * 0.02;
         }
 
         if (lat && lng) {

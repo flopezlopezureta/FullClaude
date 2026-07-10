@@ -64,9 +64,20 @@ const RouteOptimizerModal: React.FC<RouteOptimizerModalProps> = ({ packages, onC
         optimizedPackages.forEach((pkg) => {
             let lat = pkg.destLatitude;
             let lng = pkg.destLongitude;
-             // Fallback visual logic
-            if ((!lat || !lng) && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
-                 const base = cityCoordinates[pkg.recipientCity];
+             // Fallback visual logic if no coords or geocoding failed (0.000001)
+            if (!lat || !lng || lat === 0.000001) {
+                 let base = null;
+                 if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune]) {
+                     base = cityCoordinates[pkg.recipientCommune];
+                 } else if (pkg.recipientCommune && cityCoordinates[pkg.recipientCommune.toUpperCase()]) {
+                     base = cityCoordinates[pkg.recipientCommune.toUpperCase()];
+                 }
+                 if (!base && pkg.recipientCity && cityCoordinates[pkg.recipientCity]) {
+                      base = cityCoordinates[pkg.recipientCity];
+                 }
+                 if (!base) {
+                      base = [-33.4489, -70.6693]; // Santiago default
+                 }
                  lat = base[0]; 
                  lng = base[1];
             }
