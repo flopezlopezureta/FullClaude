@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.65",
-  "versionComment": "Versión 2.6.65: Corregido bug de posicionamiento de marcadores en el mar (Null Island). Ahora, cuando el geocodificador falla y guarda las coordenadas centinela de 0.000001, las interfaces de mapas (ZoningScanner, GeolocatePage, RouteOptimizerModal y el optimizador de rutas) lo detectan automáticamente y posicionan el paquete en el centro de su respectiva comuna (por ejemplo, San Miguel) con un indicador visual de ubicación aproximada.",
+  "version": "2.6.66",
+  "versionComment": "Versión 2.6.66: Implementada búsqueda extendida con prefijo de 'Pasaje' en el geocodificador automático (geocodeAddress) cuando la dirección inicial no arroja resultados, resolviendo problemas de localización de direcciones en comunas de Chile.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

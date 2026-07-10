@@ -18,14 +18,47 @@ async function geocodeAddress(address, commune, city) {
             }
         });
 
-        if (!response.ok) return { lat: null, lng: null };
+        if (response.ok) {
+            const data = await response.json();
+            if (data && data.length > 0) {
+                return { 
+                    lat: parseFloat(data[0].lat), 
+                    lng: parseFloat(data[0].lon) 
+                };
+            }
+        }
         
-        const data = await response.json();
-        if (data && data.length > 0) {
-            return { 
-                lat: parseFloat(data[0].lat), 
-                lng: parseFloat(data[0].lon) 
-            };
+        // --- Fallback retry with "Pasaje" prefix ---
+        const cleanAddress = address.trim().toLowerCase();
+        const hasPrefix = cleanAddress.startsWith('pasaje') || 
+                          cleanAddress.startsWith('pje') || 
+                          cleanAddress.startsWith('av') || 
+                          cleanAddress.startsWith('calle');
+                          
+        if (!hasPrefix) {
+            console.log(`[Geocoding] First query yielded no results. Retrying with "Pasaje" prefix for: ${address}`);
+            // Respect Nominatim rate limit (1 request/sec)
+            await new Promise(r => setTimeout(r, 1200));
+            
+            const retryQuery = `Pasaje ${address}, ${commune}, Chile`;
+            const retryUrl = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(retryQuery)}&limit=1`;
+            
+            const retryResponse = await fetch(retryUrl, {
+                headers: {
+                    'User-Agent': 'FullEnviosApp/1.0'
+                }
+            });
+            
+            if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                if (retryData && retryData.length > 0) {
+                    console.log(`[Geocoding] Success with "Pasaje" prefix retry: ${retryQuery}`);
+                    return {
+                        lat: parseFloat(retryData[0].lat),
+                        lng: parseFloat(retryData[0].lon)
+                    };
+                }
+            }
         }
     } catch (error) {
         console.error("Geocoding error:", error.message);
