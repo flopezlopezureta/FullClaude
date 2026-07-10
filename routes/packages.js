@@ -491,6 +491,19 @@ router.get('/:id', authMiddleware, async (req, res) => {
     }
 });
 
+function isMeliCode(code) {
+    if (!code) return false;
+    let clean = code.trim();
+    if (clean.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(clean);
+            if (parsed.id) clean = String(parsed.id).trim();
+        } catch (e) {}
+    }
+    // Check if numeric (10-12 digits) or starts with ML
+    return /^\d{10,12}$/.test(clean) || /^ML/i.test(clean);
+}
+
 // GET /api/packages/query/:searchId - Consulta de sector sin asignación
 router.get('/query/:searchId', authMiddleware, async (req, res) => {
     try {
@@ -511,8 +524,8 @@ router.get('/query/:searchId', authMiddleware, async (req, res) => {
             [searchId]
         );
         
-        // [NUEVO] IMPORTACIÓN JIT PARA CONSULTAS: si no existe localmente, buscar en Mercado Libre
-        if (rows.length === 0) {
+        // [NUEVO] IMPORTACIÓN JIT PARA CONSULTAS: si no existe localmente y parece un código de ML, buscar en Mercado Libre
+        if (rows.length === 0 && isMeliCode(searchId)) {
             console.log(`[Query] Package ${searchId} NOT found in DB. Starting JIT Discovery...`);
             const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
             if (meliUsers.length > 0) {
@@ -1185,8 +1198,8 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         );
         
         // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time) - OPTIMIZADA (Paralela)
-        // Si el paquete no se encuentra, intentamos buscarlo en paralelo en todas las integraciones activas
-        if (pkgRows.length === 0) {
+        // Si el paquete no se encuentra y parece un código de ML, intentamos buscarlo en paralelo en todas las integraciones activas
+        if (pkgRows.length === 0 && isMeliCode(id)) {
             console.log(`[Dispatch] Package ${id} NOT found in DB. Starting Optimized JIT Discovery...`);
             const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
             

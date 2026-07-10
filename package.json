@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.67",
-  "versionComment": "Versión 2.6.67: Expandido el flujo de geocodificación automática secuencial (geocodeAddress) de modo que, si una dirección no es encontrada de manera estándar, el sistema reintenta primero agregando el prefijo 'Pasaje' y, si continúa sin éxito, realiza un tercer intento agregando el prefijo 'Calle' antes de dar por fallida la búsqueda.",
+  "version": "2.6.68",
+  "versionComment": "Versión 2.6.68: Optimizada la velocidad de respuesta del escáner y de las consultas de paquetes. Se integró la función isMeliCode para descartar búsquedas innecesarias en la API de Mercado Libre cuando los códigos escaneados son de origen manual, Shopify, Woo, o corresponden a lecturas erróneas, reduciendo el retardo de respuesta a milisegundos.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
