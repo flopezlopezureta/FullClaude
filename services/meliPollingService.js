@@ -672,28 +672,18 @@ async function autoImportMeliPackages(activeCommunes = []) {
                                         recipientPhone = shipment.receiver_address?.receiver_phone || 'N/A';
                                     }
                                     
-                                    // 5. Region Check [MEJORADO]
+                                    // 5. Region & Active Commune Check
                                     const stateName = shipment.receiver_address?.state?.name || '';
                                     const communeName = shipment.receiver_address?.city?.name || '';
-                                    const lowerState = stateName.toLowerCase();
-                                    const lowerCommune = communeName.toLowerCase();
+                                    const lowerCommune = normalizeCommune(communeName);
                                     
-                                    // Robust RM detection using keywords and the comprehensive commune list
-                                    const isRM = lowerState.includes('metropolitana') || 
-                                                 lowerState.includes('santiago') || 
-                                                 lowerState.includes('rm') ||
-                                                 lowerState.includes('r.m.') ||
-                                                 lowerCommune.includes('metropolitana') ||
-                                                 lowerCommune.includes('santiago') ||
-                                                 validCommunes.includes(lowerCommune);
-                                    
-                                    if (isRM) {
-                                        // Normalizamos el nombre de la ciudad
-                                        shipment.receiver_address.state.name = 'Región Metropolitana';
-                                    } else {
-                                        console.log(`[MeliPolling] Skipping order ${orderId} - Outside RM (State: ${stateName}, Commune: ${communeName})`);
+                                    if (!validCommunes.includes(lowerCommune)) {
+                                        console.log(`[MeliPolling] Skipping order ${orderId} - Commune "${communeName}" is INACTIVE or outside active zones.`);
                                         continue; 
                                     }
+                                    
+                                    // Normalize region name
+                                    shipment.receiver_address.state.name = 'Región Metropolitana';
 
                                     // 6. Import Package
                                     const now = new Date();
@@ -792,20 +782,11 @@ async function cleanupOutOfZonePackages() {
                    LOWER("recipientCommune") LIKE '%loncoche%' OR
                    
                    -- Bloque 2: Paquetes de Mercado Libre que NO pertenecen a las comunas ACTIVAS
-                   (
-                     source = 'MERCADO_LIBRE' AND 
-                     NOT (
-                        LOWER("recipientCity") LIKE '%metropolitana%' OR 
-                        LOWER("recipientCity") LIKE '%santiago%' OR 
-                        LOWER("recipientCity") LIKE '%rm%' OR
-                        LOWER("recipientCity") LIKE '%r.m.%' OR
-                        LOWER("recipientCommune") LIKE '%metropolitana%' OR
-                        LOWER("recipientCommune") LIKE '%santiago%' OR
-                        LOWER("recipientCommune") LIKE '%rm%' OR
-                        LOWER("recipientCommune") = ANY($1)
-                     )
-                   )
-               )
+                    (
+                      source = 'MERCADO_LIBRE' AND 
+                      NOT (LOWER("recipientCommune") = ANY($1))
+                    )
+                )
         `;
         const { rows: toDelete } = await db.query(queryFind, [validCommunes]);
         

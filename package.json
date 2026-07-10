@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.68",
-  "versionComment": "Versión 2.6.68: Optimizada la velocidad de respuesta del escáner y de las consultas de paquetes. Se integró la función isMeliCode para descartar búsquedas innecesarias en la API de Mercado Libre cuando los códigos escaneados son de origen manual, Shopify, Woo, o corresponden a lecturas erróneas, reduciendo el retardo de respuesta a milisegundos.",
+  "version": "2.6.69",
+  "versionComment": "Versión 2.6.69: Corregido bug en el filtro de comunas activas de Mercado Libre. Ahora el importador automático (autoImportMeliPackages) y el depurador de zona (cleanupOutOfZonePackages) respetan estrictamente la lista de comunas activadas/encendidas en la base de datos, omitiendo y purgando correctamente paquetes de comunas desactivadas (como Calera de Tango) aun cuando pertenezcan a la Región Metropolitana.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

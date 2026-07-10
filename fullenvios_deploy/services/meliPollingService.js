@@ -1,6 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
+const { normalizeCommune, normalizeCity } = require('../utils/normUtil');
 const { triggerBackgroundGeocoding } = require('./geocodingService');
 
 // --- MELI API HELPERS (Duplicated from integrations.js for independence) ---
@@ -202,7 +203,11 @@ async function pollMeliPackages() {
         }
 
         if (autoImportEnabled) {
-            await autoImportMeliPackages();
+            // Fetch active communes once per cycle
+            const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+            const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+            
+            await autoImportMeliPackages(activeCommunes);
         }
 
         // [NUEVO] Limpieza automática de registros fuera de zona (Santiago/RM)
@@ -243,22 +248,29 @@ async function pollMeliPackages() {
                     
                     const mlStatus = shipment.status;
                     const mlSubstatus = shipment.substatus;
+                    const now = new Date();
                     
                     let newStatus = null;
                     let eventDetails = '';
                     let eventStatus = '';
 
-                    /* 
-                    // [DESACTIVADO] No cerramos automáticamente para forzar que el conductor suba fotos
-                    if (mlStatus === 'delivered' && pkg.status !== 'ENTREGADO') {
-                        if ((pkg.status === 'EN_TRANSITO' || pkg.status === 'EN_RUTA' || pkg.isFlexed) && pkg.driverId) {
-                            newStatus = 'ENTREGADO';
-                            eventStatus = 'Entregado';
-                            eventDetails = 'El envío ha sido marcado como ENTREGADO en Mercado Libre.';
+                    if (mlStatus === 'delivered') {
+                        const { rows: existingML } = await db.query(
+                            'SELECT id FROM tracking_events WHERE "packageId" = $1 AND status = \'CIERRE_OFICIAL_ML\'',
+                            [pkg.id]
+                        );
+                        if (existingML.length === 0) {
+                            let meliTime = now;
+                            if (shipment.status_history && Array.isArray(shipment.status_history)) {
+                                const deliveredEvent = shipment.status_history.find(h => h.status === 'delivered');
+                                if (deliveredEvent && deliveredEvent.date) meliTime = new Date(deliveredEvent.date);
+                            }
+                            await db.query(
+                                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Capture)', `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
+                            );
                         }
-                    } else 
-                    */
-                    if (mlStatus === 'shipped' && pkg.status !== 'EN_TRANSITO' && pkg.status !== 'EN_RUTA') {
+                    } else if (mlStatus === 'shipped' && !['EN_TRANSITO', 'EN_RUTA', 'PROBLEMA', 'REPROGRAMADO', 'ENTREGADO', 'DEVUELTO', 'CANCELADO'].includes(pkg.status)) {
                         newStatus = 'EN_TRANSITO';
                         eventStatus = 'En Tránsito';
                         eventDetails = 'El envío ha sido marcado como SHIPPED (En Camino) por Mercado Libre.';
@@ -306,6 +318,66 @@ async function pollMeliPackages() {
                     processedPackagesCount++;
                 }
             });
+
+            // [NUEVO] Sincronización Retroactiva de Horas de Entrega para el Dashboard
+            console.log('[MeliPolling] Starting retroactive ML delivery hour sync...');
+            const { rows: deliveredMissingML } = await db.query(`
+                SELECT p.id, p."meliOrderId", p."meliFlexCode", p."creatorId", p."sourceAccountId"
+                FROM packages p
+                LEFT JOIN tracking_events te ON p.id = te."packageId" AND te.status = 'CIERRE_OFICIAL_ML'
+                WHERE p.status = 'ENTREGADO' 
+                AND p.source = 'MERCADO_LIBRE'
+                AND p."updatedAt"::date >= current_date - interval '1 day'
+                AND te.id IS NULL
+                LIMIT 20
+            `);
+
+            for (const pkg of deliveredMissingML) {
+                try {
+                    const accessToken = await getValidMeliToken(pkg.creatorId, pkg.sourceAccountId);
+                    if (accessToken) {
+                        const shipmentId = pkg.meliFlexCode || pkg.meliOrderId;
+                        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                        
+                        let meliTimeStr = null;
+                        let source = '';
+
+                        // Prioridad 0: Campo oficial de entrega final (más preciso para Flex)
+                        if (shipment.status === 'delivered' && shipment.date_delivered) {
+                            meliTimeStr = shipment.date_delivered;
+                            source = 'shipment.date_delivered';
+                        }
+
+                        // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
+                        if (!meliTimeStr && shipment.status_history && Array.isArray(shipment.status_history)) {
+                            const deliveredEvent = shipment.status_history
+                                .filter(h => h.status === 'delivered')
+                                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                            if (deliveredEvent) {
+                                meliTimeStr = deliveredEvent.date;
+                                source = 'status_history.delivered';
+                            }
+                        }
+
+                        // Prioridad 2: Fallback campo directo de entrega
+                        if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
+                            meliTimeStr = shipment.delivered_date;
+                            source = 'shipment.delivered_date';
+                        }
+
+                        if (meliTimeStr) {
+                            const mDate = new Date(meliTimeStr);
+                            await db.query(
+                                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Sync)', `Hora real capturada de ${source}: ${meliTimeStr}`, mDate]
+                            );
+                            console.log(`[MeliPolling] Retroactively synced ML hour for ${pkg.id} from ${source}: ${meliTimeStr}`);
+                        }
+                    }
+                } catch (e) {
+                    // Silently fail for background task
+                }
+            }
         }
         
         // [NUEVO] Paso de Auto-Fix para paquetes sin tracking_id en las últimas 48 horas
@@ -459,8 +531,23 @@ async function syncPackage(packageId) {
     }
 }
 
-async function autoImportMeliPackages() {
+async function autoImportMeliPackages(activeCommunes = []) {
     console.log('[MeliPolling] Starting auto-import cycle...');
+    
+    // Fallback if no active communes configured (sanity check)
+    const fallbackRM = [
+        'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+        'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+        'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+        'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+        'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+        'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+        'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+        'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+    ];
+    
+    const validCommunes = activeCommunes.length > 0 ? activeCommunes : fallbackRM;
+
     let importedThisCycle = 0;
     try {
         // 1. Get all customers with ML integrations (new or old format)
@@ -561,49 +648,42 @@ async function autoImportMeliPackages() {
                                             shipment.receiver_address?.phone,
                                             fullOrder.buyer?.phone?.number,
                                             fullOrder.buyer?.mobile?.number,
+                                            fullOrder.buyer?.billing_info?.phone,
+                                            fullOrder.shipping?.receiver_address?.receiver_phone,
+                                            fullOrder.shipping?.receiver_address?.phone,
                                             fullOrder.buyer?.phone?.area_code ? `${fullOrder.buyer.phone.area_code}${fullOrder.buyer.phone.number}` : null
                                         ];
+                                        
                                         for (const candidate of phoneCandidates) {
-                                            if (candidate && typeof candidate === 'string' && candidate.length > 5 && !candidate.includes('*')) {
-                                                recipientPhone = candidate;
-                                                break;
+                                            if (candidate && typeof candidate === 'string') {
+                                                const cleanCandidate = candidate.trim();
+                                                // Avoid masked numbers (X, *, or too short)
+                                                if (cleanCandidate.length > 5 && 
+                                                    !cleanCandidate.includes('*') && 
+                                                    !cleanCandidate.toUpperCase().includes('X') &&
+                                                    !cleanCandidate.includes('0000000')) {
+                                                    recipientPhone = cleanCandidate;
+                                                    break;
+                                                }
                                             }
                                         }
                                     } catch (phoneErr) {
+                                        console.warn(`[MeliPolling] Phone search failed for order ${orderId}:`, phoneErr.message);
                                         recipientPhone = shipment.receiver_address?.receiver_phone || 'N/A';
                                     }
                                     
-                                    // 5. Region Check [MEJORADO]
+                                    // 5. Region & Active Commune Check
                                     const stateName = shipment.receiver_address?.state?.name || '';
                                     const communeName = shipment.receiver_address?.city?.name || '';
-                                    const lowerState = stateName.toLowerCase();
-                                    const lowerCommune = communeName.toLowerCase();
+                                    const lowerCommune = normalizeCommune(communeName);
                                     
-                                    // Robust RM detection using keywords and the comprehensive commune list
-                                    const isRM = lowerState.includes('metropolitana') || 
-                                                 lowerState.includes('santiago') || 
-                                                 lowerState.includes('rm') ||
-                                                 lowerState.includes('r.m.') ||
-                                                 lowerCommune.includes('metropolitana') ||
-                                                 lowerCommune.includes('santiago') ||
-                                                 [
-                                                    'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                                                    'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                                                    'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                                                    'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                                                    'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                                                    'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                                                    'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                                                    'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                                                 ].includes(lowerCommune);
-                                    
-                                    if (isRM) {
-                                        // Normalizamos el nombre de la ciudad
-                                        shipment.receiver_address.state.name = 'Región Metropolitana';
-                                    } else {
-                                        console.log(`[MeliPolling] Skipping order ${orderId} - Outside RM (State: ${stateName}, Commune: ${communeName})`);
+                                    if (!validCommunes.includes(lowerCommune)) {
+                                        console.log(`[MeliPolling] Skipping order ${orderId} - Commune "${communeName}" is INACTIVE or outside active zones.`);
                                         continue; 
                                     }
+                                    
+                                    // Normalize region name
+                                    shipment.receiver_address.state.name = 'Región Metropolitana';
 
                                     // 6. Import Package
                                     const now = new Date();
@@ -615,8 +695,8 @@ async function autoImportMeliPackages() {
                                         shippingType: 'SAME_DAY',
                                         origin: 'Centro de Distribución',
                                         recipientAddress: shipment.receiver_address?.address_line || 'N/A',
-                                        recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-                                        recipientCity: stateName,
+                                        recipientCommune: normalizeCommune(shipment.receiver_address?.city?.name || 'N/A'),
+                                        recipientCity: normalizeCity(stateName),
                                         notes: `Auto-Import ML Order: ${orderId}`,
                                         estimatedDelivery: now,
                                         createdAt: now,
@@ -674,45 +754,41 @@ async function autoImportMeliPackages() {
 
 async function cleanupOutOfZonePackages() {
     try {
-        // [MEJORADO] Buscamos paquetes fuera de zona, pero NUNCA eliminamos paquetes ya asignados ("driverId" IS NULL)
-        // Se incluyen todas las variaciones de la Región Metropolitana y sus comunas para evitar borrados accidentales.
+        // Fetch active communes for cleanup
+        const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+        const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+        
+        const fallbackRM = [
+            'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
+            'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
+            'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
+            'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
+            'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
+            'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
+            'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
+            'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
+        ];
+        
+        const validCommunes = activeCommunes.length > 0 ? activeCommunes : fallbackRM;
+
         const queryFind = `
             SELECT id, "recipientCity", "recipientCommune", source FROM packages 
             WHERE 
                "driverId" IS NULL AND (
-                   -- Bloque 1: Ciudades explícitamente fuera de zona (Puerto Montt, Loncoche, etc.)
+                   -- Bloque 1: Ciudades explícitamente fuera de zona
                    LOWER("recipientCity") LIKE '%puerto montt%' OR 
                    LOWER("recipientCity") LIKE '%loncoche%' OR 
                    LOWER("recipientCommune") LIKE '%puerto montt%' OR 
                    LOWER("recipientCommune") LIKE '%loncoche%' OR
                    
-                   -- Bloque 2: Paquetes de Mercado Libre que NO pertenecen a la RM
-                   (
-                     source = 'MERCADO_LIBRE' AND 
-                     NOT (
-                        LOWER("recipientCity") LIKE '%metropolitana%' OR 
-                        LOWER("recipientCity") LIKE '%santiago%' OR 
-                        LOWER("recipientCity") LIKE '%rm%' OR
-                        LOWER("recipientCity") LIKE '%r.m.%' OR
-                        LOWER("recipientCommune") LIKE '%metropolitana%' OR
-                        LOWER("recipientCommune") LIKE '%santiago%' OR
-                        LOWER("recipientCommune") LIKE '%rm%' OR
-                        -- Lista extendida de comunas de la RM para mayor seguridad
-                        LOWER("recipientCommune") = ANY(ARRAY[
-                            'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 
-                            'huechuraba', 'independencia', 'la cisterna', 'la florida', 'la granja', 'la pintana', 
-                            'la reina', 'las condes', 'lo barnechea', 'lo espejo', 'lo prado', 'macul', 'maipu', 
-                            'ñuñoa', 'pedro aguirre cerda', 'peñalolen', 'providencia', 'pudahuel', 'quilicura', 
-                            'quinta normal', 'recoleta', 'renca', 'san joaquin', 'san miguel', 'san ramon', 
-                            'vitacura', 'puente alto', 'pirque', 'san jose de maipo', 'colina', 'lampa', 'tiltil', 
-                            'san bernardo', 'buin', 'calera de tango', 'paine', 'melipilla', 'alhue', 'curacavi', 
-                            'maria pinto', 'san pedro', 'talagante', 'el monte', 'isla de maipo', 'padre hurtado', 'peñaflor'
-                        ])
-                     )
-                   )
-               )
+                   -- Bloque 2: Paquetes de Mercado Libre que NO pertenecen a las comunas ACTIVAS
+                    (
+                      source = 'MERCADO_LIBRE' AND 
+                      NOT (LOWER("recipientCommune") = ANY($1))
+                    )
+                )
         `;
-        const { rows: toDelete } = await db.query(queryFind);
+        const { rows: toDelete } = await db.query(queryFind, [validCommunes]);
         
         if (toDelete.length > 0) {
             const ids = toDelete.map(r => r.id);
@@ -820,8 +896,8 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
             shippingType: 'SAME_DAY',
             origin: 'Centro de Distribución',
             recipientAddress: shipment.receiver_address?.address_line || 'N/A',
-            recipientCommune: shipment.receiver_address?.city?.name || 'N/A',
-            recipientCity: 'Región Metropolitana',
+            recipientCommune: normalizeCommune(shipment.receiver_address?.city?.name || 'N/A'),
+            recipientCity: normalizeCity('Región Metropolitana'),
             notes: `Just-In-Time Import ML: ${shipmentId}`,
             estimatedDelivery: now,
             createdAt: now,
