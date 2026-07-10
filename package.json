@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.63",
-  "versionComment": "Versión 2.6.63: Corregido bug de colapso de altura en vistas de mapa/escáner de conductor. Se eliminó la envoltura de padding auto-colapsable en DriverMobileLayout.tsx para la vista 'zona', permitiendo que el mapa Leaflet se renderice y se visualice en pantalla completa en dispositivos móviles.",
+  "version": "2.6.64",
+  "versionComment": "Versión 2.6.64: Agregada importación bajo demanda (JIT) en la consulta de zona del paquete. Cuando se consulta un código de Mercado Libre que no existe en el sistema local, el servidor lo busca e importa directamente de la API de Mercado Libre en tiempo real, permitiendo su visualización en el mapa del chofer de inmediato.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

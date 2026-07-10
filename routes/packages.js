@@ -497,7 +497,7 @@ router.get('/query/:searchId', authMiddleware, async (req, res) => {
         const { searchId } = req.params;
         
         // Búsqueda extendida por ID, ML, Shopify, Tracking ID, etc.
-        const { rows } = await db.query(
+        let { rows } = await db.query(
             `SELECT p.*, u.name as "clientName" 
              FROM packages p 
              LEFT JOIN users u ON p."creatorId" = u.id 
@@ -511,6 +511,35 @@ router.get('/query/:searchId', authMiddleware, async (req, res) => {
             [searchId]
         );
         
+        // [NUEVO] IMPORTACIÓN JIT PARA CONSULTAS: si no existe localmente, buscar en Mercado Libre
+        if (rows.length === 0) {
+            console.log(`[Query] Package ${searchId} NOT found in DB. Starting JIT Discovery...`);
+            const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
+            if (meliUsers.length > 0) {
+                const results = await Promise.all(meliUsers.map(async (u) => {
+                    try {
+                        const importedId = await meliPollingService.importSpecificMeliPackage(u.id, searchId, true);
+                        return importedId ? { importedId, user: u } : null;
+                    } catch (err) {
+                        return null;
+                    }
+                }));
+
+                const success = results.find(r => r !== null);
+                if (success) {
+                    console.log(`[Query] SUCCESS! Shipment ${searchId} found and linked as ${success.importedId}.`);
+                    const reCheck = await db.query(
+                        `SELECT p.*, u.name as "clientName" 
+                         FROM packages p 
+                         LEFT JOIN users u ON p."creatorId" = u.id 
+                         WHERE p.id = $1`,
+                        [success.importedId]
+                    );
+                    rows = reCheck.rows;
+                }
+            }
+        }
+
         if (rows.length === 0) {
             return res.status(404).json({ message: 'Paquete no encontrado para consulta.' });
         }
