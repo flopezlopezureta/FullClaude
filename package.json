@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.76",
-  "versionComment": "Versión 2.6.76: Añadido .dockerignore para reducir el tamaño del contexto de construcción en Coolify y optimizado el comando de construcción en Dockerfile con --max-old-space-size=512 para prevenir fallos por falta de memoria (OOM) en servidores pequeños.",
+  "version": "2.6.77",
+  "versionComment": "Versión 2.6.77: Configurada la fragmentación de paquetes manual (manualChunks) en vite.config.ts para dividir el bundle pesado en múltiples subarchivos pequeños (charts, excel, core, etc.) y se incrementó el límite de memoria del Dockerfile a 1024MB. Esto alivia drásticamente el consumo de memoria en la fase de empaquetado y evita el error FATAL ERROR: Reached heap limit en el servidor de Coolify.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
