@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.70",
-  "versionComment": "Versión 2.6.70: Implementado soporte de geocodificación secuencial para variaciones direccionales (Norte, Sur, Oriente, Poniente, Central y sus abreviaciones N, S, Ote, Pte, C). Si la consulta inicial Nominatim falla, el geocodificador intenta reescribir y probar las variaciones direccionales expandidas y abreviadas antes de dar por fallida la búsqueda.",
+  "version": "2.6.71",
+  "versionComment": "Versión 2.6.71: Implementado geocodificación instantánea durante la importación Just-In-Time (JIT) de paquetes de Mercado Libre. Al consultar o escanear un paquete no registrado, este se importa de la API de ML y se geolocaliza inmediatamente antes de ser insertado en la BD, asegurando que cuente con coordenadas para su visualización y ruteo en el mapa de inmediato.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

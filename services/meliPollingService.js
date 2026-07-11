@@ -2,7 +2,7 @@ const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
 const { normalizeCommune, normalizeCity } = require('../utils/normUtil');
-const { triggerBackgroundGeocoding } = require('./geocodingService');
+const { triggerBackgroundGeocoding, geocodeAddress } = require('./geocodingService');
 
 // --- MELI API HELPERS (Duplicated from integrations.js for independence) ---
 const makeMeliRequest = (options, postData = null) => {
@@ -887,6 +887,21 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
         const clientIdentifier = userRows[0]?.clientIdentifier || 'CLI';
         const now = new Date();
 
+        // [NUEVO] Geocodificación instantánea para JIT: obtener coordenadas inmediatamente
+        let lat = 0.000001;
+        let lng = 0.000001;
+        try {
+            const recipientAddress = shipment.receiver_address?.address_line || 'N/A';
+            const recipientCommune = normalizeCommune(shipment.receiver_address?.city?.name || 'N/A');
+            const coords = await geocodeAddress(recipientAddress, recipientCommune, 'Región Metropolitana');
+            if (coords && coords.lat !== null) {
+                lat = coords.lat;
+                lng = coords.lng;
+            }
+        } catch (geoErr) {
+            console.error(`[MeliPolling] Immediate JIT geocoding failed for shipment ${shipmentId}:`, geoErr.message);
+        }
+
         const newPackage = {
             id: `${clientIdentifier}-${uuidv4().split('-')[0]}`,
             recipientName: shipment.receiver_address?.receiver_name || 'N/A',
@@ -907,7 +922,9 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
             meliOrderId: orderId,
             meliFlexCode: shipmentId.toString(),
             trackingId: shipment.tracking_id ? String(shipment.tracking_id) : null,
-            recipientRut: shipment.receiver_address?.federal_id || null
+            recipientRut: shipment.receiver_address?.federal_id || null,
+            destLatitude: lat,
+            destLongitude: lng
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
