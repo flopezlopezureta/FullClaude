@@ -1,0 +1,23 @@
+node_modules
+dist
+.git
+.env
+.env.local
+.env.production
+.env.development
+*.log
+*.txt
+APK
+APK FullEnvios
+AndroidProject
+AndroidTmp
+driver-app
+Newiastudio
+Nueva carpeta
+Imagenes
+Videos
+*.pdf
+*.zip
+*.diff
+*.PNG
+*.docx

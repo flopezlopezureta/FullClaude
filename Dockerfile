@@ -17,8 +17,8 @@ RUN npm ci
 # Copy source
 COPY . .
 
-# Build the Vite frontend
-RUN npm run build
+# Build the Vite frontend with memory limits to prevent OOM kills on smaller VPS hosts
+RUN NODE_OPTIONS="--max-old-space-size=512" npm run build
 
 # Stage 2: Production runtime
 FROM node:22-alpine AS runner

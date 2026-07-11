@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.75",
-  "versionComment": "Versión 2.6.75: Corregido error de importación faltante del enum Role en AuthContext.tsx que provocaba 'Role is not defined' en la pantalla de inicio de sesión.",
+  "version": "2.6.76",
+  "versionComment": "Versión 2.6.76: Añadido .dockerignore para reducir el tamaño del contexto de construcción en Coolify y optimizado el comando de construcción en Dockerfile con --max-old-space-size=512 para prevenir fallos por falta de memoria (OOM) en servidores pequeños.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
