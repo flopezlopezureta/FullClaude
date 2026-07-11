@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.69",
-  "versionComment": "Versión 2.6.69: Corregido bug en el filtro de comunas activas de Mercado Libre. Ahora el importador automático (autoImportMeliPackages) y el depurador de zona (cleanupOutOfZonePackages) respetan estrictamente la lista de comunas activadas/encendidas en la base de datos, omitiendo y purgando correctamente paquetes de comunas desactivadas (como Calera de Tango) aun cuando pertenezcan a la Región Metropolitana.",
+  "version": "2.6.70",
+  "versionComment": "Versión 2.6.70: Implementado soporte de geocodificación secuencial para variaciones direccionales (Norte, Sur, Oriente, Poniente, Central y sus abreviaciones N, S, Ote, Pte, C). Si la consulta inicial Nominatim falla, el geocodificador intenta reescribir y probar las variaciones direccionales expandidas y abreviadas antes de dar por fallida la búsqueda.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
