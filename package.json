@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.71",
-  "versionComment": "Versión 2.6.71: Implementado geocodificación instantánea durante la importación Just-In-Time (JIT) de paquetes de Mercado Libre. Al consultar o escanear un paquete no registrado, este se importa de la API de ML y se geolocaliza inmediatamente antes de ser insertado en la BD, asegurando que cuente con coordenadas para su visualización y ruteo en el mapa de inmediato.",
+  "version": "2.6.72",
+  "versionComment": "Versión 2.6.72: Añadido soporte nativo para códigos QR internos de Mercado Libre reconstruidos con prefijo 'SCA00-'. Ahora el servidor remueve automáticamente el prefijo antes de procesar búsquedas en la base de datos o gatillar importaciones JIT, permitiendo que la lectura de etiquetas de respaldo funcione de forma transparente en consultas y despachos.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

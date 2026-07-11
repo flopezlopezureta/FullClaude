@@ -459,12 +459,15 @@ router.get('/', authMiddleware, async (req, res) => {
 // GET /api/packages/:id - Get details of a single package including history and photos
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
-        const { id } = req.params;
+        let { id } = req.params;
+        if (id && id.startsWith('SCA00-')) {
+            id = id.replace('SCA00-', '');
+        }
         const { rows } = await db.query(
             `SELECT p.*, u.name as "clientName" 
              FROM packages p 
              LEFT JOIN users u ON p."creatorId" = u.id 
-             WHERE p.id = $1`, 
+             WHERE p.id = $1 OR p."meliOrderId" = $1 OR p."meliFlexCode" = $1 OR p."trackingId" = $1`, 
             [id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -504,10 +507,12 @@ function isMeliCode(code) {
     return /^\d{10,12}$/.test(clean) || /^ML/i.test(clean);
 }
 
-// GET /api/packages/query/:searchId - Consulta de sector sin asignación
 router.get('/query/:searchId', authMiddleware, async (req, res) => {
     try {
-        const { searchId } = req.params;
+        let { searchId } = req.params;
+        if (searchId && searchId.startsWith('SCA00-')) {
+            searchId = searchId.replace('SCA00-', '');
+        }
         
         // Búsqueda extendida por ID, ML, Shopify, Tracking ID, etc.
         let { rows } = await db.query(
@@ -1188,7 +1193,10 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
 
 // POST /api/packages/:id/dispatch
 router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) => {
-    const { id } = req.params;
+    let { id } = req.params;
+    if (id && id.startsWith('SCA00-')) {
+        id = id.replace('SCA00-', '');
+    }
     const { driverId, flexCode, flexLabelPhotoBase64 } = req.body;
     try {
         // [NUEVO] Búsqueda extendida: Intentar encontrar por ID interno, ID de Mercado Libre, Shopify, Woo o Tracking ID
@@ -1906,7 +1914,10 @@ router.post('/:id/return', authMiddleware, async (req, res) => {
 
 // POST /api/packages/:id/scan-admin
 router.post('/:id/scan-admin', authMiddleware, async (req, res) => {
-    const { id } = req.params;
+    let { id } = req.params;
+    if (id && id.startsWith('SCA00-')) {
+        id = id.replace('SCA00-', '');
+    }
     try {
         const { rows: pkgRows } = await db.query(
             'SELECT id, status, "meliFlexCode" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
