@@ -82,11 +82,18 @@ const DashboardLayout: React.FC = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const isMobileView = typeof window !== 'undefined' && window.innerWidth < 1024;
 
-  // Helper to ensure role comparisons are case-insensitive and robust
+  // Helper to ensure role comparisons are case-insensitive and robust, supporting synonyms
   const hasRole = (role: string | undefined, ...requiredRoles: Role[]) => {
     if (!role) return false;
     const upperRole = role.toUpperCase();
-    return requiredRoles.map(r => r.toString().toUpperCase()).includes(upperRole);
+    const expandedRequired = requiredRoles.flatMap(r => {
+      const upperR = r.toString().toUpperCase();
+      if (upperR === 'ADMIN') return ['ADMIN', 'ADMINISTRADOR', 'ADMIN_SISTEMAS'];
+      if (upperR === 'CLIENT') return ['CLIENT', 'CLIENTE'];
+      if (upperR === 'DRIVER') return ['DRIVER', 'CHOFER', 'CONDUCTOR'];
+      return [upperR];
+    });
+    return expandedRequired.includes(upperRole);
   };
 
   const handleNavigate = (view: string) => {

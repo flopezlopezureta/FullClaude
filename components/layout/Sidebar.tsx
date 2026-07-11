@@ -241,25 +241,28 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     return allowedIds.includes(item.id);
   });
 
+  const userRole = String(user?.role || '').toUpperCase();
   let navItems;
-  switch (user?.role) {
-      case Role.Admin:
+  switch (userRole) {
+      case 'ADMIN':
+      case 'ADMINISTRADOR':
       case 'ADMIN_SISTEMAS':
           navItems = filteredAdminNavItems;
           break;
-      case Role.OperadorSistemas:
+      case 'OPERADOR_SISTEMAS':
           navItems = operadorSistemasNavItems;
           break;
-      case Role.Client:
+      case 'CLIENT':
+      case 'CLIENTE':
           navItems = clientNavItems;
           break;
-      case Role.Facturacion:
+      case 'FACTURACION':
           navItems = facturacionNavItems;
           break;
-      case Role.Retiros:
+      case 'RETIROS':
           navItems = retirosNavItems;
           break;
-      case Role.Auxiliar:
+      case 'AUXILIAR':
           navItems = auxiliarNavItems;
           break;
       default:

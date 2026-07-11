@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.72",
-  "versionComment": "Versión 2.6.72: Añadido soporte nativo para códigos QR internos de Mercado Libre reconstruidos con prefijo 'SCA00-'. Ahora el servidor remueve automáticamente el prefijo antes de procesar búsquedas en la base de datos o gatillar importaciones JIT, permitiendo que la lectura de etiquetas de respaldo funcione de forma transparente en consultas y despachos.",
+  "version": "2.6.73",
+  "versionComment": "Versión 2.6.73: Corregido el acceso a la herramienta 'Logística y Mapas' (Geolocalizar, Sectores GIS, etc.) para que todos los usuarios administradores tengan acceso. Se amplió el mapeo de roles para admitir sinónimos y variaciones de roles en mayúsculas/minúsculas (como 'ADMINISTRADOR', 'ADMIN' y 'ADMIN_SISTEMAS'), asegurando que no queden bloqueados por validaciones estrictas del cliente.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
