@@ -24,6 +24,16 @@ module.exports = function(req, res, next) {
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         req.user = decoded.user;
+        if (req.user && req.user.role) {
+            const upperRole = String(req.user.role).toUpperCase();
+            if (['ADMINISTRADOR', 'ADMIN_SISTEMAS', 'ADMIN'].includes(upperRole)) {
+                req.user.role = 'ADMIN';
+            } else if (['CLIENTE', 'CLIENT'].includes(upperRole)) {
+                req.user.role = 'CLIENT';
+            } else if (['CHOFER', 'CONDUCTOR', 'DRIVER'].includes(upperRole)) {
+                req.user.role = 'DRIVER';
+            }
+        }
         next();
     } catch (err) {
         res.status(401).json({ message: 'Token no es válido.' });

@@ -46,6 +46,20 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const setNormalizedUser = (u: User | null) => {
+    if (u) {
+      const upperRole = String(u.role || '').toUpperCase();
+      if (['ADMINISTRADOR', 'ADMIN_SISTEMAS', 'ADMIN'].includes(upperRole)) {
+        u.role = Role.Admin;
+      } else if (['CLIENTE', 'CLIENT'].includes(upperRole)) {
+        u.role = Role.Client;
+      } else if (['CHOFER', 'CONDUCTOR', 'DRIVER'].includes(upperRole)) {
+        u.role = Role.Driver;
+      }
+    }
+    setUser(u);
+  };
+
   const [token, setToken] = useState<string | null>(() => localStorage.getItem('token'));
   const [isInitialized, setIsInitialized] = useState<boolean>(false);
   const [systemSettings, setSystemSettings] = useState<SystemSettings>({
@@ -85,7 +99,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         if (token) {
           try {
             const fetchedUser = await api.getUserByToken();
-            setUser(fetchedUser);
+            setNormalizedUser(fetchedUser);
           } catch (userErr: any) {
             console.error("[Auth] Failed to fetch user profile:", userErr);
             // ONLY logout if the error is an authentication error (401 or 403)
@@ -97,7 +111,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
               console.warn("[Auth] Invalid session detected. Clearing credentials.");
               localStorage.removeItem('token');
               setToken(null);
-              setUser(null);
+              setNormalizedUser(null);
             }
           }
         }
@@ -153,45 +167,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, []);
   
-  const refetchUser = async () => {
-      if (token) {
-           const fetchedUser = await api.getUserByToken();
-           setUser(fetchedUser);
-      }
-  };
-
-  const refetchCommunes = async () => {
-      try {
-          const communesData = await api.getCommunes();
-          setActiveCommunes(communesData.filter(c => c.isActive).map(c => c.name));
-      } catch (err) {
-          console.error("Failed to refetch communes", err);
-      }
-  };
-
-  const login = async (credentials: LoginCredentials) => {
-    try {
-      console.log("[Auth] Attempting login for:", credentials.email);
-      const { token: newToken, user: loggedInUser } = await api.login(credentials);
-      
-      console.log("[Auth] Login successful, setting state and storage...");
-      localStorage.setItem('token', newToken);
-      setToken(newToken);
-      setUser(loggedInUser);
-      return loggedInUser;
-    } catch (error) {
-      console.error("[Auth] Login failed:", error);
-      throw error;
-    }
-  };
-
-  const logout = () => {
-    console.log("[Auth] Logging out user...");
-    console.trace("[Auth] Logout called from:");
-    localStorage.removeItem('token');
-    setToken(null);
-    setUser(null);
-  };
+   const refetchUser = async () => {
+       if (token) {
+            const fetchedUser = await api.getUserByToken();
+            setNormalizedUser(fetchedUser);
+       }
+   };
+ 
+   const refetchCommunes = async () => {
+       try {
+           const communesData = await api.getCommunes();
+           setActiveCommunes(communesData.filter(c => c.isActive).map(c => c.name));
+       } catch (err) {
+           console.error("Failed to refetch communes", err);
+       }
+   };
+ 
+   const login = async (credentials: LoginCredentials) => {
+     try {
+       console.log("[Auth] Attempting login for:", credentials.email);
+       const { token: newToken, user: loggedInUser } = await api.login(credentials);
+       
+       console.log("[Auth] Login successful, setting state and storage...");
+       localStorage.setItem('token', newToken);
+       setToken(newToken);
+       setNormalizedUser(loggedInUser);
+       return loggedInUser;
+     } catch (error) {
+       console.error("[Auth] Login failed:", error);
+       throw error;
+     }
+   };
+ 
+   const logout = () => {
+     console.log("[Auth] Logging out user...");
+     console.trace("[Auth] Logout called from:");
+     localStorage.removeItem('token');
+     setToken(null);
+     setNormalizedUser(null);
+   };
 
   const register = async (data: RegisterData) => {
     const newUser = await api.register(data);
