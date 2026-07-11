@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.74",
-  "versionComment": "Versión 2.6.74: Implementada normalización de roles a nivel global (tanto en el backend mediante el middleware de autenticación JWT como en el frontend en el AuthContext). Esto asegura que cuentas con roles alternativos o sinónimos (como 'ADMINISTRADOR') sean tratadas internamente de forma consistente como 'ADMIN', resolviendo bloqueos de seguridad en consultas de red, visibilidad de alertas críticas y funciones de administración.",
+  "version": "2.6.75",
+  "versionComment": "Versión 2.6.75: Corregido error de importación faltante del enum Role en AuthContext.tsx que provocaba 'Role is not defined' en la pantalla de inicio de sesión.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

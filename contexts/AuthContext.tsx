@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, ReactNode } from 'react';
-import { MessagingPlan, PickupMode, LabelFormat } from '../constants';
+import { Role, MessagingPlan, PickupMode, LabelFormat } from '../constants';
 import type { User, SystemSettings } from '../types';
 import { api, LoginCredentials, RegisterData } from '../services/api';
 
