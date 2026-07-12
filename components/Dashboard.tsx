@@ -110,7 +110,9 @@ const Dashboard: React.FC = () => {
   const [isForcingClose, setIsForcingClose] = useState(false);
   const [criticalAlerts, setCriticalAlerts] = useState<Package[]>([]);
   const [showCriticalAlerts, setShowCriticalAlerts] = useState(() => {
-    return localStorage.getItem('criticalAlertsPanelOpen') === 'true';
+      const saved = localStorage.getItem('criticalAlertsPanelOpen');
+      if (saved === 'false') return false;
+      return true; // Por defecto visible, a menos que el usuario lo haya cerrado explícitamente
   });
   const [lastAlertId, setLastAlertId] = useState(() => {
     return localStorage.getItem('lastCriticalAlertId') || '';
@@ -277,7 +279,7 @@ const Dashboard: React.FC = () => {
     return () => clearInterval(interval);
   }, [fetchCriticalAlerts]);
 
-  // Logic to show alerts for 5 minutes when NEW ones arrive
+  // Logic to show alerts when NEW ones arrive
   useEffect(() => {
     if (criticalAlerts.length > 0) {
         const newestId = criticalAlerts[0].id;
@@ -287,14 +289,8 @@ const Dashboard: React.FC = () => {
             setShowCriticalAlerts(true);
             localStorage.setItem('criticalAlertsPanelOpen', 'true');
             
-            const timer = setTimeout(() => {
-                setShowCriticalAlerts(false);
-                localStorage.setItem('criticalAlertsPanelOpen', 'false');
-            }, 300000); // 5 minutos
-            
             setLastAlertId(newestId);
             localStorage.setItem('lastCriticalAlertId', newestId);
-            return () => clearTimeout(timer);
         }
     } else {
         // Si no hay alertas en absoluto, simplemente nos aseguramos que esté cerrado

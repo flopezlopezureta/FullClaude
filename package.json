@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.91",
-  "versionComment": "Versión 2.6.91: Los usuarios con rol de Cliente (CLIENT / CLIENTE) ya no consumen ni se contabilizan dentro de las licencias usadas del sistema (tanto en la vista de gestión como en la facturación del superadmin).",
+  "version": "2.6.92",
+  "versionComment": "Versión 2.6.92: Fix UX: El Centro de Alertas Críticas (Dashboard) ya no se cierra automáticamente a los 5 minutos ni se oculta por defecto al recargar la página si hay alertas. Ahora respetará estrictamente si el usuario lo abrió o cerró manualmente.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
