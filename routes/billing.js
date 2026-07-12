@@ -327,6 +327,80 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
 
         const { rows: detailRows } = await db.query(detailQuery, detailParams);
 
+        // Retrieve license limits and fee
+        const { rows: settingsRows } = await db.query('SELECT "licenseLimit", "licenseOverageFee" FROM system_settings WHERE id = 1');
+        const limit = settingsRows.length > 0 ? settingsRows[0].licenseLimit : 70;
+        const overageFee = settingsRows.length > 0 ? parseFloat(settingsRows[0].licenseOverageFee || 0.1) : 0.1;
+
+        // Count active non-drivers
+        const { rows: nonDriversRes } = await db.query(
+            `SELECT role, COUNT(*)::int as count 
+             FROM users 
+             WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER') 
+               AND status != 'ELIMINADO'
+             GROUP BY role`
+        );
+        let nonDriversCount = 0;
+        const rolesSummary = {
+            ADMIN: 0,
+            CLIENT: 0,
+            DRIVER: 0,
+            AUXILIAR: 0,
+            OTHER: 0
+        };
+
+        nonDriversRes.forEach(r => {
+            nonDriversCount += r.count;
+            const role = String(r.role || '').toUpperCase();
+            if (['ADMIN', 'ADMIN_SISTEMAS', 'ADMINISTRADOR'].includes(role)) {
+                rolesSummary.ADMIN += r.count;
+            } else if (['CLIENT', 'CLIENTE'].includes(role)) {
+                rolesSummary.CLIENT += r.count;
+            } else if (['AUXILIAR', 'AUX'].includes(role)) {
+                rolesSummary.AUXILIAR += r.count;
+            } else {
+                rolesSummary.OTHER += r.count;
+            }
+        });
+
+        // Count active drivers for selected period
+        const { rows: activeDriversRes } = await db.query(
+            `SELECT COUNT(DISTINCT u.id)::int as count
+             FROM users u
+             WHERE u.role IN ('DRIVER', 'CONDUCTOR', 'CHOFER')
+               AND u.status != 'ELIMINADO'
+               AND EXISTS (
+                   SELECT 1 FROM packages p
+                   WHERE p."driverId" = u.id
+                     AND (
+                         (p."assignedAt" >= $1 AND p."assignedAt" < $2)
+                         OR (p."updatedAt" >= $1 AND p."updatedAt" < $2 AND p.status IN ('ENTREGADO', 'DEVUELTO', 'EN_RUTA', 'ASIGNADO'))
+                     )
+               )`,
+            [startMonthStr, endMonthStr]
+        );
+        const driversCount = activeDriversRes[0].count;
+        rolesSummary.DRIVER = driversCount;
+
+        const totalActiveCount = nonDriversCount + driversCount;
+        const excessCount = Math.max(0, totalActiveCount - limit);
+        const licenseCostUf = excessCount * overageFee;
+        const licenseCostClpNet = finalUfValue ? Math.round(licenseCostUf * finalUfValue) : 0;
+        const licenseCostClpIva = Math.round(licenseCostClpNet * 0.19);
+        const licenseCostClpGross = Math.round(licenseCostClpNet * 1.19);
+
+        const licenseBilling = {
+            limit,
+            active: totalActiveCount,
+            excess: excessCount,
+            overageFee,
+            costUf: licenseCostUf,
+            costClpNet: licenseCostClpNet,
+            costClpIva: licenseCostClpIva,
+            costClpGross: licenseCostClpGross,
+            rolesSummary
+        };
+
         res.json({
             client: {
                 id: clientId,
@@ -355,7 +429,8 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
                 totalCostClpGross: totalCostClp ? Math.round(totalCostClp * 1.19) : null
             },
             dailyDetails,
-            packagesDetail: detailRows
+            packagesDetail: detailRows,
+            licenseBilling
         });
 
     } catch (err) {

@@ -338,6 +338,7 @@ export const api = {
   // Settings
   getSystemSettings: () => get<SystemSettings>('/settings/system'),
   updateSystemSettings: (data: Partial<SystemSettings>) => put<SystemSettings>('/settings/system', data),
+  getLicenseStatus: () => get<{ activeCount: number; limit: number; exceeded: boolean }>('/settings/license-status'),
   getMeliPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number; totalPackages?: number; processedPackages?: number; lastImportCount?: number }>('/settings/meli-polling-status'),
   getShopifyPollingStatus: () => get<{ nextPollTime: number; isPolling: boolean; intervalMs: number; lastImportCount?: number }>('/settings/shopify-polling-status'),
   getCommunes: () => get<any[]>('/settings/communes'),

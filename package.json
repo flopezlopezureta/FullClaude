@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.82",
-  "versionComment": "Versión 2.6.82: Mejorada la legibilidad y contraste de los comentarios y banners de alerta/disclaimer de licencias SaaS a lo largo de la aplicación, utilizando colores de alta visibilidad profesional (rojo oscuro y rojo de alta legibilidad).",
+  "version": "2.6.83",
+  "versionComment": "Versión 2.6.83: Implementada regla para contar conductores únicamente si registran actividad (despachos o entregas) durante el mes evaluado, y mantener a todos los demás roles permanentemente activos si no están eliminados.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

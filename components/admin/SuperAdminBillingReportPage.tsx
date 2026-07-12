@@ -152,21 +152,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
             const dateStr = `${String(month).padStart(2, '0')}_${year}`;
             const clientNameClean = reportData.client.name.replace(/\s+/g, '_');
             const filename = `Reporte_Cobro_UF_${clientNameClean}_${dateStr}.xlsx`;
-            
-            const payload = {
-                ...reportData,
-                licenseBilling: {
-                    limit: systemSettings?.licenseLimit || 70,
-                    active: activeCount,
-                    excess: excessCount,
-                    overageFee: licenseOverageFee,
-                    costUf: licenseCostUf,
-                    costClpNet: licenseCostClpNet,
-                    costClpIva: licenseCostClpIva,
-                    costClpGross: licenseCostClpGross
-                }
-            };
-            await exportSuperAdminBillingToExcel(payload, filename);
+            await exportSuperAdminBillingToExcel(reportData, filename);
         } catch (error) {
             console.error("Export to Excel failed:", error);
             alert("Error al exportar a Excel.");
@@ -175,11 +161,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
         }
     };
 
-    const activeCount = useMemo(() => {
-        return users.filter((u: any) => u.status !== 'ELIMINADO').length;
-    }, [users]);
-
-    const rolesSummary = useMemo(() => {
+    const rolesSummaryClientSide = useMemo(() => {
         const counts = {
             ADMIN: 0,
             CLIENT: 0,
@@ -205,14 +187,17 @@ const SuperAdminBillingReportPage: React.FC = () => {
         return counts;
     }, [users]);
 
-    const excessCount = Math.max(0, activeCount - (systemSettings?.licenseLimit || 70));
-    const licenseOverageFee = systemSettings?.licenseOverageFee || 0.1;
-    const licenseCostUf = excessCount * licenseOverageFee;
+    const activeCount = reportData?.licenseBilling?.active ?? users.filter((u: any) => u.status !== 'ELIMINADO').length;
+    const rolesSummary = reportData?.licenseBilling?.rolesSummary ?? rolesSummaryClientSide;
+
+    const excessCount = reportData?.licenseBilling?.excess ?? Math.max(0, activeCount - (systemSettings?.licenseLimit || 70));
+    const licenseOverageFee = reportData?.licenseBilling?.overageFee ?? (systemSettings?.licenseOverageFee || 0.1);
+    const licenseCostUf = reportData?.licenseBilling?.costUf ?? (excessCount * licenseOverageFee);
 
     const ufValue = reportData?.uf?.value || 0;
-    const licenseCostClpNet = ufValue ? Math.round(licenseCostUf * ufValue) : 0;
-    const licenseCostClpIva = Math.round(licenseCostClpNet * 0.19);
-    const licenseCostClpGross = Math.round(licenseCostClpNet * 1.19);
+    const licenseCostClpNet = reportData?.licenseBilling?.costClpNet ?? (ufValue ? Math.round(licenseCostUf * ufValue) : 0);
+    const licenseCostClpIva = reportData?.licenseBilling?.costClpIva ?? Math.round(licenseCostClpNet * 0.19);
+    const licenseCostClpGross = reportData?.licenseBilling?.costClpGross ?? Math.round(licenseCostClpNet * 1.19);
 
     const exceeded = activeCount > (systemSettings?.licenseLimit || 70);
 

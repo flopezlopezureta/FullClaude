@@ -28,6 +28,66 @@ async function verifyAdminPassword(userId, password) {
 
 
 
+
+
+
+// GET /api/settings/license-status
+router.get('/license-status', authMiddleware, async (req, res) => {
+    try {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        
+        const startMonthStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+        let nextMonth = month + 1;
+        let nextYear = year;
+        if (nextMonth > 12) {
+            nextMonth = 1;
+            nextYear += 1;
+        }
+        const endMonthStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01 00:00:00`;
+
+        const { rows: settings } = await db.query('SELECT "licenseLimit" FROM system_settings WHERE id = 1');
+        const limit = settings.length > 0 ? settings[0].licenseLimit : 70;
+
+        const { rows: nonDrivers } = await db.query(
+            `SELECT COUNT(*)::int as count 
+             FROM users 
+             WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER') 
+               AND status != 'ELIMINADO'`
+        );
+        const nonDriversCount = nonDrivers[0].count;
+
+        const { rows: activeDrivers } = await db.query(
+            `SELECT COUNT(DISTINCT u.id)::int as count
+             FROM users u
+             WHERE u.role IN ('DRIVER', 'CONDUCTOR', 'CHOFER')
+               AND u.status != 'ELIMINADO'
+               AND EXISTS (
+                   SELECT 1 FROM packages p
+                   WHERE p."driverId" = u.id
+                     AND (
+                         (p."assignedAt" >= $1 AND p."assignedAt" < $2)
+                         OR (p."updatedAt" >= $1 AND p."updatedAt" < $2 AND p.status IN ('ENTREGADO', 'DEVUELTO', 'EN_RUTA', 'ASIGNADO'))
+                     )
+               )`,
+            [startMonthStr, endMonthStr]
+        );
+        const driversCount = activeDrivers[0].count;
+
+        const activeCount = nonDriversCount + driversCount;
+
+        res.json({
+            activeCount,
+            limit,
+            exceeded: activeCount > limit
+        });
+    } catch (err) {
+        console.error('Error fetching license status:', err);
+        res.status(500).json({ message: 'Error al obtener estado de licencias.' });
+    }
+});
+
 // GET /api/settings/meli-polling-status
 router.get('/meli-polling-status', authMiddleware, (req, res) => {
     res.json(meliPollingService.getStatus());

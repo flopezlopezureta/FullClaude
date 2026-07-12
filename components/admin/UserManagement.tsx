@@ -127,10 +127,24 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     }
   };
 
+  const [licenseStatus, setLicenseStatus] = useState<{ activeCount: number, limit: number, exceeded: boolean } | null>(null);
+
   useEffect(() => {
     setSearchTerm('');
     fetchUsers();
   }, [roleFilter]);
+
+  useEffect(() => {
+    const fetchLicenseStatus = async () => {
+      try {
+        const status = await api.getLicenseStatus();
+        setLicenseStatus(status);
+      } catch (err) {
+        console.error('Failed to fetch license status', err);
+      }
+    };
+    fetchLicenseStatus();
+  }, [users]);
   
   const handleApproveUser = async (userId: string) => {
     try {
@@ -371,15 +385,16 @@ const wb = XLSX.utils.book_new();
     return 0;
   });
 
-  const limit = auth?.systemSettings?.licenseLimit || 70;
-  const isLicenseExceeded = totalActiveCount > limit;
+  const limit = licenseStatus?.limit ?? (auth?.systemSettings?.licenseLimit || 70);
+  const totalActiveCountVal = licenseStatus?.activeCount ?? totalActiveCount;
+  const isLicenseExceeded = licenseStatus?.exceeded ?? (totalActiveCountVal > limit);
 
   return (
     <div className="container mx-auto">
       {isLicenseExceeded && (
         <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 mb-6 flex items-center gap-3">
           <span className="text-sm font-extrabold text-red-950 dark:text-red-100">
-            ⚠️ ALERTA DE LICENCIAS EXCEDIDAS: Se ha superado el límite contratado de {limit} licencias ocupadas. Uso actual del sistema: {totalActiveCount}.
+            ⚠️ ALERTA DE LICENCIAS EXCEDIDAS: Se ha superado el límite contratado de {limit} licencias ocupadas. Uso actual del sistema: {totalActiveCountVal}.
           </span>
         </div>
       )}
