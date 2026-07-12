@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.84",
-  "versionComment": "Versión 2.6.84: Reestructurados los banners de advertencia y disclaimers para usar un diseño premium con borde izquierdo (border-l-4) y color de texto heredado del tema (--text-primary) de alto contraste, y corregida la visualización del encabezado del Resumen Combinado Final a negrita y alta legibilidad.",
+  "version": "2.6.85",
+  "versionComment": "Versión 2.6.85: Añadidos badges de conteo de usuarios activos por categoría en el menú desplegable de Gestión de Usuarios (sidebar), y contador de licencias usadas/límite en la barra de herramientas de Gestión de Usuarios.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

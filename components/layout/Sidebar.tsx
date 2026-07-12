@@ -1,6 +1,7 @@
 
-import React, { useContext, useState } from 'react';
+import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
+import { api } from '../../services/api';
 import { IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconBarChart, IconPieChart, IconTarget, IconClock, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle } from '../Icon';
 import { Role, DEFAULT_OPERATOR_PERMISSIONS } from '../../constants';
 
@@ -49,6 +50,45 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
   });
 
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
+
+  const [usersList, setUsersList] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        if (user && ['ADMIN', 'ADMIN_SISTEMAS', 'ADMINISTRADOR'].includes(user.role)) {
+          const list = await api.getUsers();
+          setUsersList(list);
+        }
+      } catch (err) {
+        console.error("Failed to fetch users in sidebar", err);
+      }
+    };
+    fetchUsers();
+  }, [user, activeView]);
+
+  const getSubItemCount = (id: string): number => {
+    if (!usersList || usersList.length === 0) return 0;
+    const activeUsers = usersList.filter((u: any) => u.status !== 'ELIMINADO');
+    switch (id) {
+      case 'users-clients':
+        return activeUsers.filter((u: any) => ['CLIENT', 'CLIENTE'].includes(String(u.role || '').toUpperCase())).length;
+      case 'users-drivers':
+        return activeUsers.filter((u: any) => ['DRIVER', 'CONDUCTOR', 'CHOFER'].includes(String(u.role || '').toUpperCase())).length;
+      case 'users-auxiliares':
+        return activeUsers.filter((u: any) => ['AUXILIAR', 'AUX'].includes(String(u.role || '').toUpperCase())).length;
+      case 'users-retiros':
+        return activeUsers.filter((u: any) => String(u.role || '').toUpperCase() === 'RETIROS').length;
+      case 'users-facturacion':
+        return activeUsers.filter((u: any) => String(u.role || '').toUpperCase() === 'FACTURACION').length;
+      case 'users-admins':
+        return activeUsers.filter((u: any) => ['ADMIN', 'ADMINISTRADOR'].includes(String(u.role || '').toUpperCase())).length;
+      case 'users-operadores':
+        return activeUsers.filter((u: any) => ['OPERADOR_SISTEMAS', 'ADMIN_SISTEMAS'].includes(String(u.role || '').toUpperCase())).length;
+      default:
+        return 0;
+    }
+  };
 
   const toggleMenu = (id: string) => {
     setOpenMenus(prev => {
@@ -326,44 +366,64 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
               {/* Mobile Accordion */}
               {openMenus.has(item.id) && (
                 <div className="pl-6 pt-1 mt-1 space-y-1 lg:hidden">
-                  {(item.subItems as any[]).map(subItem => (
-                    <button
-                      key={subItem.id}
-                      onClick={() => onNavigate(subItem.id)}
-                      className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
-                        activeView === subItem.id
-                          ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]'
-                          : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)]'
-                      }`}
-                    >
-                      {subItem.icon}
-                      <span>{subItem.label}</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-
-              {/* Desktop Flyout */}
-              {hoveredMenu === item.id && (
-                <div className="hidden lg:block lg:absolute lg:left-full lg:top-0 lg:pl-2 lg:w-56 lg:z-50 animate-fade-in-up">
-                  <div className="lg:bg-[var(--background-secondary)] lg:border lg:border-[var(--border-primary)] lg:rounded-lg lg:shadow-lg lg:p-2 lg:space-y-1">
-                    {(item.subItems as any[]).map(subItem => (
+                  {(item.subItems as any[]).map(subItem => {
+                    const count = getSubItemCount(subItem.id);
+                    return (
                       <button
                         key={subItem.id}
-                        onClick={() => {
-                          onNavigate(subItem.id);
-                          setHoveredMenu(null);
-                        }}
-                        className={`w-full flex items-center space-x-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                        onClick={() => onNavigate(subItem.id)}
+                        className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
                           activeView === subItem.id
                             ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]'
                             : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)]'
                         }`}
                       >
-                        {subItem.icon}
-                        <span>{subItem.label}</span>
+                        <div className="flex items-center space-x-3">
+                          {subItem.icon}
+                          <span>{subItem.label}</span>
+                        </div>
+                        {count > 0 && (
+                          <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-black bg-[var(--brand-primary)] text-white">
+                            {count}
+                          </span>
+                        )}
                       </button>
-                    ))}
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Desktop Flyout */}
+              {hoveredMenu === item.id && (
+                <div className="hidden lg:block lg:absolute lg:left-full lg:top-0 lg:pl-2 lg:w-60 lg:z-50 animate-fade-in-up">
+                  <div className="lg:bg-[var(--background-secondary)] lg:border lg:border-[var(--border-primary)] lg:rounded-lg lg:shadow-lg lg:p-2 lg:space-y-1">
+                    {(item.subItems as any[]).map(subItem => {
+                      const count = getSubItemCount(subItem.id);
+                      return (
+                        <button
+                          key={subItem.id}
+                          onClick={() => {
+                            onNavigate(subItem.id);
+                            setHoveredMenu(null);
+                          }}
+                          className={`w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+                            activeView === subItem.id
+                              ? 'bg-[var(--brand-muted)] text-[var(--brand-text)]'
+                              : 'text-[var(--text-secondary)] hover:bg-[var(--background-hover)] hover:text-[var(--text-primary)]'
+                          }`}
+                        >
+                          <div className="flex items-center space-x-3">
+                            {subItem.icon}
+                            <span>{subItem.label}</span>
+                          </div>
+                          {count > 0 && (
+                            <span className="ml-auto flex-shrink-0 inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-black bg-[var(--brand-primary)] text-white">
+                              {count}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}

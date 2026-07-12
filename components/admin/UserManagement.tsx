@@ -424,6 +424,15 @@ const wb = XLSX.utils.book_new();
                 <option value="packages">Más paquetes</option>
             </select>
         </div>
+        {/* License counter badge in toolbar */}
+        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-[var(--border-primary)] bg-[var(--background-secondary)] shadow-sm" title={`Licencias usadas: ${totalActiveCountVal} / ${limit}`}>
+          <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-xs font-black text-white ${isLicenseExceeded ? 'bg-red-600' : 'bg-[var(--brand-primary)]'}`}>
+            {totalActiveCountVal}
+          </span>
+          <span className="text-xs font-semibold text-[var(--text-secondary)] hidden sm:inline whitespace-nowrap">
+            / {limit} lic.
+          </span>
+        </div>
         <div className="flex items-center gap-4 w-full sm:w-auto">
           <label className="flex items-center gap-2 text-sm text-[var(--text-muted)] cursor-pointer">
             <input 
