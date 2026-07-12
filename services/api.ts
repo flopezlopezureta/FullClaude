@@ -449,7 +449,7 @@ export const api = {
   // GIS Sectors
   getGisSectors: (comuna?: string) => get<any[]>(`/gis/sectors${comuna ? `?comuna=${encodeURIComponent(comuna)}` : ''}`),
   getGisSectorComunas: () => get<{ comuna: string; count: number }[]>('/gis/sectors/comunas'),
-  createGisSector: (data: { comuna: string; sector: string; geometry: any }) => post<any>('/gis/sectors', data),
-  updateGisSector: (id: string, data: { sector?: string; geometry?: any }) => put<any>(`/gis/sectors/${id}`, data),
+  createGisSector: (data: { comuna: string; sector: string; geometry: any; color?: string }) => post<any>('/gis/sectors', data),
+  updateGisSector: (id: string, data: { sector?: string; geometry?: any; color?: string }) => put<any>(`/gis/sectors/${id}`, data),
   deleteGisSector: (id: string) => del<void>(`/gis/sectors/${id}`),
 };

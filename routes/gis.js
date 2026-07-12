@@ -100,7 +100,7 @@ router.get('/sectors/comunas', authMiddleware, async (req, res) => {
 // Crea un nuevo sector con geometría dibujada en el frontend
 router.post('/sectors', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { comuna, sector, geometry } = req.body;
+        const { comuna, sector, geometry, color } = req.body;
         if (!comuna || !sector || !geometry) {
             return res.status(400).json({ message: 'comuna, sector y geometry son requeridos.' });
         }
@@ -108,8 +108,8 @@ router.post('/sectors', authMiddleware, adminOnly, async (req, res) => {
         const id = uuidv4();
         const createdAt = new Date().toISOString();
         await db.query(
-            'INSERT INTO gis_sectors (id, comuna, sector, geometry, "createdAt") VALUES ($1, $2, $3, $4, $5)',
-            [id, comuna.trim(), sector.trim(), JSON.stringify(geometry), createdAt]
+            'INSERT INTO gis_sectors (id, comuna, sector, geometry, color, "createdAt") VALUES ($1, $2, $3, $4, $5, $6)',
+            [id, comuna.trim(), sector.trim(), JSON.stringify(geometry), color ? color.trim() : null, createdAt]
         );
 
         // Reload gisService in-memory cache
@@ -122,6 +122,7 @@ router.post('/sectors', authMiddleware, adminOnly, async (req, res) => {
             comuna: comuna.trim(),
             sector: sector.trim(),
             geometry,
+            color: color ? color.trim() : null,
             createdAt
         });
     } catch (e) {
@@ -131,11 +132,11 @@ router.post('/sectors', authMiddleware, adminOnly, async (req, res) => {
 });
 
 // ─── PUT /api/gis/sectors/:id ────────────────────────────────────────────────
-// Renombra un sector (o actualiza su geometría)
+// Renombra un sector (o actualiza su geometría o su color)
 router.put('/sectors/:id', authMiddleware, adminOnly, async (req, res) => {
     try {
         const { id } = req.params;
-        const { sector, geometry } = req.body;
+        const { sector, geometry, color } = req.body;
 
         const { rows } = await db.query('SELECT * FROM gis_sectors WHERE id = $1', [id]);
         if (rows.length === 0) return res.status(404).json({ message: 'Sector no encontrado.' });
@@ -145,13 +146,17 @@ router.put('/sectors/:id', authMiddleware, adminOnly, async (req, res) => {
         let params = [updatedAt];
         let paramIdx = 2;
 
-        if (sector) {
+        if (sector !== undefined) {
             q += `, sector = $${paramIdx++}`;
-            params.push(sector.trim());
+            params.push(sector ? sector.trim() : null);
         }
-        if (geometry) {
+        if (geometry !== undefined) {
             q += `, geometry = $${paramIdx++}`;
-            params.push(JSON.stringify(geometry));
+            params.push(geometry ? JSON.stringify(geometry) : null);
+        }
+        if (color !== undefined) {
+            q += `, color = $${paramIdx++}`;
+            params.push(color ? color.trim() : null);
         }
         q += ` WHERE id = $${paramIdx}`;
         params.push(id);
@@ -165,8 +170,9 @@ router.put('/sectors/:id', authMiddleware, adminOnly, async (req, res) => {
         res.json({
             id,
             comuna: rows[0].comuna,
-            sector: sector ? sector.trim() : rows[0].sector,
-            geometry: geometry || rows[0].geometry,
+            sector: sector !== undefined ? (sector ? sector.trim() : null) : rows[0].sector,
+            geometry: geometry !== undefined ? geometry : rows[0].geometry,
+            color: color !== undefined ? (color ? color.trim() : null) : rows[0].color,
             updatedAt
         });
     } catch (e) {

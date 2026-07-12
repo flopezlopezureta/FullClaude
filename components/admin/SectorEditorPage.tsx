@@ -4,7 +4,7 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { api } from '../../services/api';
 import SearchableSelect from '../SearchableSelect';
-import { IconTrash, IconPencil, IconMapPin, IconCheckCircle, IconAlertTriangle, IconLoader } from '../Icon';
+import { IconTrash, IconPencil, IconMapPin, IconCheckCircle, IconAlertTriangle, IconLoader, IconMap } from '../Icon';
 
 declare const L: any;
 
@@ -32,6 +32,7 @@ interface Sector {
   comuna: string;
   sector: string;
   geometry: any;
+  color?: string;
   createdAt?: string;
 }
 
@@ -51,6 +52,14 @@ const SectorEditorPage: React.FC = () => {
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameColor, setRenameColor] = useState('');
+
+  // Geometry editing state
+  const [editingGeometryId, setEditingGeometryId] = useState<string | null>(null);
+  const editLayerRef = useRef<any>(null);
+
+  // Selected color for new sector
+  const [selectedColor, setSelectedColor] = useState('#4f46e5');
 
   // Pending polygon waiting for name input
   const pendingLayerRef = useRef<any>(null);
@@ -130,7 +139,7 @@ const SectorEditorPage: React.FC = () => {
   }, []);
 
   // ── Paint saved sectors on map ─────────────────────────────────────────────
-  const paintSectors = useCallback((sectorList: Sector[]) => {
+  const paintSectors = useCallback((sectorList: Sector[], activeEditId?: string | null) => {
     if (!mapRef.current) return;
     // Remove old sector layers
     sectorLayersRef.current.forEach(l => { try { mapRef.current.removeLayer(l); } catch {} });
@@ -138,7 +147,25 @@ const SectorEditorPage: React.FC = () => {
 
     sectorList.forEach((s, i) => {
       if (!s.geometry) return;
-      const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
+
+      // If we are editing another sector's geometry, paint this one as a static light gray background layer
+      if (activeEditId) {
+        if (s.id === activeEditId) return; // Skip the active editing layer since it's drawn interactively
+        try {
+          const layer = L.geoJSON(
+            { type: 'Feature', geometry: s.geometry, properties: {} },
+            {
+              style: { color: '#9ca3af', weight: 1, fillColor: '#9ca3af', fillOpacity: 0.1 },
+            }
+          )
+            .bindTooltip(`<b>${s.sector}</b>`, { permanent: false })
+            .addTo(mapRef.current);
+          sectorLayersRef.current.push(layer);
+        } catch {}
+        return;
+      }
+
+      const color = s.color || SECTOR_COLORS[i % SECTOR_COLORS.length];
       try {
         const layer = L.geoJSON(
           { type: 'Feature', geometry: s.geometry, properties: {} },
@@ -153,8 +180,8 @@ const SectorEditorPage: React.FC = () => {
     });
   }, []);
 
-  // Re-paint whenever sectors change
-  useEffect(() => { paintSectors(sectors); }, [sectors, paintSectors]);
+  // Re-paint whenever sectors or active editing geometry changes
+  useEffect(() => { paintSectors(sectors, editingGeometryId); }, [sectors, editingGeometryId, paintSectors]);
 
   // When commune changes: load boundary + sectors
   useEffect(() => {
@@ -236,9 +263,11 @@ const SectorEditorPage: React.FC = () => {
         comuna: selectedComuna,
         sector: newSectorName.trim(),
         geometry,
+        color: selectedColor,
       });
       setShowNameDialog(false);
       setNewSectorName('');
+      setSelectedColor('#4f46e5');
       pendingLayerRef.current = null;
       drawnLayersRef.current?.clearLayers();
       await loadSectors(selectedComuna);
@@ -253,6 +282,7 @@ const SectorEditorPage: React.FC = () => {
   const handleCancelDraw = () => {
     setShowNameDialog(false);
     setNewSectorName('');
+    setSelectedColor('#4f46e5');
     pendingLayerRef.current = null;
     drawnLayersRef.current?.clearLayers();
   };
@@ -272,21 +302,79 @@ const SectorEditorPage: React.FC = () => {
     }
   };
 
-  // ── Rename sector ──────────────────────────────────────────────────────────
+  // ── Rename / Update sector ──────────────────────────────────────────────────
   const handleRename = async (id: string) => {
     if (!renameValue.trim()) return;
     setIsLoading(true);
     try {
-      await api.updateGisSector(id, { sector: renameValue.trim() });
+      await api.updateGisSector(id, { sector: renameValue.trim(), color: renameColor });
       setRenamingId(null);
       setRenameValue('');
+      setRenameColor('');
       await loadSectors(selectedComuna);
-      showToast('Sector renombrado');
+      showToast('Sector actualizado');
     } catch {
-      showToast('Error al renombrar', false);
+      showToast('Error al actualizar el sector', false);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // ── Geometry Editing Handlers ──────────────────────────────────────────────
+  const handleStartEditGeometry = (s: Sector) => {
+    if (!mapRef.current) return;
+    
+    stopDrawing();
+    setEditingGeometryId(s.id);
+    
+    // Create Leaflet layer for interactive polygon editing
+    const color = s.color || '#fbbf24';
+    const layer = L.geoJSON(
+      { type: 'Feature', geometry: s.geometry, properties: {} },
+      {
+        style: { color: '#f59e0b', weight: 3, fillColor: color, fillOpacity: 0.4 }
+      }
+    ).getLayers()[0];
+    
+    layer.addTo(mapRef.current);
+    layer.editing.enable();
+    editLayerRef.current = layer;
+    
+    try {
+      mapRef.current.fitBounds(layer.getBounds(), { padding: [50, 50] });
+    } catch {}
+  };
+
+  const handleSaveGeometry = async () => {
+    if (!editingGeometryId || !editLayerRef.current) return;
+    
+    const geojson = editLayerRef.current.toGeoJSON();
+    const geometry = geojson.geometry;
+    
+    setIsLoading(true);
+    try {
+      await api.updateGisSector(editingGeometryId, { geometry });
+      
+      if (editLayerRef.current) {
+        mapRef.current.removeLayer(editLayerRef.current);
+        editLayerRef.current = null;
+      }
+      setEditingGeometryId(null);
+      await loadSectors(selectedComuna);
+      showToast('🗺️ Trazado del sector actualizado con éxito');
+    } catch (e: any) {
+      showToast(e.message || 'Error al actualizar trazado', false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleCancelEditGeometry = () => {
+    if (editLayerRef.current && mapRef.current) {
+      try { mapRef.current.removeLayer(editLayerRef.current); } catch {}
+      editLayerRef.current = null;
+    }
+    setEditingGeometryId(null);
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -329,7 +417,7 @@ const SectorEditorPage: React.FC = () => {
         {selectedComuna && (
           <button
             onClick={isDrawing ? stopDrawing : startDrawing}
-            disabled={isLoading || showNameDialog}
+            disabled={isLoading || showNameDialog || !!editingGeometryId}
             style={{
               padding: '10px 0', borderRadius: 10, border: 'none', cursor: 'pointer',
               fontWeight: 700, fontSize: 14,
@@ -337,10 +425,41 @@ const SectorEditorPage: React.FC = () => {
               color: '#fff',
               display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
               transition: 'background 0.2s',
+              opacity: (isLoading || showNameDialog || !!editingGeometryId) ? 0.5 : 1,
             }}
           >
             {isDrawing ? '⏹ Cancelar dibujo' : '✏️ Dibujar nuevo sector'}
           </button>
+        )}
+
+        {/* Geometry Editing Dialog */}
+        {editingGeometryId && (
+          <div style={{ background: '#fef3c7', border: '2px solid #f59e0b', borderRadius: 12, padding: 14 }}>
+            <p style={{ fontSize: 13, fontWeight: 700, color: '#b45309', marginBottom: 8, display: 'flex', flexWrap: 'wrap', gap: 4 }}>
+              <span>🗺️ Editando trazado:</span>
+              <strong style={{ textDecoration: 'underline' }}>
+                {sectors.find(s => s.id === editingGeometryId)?.sector}
+              </strong>
+            </p>
+            <p style={{ fontSize: 11, color: '#b45309', marginBottom: 12 }}>
+              Arrastra los puntos del mapa para modificar el polígono.
+            </p>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button
+                onClick={handleSaveGeometry}
+                disabled={isLoading}
+                style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: 'none', background: '#d97706', color: '#fff', fontWeight: 700, fontSize: 13, cursor: 'pointer' }}
+              >
+                {isLoading ? '...' : 'Guardar'}
+              </button>
+              <button
+                onClick={handleCancelEditGeometry}
+                style={{ flex: 1, padding: '8px 0', borderRadius: 8, border: '1.5px solid #d1d5db', background: '#fff', color: '#374151', fontWeight: 600, fontSize: 13, cursor: 'pointer' }}
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
         )}
 
         {/* Name dialog */}
@@ -358,7 +477,25 @@ const SectorEditorPage: React.FC = () => {
               autoFocus
               style={{ width: '100%', padding: '7px 10px', borderRadius: 8, border: '1.5px solid #fbbf24', fontSize: 13, boxSizing: 'border-box', outline: 'none' }}
             />
-            <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+            {/* Color picker for creation */}
+            <div style={{ marginTop: 10 }}>
+              <p style={{ fontSize: 11, fontWeight: 700, color: '#92400e', marginBottom: 4 }}>🎨 Elegir color del sector:</p>
+              <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                {SECTOR_COLORS.map(c => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => setSelectedColor(c)}
+                    style={{
+                      width: 22, height: 22, borderRadius: '50%', background: c, border: selectedColor === c ? '2.5px solid #000' : '1px solid #ccc',
+                      cursor: 'pointer', padding: 0, transition: 'transform 0.1s',
+                      transform: selectedColor === c ? 'scale(1.15)' : 'none',
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
               <button
                 onClick={handleSaveSector}
                 disabled={!newSectorName.trim() || isLoading}
@@ -389,28 +526,44 @@ const SectorEditorPage: React.FC = () => {
           )}
           {selectedComuna && !isLoading && sectors.length === 0 && !showNameDialog && (
             <div style={{ background: 'var(--background-secondary)', borderRadius: 10, padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-              Sin sectores para <strong>{selectedComuna}</strong>.<br />Usa "Dibujar nuevo sector" para comenzar.
+              Sin sectores para <strong>{selectedComuna}</strong>.<br />Usa \"Dibujar nuevo sector\" para comenzar.
             </div>
           )}
           {sectors.map((s, i) => {
-            const color = SECTOR_COLORS[i % SECTOR_COLORS.length];
+            const color = s.color || SECTOR_COLORS[i % SECTOR_COLORS.length];
             return (
               <div key={s.id} style={{
                 background: 'var(--background-secondary)', borderRadius: 10,
                 border: '1px solid var(--border-primary)', padding: '10px 12px',
               }}>
                 {renamingId === s.id ? (
-                  <div style={{ display: 'flex', gap: 6 }}>
-                    <input
-                      type="text"
-                      value={renameValue}
-                      onChange={e => setRenameValue(e.target.value)}
-                      onKeyDown={e => e.key === 'Enter' && handleRename(s.id)}
-                      autoFocus
-                      style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: '1.5px solid #4f46e5', fontSize: 12 }}
-                    />
-                    <button onClick={() => handleRename(s.id)} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12 }}>✓</button>
-                    <button onClick={() => setRenamingId(null)} style={{ background: '#e5e7eb', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                    <div style={{ display: 'flex', gap: 6 }}>
+                      <input
+                        type="text"
+                        value={renameValue}
+                        onChange={e => setRenameValue(e.target.value)}
+                        onKeyDown={e => e.key === 'Enter' && handleRename(s.id)}
+                        autoFocus
+                        style={{ flex: 1, padding: '5px 8px', borderRadius: 6, border: '1.5px solid #4f46e5', fontSize: 12 }}
+                      />
+                      <button onClick={() => handleRename(s.id)} style={{ background: '#4f46e5', color: '#fff', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12 }}>✓</button>
+                      <button onClick={() => setRenamingId(null)} style={{ background: '#e5e7eb', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: 12 }}>✕</button>
+                    </div>
+                    {/* Color picker for renaming */}
+                    <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginTop: 4 }}>
+                      {SECTOR_COLORS.map(c => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => setRenameColor(c)}
+                          style={{
+                            width: 18, height: 18, borderRadius: '50%', background: c, border: renameColor === c ? '2.5px solid #000' : '1px solid #ccc',
+                            cursor: 'pointer', padding: 0,
+                          }}
+                        />
+                      ))}
+                    </div>
                   </div>
                 ) : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -422,16 +575,26 @@ const SectorEditorPage: React.FC = () => {
                       <div style={{ fontSize: 10, color: 'var(--text-muted)' }}>{s.comuna}</div>
                     </div>
                     <button
-                      onClick={() => { setRenamingId(s.id); setRenameValue(s.sector); }}
-                      title="Renombrar"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)' }}
+                      onClick={() => { setRenamingId(s.id); setRenameValue(s.sector); setRenameColor(s.color || color); }}
+                      disabled={isDrawing || showNameDialog || !!editingGeometryId}
+                      title="Editar nombre y color"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--text-muted)', opacity: (isDrawing || showNameDialog || !!editingGeometryId) ? 0.3 : 1 }}
                     >
                       <IconPencil style={{ width: 14, height: 14 }} />
                     </button>
                     <button
+                      onClick={() => handleStartEditGeometry(s)}
+                      disabled={isDrawing || showNameDialog || !!editingGeometryId}
+                      title="Editar trazado (mapa)"
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: 'var(--brand-primary)', opacity: (isDrawing || showNameDialog || !!editingGeometryId) ? 0.3 : 1 }}
+                    >
+                      <IconMap style={{ width: 14, height: 14 }} />
+                    </button>
+                    <button
                       onClick={() => handleDelete(s.id, s.sector)}
+                      disabled={isDrawing || showNameDialog || !!editingGeometryId}
                       title="Eliminar"
-                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#ef4444' }}
+                      style={{ background: 'none', border: 'none', cursor: 'pointer', padding: 4, color: '#ef4444', opacity: (isDrawing || showNameDialog || !!editingGeometryId) ? 0.3 : 1 }}
                     >
                       <IconTrash style={{ width: 14, height: 14 }} />
                     </button>

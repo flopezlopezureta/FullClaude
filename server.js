@@ -1174,6 +1174,11 @@ async function initializeDatabase() {
                 "updatedAt" TIMESTAMPTZ
             );
         `);
+        try {
+            await db.query('ALTER TABLE gis_sectors ADD COLUMN IF NOT EXISTS color TEXT');
+        } catch (err) {
+            console.error('Error during gis_sectors migration (color):', err);
+        }
         console.log('Table "gis_sectors" is ready.');
 
         console.log('Database schema initialization complete.');
