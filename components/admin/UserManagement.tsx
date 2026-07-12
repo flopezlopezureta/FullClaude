@@ -111,6 +111,10 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
           // Si estamos filtrando conductores, mostrar Conductores Y Administradores (para asignaciones)
           return u.role === Role.Driver || u.role === Role.Admin;
         }
+        if (roleFilter === Role.Admin) {
+          // ADMIN_SISTEMAS se trata como Administrador en todo el sistema
+          return u.role === Role.Admin || String(u.role || '').toUpperCase() === 'ADMIN_SISTEMAS' || String(u.role || '').toUpperCase() === 'ADMINISTRADOR';
+        }
         return u.role === roleFilter;
       });
       

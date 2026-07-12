@@ -89,9 +89,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       case 'users-facturacion':
         return activeUsers.filter((u: any) => String(u.role || '').toUpperCase() === 'FACTURACION').length;
       case 'users-admins':
-        return activeUsers.filter((u: any) => ['ADMIN', 'ADMINISTRADOR'].includes(String(u.role || '').toUpperCase())).length;
+        // ADMIN_SISTEMAS is treated as an admin role throughout the system
+        return activeUsers.filter((u: any) => ['ADMIN', 'ADMINISTRADOR', 'ADMIN_SISTEMAS'].includes(String(u.role || '').toUpperCase())).length;
       case 'users-operadores':
-        return activeUsers.filter((u: any) => ['OPERADOR_SISTEMAS', 'ADMIN_SISTEMAS'].includes(String(u.role || '').toUpperCase())).length;
+        // Only pure OPERADOR_SISTEMAS appear in the Operadores list (ADMIN_SISTEMAS are counted as admins)
+        return activeUsers.filter((u: any) => String(u.role || '').toUpperCase() === 'OPERADOR_SISTEMAS').length;
       default:
         return 0;
     }
