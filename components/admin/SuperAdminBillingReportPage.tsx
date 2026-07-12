@@ -229,9 +229,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
         `}} />
         <div className="space-y-6 print:hidden">
             {/* Access Disclaimer Header */}
-            <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 flex items-center gap-3">
-                <IconLock className="w-5 h-5 text-red-700 dark:text-red-400 shrink-0" />
-                <span className="text-sm font-extrabold text-red-950 dark:text-red-100">
+            <div className="bg-[var(--background-secondary)] border-l-4 border-red-600 shadow-sm rounded-r-lg p-4 flex items-center gap-3 border border-y-[var(--border-primary)] border-r-[var(--border-primary)]">
+                <IconLock className="w-5 h-5 text-red-600 shrink-0" />
+                <span className="text-sm font-black text-[var(--text-primary)]">
                     MÓDULO DE SEGURIDAD EXCLUSIVO: Esta vista es visible únicamente para la cuenta de Superadministrador del sistema.
                 </span>
             </div>
@@ -362,9 +362,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
 
                 {/* Alerta de exceso si corresponde */}
                 {exceeded && (
-                    <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 flex items-center gap-3">
-                        <span className="text-sm font-extrabold text-red-950 dark:text-red-100">
-                            ⚠️ ALERTA DE SOBRECONSUMO: Se ha detectado un total de {activeCount} licencias ocupadas, superando el límite contratado de {systemSettings?.licenseLimit || 70}. Por favor, solicite a soporte técnico la ampliación de su suscripción o deshabilite cuentas de usuario inactivas.
+                    <div className="bg-[var(--background-secondary)] border-l-4 border-red-600 shadow-sm rounded-r-lg p-4 flex items-center gap-3 border border-y-[var(--border-primary)] border-r-[var(--border-primary)]">
+                        <span className="text-sm font-medium text-[var(--text-primary)]">
+                            ⚠️ <strong className="font-black text-red-655" style={{ color: '#dc2626' }}>ALERTA DE SOBRECONSUMO:</strong> Se ha detectado un total de <strong>{activeCount}</strong> licencias ocupadas, superando el límite contratado de <strong>{systemSettings?.licenseLimit || 70}</strong>. Por favor, solicite a soporte técnico la ampliación de su suscripción o deshabilite cuentas de usuario inactivas.
                         </span>
                     </div>
                 )}
@@ -599,18 +599,18 @@ const SuperAdminBillingReportPage: React.FC = () => {
 
                     {/* Resumen Combinado Final */}
                     <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/20 dark:to-indigo-900/10 shadow-md rounded-lg p-6 border border-indigo-200 dark:border-indigo-900">
-                        <h3 className="text-lg font-bold text-indigo-950 dark:text-indigo-300 mb-4 flex items-center gap-2">
+                        <h3 className="text-lg font-black text-[var(--text-primary)] mb-4 flex items-center gap-2">
                             <span>🧾 Resumen Combinado Final (Despachos + Licencias)</span>
                         </h3>
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
                             <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] p-4 rounded-lg">
-                                <span className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Total Neto Combinado</span>
-                                <span className="block text-xl font-bold text-[var(--text-primary)] mt-1">{formatCLP((reportData.summary.totalCostClpNet || 0) + licenseCostClpNet)}</span>
-                                <span className="block text-xs text-[var(--text-muted)] mt-1 font-mono">{(reportData.summary.totalCostUf + licenseCostUf).toFixed(5)} UF</span>
+                                <span className="block text-xs font-black text-[var(--text-secondary)] uppercase tracking-wider">Total Neto Combinado</span>
+                                <span className="block text-xl font-black text-[var(--text-primary)] mt-1">{formatCLP((reportData.summary.totalCostClpNet || 0) + licenseCostClpNet)}</span>
+                                <span className="block text-xs font-bold text-[var(--text-muted)] mt-1 font-mono">{(reportData.summary.totalCostUf + licenseCostUf).toFixed(5)} UF</span>
                             </div>
                             <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] p-4 rounded-lg">
-                                <span className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Total IVA Combinado</span>
-                                <span className="block text-xl font-bold text-[var(--text-primary)] mt-1">{formatCLP((reportData.summary.totalCostClpIva || 0) + licenseCostClpIva)}</span>
+                                <span className="block text-xs font-black text-[var(--text-secondary)] uppercase tracking-wider">Total IVA Combinado</span>
+                                <span className="block text-xl font-black text-[var(--text-primary)] mt-1">{formatCLP((reportData.summary.totalCostClpIva || 0) + licenseCostClpIva)}</span>
                             </div>
                             <div className="bg-indigo-600 text-white p-4 rounded-lg shadow-sm">
                                 <span className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider">Total Bruto Combinado</span>

@@ -392,9 +392,9 @@ const wb = XLSX.utils.book_new();
   return (
     <div className="container mx-auto">
       {isLicenseExceeded && (
-        <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 mb-6 flex items-center gap-3">
-          <span className="text-sm font-extrabold text-red-950 dark:text-red-100">
-            ⚠️ ALERTA DE LICENCIAS EXCEDIDAS: Se ha superado el límite contratado de {limit} licencias ocupadas. Uso actual del sistema: {totalActiveCountVal}.
+        <div className="bg-[var(--background-secondary)] border-l-4 border-red-600 shadow-sm rounded-r-lg p-4 mb-6 flex items-center gap-3 border border-y-[var(--border-primary)] border-r-[var(--border-primary)]">
+          <span className="text-sm font-medium text-[var(--text-primary)]">
+            ⚠️ <strong className="font-black" style={{ color: '#dc2626' }}>ALERTA DE LICENCIAS EXCEDIDAS:</strong> Se ha superado el límite contratado de <strong>{limit}</strong> licencias ocupadas. Uso actual del sistema: <strong>{totalActiveCountVal}</strong>.
           </span>
         </div>
       )}
