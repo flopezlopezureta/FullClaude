@@ -69,7 +69,14 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
 
   const getSubItemCount = (id: string): number => {
     if (!usersList || usersList.length === 0) return 0;
-    const activeUsers = usersList.filter((u: any) => u.status !== 'ELIMINADO');
+    const isSuperUserEmail = (email?: string) => email === 'admin' || email === 'admin@admin.cl';
+    const currentUserIsSuper = isSuperUserEmail(user?.email);
+    // Mirror the same filter logic as UserManagement: non-super admins don't see the superuser
+    const activeUsers = usersList.filter((u: any) => {
+      if (u.status === 'ELIMINADO') return false;
+      if (isSuperUserEmail(u.email) && !currentUserIsSuper) return false;
+      return true;
+    });
     switch (id) {
       case 'users-clients':
         return activeUsers.filter((u: any) => ['CLIENT', 'CLIENTE'].includes(String(u.role || '').toUpperCase())).length;

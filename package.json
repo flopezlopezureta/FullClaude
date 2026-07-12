@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.86",
-  "versionComment": "Versión 2.6.86: El superusuario (admin/admin@admin.cl) ya no es contado como licencia ocupada en ninguna vista ni en los reportes del superadmin. Las queries SQL en license-status y el reporte mensual de facturación excluyen explícitamente las cuentas de superusuario del conteo.",
+  "version": "2.6.87",
+  "versionComment": "Versión 2.6.87: Corregido el conteo de badges en el menú lateral para que excluya al superusuario cuando el administrador actual no es superadmin, igualando exactamente los totales que aparecen en la lista de gestión de usuarios.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
