@@ -481,7 +481,7 @@ const wb = XLSX.utils.book_new();
              <p className="p-6 text-center text-[var(--text-muted)]">
                {searchTerm ? 'No se encontraron usuarios que coincidan con la búsqueda.' : `No se encontraron usuarios con el rol de ${roleFilter}.`}
              </p>
-          ) : filteredUsers.map(user => {
+          ) : filteredUsers.map((user, index) => {
             const hasNoCustomPricing = user.role === Role.Client &&
               (!user.pricing || (user.pricing.sameDay === 0 && user.pricing.express === 0 && user.pricing.nextDay === 0)) &&
               (!user.pickupCost || user.pickupCost === 0);
@@ -490,6 +490,9 @@ const wb = XLSX.utils.book_new();
             <div key={user.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-3 flex-wrap">
+                    <span className="inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-black bg-[var(--brand-primary)] text-white flex-shrink-0" title={`Usuario #${index + 1}`}>
+                      {index + 1}
+                    </span>
                     <p className={`font-semibold ${hasNoCustomPricing ? 'text-red-600' : 'text-[var(--text-primary)]'}`}>{user.name}</p>
                     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${statusStyles[user.status].badge}`}>
                         {statusStyles[user.status].text}
