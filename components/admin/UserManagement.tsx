@@ -330,7 +330,7 @@ const wb = XLSX.utils.book_new();
     let matchesRole = false;
     switch (roleFilter) {
       case Role.Admin:
-        matchesRole = role === 'ADMIN' || role === 'ADMINISTRADOR';
+        matchesRole = role === 'ADMIN' || role === 'ADMINISTRADOR' || role === 'ADMIN_SISTEMAS';
         break;
       case Role.Driver:
         matchesRole = role === 'DRIVER' || role === 'CHOFER' || role === 'CONDUCTOR' || u.driverPermissions?.canDeliver === true;

@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.89",
-  "versionComment": "Versión 2.6.89: Agregado número correlativo (#1, #2, #3...) como badge circular antes del nombre de cada usuario en la lista de Gestión de Usuarios para facilitar la identificación visual del conteo de licencias usadas.",
+  "version": "2.6.90",
+  "versionComment": "Versión 2.6.90: Corregido el filtro de visualización en la lista de Administradores para que incluya a los usuarios con rol ADMIN_SISTEMAS, igualando así el conteo que aparece en el badge del menú lateral.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
