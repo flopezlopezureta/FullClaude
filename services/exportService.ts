@@ -221,25 +221,92 @@ export const exportSuperAdminBillingToExcel = async (reportData: any, filename: 
     });
 
     // Add financial lines
-    const rowNet = summarySheet.addRow(['', 'Total Costo Neto', reportData.summary.totalCostClpNet || 0, reportData.summary.totalCostUf]);
+    const rowNet = summarySheet.addRow(['', 'Total Costo Neto Despachado', reportData.summary.totalCostClpNet || 0, reportData.summary.totalCostUf]);
     rowNet.getCell(3).numFmt = '$#,##0';
     rowNet.getCell(4).numFmt = '0.00000000';
     
-    const rowIva = summarySheet.addRow(['', 'IVA (19%)', reportData.summary.totalCostClpIva || 0, '']);
+    const rowIva = summarySheet.addRow(['', 'IVA Despachos (19%)', reportData.summary.totalCostClpIva || 0, '']);
     rowIva.getCell(3).numFmt = '$#,##0';
     
-    const rowGross = summarySheet.addRow(['', 'Total Bruto CLP', reportData.summary.totalCostClpGross || 0, '']);
+    const rowGross = summarySheet.addRow(['', 'Total Bruto Despachos CLP', reportData.summary.totalCostClpGross || 0, '']);
     rowGross.getCell(3).numFmt = '$#,##0';
     rowGross.getCell(2).font = { bold: true };
     rowGross.getCell(3).font = { bold: true };
 
-    // Format financial cells
-    for (let r = 11; r <= 13; r++) {
-        const row = summarySheet.getRow(r);
+    // Format financial cells directly
+    [rowNet, rowIva, rowGross].forEach(row => {
         row.getCell(2).border = { bottom: { style: 'thin' } };
         row.getCell(3).border = { bottom: { style: 'thin' } };
         row.getCell(3).alignment = { horizontal: 'right' };
         row.getCell(4).alignment = { horizontal: 'right' };
+    });
+
+    // License Billing Section
+    if (reportData.licenseBilling) {
+        summarySheet.addRow([]);
+        const licenseHeaderRow = summarySheet.addRow(['', 'Detalle de Facturación por Licencias (Exceso)', 'Valor CLP', 'Valor UF']);
+        licenseHeaderRow.height = 24;
+        licenseHeaderRow.eachCell((cell, colNum) => {
+            if (colNum < 2) return;
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF5B9BD5' } };
+            cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+
+        summarySheet.addRow(['', `Licencias Ocupadas (Total): ${reportData.licenseBilling.active} / Límite: ${reportData.licenseBilling.limit}`, '', '']);
+        
+        const rowLicNet = summarySheet.addRow(['', `Costo Neto Licencias en Exceso (${reportData.licenseBilling.excess} * ${reportData.licenseBilling.overageFee} UF)`, reportData.licenseBilling.costClpNet, reportData.licenseBilling.costUf]);
+        rowLicNet.getCell(3).numFmt = '$#,##0';
+        rowLicNet.getCell(4).numFmt = '0.00000000';
+
+        const rowLicIva = summarySheet.addRow(['', 'IVA Licencias (19%)', reportData.licenseBilling.costClpIva, '']);
+        rowLicIva.getCell(3).numFmt = '$#,##0';
+
+        const rowLicGross = summarySheet.addRow(['', 'Total Bruto Licencias CLP', reportData.licenseBilling.costClpGross, '']);
+        rowLicGross.getCell(3).numFmt = '$#,##0';
+        rowLicGross.getCell(2).font = { bold: true };
+        rowLicGross.getCell(3).font = { bold: true };
+
+        [rowLicNet, rowLicIva, rowLicGross].forEach(row => {
+            row.getCell(2).border = { bottom: { style: 'thin' } };
+            row.getCell(3).border = { bottom: { style: 'thin' } };
+            row.getCell(3).alignment = { horizontal: 'right' };
+            row.getCell(4).alignment = { horizontal: 'right' };
+        });
+
+        // Combined Totals Section
+        summarySheet.addRow([]);
+        const combHeaderRow = summarySheet.addRow(['', 'TOTAL FACTURACIÓN COMBINADA (DESPACHOS + LICENCIAS)', 'Valor CLP', 'Valor UF']);
+        combHeaderRow.height = 24;
+        combHeaderRow.eachCell((cell, colNum) => {
+            if (colNum < 2) return;
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF70AD47' } }; // Green accent
+            cell.font = { color: { argb: 'FFFFFFFF' }, bold: true };
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        });
+
+        const totalNetComb = (reportData.summary.totalCostClpNet || 0) + reportData.licenseBilling.costClpNet;
+        const totalUfComb = reportData.summary.totalCostUf + reportData.licenseBilling.costUf;
+        const rowCombNet = summarySheet.addRow(['', 'Total Neto Combinado', totalNetComb, totalUfComb]);
+        rowCombNet.getCell(3).numFmt = '$#,##0';
+        rowCombNet.getCell(4).numFmt = '0.00000000';
+
+        const totalIvaComb = (reportData.summary.totalCostClpIva || 0) + reportData.licenseBilling.costClpIva;
+        const rowCombIva = summarySheet.addRow(['', 'Total IVA Combinado (19%)', totalIvaComb, '']);
+        rowCombIva.getCell(3).numFmt = '$#,##0';
+
+        const totalGrossComb = (reportData.summary.totalCostClpGross || 0) + reportData.licenseBilling.costClpGross;
+        const rowCombGross = summarySheet.addRow(['', 'Total Bruto Combinado CLP', totalGrossComb, '']);
+        rowCombGross.getCell(3).numFmt = '$#,##0';
+        rowCombGross.getCell(2).font = { bold: true };
+        rowCombGross.getCell(3).font = { bold: true };
+
+        [rowCombNet, rowCombIva, rowCombGross].forEach(row => {
+            row.getCell(2).border = { bottom: { style: 'thin' } };
+            row.getCell(3).border = { bottom: { style: 'thin' } };
+            row.getCell(3).alignment = { horizontal: 'right' };
+            row.getCell(4).alignment = { horizontal: 'right' };
+        });
     }
     summarySheet.addRow([]);
     summarySheet.addRow([]);

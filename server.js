@@ -556,7 +556,9 @@ async function initializeDatabase() {
                 "isRutRequired" BOOLEAN DEFAULT true,
                 "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
                 "circuitExportEnabled" BOOLEAN DEFAULT false,
-                "timezone" TEXT DEFAULT 'America/Santiago'
+                "timezone" TEXT DEFAULT 'America/Santiago',
+                "licenseLimit" INTEGER DEFAULT 70,
+                "licenseOverageFee" NUMERIC DEFAULT 0.1
             );
         `);
         
@@ -735,6 +737,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (licenseLimit):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "licenseOverageFee" NUMERIC DEFAULT 0.1');
+            console.log('MIGRATION APPLIED: Column "licenseOverageFee" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (licenseOverageFee):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -765,8 +773,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70)
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit", "licenseOverageFee")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70, 0.1)
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`

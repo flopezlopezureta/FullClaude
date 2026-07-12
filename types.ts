@@ -49,6 +49,7 @@ export interface SystemSettings {
     appEnv?: string;
     recipientNotificationsEnabled?: boolean;
     licenseLimit?: number;
+    licenseOverageFee?: number;
 }
 
 export interface ZonePricing {

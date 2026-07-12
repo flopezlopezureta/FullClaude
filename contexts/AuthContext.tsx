@@ -80,6 +80,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     timeFormat: '12h',
     allowRedelivery: false,
     licenseLimit: 70,
+    licenseOverageFee: 0.1,
   });
   const [activeCommunes, setActiveCommunes] = useState<string[]>([]);
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);

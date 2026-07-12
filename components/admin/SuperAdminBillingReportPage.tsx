@@ -25,6 +25,7 @@ const SuperAdminBillingReportPage: React.FC = () => {
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
     const [limitInput, setLimitInput] = useState<string>('');
+    const [feeInput, setFeeInput] = useState<string>('');
     const [isSavingLimit, setIsSavingLimit] = useState(false);
     
     const today = new Date();
@@ -61,21 +62,29 @@ const SuperAdminBillingReportPage: React.FC = () => {
         if (systemSettings?.licenseLimit !== undefined) {
             setLimitInput(String(systemSettings.licenseLimit));
         }
+        if (systemSettings?.licenseOverageFee !== undefined) {
+            setFeeInput(String(systemSettings.licenseOverageFee));
+        }
     }, [systemSettings]);
 
-    const handleSaveLimit = async () => {
+    const handleSaveSaaSConfig = async () => {
         const parsedLimit = parseInt(limitInput);
+        const parsedFee = parseFloat(feeInput);
         if (isNaN(parsedLimit) || parsedLimit <= 0) {
             showToast('Por favor, ingresa un límite de licencias válido (mayor a 0)', 'error');
             return;
         }
+        if (isNaN(parsedFee) || parsedFee < 0) {
+            showToast('Por favor, ingresa una tarifa de exceso válida (mayor o igual a 0)', 'error');
+            return;
+        }
         setIsSavingLimit(true);
         try {
-            await updateSystemSettings({ licenseLimit: parsedLimit });
-            showToast('Límite de licencias actualizado con éxito', 'success');
+            await updateSystemSettings({ licenseLimit: parsedLimit, licenseOverageFee: parsedFee });
+            showToast('Configuración SaaS de licencias actualizada con éxito', 'success');
         } catch (err) {
-            console.error('Failed to save license limit', err);
-            showToast('Error al guardar el límite de licencias', 'error');
+            console.error('Failed to save SaaS settings', err);
+            showToast('Error al guardar la configuración SaaS', 'error');
         } finally {
             setIsSavingLimit(false);
         }
@@ -143,7 +152,21 @@ const SuperAdminBillingReportPage: React.FC = () => {
             const dateStr = `${String(month).padStart(2, '0')}_${year}`;
             const clientNameClean = reportData.client.name.replace(/\s+/g, '_');
             const filename = `Reporte_Cobro_UF_${clientNameClean}_${dateStr}.xlsx`;
-            await exportSuperAdminBillingToExcel(reportData, filename);
+            
+            const payload = {
+                ...reportData,
+                licenseBilling: {
+                    limit: systemSettings?.licenseLimit || 70,
+                    active: activeCount,
+                    excess: excessCount,
+                    overageFee: licenseOverageFee,
+                    costUf: licenseCostUf,
+                    costClpNet: licenseCostClpNet,
+                    costClpIva: licenseCostClpIva,
+                    costClpGross: licenseCostClpGross
+                }
+            };
+            await exportSuperAdminBillingToExcel(payload, filename);
         } catch (error) {
             console.error("Export to Excel failed:", error);
             alert("Error al exportar a Excel.");
@@ -155,6 +178,41 @@ const SuperAdminBillingReportPage: React.FC = () => {
     const activeCount = useMemo(() => {
         return users.filter((u: any) => u.status !== 'ELIMINADO').length;
     }, [users]);
+
+    const rolesSummary = useMemo(() => {
+        const counts = {
+            ADMIN: 0,
+            CLIENT: 0,
+            DRIVER: 0,
+            AUXILIAR: 0,
+            OTHER: 0
+        };
+        users.forEach((u: any) => {
+            if (u.status === 'ELIMINADO') return;
+            const role = String(u.role || '').toUpperCase();
+            if (['ADMIN', 'ADMIN_SISTEMAS', 'ADMINISTRADOR'].includes(role)) {
+                counts.ADMIN++;
+            } else if (['CLIENT', 'CLIENTE'].includes(role)) {
+                counts.CLIENT++;
+            } else if (['DRIVER', 'CONDUCTOR', 'CHOFER'].includes(role)) {
+                counts.DRIVER++;
+            } else if (['AUXILIAR', 'AUX'].includes(role)) {
+                counts.AUXILIAR++;
+            } else {
+                counts.OTHER++;
+            }
+        });
+        return counts;
+    }, [users]);
+
+    const excessCount = Math.max(0, activeCount - (systemSettings?.licenseLimit || 70));
+    const licenseOverageFee = systemSettings?.licenseOverageFee || 0.1;
+    const licenseCostUf = excessCount * licenseOverageFee;
+
+    const ufValue = reportData?.uf?.value || 0;
+    const licenseCostClpNet = ufValue ? Math.round(licenseCostUf * ufValue) : 0;
+    const licenseCostClpIva = Math.round(licenseCostClpNet * 0.19);
+    const licenseCostClpGross = Math.round(licenseCostClpNet * 1.19);
 
     const exceeded = activeCount > (systemSettings?.licenseLimit || 70);
 
@@ -194,81 +252,132 @@ const SuperAdminBillingReportPage: React.FC = () => {
             </div>
 
             {/* Control de Licencias SaaS */}
-            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] shadow-md rounded-lg p-6">
-                <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
-                    <IconUsers className="w-5 h-5 text-indigo-650" />
-                    <span>Control de Licencias de Uso (SaaS)</span>
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-                    {/* KPI de Uso Actual */}
-                    <div className="bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg p-4 flex items-center justify-between">
-                        <div>
-                            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Licencias Ocupadas</p>
-                            <p className="text-2xl font-black text-[var(--text-primary)] mt-1">
-                                {activeCount} <span className="text-sm font-normal text-[var(--text-muted)]">/ {systemSettings?.licenseLimit || 70}</span>
-                            </p>
-                            <p className="text-xs text-[var(--text-muted)] mt-1">
-                                {exceeded ? (
-                                    <span className="text-rose-600 dark:text-rose-400 font-bold">⚠️ Límite Excedido ({activeCount - (systemSettings?.licenseLimit || 70)} de exceso)</span>
-                                ) : (
-                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">✅ Dentro del límite contratado</span>
-                                )}
-                            </p>
+            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] shadow-md rounded-lg p-6 space-y-6">
+                <div className="flex justify-between items-center border-b border-[var(--border-primary)] pb-3">
+                    <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                        <IconUsers className="w-5 h-5 text-indigo-650" />
+                        <span>Control de Licencias de Uso (SaaS)</span>
+                    </h3>
+                    <span className="text-xs text-[var(--text-muted)] font-semibold">Configuración de Licencias de la Plataforma</span>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    {/* Columna 1: KPI & Progreso */}
+                    <div className="space-y-4">
+                        <div className="bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg p-4 flex items-center justify-between">
+                            <div>
+                                <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Licencias Activas</p>
+                                <p className="text-3xl font-black text-[var(--text-primary)] mt-1">
+                                    {activeCount} <span className="text-sm font-semibold text-[var(--text-muted)]">/ {systemSettings?.licenseLimit || 70}</span>
+                                </p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    {exceeded ? (
+                                        <span className="text-rose-600 dark:text-rose-400 font-bold">⚠️ Límite Excedido ({excessCount} en exceso)</span>
+                                    ) : (
+                                        <span className="text-emerald-600 dark:text-emerald-400 font-medium">✅ Dentro de la cuota contratada</span>
+                                    )}
+                                </p>
+                            </div>
+                            <div className="text-right">
+                                <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${
+                                    exceeded 
+                                        ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400' 
+                                        : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
+                                }`}>
+                                    {Math.round((activeCount / (systemSettings?.licenseLimit || 70)) * 100)}%
+                                </span>
+                            </div>
                         </div>
-                        <div className="text-right">
-                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${
-                                exceeded 
-                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400' 
-                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
-                            }`}>
-                                {Math.round((activeCount / (systemSettings?.licenseLimit || 70)) * 100)}%
-                            </span>
+
+                        {/* Progress bar */}
+                        <div className="space-y-2">
+                            <div className="flex justify-between text-xs font-bold text-[var(--text-muted)]">
+                                <span>Porcentaje de Uso</span>
+                                <span>{activeCount} de {systemSettings?.licenseLimit || 70}</span>
+                            </div>
+                            <div className="w-full bg-[var(--background-muted)] rounded-full h-3 overflow-hidden">
+                                <div 
+                                    className={`h-full transition-all duration-500 ${
+                                        exceeded ? 'bg-gradient-to-r from-rose-500 to-red-600' : 'bg-gradient-to-r from-emerald-500 to-indigo-650'
+                                    }`}
+                                    style={{ width: `${Math.min((activeCount / (systemSettings?.licenseLimit || 70)) * 100, 100)}%` }}
+                                />
+                            </div>
                         </div>
                     </div>
 
-                    {/* Barra de progreso visual */}
-                    <div className="space-y-2">
-                        <div className="flex justify-between text-xs font-bold text-[var(--text-muted)]">
-                            <span>Progreso de Uso</span>
-                            <span>{activeCount} de {systemSettings?.licenseLimit || 70}</span>
-                        </div>
-                        <div className="w-full bg-[var(--background-muted)] rounded-full h-3 overflow-hidden">
-                            <div 
-                                className={`h-full transition-all duration-500 ${
-                                    exceeded ? 'bg-gradient-to-r from-rose-500 to-red-600' : 'bg-gradient-to-r from-emerald-500 to-indigo-650'
-                                }`}
-                                style={{ width: `${Math.min((activeCount / (systemSettings?.licenseLimit || 70)) * 100, 100)}%` }}
-                            />
-                        </div>
-                    </div>
-
-                    {/* Seteador de Límite */}
+                    {/* Columna 2: Resumen por Rol */}
                     <div className="bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg p-4">
-                        <label htmlFor="license-limit-input" className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Ajustar Límite Base</label>
-                        <div className="flex gap-2">
-                            <input 
-                                type="number" 
-                                id="license-limit-input"
-                                value={limitInput}
-                                onChange={e => setLimitInput(e.target.value)}
-                                className="w-full px-3 py-1.5 border border-[var(--border-secondary)] rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] font-bold text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
-                                placeholder="Límite..."
-                                min="1"
-                            />
-                            <button 
-                                onClick={handleSaveLimit}
-                                disabled={isSavingLimit}
-                                className="px-4 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-all shrink-0 cursor-pointer"
-                            >
-                                {isSavingLimit ? '...' : 'Guardar'}
-                            </button>
+                        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-3">Resumen de Licencias por Rol</p>
+                        <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="flex justify-between items-center bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)]">
+                                <span className="font-semibold text-[var(--text-secondary)]">Admins</span>
+                                <span className="font-black text-indigo-600 dark:text-indigo-400">{rolesSummary.ADMIN}</span>
+                            </div>
+                            <div className="flex justify-between items-center bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)]">
+                                <span className="font-semibold text-[var(--text-secondary)]">Clientes</span>
+                                <span className="font-black text-indigo-600 dark:text-indigo-400">{rolesSummary.CLIENT}</span>
+                            </div>
+                            <div className="flex justify-between items-center bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)]">
+                                <span className="font-semibold text-[var(--text-secondary)]">Choferes</span>
+                                <span className="font-black text-indigo-600 dark:text-indigo-400">{rolesSummary.DRIVER}</span>
+                            </div>
+                            <div className="flex justify-between items-center bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)]">
+                                <span className="font-semibold text-[var(--text-secondary)]">Auxiliares</span>
+                                <span className="font-black text-indigo-600 dark:text-indigo-400">{rolesSummary.AUXILIAR}</span>
+                            </div>
+                            {rolesSummary.OTHER > 0 && (
+                                <div className="col-span-2 flex justify-between items-center bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)]">
+                                    <span className="font-semibold text-[var(--text-secondary)]">Otros Roles</span>
+                                    <span className="font-black text-indigo-600 dark:text-indigo-400">{rolesSummary.OTHER}</span>
+                                </div>
+                            )}
                         </div>
+                    </div>
+
+                    {/* Columna 3: Seteador de Configuración SaaS */}
+                    <div className="bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg p-4 space-y-3">
+                        <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Ajustes del SaaS</p>
+                        <div className="grid grid-cols-2 gap-2">
+                            <div>
+                                <label htmlFor="license-limit-input" className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Límite Base</label>
+                                <input 
+                                    type="number" 
+                                    id="license-limit-input"
+                                    value={limitInput}
+                                    onChange={e => setLimitInput(e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-[var(--border-secondary)] rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] font-bold text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+                                    placeholder="Límite..."
+                                    min="1"
+                                />
+                            </div>
+                            <div>
+                                <label htmlFor="license-fee-input" className="block text-[10px] font-bold text-[var(--text-muted)] uppercase mb-1">Costo Exceso (UF)</label>
+                                <input 
+                                    type="number" 
+                                    id="license-fee-input"
+                                    step="0.01"
+                                    value={feeInput}
+                                    onChange={e => setFeeInput(e.target.value)}
+                                    className="w-full px-2 py-1.5 border border-[var(--border-secondary)] rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] font-bold text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+                                    placeholder="Tarifa..."
+                                    min="0"
+                                />
+                            </div>
+                        </div>
+                        <button 
+                            onClick={handleSaveSaaSConfig}
+                            disabled={isSavingLimit}
+                            className="w-full py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-all cursor-pointer text-center"
+                        >
+                            {isSavingLimit ? 'Guardando...' : 'Guardar Ajustes SaaS'}
+                        </button>
                     </div>
                 </div>
 
                 {/* Alerta de exceso si corresponde */}
                 {exceeded && (
-                    <div className="mt-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-lg p-4 flex items-center gap-3">
+                    <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:bg-rose-900 rounded-lg p-4 flex items-center gap-3">
                         <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">
                             ⚠️ <strong>ALERTA DE SOBRECONSUMO:</strong> Se ha detectado un total de <strong>{activeCount}</strong> licencias ocupadas, superando el límite contratado de <strong>{systemSettings?.licenseLimit || 70}</strong>. Por favor, solicite a soporte técnico la ampliación de su suscripción o deshabilite cuentas de usuario inactivas.
                         </span>
@@ -456,6 +565,75 @@ const SuperAdminBillingReportPage: React.FC = () => {
                             </table>
                         </div>
                     </div>
+
+                    {/* Detalle de Facturación por Licencias (Exceso) */}
+                    <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6 border border-[var(--border-primary)]">
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-4 flex items-center gap-2">
+                            <IconUsers className="w-5 h-5 text-indigo-650" />
+                            <span>Detalle de Facturación por Licencias (SaaS)</span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                            <div className="space-y-2 text-[var(--text-secondary)]">
+                                <p className="flex justify-between">
+                                    <span>Licencias Ocupadas (Total):</span>
+                                    <span className="font-bold text-[var(--text-primary)]">{activeCount}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span>Límite Base Incluido:</span>
+                                    <span className="font-bold text-[var(--text-primary)]">{systemSettings?.licenseLimit || 70}</span>
+                                </p>
+                                <p className="flex justify-between border-t border-[var(--border-primary)] pt-2">
+                                    <span>Licencias en Exceso:</span>
+                                    <span className="font-bold text-rose-600">{excessCount}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span>Tarifa Exceso por Licencia:</span>
+                                    <span className="font-bold text-[var(--text-primary)]">{licenseOverageFee} UF / licencia</span>
+                                </p>
+                            </div>
+                            <div className="space-y-2 text-[var(--text-secondary)] md:border-l md:border-[var(--border-primary)] md:pl-6">
+                                <p className="flex justify-between">
+                                    <span>Costo Neto Licencias (UF):</span>
+                                    <span className="font-mono font-bold text-[var(--text-primary)]">{licenseCostUf.toFixed(4)} UF</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span>Costo Neto Licencias (CLP):</span>
+                                    <span className="font-bold text-[var(--text-primary)]">{formatCLP(licenseCostClpNet)}</span>
+                                </p>
+                                <p className="flex justify-between">
+                                    <span>IVA Licencias (19%):</span>
+                                    <span className="font-bold text-[var(--text-primary)]">{formatCLP(licenseCostClpIva)}</span>
+                                </p>
+                                <p className="flex justify-between border-t border-[var(--border-primary)] pt-2 text-base font-bold text-indigo-600 dark:text-indigo-400">
+                                    <span>Total Bruto Licencias:</span>
+                                    <span>{formatCLP(licenseCostClpGross)}</span>
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Resumen Combinado Final */}
+                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100/50 dark:from-indigo-950/20 dark:to-indigo-900/10 shadow-md rounded-lg p-6 border border-indigo-200 dark:border-indigo-900">
+                        <h3 className="text-lg font-bold text-indigo-950 dark:text-indigo-300 mb-4 flex items-center gap-2">
+                            <span>🧾 Resumen Combinado Final (Despachos + Licencias)</span>
+                        </h3>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-center">
+                            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] p-4 rounded-lg">
+                                <span className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Total Neto Combinado</span>
+                                <span className="block text-xl font-bold text-[var(--text-primary)] mt-1">{formatCLP((reportData.summary.totalCostClpNet || 0) + licenseCostClpNet)}</span>
+                                <span className="block text-xs text-[var(--text-muted)] mt-1 font-mono">{(reportData.summary.totalCostUf + licenseCostUf).toFixed(5)} UF</span>
+                            </div>
+                            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] p-4 rounded-lg">
+                                <span className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Total IVA Combinado</span>
+                                <span className="block text-xl font-bold text-[var(--text-primary)] mt-1">{formatCLP((reportData.summary.totalCostClpIva || 0) + licenseCostClpIva)}</span>
+                            </div>
+                            <div className="bg-indigo-600 text-white p-4 rounded-lg shadow-sm">
+                                <span className="block text-xs font-semibold text-indigo-100 uppercase tracking-wider">Total Bruto Combinado</span>
+                                <span className="block text-2xl font-black mt-1">{formatCLP((reportData.summary.totalCostClpGross || 0) + licenseCostClpGross)}</span>
+                                <span className="block text-xs text-indigo-200 mt-1">Con IVA incluido</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             )}
         </div>
@@ -510,17 +688,32 @@ const SuperAdminBillingReportPage: React.FC = () => {
                     <h3 className="font-bold text-gray-800 uppercase tracking-wider text-xs mb-3 border-b pb-2">Detalle de Facturación (Formato Factura)</h3>
                     <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-1">
-                            <p><span className="text-gray-500">Servicio:</span> <span className="font-semibold text-gray-800">Despacho de Envíos Mensuales</span></p>
+                            <p><span className="text-gray-500">Servicio 1:</span> <span className="font-semibold text-gray-800">Despacho de Envíos Mensuales</span></p>
                             <p><span className="text-gray-500">Tarifa Unitaria:</span> <span className="font-semibold text-gray-800">{reportData.summary.ratePerPackageUf} UF / envío</span></p>
                             <p><span className="text-gray-500">Envíos Cobrados:</span> <span className="font-semibold text-gray-800">{reportData.summary.totalPackages} despachos</span></p>
-                            <p><span className="text-gray-500">Total UF Acumulado:</span> <span className="font-semibold text-gray-800">{reportData.summary.totalCostUf.toFixed(5)} UF</span></p>
+                            <p><span className="text-gray-500">Costo Despachos (UF):</span> <span className="font-semibold text-gray-800">{reportData.summary.totalCostUf.toFixed(5)} UF</span></p>
+                            
+                            {excessCount > 0 && (
+                                <>
+                                    <div className="border-t my-1 pt-1" />
+                                    <p><span className="text-gray-500">Servicio 2:</span> <span className="font-semibold text-gray-800">Licencias SaaS en Exceso</span></p>
+                                    <p><span className="text-gray-500">Tarifa Exceso Unitaria:</span> <span className="font-semibold text-gray-800">{licenseOverageFee} UF / licencia</span></p>
+                                    <p><span className="text-gray-500">Licencias Cobradas:</span> <span className="font-semibold text-gray-800">{excessCount} licencias ({activeCount} ocupadas / {systemSettings?.licenseLimit || 70} base)</span></p>
+                                    <p><span className="text-gray-500">Costo Licencias (UF):</span> <span className="font-semibold text-gray-800">{licenseCostUf.toFixed(4)} UF</span></p>
+                                </>
+                            )}
                         </div>
-                        <div className="space-y-1 text-right border-l pl-4">
+                        <div className="space-y-1 text-right border-l pl-4 font-normal">
                             <p><span className="text-gray-500">UF de Referencia:</span> <span className="font-semibold text-gray-800">${reportData.uf.value?.toLocaleString('es-CL')} CLP</span></p>
-                            <p><span className="text-gray-500">Subtotal Neto:</span> <span className="font-semibold text-gray-800">{formatCLP(reportData.summary.totalCostClpNet)}</span></p>
-                            <p><span className="text-gray-500">IVA (19%):</span> <span className="font-semibold text-gray-800">{formatCLP(reportData.summary.totalCostClpIva)}</span></p>
+                            <p><span className="text-gray-500">Neto Despachos:</span> <span className="font-semibold text-gray-800">{formatCLP(reportData.summary.totalCostClpNet)}</span></p>
+                            {excessCount > 0 && (
+                                <p><span className="text-gray-500">Neto Licencias Exceso:</span> <span className="font-semibold text-gray-800">{formatCLP(licenseCostClpNet)}</span></p>
+                            )}
+                            <div className="border-t my-1 pt-1" />
+                            <p><span className="text-gray-500">Subtotal Neto Combinado:</span> <span className="font-bold text-gray-900">{formatCLP((reportData.summary.totalCostClpNet || 0) + licenseCostClpNet)}</span></p>
+                            <p><span className="text-gray-500">IVA Combinado (19%):</span> <span className="font-semibold text-gray-800">{formatCLP((reportData.summary.totalCostClpIva || 0) + licenseCostClpIva)}</span></p>
                             <div className="border-t pt-1 mt-2 text-base font-bold text-emerald-800">
-                                <span>TOTAL FACTURA: {formatCLP(reportData.summary.totalCostClpGross)}</span>
+                                <span>TOTAL FACTURA COMBINADA: {formatCLP((reportData.summary.totalCostClpGross || 0) + licenseCostClpGross)}</span>
                             </div>
                         </div>
                     </div>
