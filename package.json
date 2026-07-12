@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.78",
-  "versionComment": "Versión 2.6.78: Añadido soporte para edición interactiva del polígono (trazado) de sectores GIS directamente sobre el mapa, migración automática del color de los sectores en base de datos y un selector de color en la UI para personalizar la apariencia de cada sector.",
+  "version": "2.6.79",
+  "versionComment": "Versión 2.6.79: Robustecida la edición de límites de sectores GIS en el mapa. Ahora se fuerza la creación de un objeto L.Polygon nativo de Leaflet y se inicializa L.Edit.Poly de forma directa y defensiva si el prototipo del handler no se encuentra vinculado, garantizando que aparezcan los puntos/vértices de arrastre en cualquier circunstancia.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

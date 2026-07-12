@@ -329,15 +329,44 @@ const SectorEditorPage: React.FC = () => {
     
     // Create Leaflet layer for interactive polygon editing
     const color = s.color || '#fbbf24';
-    const layer = L.geoJSON(
-      { type: 'Feature', geometry: s.geometry, properties: {} },
-      {
-        style: { color: '#f59e0b', weight: 3, fillColor: color, fillOpacity: 0.4 }
-      }
-    ).getLayers()[0];
+    let layer: any;
     
+    try {
+      // 1. Try to instantiate a native L.Polygon / L.MultiPolygon for clean Leaflet.draw integration
+      const latlngs = L.GeoJSON.coordsToLatLngs(s.geometry.coordinates, s.geometry.type === 'MultiPolygon' ? 2 : 1);
+      layer = s.geometry.type === 'MultiPolygon'
+        ? L.multiPolygon(latlngs, { color: '#f59e0b', weight: 3, fillColor: color, fillOpacity: 0.4 })
+        : L.polygon(latlngs, { color: '#f59e0b', weight: 3, fillColor: color, fillOpacity: 0.4 });
+    } catch (err) {
+      console.warn("Failed to instantiate native L.Polygon, falling back to L.geoJSON:", err);
+      // Fallback: use L.geoJSON and extract the first child layer
+      const geojsonGroup = L.geoJSON(
+        { type: 'Feature', geometry: s.geometry, properties: {} },
+        {
+          style: { color: '#f59e0b', weight: 3, fillColor: color, fillOpacity: 0.4 }
+        }
+      );
+      layer = geojsonGroup.getLayers()[0];
+    }
+    
+    // Add the layer to the map before enabling editing
     layer.addTo(mapRef.current);
-    layer.editing.enable();
+    
+    // Enable editing robustly with standard prototype property or direct L.Edit.Poly instantiation
+    if (layer.editing && typeof layer.editing.enable === 'function') {
+      layer.editing.enable();
+    } else if (L.Edit && L.Edit.Poly) {
+      try {
+        const editHandler = new L.Edit.Poly(layer, {});
+        editHandler.enable();
+        layer.editing = editHandler;
+      } catch (e) {
+        console.error("Failed to enable L.Edit.Poly explicitly:", e);
+      }
+    } else {
+      console.error("Leaflet.draw editing handlers not found.");
+    }
+    
     editLayerRef.current = layer;
     
     try {
@@ -356,6 +385,9 @@ const SectorEditorPage: React.FC = () => {
       await api.updateGisSector(editingGeometryId, { geometry });
       
       if (editLayerRef.current) {
+        if (editLayerRef.current.editing && typeof editLayerRef.current.editing.disable === 'function') {
+          editLayerRef.current.editing.disable();
+        }
         mapRef.current.removeLayer(editLayerRef.current);
         editLayerRef.current = null;
       }
@@ -371,7 +403,12 @@ const SectorEditorPage: React.FC = () => {
 
   const handleCancelEditGeometry = () => {
     if (editLayerRef.current && mapRef.current) {
-      try { mapRef.current.removeLayer(editLayerRef.current); } catch {}
+      try {
+        if (editLayerRef.current.editing && typeof editLayerRef.current.editing.disable === 'function') {
+          editLayerRef.current.editing.disable();
+        }
+        mapRef.current.removeLayer(editLayerRef.current);
+      } catch {}
       editLayerRef.current = null;
     }
     setEditingGeometryId(null);
