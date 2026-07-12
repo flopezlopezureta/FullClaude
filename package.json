@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.81",
-  "versionComment": "Versión 2.6.81: Agregado resumen detallado de licencias activas por rol de usuario, configurador de cobro en UF por licencia excedente, cálculos de neto/iva/bruto convertidos a CLP con la UF del período, y reportes consolidados en UI, PDF impreso y exportación a Excel.",
+  "version": "2.6.82",
+  "versionComment": "Versión 2.6.82: Mejorada la legibilidad y contraste de los comentarios y banners de alerta/disclaimer de licencias SaaS a lo largo de la aplicación, utilizando colores de alta visibilidad profesional (rojo oscuro y rojo de alta legibilidad).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

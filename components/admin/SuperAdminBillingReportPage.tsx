@@ -244,9 +244,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
         `}} />
         <div className="space-y-6 print:hidden">
             {/* Access Disclaimer Header */}
-            <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/20 dark:border-rose-900 rounded-lg p-4 flex items-center gap-3">
-                <IconLock className="w-5 h-5 text-rose-600 shrink-0" />
-                <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">
+            <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 flex items-center gap-3">
+                <IconLock className="w-5 h-5 text-red-700 dark:text-red-400 shrink-0" />
+                <span className="text-sm font-extrabold text-red-950 dark:text-red-100">
                     MÓDULO DE SEGURIDAD EXCLUSIVO: Esta vista es visible únicamente para la cuenta de Superadministrador del sistema.
                 </span>
             </div>
@@ -377,9 +377,9 @@ const SuperAdminBillingReportPage: React.FC = () => {
 
                 {/* Alerta de exceso si corresponde */}
                 {exceeded && (
-                    <div className="bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:bg-rose-900 rounded-lg p-4 flex items-center gap-3">
-                        <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">
-                            ⚠️ <strong>ALERTA DE SOBRECONSUMO:</strong> Se ha detectado un total de <strong>{activeCount}</strong> licencias ocupadas, superando el límite contratado de <strong>{systemSettings?.licenseLimit || 70}</strong>. Por favor, solicite a soporte técnico la ampliación de su suscripción o deshabilite cuentas de usuario inactivas.
+                    <div className="bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 rounded-lg p-4 flex items-center gap-3">
+                        <span className="text-sm font-extrabold text-red-950 dark:text-red-100">
+                            ⚠️ ALERTA DE SOBRECONSUMO: Se ha detectado un total de {activeCount} licencias ocupadas, superando el límite contratado de {systemSettings?.licenseLimit || 70}. Por favor, solicite a soporte técnico la ampliación de su suscripción o deshabilite cuentas de usuario inactivas.
                         </span>
                     </div>
                 )}
