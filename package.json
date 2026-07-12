@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.79",
-  "versionComment": "Versión 2.6.79: Robustecida la edición de límites de sectores GIS en el mapa. Ahora se fuerza la creación de un objeto L.Polygon nativo de Leaflet y se inicializa L.Edit.Poly de forma directa y defensiva si el prototipo del handler no se encuentra vinculado, garantizando que aparezcan los puntos/vértices de arrastre en cualquier circunstancia.",
+  "version": "2.6.80",
+  "versionComment": "Versión 2.6.80: Agregado control de licencias de uso SaaS para Superadmin. Incluye contador de usuarios activos en tiempo real, barra de progreso de consumo, ajustador de límite base en base de datos y alertas preventivas/críticas en las vistas de Superadmin y gestión de usuarios cuando se excede la cuota contratada.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

@@ -43,6 +43,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [users, setUsers] = useState<User[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isLoading, setIsLoading] = useState(true);
+  const [totalActiveCount, setTotalActiveCount] = useState(0);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<User | null>(null);
   const [deletingUser, setDeletingUser] = useState<User | null>(null);
@@ -93,6 +94,11 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     setIsLoading(true);
     try {
       const allUsers = await api.getUsers();
+      
+      // Calculate total active licenses (not status === 'ELIMINADO')
+      const activeCount = allUsers.filter(u => u.status !== UserStatus.Deleted).length;
+      setTotalActiveCount(activeCount);
+
       const isSuperUserEmail = (email?: string) => email === 'admin' || email === 'admin@admin.cl';
       const currentUserIsSuper = isSuperUserEmail(auth?.user?.email);
 
@@ -365,8 +371,18 @@ const wb = XLSX.utils.book_new();
     return 0;
   });
 
+  const limit = auth?.systemSettings?.licenseLimit || 70;
+  const isLicenseExceeded = totalActiveCount > limit;
+
   return (
     <div className="container mx-auto">
+      {isLicenseExceeded && (
+        <div className="bg-rose-50 border border-rose-200 dark:bg-rose-950/20 dark:border-rose-900 rounded-lg p-4 mb-6 flex items-center gap-3">
+          <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">
+            ⚠️ <strong>ALERTA DE LICENCIAS EXCEDIDAS:</strong> Se ha superado el límite contratado de <strong>{limit}</strong> licencias ocupadas. Uso actual del sistema: <strong>{totalActiveCount}</strong>.
+          </span>
+        </div>
+      )}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
         <div className="relative flex-1 w-full max-w-md">
           <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">

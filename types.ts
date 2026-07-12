@@ -48,6 +48,7 @@ export interface SystemSettings {
     timezone?: string;
     appEnv?: string;
     recipientNotificationsEnabled?: boolean;
+    licenseLimit?: number;
 }
 
 export interface ZonePricing {

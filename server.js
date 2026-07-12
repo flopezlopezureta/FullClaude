@@ -729,6 +729,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (woocommerceAutoImport):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "licenseLimit" INTEGER DEFAULT 70');
+            console.log('MIGRATION APPLIED: Column "licenseLimit" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (licenseLimit):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
@@ -759,8 +765,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago')
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70)
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`

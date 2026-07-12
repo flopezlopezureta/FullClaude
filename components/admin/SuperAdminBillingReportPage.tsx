@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useMemo, useContext } from 'react';
 import { api } from '../../services/api';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconPrinter, IconCalendar, IconPackage, IconDollarSign, IconFileSpreadsheet, IconTrendingUp, IconLock, IconCube } from '../Icon';
+import { useToast } from '../../contexts/ToastContext';
+import { IconPrinter, IconCalendar, IconPackage, IconDollarSign, IconFileSpreadsheet, IconTrendingUp, IconLock, IconCube, IconUsers } from '../Icon';
 import { exportSuperAdminBillingToExcel } from '../../services/exportService';
 
 const KpiCard: React.FC<{ icon: React.ReactNode, title: string, value: string | number, subtext?: string, colorClass: string }> = ({ icon, title, value, subtext, colorClass }) => (
@@ -18,10 +19,13 @@ const KpiCard: React.FC<{ icon: React.ReactNode, title: string, value: string | 
 );
 
 const SuperAdminBillingReportPage: React.FC = () => {
-    const { token } = useContext(AuthContext)!;
+    const { token, systemSettings, updateSystemSettings } = useContext(AuthContext)!;
+    const { showToast } = useToast();
     const [users, setUsers] = useState<any[]>([]);
     const [selectedClientId, setSelectedClientId] = useState<string>('');
     const [clientSearchQuery, setClientSearchQuery] = useState<string>('');
+    const [limitInput, setLimitInput] = useState<string>('');
+    const [isSavingLimit, setIsSavingLimit] = useState(false);
     
     const today = new Date();
     const [year, setYear] = useState<string>(String(today.getFullYear()));
@@ -52,6 +56,30 @@ const SuperAdminBillingReportPage: React.FC = () => {
         };
         fetchClients();
     }, []);
+
+    useEffect(() => {
+        if (systemSettings?.licenseLimit !== undefined) {
+            setLimitInput(String(systemSettings.licenseLimit));
+        }
+    }, [systemSettings]);
+
+    const handleSaveLimit = async () => {
+        const parsedLimit = parseInt(limitInput);
+        if (isNaN(parsedLimit) || parsedLimit <= 0) {
+            showToast('Por favor, ingresa un límite de licencias válido (mayor a 0)', 'error');
+            return;
+        }
+        setIsSavingLimit(true);
+        try {
+            await updateSystemSettings({ licenseLimit: parsedLimit });
+            showToast('Límite de licencias actualizado con éxito', 'success');
+        } catch (err) {
+            console.error('Failed to save license limit', err);
+            showToast('Error al guardar el límite de licencias', 'error');
+        } finally {
+            setIsSavingLimit(false);
+        }
+    };
 
     const clients = useMemo(() => 
         users.filter(u => u.role === 'CLIENT').sort((a, b) => a.name.localeCompare(b.name)),
@@ -124,6 +152,12 @@ const SuperAdminBillingReportPage: React.FC = () => {
         }
     };
 
+    const activeCount = useMemo(() => {
+        return users.filter((u: any) => u.status !== 'ELIMINADO').length;
+    }, [users]);
+
+    const exceeded = activeCount > (systemSettings?.licenseLimit || 70);
+
     const inputClasses = "w-full px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)]";
     const formatCLP = (val: number | null) => val !== null ? val.toLocaleString('es-CL', { style: 'currency', currency: 'CLP' }) : '-';
 
@@ -157,6 +191,89 @@ const SuperAdminBillingReportPage: React.FC = () => {
                 <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">
                     MÓDULO DE SEGURIDAD EXCLUSIVO: Esta vista es visible únicamente para la cuenta de Superadministrador del sistema.
                 </span>
+            </div>
+
+            {/* Control de Licencias SaaS */}
+            <div className="bg-[var(--background-secondary)] border border-[var(--border-primary)] shadow-md rounded-lg p-6">
+                <h3 className="text-lg font-bold text-[var(--text-primary)] mb-3 flex items-center gap-2">
+                    <IconUsers className="w-5 h-5 text-indigo-650" />
+                    <span>Control de Licencias de Uso (SaaS)</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
+                    {/* KPI de Uso Actual */}
+                    <div className="bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg p-4 flex items-center justify-between">
+                        <div>
+                            <p className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider">Licencias Ocupadas</p>
+                            <p className="text-2xl font-black text-[var(--text-primary)] mt-1">
+                                {activeCount} <span className="text-sm font-normal text-[var(--text-muted)]">/ {systemSettings?.licenseLimit || 70}</span>
+                            </p>
+                            <p className="text-xs text-[var(--text-muted)] mt-1">
+                                {exceeded ? (
+                                    <span className="text-rose-600 dark:text-rose-400 font-bold">⚠️ Límite Excedido ({activeCount - (systemSettings?.licenseLimit || 70)} de exceso)</span>
+                                ) : (
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-medium">✅ Dentro del límite contratado</span>
+                                )}
+                            </p>
+                        </div>
+                        <div className="text-right">
+                            <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-black ${
+                                exceeded 
+                                    ? 'bg-rose-100 text-rose-800 dark:bg-rose-950/40 dark:text-rose-400' 
+                                    : 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-400'
+                            }`}>
+                                {Math.round((activeCount / (systemSettings?.licenseLimit || 70)) * 100)}%
+                            </span>
+                        </div>
+                    </div>
+
+                    {/* Barra de progreso visual */}
+                    <div className="space-y-2">
+                        <div className="flex justify-between text-xs font-bold text-[var(--text-muted)]">
+                            <span>Progreso de Uso</span>
+                            <span>{activeCount} de {systemSettings?.licenseLimit || 70}</span>
+                        </div>
+                        <div className="w-full bg-[var(--background-muted)] rounded-full h-3 overflow-hidden">
+                            <div 
+                                className={`h-full transition-all duration-500 ${
+                                    exceeded ? 'bg-gradient-to-r from-rose-500 to-red-600' : 'bg-gradient-to-r from-emerald-500 to-indigo-650'
+                                }`}
+                                style={{ width: `${Math.min((activeCount / (systemSettings?.licenseLimit || 70)) * 100, 100)}%` }}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Seteador de Límite */}
+                    <div className="bg-[var(--background-muted)] border border-[var(--border-secondary)] rounded-lg p-4">
+                        <label htmlFor="license-limit-input" className="block text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wider mb-2">Ajustar Límite Base</label>
+                        <div className="flex gap-2">
+                            <input 
+                                type="number" 
+                                id="license-limit-input"
+                                value={limitInput}
+                                onChange={e => setLimitInput(e.target.value)}
+                                className="w-full px-3 py-1.5 border border-[var(--border-secondary)] rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] font-bold text-sm focus:outline-none focus:ring-1 focus:ring-[var(--brand-primary)]"
+                                placeholder="Límite..."
+                                min="1"
+                            />
+                            <button 
+                                onClick={handleSaveLimit}
+                                disabled={isSavingLimit}
+                                className="px-4 py-1.5 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-all shrink-0 cursor-pointer"
+                            >
+                                {isSavingLimit ? '...' : 'Guardar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                {/* Alerta de exceso si corresponde */}
+                {exceeded && (
+                    <div className="mt-4 bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 rounded-lg p-4 flex items-center gap-3">
+                        <span className="text-sm font-semibold text-rose-800 dark:text-rose-400">
+                            ⚠️ <strong>ALERTA DE SOBRECONSUMO:</strong> Se ha detectado un total de <strong>{activeCount}</strong> licencias ocupadas, superando el límite contratado de <strong>{systemSettings?.licenseLimit || 70}</strong>. Por favor, solicite a soporte técnico la ampliación de su suscripción o deshabilite cuentas de usuario inactivas.
+                        </span>
+                    </div>
+                )}
             </div>
 
             <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
