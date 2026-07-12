@@ -351,8 +351,13 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
         };
 
         nonDriversRes.forEach(r => {
-            nonDriversCount += r.count;
             const role = String(r.role || '').toUpperCase();
+            
+            // Clients do not count towards the license total
+            if (!['CLIENT', 'CLIENTE'].includes(role)) {
+                nonDriversCount += r.count;
+            }
+
             if (['ADMIN', 'ADMIN_SISTEMAS', 'ADMINISTRADOR'].includes(role)) {
                 rolesSummary.ADMIN += r.count;
             } else if (['CLIENT', 'CLIENTE'].includes(role)) {

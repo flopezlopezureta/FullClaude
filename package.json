@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.90",
-  "versionComment": "Versión 2.6.90: Corregido el filtro de visualización en la lista de Administradores para que incluya a los usuarios con rol ADMIN_SISTEMAS, igualando así el conteo que aparece en el badge del menú lateral.",
+  "version": "2.6.91",
+  "versionComment": "Versión 2.6.91: Los usuarios con rol de Cliente (CLIENT / CLIENTE) ya no consumen ni se contabilizan dentro de las licencias usadas del sistema (tanto en la vista de gestión como en la facturación del superadmin).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

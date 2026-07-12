@@ -53,7 +53,7 @@ router.get('/license-status', authMiddleware, async (req, res) => {
         const { rows: nonDrivers } = await db.query(
             `SELECT COUNT(*)::int as count 
              FROM users 
-             WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER') 
+             WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER', 'CLIENT', 'CLIENTE') 
                AND status != 'ELIMINADO'
                AND email NOT IN ('admin', 'admin@admin.cl')`
         );

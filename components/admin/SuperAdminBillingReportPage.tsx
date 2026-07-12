@@ -187,7 +187,14 @@ const SuperAdminBillingReportPage: React.FC = () => {
         return counts;
     }, [users]);
 
-    const activeCount = reportData?.licenseBilling?.active ?? users.filter((u: any) => u.status !== 'ELIMINADO' && u.email !== 'admin' && u.email !== 'admin@admin.cl').length;
+    const activeCount = reportData?.licenseBilling?.active ?? users.filter((u: any) => {
+        const role = String(u.role || '').toUpperCase();
+        return u.status !== 'ELIMINADO' && 
+               u.email !== 'admin' && 
+               u.email !== 'admin@admin.cl' && 
+               role !== 'CLIENT' && 
+               role !== 'CLIENTE';
+    }).length;
     const rolesSummary = reportData?.licenseBilling?.rolesSummary ?? rolesSummaryClientSide;
 
     const excessCount = reportData?.licenseBilling?.excess ?? Math.max(0, activeCount - (systemSettings?.licenseLimit || 70));
