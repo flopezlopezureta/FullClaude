@@ -54,7 +54,8 @@ router.get('/license-status', authMiddleware, async (req, res) => {
             `SELECT COUNT(*)::int as count 
              FROM users 
              WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER') 
-               AND status != 'ELIMINADO'`
+               AND status != 'ELIMINADO'
+               AND email NOT IN ('admin', 'admin@admin.cl')`
         );
         const nonDriversCount = nonDrivers[0].count;
 
@@ -63,6 +64,7 @@ router.get('/license-status', authMiddleware, async (req, res) => {
              FROM users u
              WHERE u.role IN ('DRIVER', 'CONDUCTOR', 'CHOFER')
                AND u.status != 'ELIMINADO'
+               AND u.email NOT IN ('admin', 'admin@admin.cl')
                AND EXISTS (
                    SELECT 1 FROM packages p
                    WHERE p."driverId" = u.id

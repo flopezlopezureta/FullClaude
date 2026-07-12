@@ -95,8 +95,9 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     try {
       const allUsers = await api.getUsers();
       
-      // Calculate total active licenses (not status === 'ELIMINADO')
-      const activeCount = allUsers.filter(u => u.status !== UserStatus.Deleted).length;
+      // Calculate total active licenses (not status === 'ELIMINADO'), excluding the superuser account
+      const isSuperUserEmailFn = (email?: string) => email === 'admin' || email === 'admin@admin.cl';
+      const activeCount = allUsers.filter(u => u.status !== UserStatus.Deleted && !isSuperUserEmailFn(u.email)).length;
       setTotalActiveCount(activeCount);
 
       const isSuperUserEmail = (email?: string) => email === 'admin' || email === 'admin@admin.cl';

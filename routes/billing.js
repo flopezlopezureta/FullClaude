@@ -332,12 +332,13 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
         const limit = settingsRows.length > 0 ? settingsRows[0].licenseLimit : 70;
         const overageFee = settingsRows.length > 0 ? parseFloat(settingsRows[0].licenseOverageFee || 0.1) : 0.1;
 
-        // Count active non-drivers
+        // Count active non-drivers (excluding superuser)
         const { rows: nonDriversRes } = await db.query(
             `SELECT role, COUNT(*)::int as count 
              FROM users 
              WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER') 
                AND status != 'ELIMINADO'
+               AND email NOT IN ('admin', 'admin@admin.cl')
              GROUP BY role`
         );
         let nonDriversCount = 0;
@@ -363,12 +364,13 @@ router.get('/superadmin-monthly-report', authMiddleware, async (req, res) => {
             }
         });
 
-        // Count active drivers for selected period
+        // Count active drivers for selected period (excluding superuser)
         const { rows: activeDriversRes } = await db.query(
             `SELECT COUNT(DISTINCT u.id)::int as count
              FROM users u
              WHERE u.role IN ('DRIVER', 'CONDUCTOR', 'CHOFER')
                AND u.status != 'ELIMINADO'
+               AND u.email NOT IN ('admin', 'admin@admin.cl')
                AND EXISTS (
                    SELECT 1 FROM packages p
                    WHERE p."driverId" = u.id
