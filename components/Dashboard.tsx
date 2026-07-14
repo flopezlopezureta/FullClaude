@@ -293,11 +293,8 @@ const Dashboard: React.FC = () => {
             localStorage.setItem('lastCriticalAlertId', newestId);
         }
     } else {
-        // Si no hay alertas en absoluto, simplemente nos aseguramos que esté cerrado
-        // Pero NO borramos el lastAlertId, para que al volver a cargar no crea que son nuevas
-        if (criticalAlerts.length === 0 && showCriticalAlerts && localStorage.getItem('criticalAlertsPanelOpen') !== 'true') {
-            setShowCriticalAlerts(false);
-        }
+        // Fix: Do not auto-close on empty criticalAlerts because on mount it starts empty
+        // The UI already hides the panel if criticalAlerts.length === 0
     }
   }, [criticalAlerts, lastAlertId]);
 
