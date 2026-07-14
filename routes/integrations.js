@@ -1623,19 +1623,30 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
 
         for (const account of falabellaAccounts) {
             try {
-                const response = await makeFalabellaRequest(
-                    account.credentials.falabellaApiKey,
-                    account.credentials.falabellaSellerId,
-                    'GetOrders',
-                    'GET',
-                    { CreatedAfter: createdAfter }
-                );
+                const fetchOrdersByStatus = async (status) => {
+                    const response = await makeFalabellaRequest(
+                        account.credentials.falabellaApiKey,
+                        account.credentials.falabellaSellerId,
+                        'GetOrders',
+                        'GET',
+                        { CreatedAfter: createdAfter, Status: status }
+                    );
+                    const ordersContainer = response?.SuccessResponse?.Body?.Orders?.Order;
+                    if (ordersContainer) {
+                        return Array.isArray(ordersContainer) ? ordersContainer : [ordersContainer];
+                    }
+                    return [];
+                };
 
-                const ordersContainer = response?.SuccessResponse?.Body?.Orders?.Order;
-                if (ordersContainer) {
-                    const ordersList = Array.isArray(ordersContainer) ? ordersContainer : [ordersContainer];
-                    
-                    const mapped = ordersList.map(order => {
+                const [pendingOrders, readyOrders] = await Promise.all([
+                    fetchOrdersByStatus('pending'),
+                    fetchOrdersByStatus('ready_to_ship')
+                ]);
+
+                const combinedOrders = [...pendingOrders, ...readyOrders];
+
+                if (combinedOrders.length > 0) {
+                    const mapped = combinedOrders.map(order => {
                         const rawFirstName = order.CustomerFirstName || '';
                         const rawLastName = order.CustomerLastName || '';
                         const fullName = decodeHtmlEntities(`${rawFirstName} ${rawLastName}`.trim());
