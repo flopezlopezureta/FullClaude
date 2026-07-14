@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.92",
-  "versionComment": "Versión 2.6.92: Fix UX: El Centro de Alertas Críticas (Dashboard) ya no se cierra automáticamente a los 5 minutos ni se oculta por defecto al recargar la página si hay alertas. Ahora respetará estrictamente si el usuario lo abrió o cerró manualmente.",
+  "version": "2.6.93",
+  "versionComment": "Versión 2.6.93: Optimización del rendimiento al asignar paquetes masivamente a conductores. Se reemplazó la creación secuencial de eventos por una inserción en bloque (bulk insert), eliminando las demoras en el proceso.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

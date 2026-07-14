@@ -993,8 +993,12 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
         
         await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, finalDriverId ? new Date() : null, ...packageIds]);
 
-        // Create tracking events for all updated packages
-        const eventPromises = packageIds.map(async (packageId) => {
+        // Create tracking events for all updated packages using a single bulk insert
+        const eventValues = [];
+        const eventParams = [];
+        const timestamp = new Date();
+
+        packageIds.forEach((packageId, index) => {
             const pkgBefore = currentStates.find(p => p.id === packageId);
             const isActuallyReassigning = !isUnassigning && pkgBefore?.driverId && pkgBefore?.driverId !== driverId;
             
@@ -1005,13 +1009,17 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
                     ? `Reasignado al conductor ${driverName}. Fecha de reasignación actualizada.` 
                     : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`);
 
-            return client.query(
-                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [packageId, eventStatus, 'Centro de Distribución', details, new Date()]
-            );
+            const offset = index * 5;
+            eventValues.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+            eventParams.push(packageId, eventStatus, 'Centro de Distribución', details, timestamp);
         });
-        
-        await Promise.all(eventPromises);
+
+        if (eventValues.length > 0) {
+            await client.query(
+                `INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ${eventValues.join(', ')}`,
+                eventParams
+            );
+        }
 
         await client.query('COMMIT');
         
