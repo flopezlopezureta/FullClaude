@@ -589,7 +589,12 @@ const makeFalabellaRequest = (apiKey, sellerId, action, method = 'GET', extraPar
                 try {
                     const parsedData = JSON.parse(data);
                     if (res.statusCode >= 200 && res.statusCode < 300) {
-                        resolve(parsedData);
+                        // Falabella can return 200 OK but with an ErrorResponse payload
+                        if (parsedData.ErrorResponse) {
+                            reject({ statusCode: res.statusCode, body: parsedData, isFalabellaError: true });
+                        } else {
+                            resolve(parsedData);
+                        }
                     } else {
                         reject({ statusCode: res.statusCode, body: parsedData });
                     }
@@ -1316,14 +1321,16 @@ router.post('/test/falabella', authMiddleware, async (req, res) => {
                 apiKey = rows[0].falabella_api_key;
             }
         }
-        
-        await makeFalabellaRequest(apiKey, falabellaSellerId, 'GetDocumentTemplates');
+        const createdAfter = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+        await makeFalabellaRequest(apiKey, falabellaSellerId, 'GetOrders', 'GET', { Limit: 1, CreatedAfter: createdAfter });
         res.json({ message: 'Conexión exitosa con Falabella Seller Center (API Key y Seller ID válidos).' });
     } catch (err) {
-        console.error("Falabella Test Connection Error:", err);
+        console.error("Falabella Test Connection Error:", err.body || err);
         let errorMsg = 'Error desconocido al conectar con Falabella';
         if (err.body && err.body.ErrorResponse && err.body.ErrorResponse.Head) {
-            errorMsg = err.body.ErrorResponse.Head.ErrorMessage;
+            errorMsg = err.body.ErrorResponse.Head.ErrorMessage || err.body.ErrorResponse.Head.ErrorCode;
+        } else if (err.statusCode === 403) {
+            errorMsg = 'Acceso Denegado (403). Verifica que el Seller ID y la API Key sean correctos y pertenezcan a Falabella.';
         } else if (err.message) {
             errorMsg = err.message;
         } else if (err.body) {

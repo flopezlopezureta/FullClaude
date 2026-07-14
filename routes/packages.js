@@ -1507,17 +1507,42 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
     }
     
     try {
-        const { rows } = await db.query(
-            'SELECT settings.falabella_api_key, settings.falabella_seller_id ' +
-            'FROM integration_settings settings WHERE settings.id = 1'
+        let apiKey = null;
+        let sellerId = null;
+
+        // 1. Intentar obtener credenciales de la cuenta específica del usuario (Multi-Account)
+        const { rows: pkgRows } = await db.query(
+            'SELECT p."sourceAccountId", u.integrations FROM packages p JOIN users u ON p."creatorId" = u.id WHERE p.id = $1',
+            [packageId]
         );
-        
-        if (rows.length === 0 || !rows[0].falabella_api_key) {
+
+        if (pkgRows.length > 0 && pkgRows[0].integrations) {
+            const integrations = typeof pkgRows[0].integrations === 'string' ? JSON.parse(pkgRows[0].integrations) : pkgRows[0].integrations;
+            const accounts = integrations.accounts || [];
+            // Buscar por ID de cuenta exacto o usar la primera cuenta Falabella disponible
+            const falabellaAccount = accounts.find(acc => acc.id === pkgRows[0].sourceAccountId && acc.type === 'FALABELLA') 
+                                     || accounts.find(acc => acc.type === 'FALABELLA');
+
+            if (falabellaAccount && falabellaAccount.credentials) {
+                apiKey = falabellaAccount.credentials.falabellaApiKey;
+                sellerId = falabellaAccount.credentials.falabellaSellerId;
+            }
+        }
+
+        // 2. Fallback a la configuración global legacy si no se encontró en el usuario
+        if (!apiKey || !sellerId) {
+            const { rows: settingsRows } = await db.query(
+                'SELECT falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1'
+            );
+            if (settingsRows.length > 0 && settingsRows[0].falabella_api_key) {
+                apiKey = decrypt(settingsRows[0].falabella_api_key);
+                sellerId = settingsRows[0].falabella_seller_id;
+            }
+        }
+
+        if (!apiKey || !sellerId) {
             throw new Error("Credenciales de Falabella no configuradas.");
         }
-        
-        const apiKey = decrypt(rows[0].falabella_api_key);
-        const sellerId = rows[0].falabella_seller_id;
         
         const timestamp = new Date().toISOString();
         const params = {

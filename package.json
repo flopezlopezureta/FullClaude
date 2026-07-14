@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.94",
-  "versionComment": "Versión 2.6.94: Agregado botón en el Editor de Sectores GIS para ver todos los sectores de todas las comunas simultáneamente en el mapa.",
+  "version": "2.6.95",
+  "versionComment": "Versión 2.6.95: Corrección de integración Falabella, falsos positivos de conexión y soporte multicuenta en despachos.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
