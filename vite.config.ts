@@ -8,7 +8,8 @@ const packageJson = JSON.parse(fs.readFileSync('./package.json', 'utf-8'));
 export default defineConfig({
   plugins: [react()],
   define: {
-    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version)
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_BUILD_DATE': JSON.stringify(new Date().toLocaleString('es-CL', { timeZone: 'America/Santiago' }))
   },
   build: {
     chunkSizeWarningLimit: 1000,

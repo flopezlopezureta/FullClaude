@@ -347,7 +347,7 @@ const SettingsPage: React.FC = () => {
                                 <input 
                                     type="text" 
                                     disabled 
-                                    value={`v${(import.meta as any).env.VITE_APP_VERSION}`} 
+                                    value={`v${(import.meta as any).env.VITE_APP_VERSION} (Actualizado: ${(import.meta as any).env.VITE_BUILD_DATE || 'Desconocido'})`} 
                                     className={`${inputClasses} bg-[var(--background-muted)] text-[var(--text-muted)] cursor-not-allowed`} 
                                 />
                                 <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
