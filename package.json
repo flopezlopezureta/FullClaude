@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.93",
-  "versionComment": "Versión 2.6.93: Optimización del rendimiento al asignar paquetes masivamente a conductores. Se reemplazó la creación secuencial de eventos por una inserción en bloque (bulk insert), eliminando las demoras en el proceso.",
+  "version": "2.6.94",
+  "versionComment": "Versión 2.6.94: Agregado botón en el Editor de Sectores GIS para ver todos los sectores de todas las comunas simultáneamente en el mapa.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

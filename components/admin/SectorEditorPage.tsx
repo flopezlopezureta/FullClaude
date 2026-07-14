@@ -61,6 +61,8 @@ const SectorEditorPage: React.FC = () => {
   // Selected color for new sector
   const [selectedColor, setSelectedColor] = useState('#4f46e5');
 
+  const [showAllGlobal, setShowAllGlobal] = useState(false);
+
   // Pending polygon waiting for name input
   const pendingLayerRef = useRef<any>(null);
   const [showNameDialog, setShowNameDialog] = useState(false);
@@ -90,12 +92,12 @@ const SectorEditorPage: React.FC = () => {
     };
   }, []);
 
-  // ── Load sectors for selected commune ──────────────────────────────────────
-  const loadSectors = useCallback(async (comuna: string) => {
-    if (!comuna) return;
+  // ── Load sectors for selected commune (or all if fetchAll is true) ──
+  const loadSectors = useCallback(async (comuna: string, fetchAll = false) => {
+    if (!comuna && !fetchAll) return;
     setIsLoading(true);
     try {
-      const data = await api.getGisSectors(comuna);
+      const data = await api.getGisSectors(fetchAll ? undefined : comuna);
       setSectors(data);
     } catch {
       showToast('Error al cargar sectores', false);
@@ -173,11 +175,19 @@ const SectorEditorPage: React.FC = () => {
             style: { color, weight: 2, fillColor: color, fillOpacity: 0.3 },
           }
         )
-          .bindTooltip(`<b>${s.sector}</b>`, { permanent: false })
+          .bindTooltip(`<b>${s.sector}</b><br/><span style="font-size:10px">${s.comuna}</span>`, { permanent: false })
           .addTo(mapRef.current);
         sectorLayersRef.current.push(layer);
       } catch {}
     });
+    
+    // Auto fit bounds if showing global sectors
+    if (sectorList.length > 0 && !activeEditId) {
+        try {
+            const group = new L.FeatureGroup(sectorLayersRef.current);
+            mapRef.current.fitBounds(group.getBounds(), { padding: [30, 30] });
+        } catch {}
+    }
   }, []);
 
   // Re-paint whenever sectors or active editing geometry changes
@@ -185,13 +195,32 @@ const SectorEditorPage: React.FC = () => {
 
   // When commune changes: load boundary + sectors
   useEffect(() => {
-    if (!selectedComuna) return;
+    if (!selectedComuna) {
+        if (!showAllGlobal) setSectors([]);
+        return;
+    }
+    setShowAllGlobal(false);
     loadComunaBoundary(selectedComuna);
     loadSectors(selectedComuna);
     // Clear pending drawings
     if (drawnLayersRef.current) drawnLayersRef.current.clearLayers();
     stopDrawing();
   }, [selectedComuna]);
+
+  const handleToggleGlobal = async () => {
+    const next = !showAllGlobal;
+    setShowAllGlobal(next);
+    if (next) {
+        setSelectedComuna('');
+        if (comunaLayerRef.current && mapRef.current) {
+            mapRef.current.removeLayer(comunaLayerRef.current);
+            comunaLayerRef.current = null;
+        }
+        await loadSectors('', true);
+    } else {
+        setSectors([]);
+    }
+  };
 
   // ── Draw control ───────────────────────────────────────────────────────────
   const startDrawing = useCallback(() => {
@@ -293,7 +322,7 @@ const SectorEditorPage: React.FC = () => {
     setIsLoading(true);
     try {
       await api.deleteGisSector(id);
-      await loadSectors(selectedComuna);
+      await loadSectors(selectedComuna, showAllGlobal);
       showToast(`Sector "${name}" eliminado`);
     } catch {
       showToast('Error al eliminar', false);
@@ -311,7 +340,7 @@ const SectorEditorPage: React.FC = () => {
       setRenamingId(null);
       setRenameValue('');
       setRenameColor('');
-      await loadSectors(selectedComuna);
+      await loadSectors(selectedComuna, showAllGlobal);
       showToast('Sector actualizado');
     } catch {
       showToast('Error al actualizar el sector', false);
@@ -392,7 +421,7 @@ const SectorEditorPage: React.FC = () => {
         editLayerRef.current = null;
       }
       setEditingGeometryId(null);
-      await loadSectors(selectedComuna);
+      await loadSectors(selectedComuna, showAllGlobal);
       showToast('🗺️ Trazado del sector actualizado con éxito');
     } catch (e: any) {
       showToast(e.message || 'Error al actualizar trazado', false);
@@ -449,6 +478,22 @@ const SectorEditorPage: React.FC = () => {
             showNoneOption={false}
           />
         </div>
+
+        {/* Global view button */}
+        <button
+            onClick={handleToggleGlobal}
+            style={{
+              padding: '10px 0', borderRadius: 10, border: showAllGlobal ? 'none' : '1px solid var(--border-primary)',
+              cursor: 'pointer', fontWeight: 700, fontSize: 13,
+              background: showAllGlobal ? '#10b981' : 'var(--background-secondary)',
+              color: showAllGlobal ? '#fff' : 'var(--text-primary)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8,
+              transition: 'all 0.2s',
+            }}
+        >
+            <IconMap style={{ width: 16, height: 16 }} />
+            {showAllGlobal ? '🌍 Ocultar Vista Global' : '🌍 Ver Todos los Sectores (Global)'}
+        </button>
 
         {/* Draw button */}
         {selectedComuna && (
@@ -555,15 +600,15 @@ const SectorEditorPage: React.FC = () => {
           {isLoading && !sectors.length && (
             <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>Cargando…</div>
           )}
-          {!selectedComuna && (
+          {!selectedComuna && !showAllGlobal && (
             <div style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)', fontSize: 13 }}>
               <IconMapPin style={{ width: 32, height: 32, margin: '0 auto 8px', display: 'block', opacity: 0.4 }} />
               Selecciona una comuna para ver y gestionar sus sectores
             </div>
           )}
-          {selectedComuna && !isLoading && sectors.length === 0 && !showNameDialog && (
+          {(selectedComuna || showAllGlobal) && !isLoading && sectors.length === 0 && !showNameDialog && (
             <div style={{ background: 'var(--background-secondary)', borderRadius: 10, padding: 16, textAlign: 'center', color: 'var(--text-muted)', fontSize: 12 }}>
-              Sin sectores para <strong>{selectedComuna}</strong>.<br />Usa \"Dibujar nuevo sector\" para comenzar.
+              Sin sectores {showAllGlobal ? 'registrados en el sistema' : <span>para <strong>{selectedComuna}</strong></span>}.<br />Usa "Dibujar nuevo sector" para comenzar.
             </div>
           )}
           {sectors.map((s, i) => {
@@ -643,9 +688,9 @@ const SectorEditorPage: React.FC = () => {
         </div>
 
         {/* Sector count badge */}
-        {selectedComuna && sectors.length > 0 && (
+        {(selectedComuna || showAllGlobal) && sectors.length > 0 && (
           <div style={{ background: '#ede9fe', borderRadius: 8, padding: '6px 12px', textAlign: 'center', fontSize: 12, fontWeight: 700, color: '#5b21b6' }}>
-            {selectedComuna}: {sectors.length} sector{sectors.length !== 1 ? 'es' : ''} definido{sectors.length !== 1 ? 's' : ''}
+            {showAllGlobal ? 'Todos los sectores' : selectedComuna}: {sectors.length} sector{sectors.length !== 1 ? 'es' : ''} definido{sectors.length !== 1 ? 's' : ''}
           </div>
         )}
       </div>
@@ -664,7 +709,7 @@ const SectorEditorPage: React.FC = () => {
             ✏️ Haz clic en el mapa para trazar el sector · Doble clic para cerrar
           </div>
         )}
-        {!selectedComuna && (
+        {!selectedComuna && !showAllGlobal && (
           <div style={{
             position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center',
             background: 'rgba(255,255,255,0.7)', backdropFilter: 'blur(4px)',
