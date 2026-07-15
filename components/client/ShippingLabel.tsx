@@ -30,7 +30,7 @@ const ShippingLabel: React.FC<ShippingLabelProps> = ({ pkg, creatorName, format 
         qrContent = pkg.trackingId || pkg.id;
     }
 
-    let refNumber = pkg.shopifyOrderNumber || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
+    let refNumber = pkg.falabellaTrackingId || pkg.falabellaOrderId || pkg.shopifyOrderNumber || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.meliOrderId || pkg.meliFlexCode;
     let secondaryRef = (pkg.shopifyOrderNumber && pkg.shopifyOrderId && pkg.shopifyOrderNumber !== pkg.shopifyOrderId) ? pkg.shopifyOrderId : null;
 
     // Custom format for Shopify if both references exist: "Short / Long"
