@@ -354,6 +354,9 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
                       {pkg.meliFlexCode && (
                           <p><span className="font-medium text-[var(--text-primary)]">ID Envío ML:</span> {pkg.meliFlexCode}</p>
                       )}
+                      {(pkg.falabellaTrackingId || pkg.falabellaOrderId) && (
+                          <p><span className="font-medium text-[var(--text-primary)]">ID Envío Falabella:</span> {pkg.falabellaTrackingId || pkg.falabellaOrderId}</p>
+                      )}
                       {pkg.trackingId && (
                           <p><span className="font-medium text-[var(--text-primary)]">Código Barra (SCA):</span> {pkg.trackingId}</p>
                       )}
