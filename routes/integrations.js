@@ -566,11 +566,11 @@ const makeFalabellaRequest = (apiKey, sellerId, action, method = 'GET', extraPar
         };
 
         const signature = buildFalabellaSignature(baseParams, decryptedApiKey);
-        baseParams.Signature = signature;
 
-        const queryString = Object.entries(baseParams)
-            .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
-            .join('&');
+        const sortedKeys = Object.keys(baseParams).sort();
+        const queryString = sortedKeys
+            .map(key => `${encodeURIComponent(key)}=${encodeURIComponent(baseParams[key])}`)
+            .join('&') + `&Signature=${encodeURIComponent(signature)}`;
 
         const options = {
             hostname: 'sellercenter-api.falabella.com',
