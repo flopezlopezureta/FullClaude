@@ -6,6 +6,13 @@ const nodemailer = require('nodemailer');
  * Notification Service to handle recipient notifications via WhatsApp (simulated) 
  * and Email (via SMTP).
  */
+// Cache settings and integrations to avoid slamming the DB with queries on bulk assignments
+let cachedSettings = null;
+let cachedSettingsTime = 0;
+let cachedIntegration = null;
+let cachedIntegrationTime = 0;
+const CACHE_TTL = 30000; // 30 seconds
+
 const NotificationService = {
     /**
      * Sends a notification to the recipient of a package.
@@ -14,14 +21,20 @@ const NotificationService = {
      */
     async notifyRecipient(packageId, status) {
         try {
-            // 1. Check if notifications are enabled in system_settings
-            const { rows: settingsRows } = await db.query('SELECT "recipientNotificationsEnabled", "companyName" FROM system_settings LIMIT 1');
-            if (settingsRows.length === 0 || !settingsRows[0].recipientNotificationsEnabled) {
+            const now = Date.now();
+            
+            // 1. Check if notifications are enabled (cached)
+            if (!cachedSettings || (now - cachedSettingsTime) > CACHE_TTL) {
+                const { rows: settingsRows } = await db.query('SELECT "recipientNotificationsEnabled", "companyName" FROM system_settings LIMIT 1');
+                cachedSettings = settingsRows.length > 0 ? settingsRows[0] : { recipientNotificationsEnabled: false };
+                cachedSettingsTime = now;
+            }
+            if (!cachedSettings || !cachedSettings.recipientNotificationsEnabled) {
                 return;
             }
-            const settings = settingsRows[0];
+            const settings = cachedSettings;
 
-            // 2. Get package and recipient details
+            // 2. Get package and recipient details (must remain direct query per package)
             const { rows: pkgRows } = await db.query(
                 `SELECT p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", p."deliveryPhotosBase64", c.name as seller_name 
                  FROM packages p 
@@ -33,9 +46,13 @@ const NotificationService = {
             const pkg = pkgRows[0];
             const sellerName = pkg.seller_name || settings.companyName;
 
-            // 3. Get integration settings (WhatsApp & SMTP)
-            const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
-            const integration = integrationRows.length > 0 ? integrationRows[0] : null;
+            // 3. Get integration settings (WhatsApp & SMTP) (cached)
+            if (!cachedIntegration || (now - cachedIntegrationTime) > CACHE_TTL) {
+                const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
+                cachedIntegration = integrationRows.length > 0 ? integrationRows[0] : null;
+                cachedIntegrationTime = now;
+            }
+            const integration = cachedIntegration;
 
             // 4. Prepare tracking URL (Dinámico según el entorno)
             const baseUrl = process.env.APP_URL || 'https://fullenvios.selcom.cl';

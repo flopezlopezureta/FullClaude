@@ -41,49 +41,6 @@ router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
     }
 });
 
-// [EMERGENCIA] Ruta para arreglar retroactivamente los datos de Falabella importados sin ID de cuenta ni tracking
-router.get('/sys/fix-falabella-db', async (req, res) => {
-    try {
-        console.log('[Maintenance] Fixing Falabella packages in DB...');
-        
-        // 1. Set sourceAccountId and sourceAccountName for all Falabella packages
-        const q1 = `
-            UPDATE packages 
-            SET 
-                "sourceAccountId" = 'falabella-0245971c-c10a-4a9c-9047-b9c84a88f5a1',
-                "sourceAccountName" = 'Falabella (bodega@petclub.cl)'
-            WHERE source = 'FALABELLA' AND "sourceAccountId" IS NULL;
-        `;
-        const r1 = await db.query(q1);
-
-        // 2. Set tracking number for order 1160161463 (Danae)
-        const q2 = `
-            UPDATE packages 
-            SET "falabellaTrackingId" = '3244319096'
-            WHERE "falabellaOrderId" = '1160161463' AND "falabellaTrackingId" IS NULL;
-        `;
-        const r2 = await db.query(q2);
-
-        // 3. Set tracking number for order 1160154645 (Juan)
-        const q3 = `
-            UPDATE packages 
-            SET "falabellaTrackingId" = '3244291217'
-            WHERE "falabellaOrderId" = '1160154645' AND "falabellaTrackingId" IS NULL;
-        `;
-        const r3 = await db.query(q3);
-
-        res.json({
-            success: true,
-            message: 'Migración de Falabella completada.',
-            accountsUpdated: r1.rowCount,
-            danaeUpdated: r2.rowCount,
-            juanUpdated: r3.rowCount
-        });
-    } catch (err) {
-        console.error('[Maintenance] Falabella fix error:', err);
-        res.status(500).json({ message: 'Error durante la migración: ' + err.message });
-    }
-});
 
 // [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
 router.get('/fix-egress-today', async (req, res) => {
@@ -547,8 +504,8 @@ function isMeliCode(code) {
             if (parsed.id) clean = String(parsed.id).trim();
         } catch (e) {}
     }
-    // Check if numeric (10-12 digits) or starts with ML
-    return /^\d{10,12}$/.test(clean) || /^ML/i.test(clean);
+    // Check if numeric (starts with 4 or 2, and is 10-12 digits long) or starts with ML
+    return /^[42]\d{9,11}$/.test(clean) || /^ML/i.test(clean);
 }
 
 router.get('/query/:searchId', authMiddleware, async (req, res) => {
