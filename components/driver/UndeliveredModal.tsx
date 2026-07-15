@@ -187,14 +187,13 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
       try {
           const compressionOptions = {
               maxSizeMB: 1,
-              maxWidthOrHeight: 1280,
+              maxWidthOrHeight: 1200,
               useWebWorker: true,
               initialQuality: 0.8
           };
 
           for (const file of fileList) {
               try {
-                  // Usar la librería browser-image-compression (que ya está importada)
                   const compressedFile = await imageCompression(file, compressionOptions);
                   
                   const base64 = await new Promise<string>((resolve, reject) => {
@@ -204,13 +203,12 @@ const UndeliveredModal: React.FC<UndeliveredModalProps> = ({ pkg, onClose, onCon
                       reader.readAsDataURL(compressedFile);
                   });
 
-                  // Actualizar una por una para que el usuario vea progreso
                   setPhotosBase64(prev => [...prev, base64]);
               } catch (innerErr: any) {
                   console.error(`Error procesando archivo ${file.name}:`, innerErr);
-                  // Continuar con los demás archivos aunque uno falle
               }
           }
+          alert("Imágenes optimizadas con éxito para una carga fluida.");
       } catch (err: any) {
           console.error("Image processing error [UndeliveredModal]:", err);
           setError('Ocurrió un error al procesar las imágenes seleccionadas.');

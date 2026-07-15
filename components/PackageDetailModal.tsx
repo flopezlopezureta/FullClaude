@@ -7,6 +7,7 @@ import { api } from '../services/api';
 import { AuthContext } from '../contexts/AuthContext';
 import { IconX, IconCalendar, IconMapPin, IconPhone, IconWhatsapp, IconAlertTriangle, IconCheckCircle, IconSun, IconZap, IconMoon, IconQrcode, IconChevronLeft, IconTruck, IconArrowUturnLeft, IconRefresh, IconCopy, IconPencil, IconClock, IconHistory, IconPlus, IconPhoto, IconTrash } from './Icon';
 import QRCodeModal from './client/QRCodeModal';
+import imageCompression from 'browser-image-compression';
 
 interface PackageDetailModalProps {
   pkg: Package;
@@ -38,32 +39,51 @@ const PackageDetailModal: React.FC<PackageDetailModalProps> = ({ pkg, onClose, o
   const [isUploading, setIsUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const handleAdminPhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAdminPhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     setIsUploading(true);
-    const promises = Array.from(files).map(file => {
-      return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => resolve(reader.result as string);
-        reader.onerror = reject;
-        reader.readAsDataURL(file);
-      });
-    });
+    const fileList = Array.from(files);
 
-    Promise.all(promises)
-      .then(base64Photos => {
+    const compressionOptions = {
+        maxSizeMB: 1,
+        maxWidthOrHeight: 1200,
+        useWebWorker: true,
+        initialQuality: 0.8
+    };
+
+    try {
+        const compressedPromises = fileList.map(async (file) => {
+            try {
+                const compressedFile = await imageCompression(file, compressionOptions);
+                return new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onloadend = () => resolve(reader.result as string);
+                    reader.onerror = () => reject(new Error("Error al leer archivo comprimido"));
+                    reader.readAsDataURL(compressedFile);
+                });
+            } catch (innerErr) {
+                console.error(`Error compressing admin photo ${file.name}:`, innerErr);
+                return new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = () => resolve(reader.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                });
+            }
+        });
+
+        const base64Photos = await Promise.all(compressedPromises);
         setAdminPhotos(prev => [...prev, ...base64Photos]);
-      })
-      .catch(err => {
-        console.error("Error reading files:", err);
-        alert("Error al cargar las imágenes.");
-      })
-      .finally(() => {
+        alert("Imágenes optimizadas con éxito para una carga fluida.");
+    } catch (err) {
+        console.error("Error processing admin photos:", err);
+        alert("Error al procesar y optimizar las imágenes.");
+    } finally {
         setIsUploading(false);
         if (fileInputRef.current) fileInputRef.current.value = '';
-      });
+    }
   };
 
   const handleRemoveAdminPhoto = (index: number) => {

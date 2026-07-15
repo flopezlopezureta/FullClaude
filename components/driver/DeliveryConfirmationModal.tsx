@@ -270,10 +270,10 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       
       try {
           const compressionOptions = {
-              maxSizeMB: 0.4, // Reducido para mayor velocidad
-              maxWidthOrHeight: 800, // Resolución optimizada para móviles
+              maxSizeMB: 1,
+              maxWidthOrHeight: 1200,
               useWebWorker: true,
-              initialQuality: 0.5
+              initialQuality: 0.8
           };
 
           for (const file of fileList) {
@@ -292,6 +292,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                   console.error(`Error procesando archivo ${file.name}:`, innerErr);
               }
           }
+          alert("Imágenes optimizadas con éxito para una carga fluida.");
       } catch (err: any) {
           console.error("Image processing error [DeliveryModal]:", err);
           setError('Ocurrió un error al procesar las imágenes seleccionadas.');

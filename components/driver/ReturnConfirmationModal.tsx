@@ -199,7 +199,7 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
       try {
           const compressionOptions = {
               maxSizeMB: 1,
-              maxWidthOrHeight: 1280,
+              maxWidthOrHeight: 1200,
               useWebWorker: true,
               initialQuality: 0.8
           };
@@ -220,6 +220,7 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
                   console.error(`Error procesando archivo ${file.name}:`, innerErr);
               }
           }
+          alert("Imágenes optimizadas con éxito para una carga fluida.");
       } catch (err: any) {
           console.error("Image processing error [ReturnModal]:", err);
           setError('Ocurrió un error al procesar las imágenes seleccionadas.');
