@@ -1681,6 +1681,16 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
             }
         }
 
+        // Filter out already imported orders so they disappear from the list
+        if (allOrders.length > 0) {
+            const { rows: existing } = await db.query(
+                'SELECT "falabellaOrderId" FROM packages WHERE "creatorId" = $1 AND "falabellaOrderId" IS NOT NULL',
+                [clientId]
+            );
+            const importedIds = new Set(existing.map(p => p.falabellaOrderId));
+            allOrders = allOrders.filter(order => !importedIds.has(order.id));
+        }
+
         res.json(allOrders);
     } catch (err) {
         console.error("Falabella Fetch Orders Error:", err);
