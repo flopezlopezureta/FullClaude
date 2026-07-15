@@ -258,13 +258,17 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     }));
 
     try {
-        await api.createMultiplePackages(fullPackagesData);
+        const result = await api.createMultiplePackages(fullPackagesData);
         handleCloseImportModal();
-        alert(`${fullPackagesData.length} paquetes importados con éxito.`);
-        // Note: No need to update local package state here, as the main dashboard will refetch.
-    } catch (error) {
+        if (result && result.errorCount > 0) {
+            const errMsgs = result.errors.map((e: any) => `${e.recipientName}: ${e.error}`).join('\n');
+            alert(`Se importaron ${result.importedCount} paquetes.\n\nErrores (${result.errorCount}):\n${errMsgs}`);
+        } else {
+            alert(`${fullPackagesData.length} paquetes importados con éxito.`);
+        }
+    } catch (error: any) {
         console.error("Failed to import packages:", error);
-        alert("Ocurrió un error al importar los paquetes.");
+        alert("Error al importar: " + (error.message || JSON.stringify(error)));
     }
   };
   

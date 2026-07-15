@@ -117,7 +117,7 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
             const packagesToCreate: Omit<PackageCreationData, 'creatorId' | 'origin'>[] = selectedOrdersList.map(order => {
                 const pkg: any = {
                     recipientName: order.recipientName,
-                    recipientPhone: order.recipientPhone || '',
+                    recipientPhone: order.recipientPhone || 'N/A',
                     recipientAddress: order.address,
                     recipientCommune: order.commune,
                     recipientCity: order.city,
@@ -139,7 +139,8 @@ const ExternalImportModal: React.FC<ExternalImportModalProps> = ({ client, sourc
             await onImport(packagesToCreate);
             onClose();
         } catch (err: any) {
-            setError(err.message || 'Error al importar las órdenes.');
+            const msg = err?.message || err?.toString() || 'Error al importar las órdenes.';
+            setError(msg);
         } finally {
             setIsImporting(false);
         }
