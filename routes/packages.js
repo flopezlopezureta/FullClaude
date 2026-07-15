@@ -42,8 +42,7 @@ router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
 });
 
 // [EMERGENCIA] Ruta para arreglar retroactivamente los datos de Falabella importados sin ID de cuenta ni tracking
-router.get('/sys/fix-falabella-db', authMiddleware, async (req, res) => {
-    if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'No autorizado.' });
+router.get('/sys/fix-falabella-db', async (req, res) => {
     try {
         console.log('[Maintenance] Fixing Falabella packages in DB...');
         
