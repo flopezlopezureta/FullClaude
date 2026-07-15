@@ -1663,10 +1663,10 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
                         return {
                             id: order.OrderId ? order.OrderId.toString() : uuidv4(),
                             recipientName: fullName || 'N/A',
-                            recipientPhone: order.AddressBilling?.Phone || order.CustomerPhone || 'N/A',
+                            recipientPhone: order.AddressShipping?.Phone || order.AddressBilling?.Phone || order.CustomerPhone || 'N/A',
                             address: fullAddress || 'N/A',
-                            commune: decodeHtmlEntities(order.Ward || 'N/A').toUpperCase().trim(),
-                            city: decodeHtmlEntities(order.City || 'N/A').toUpperCase().trim(),
+                            commune: decodeHtmlEntities(order.AddressShipping?.Ward || order.AddressBilling?.Ward || 'N/A').toUpperCase().trim(),
+                            city: decodeHtmlEntities(order.AddressShipping?.City || order.AddressBilling?.City || 'N/A').toUpperCase().trim(),
                             notes: decodeHtmlEntities(order.Remarks || order.Notes || `Falabella Order: ${order.OrderNumber || order.OrderId}`),
                             orderNumber: order.OrderNumber ? order.OrderNumber.toString() : (order.OrderId ? order.OrderId.toString() : 'N/A'),
                             sourceAccountId: account.id,
