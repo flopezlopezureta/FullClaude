@@ -173,7 +173,8 @@ const ImportOrdersPage: React.FC = () => {
                         shopifyOrderId: source === PackageSource.Shopify ? order.id : undefined,
                         jumpsellerOrderId: source === PackageSource.Jumpseller ? order.id : undefined,
                         wooOrderId: source === PackageSource.WooCommerce ? order.id : undefined,
-                        falabellaOrderId: source === PackageSource.Falabella ? order.id : undefined
+                        falabellaOrderId: source === PackageSource.Falabella ? order.id : undefined,
+                        falabellaTrackingId: source === PackageSource.Falabella ? order.orderNumber : undefined
                     };
                 });
                 const result = await api.createMultiplePackages(packagesToCreate as any);
