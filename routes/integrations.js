@@ -1631,9 +1631,14 @@ router.get('/:clientId/falabella/orders', authMiddleware, async (req, res) => {
                         'GET',
                         { CreatedAfter: createdAfter, Status: status }
                     );
-                    const ordersContainer = response?.SuccessResponse?.Body?.Orders?.Order;
-                    if (ordersContainer) {
-                        return Array.isArray(ordersContainer) ? ordersContainer : [ordersContainer];
+                    const ordersRaw = response?.SuccessResponse?.Body?.Orders;
+                    if (!ordersRaw) return [];
+                    // Falabella returns an array [{Order:{...}},{Order:{...}}] for multiple orders
+                    // but {Order:{...}} for a single order
+                    if (Array.isArray(ordersRaw)) {
+                        return ordersRaw.map(item => item.Order).filter(Boolean);
+                    } else if (ordersRaw.Order) {
+                        return Array.isArray(ordersRaw.Order) ? ordersRaw.Order : [ordersRaw.Order];
                     }
                     return [];
                 };
