@@ -7,10 +7,8 @@ const nodemailer = require('nodemailer');
  * and Email (via SMTP).
  */
 // Cache settings and integrations to avoid slamming the DB with queries on bulk assignments
-let cachedSettings = null;
-let cachedSettingsTime = 0;
-let cachedIntegration = null;
-let cachedIntegrationTime = 0;
+let settingsPromise = null;
+let integrationPromise = null;
 const CACHE_TTL = 30000; // 30 seconds
 
 const NotificationService = {
@@ -21,18 +19,23 @@ const NotificationService = {
      */
     async notifyRecipient(packageId, status) {
         try {
-            const now = Date.now();
-            
-            // 1. Check if notifications are enabled (cached)
-            if (!cachedSettings || (now - cachedSettingsTime) > CACHE_TTL) {
-                const { rows: settingsRows } = await db.query('SELECT "recipientNotificationsEnabled", "companyName" FROM system_settings LIMIT 1');
-                cachedSettings = settingsRows.length > 0 ? settingsRows[0] : { recipientNotificationsEnabled: false };
-                cachedSettingsTime = now;
+            // 1. Check if notifications are enabled (cached promise to prevent concurrent queries)
+            if (!settingsPromise) {
+                settingsPromise = db.query('SELECT "recipientNotificationsEnabled", "companyName" FROM system_settings LIMIT 1')
+                    .then(res => res.rows[0] || { recipientNotificationsEnabled: false })
+                    .catch(err => {
+                        settingsPromise = null;
+                        return { recipientNotificationsEnabled: false };
+                    });
+                
+                // Auto-clear cache after TTL
+                setTimeout(() => { settingsPromise = null; }, CACHE_TTL);
             }
-            if (!cachedSettings || !cachedSettings.recipientNotificationsEnabled) {
+            
+            const settings = await settingsPromise;
+            if (!settings || !settings.recipientNotificationsEnabled) {
                 return;
             }
-            const settings = cachedSettings;
 
             // 2. Get package and recipient details (must remain direct query per package)
             const { rows: pkgRows } = await db.query(
@@ -46,13 +49,19 @@ const NotificationService = {
             const pkg = pkgRows[0];
             const sellerName = pkg.seller_name || settings.companyName;
 
-            // 3. Get integration settings (WhatsApp & SMTP) (cached)
-            if (!cachedIntegration || (now - cachedIntegrationTime) > CACHE_TTL) {
-                const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
-                cachedIntegration = integrationRows.length > 0 ? integrationRows[0] : null;
-                cachedIntegrationTime = now;
+            // 3. Get integration settings (WhatsApp & SMTP) (cached promise to prevent concurrent queries)
+            if (!integrationPromise) {
+                integrationPromise = db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1')
+                    .then(res => res.rows.length > 0 ? res.rows[0] : null)
+                    .catch(err => {
+                        integrationPromise = null;
+                        return null;
+                    });
+                
+                setTimeout(() => { integrationPromise = null; }, CACHE_TTL);
             }
-            const integration = cachedIntegration;
+            
+            const integration = await integrationPromise;
 
             // 4. Prepare tracking URL (Dinámico según el entorno)
             const baseUrl = process.env.APP_URL || 'https://fullenvios.selcom.cl';
