@@ -167,12 +167,13 @@ const ImportOrdersPage: React.FC = () => {
                         createdAt: logicalNow,
                         updatedAt: logicalNow,
                         creatorId: selectedClientId,
-                        source: source === PackageSource.Shopify ? 'SHOPIFY' : (source === PackageSource.Jumpseller ? 'JUMPSELLER' : 'WOOCOMMERCE'),
+                        source: source === PackageSource.Shopify ? 'SHOPIFY' : (source === PackageSource.Jumpseller ? 'JUMPSELLER' : (source === PackageSource.Falabella ? 'FALABELLA' : 'WOOCOMMERCE')),
                         sourceAccountId: order.sourceAccountId,
                         sourceAccountName: order.sourceAccountName,
                         shopifyOrderId: source === PackageSource.Shopify ? order.id : undefined,
                         jumpsellerOrderId: source === PackageSource.Jumpseller ? order.id : undefined,
-                        wooOrderId: source === PackageSource.WooCommerce ? order.id : undefined
+                        wooOrderId: source === PackageSource.WooCommerce ? order.id : undefined,
+                        falabellaOrderId: source === PackageSource.Falabella ? order.id : undefined
                     };
                 });
                 await api.createMultiplePackages(packagesToCreate as any);

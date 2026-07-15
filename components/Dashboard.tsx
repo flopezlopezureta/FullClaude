@@ -717,7 +717,7 @@ const Dashboard: React.FC = () => {
   return (
     <div>
       {/* --- CRITICAL ALERTS CENTER --- */}
-      {criticalAlerts.length > 0 && showCriticalAlerts && (
+      {showCriticalAlerts && (
         <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up relative">
            {/* Close Button */}
            <button 
@@ -789,9 +789,15 @@ const Dashboard: React.FC = () => {
               </div>
            </div>
            
-           <div className="flex overflow-x-auto p-4 gap-4 scrollbar-hide bg-gray-50/50">
-              {criticalAlerts.map(pkg => (
-                <div 
+            <div className="flex overflow-x-auto p-4 gap-4 scrollbar-hide bg-gray-50/50">
+               {criticalAlerts.length === 0 && (
+                   <div className="flex-1 flex flex-col items-center justify-center py-10 opacity-60">
+                       <IconAlertTriangle className="w-12 h-12 text-gray-400 mb-3" />
+                       <p className="text-sm font-bold text-gray-500 uppercase tracking-widest">No hay eventos para esta fecha</p>
+                   </div>
+               )}
+               {criticalAlerts.map(pkg => (
+                 <div 
                   key={pkg.id}
                   onClick={() => handleSelectPackageDetails(pkg)}
                   className={`flex-shrink-0 w-80 p-4 border rounded-xl shadow-sm cursor-pointer transition-all hover:shadow-md hover:scale-[1.02] ${

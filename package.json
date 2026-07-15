@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.95",
-  "versionComment": "Versión 2.6.95: Corrección de integración Falabella, falsos positivos de conexión y soporte multicuenta en despachos.",
+  "version": "2.6.96",
+  "versionComment": "Versión 2.6.96: Corrección de importación de paquetes de Falabella. Ahora se asocian correctamente a la fuente FALABELLA en lugar de WOOCOMMERCE.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
