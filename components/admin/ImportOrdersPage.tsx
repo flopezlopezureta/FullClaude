@@ -4,7 +4,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { api, PackageCreationData } from '../../services/api';
 import type { User, MeliOrder } from '../../types';
 import { IconDownload, IconAlertTriangle, IconLoader, IconMercadoLibre, IconSearch, IconShopify, IconCheckCircle, IconWoocommerce, IconFalabella, IconJumpseller } from '../Icon';
-import { PackageSource, ShippingType } from '../../constants';
+import { PackageSource, ShippingType, PackageStatus } from '../../constants';
 import SearchableSelect from '../SearchableSelect';
 import { getLogicalDate } from '../../utils/dateUtils';
 
