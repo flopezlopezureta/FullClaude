@@ -854,6 +854,22 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     continue;
                 }
 
+                // [VALIDACION] Prevenir duplicados de Falabella
+                if (source === 'FALABELLA' && falabellaOrderId) {
+                    const { rows: existingFalabella } = await db.query(
+                        'SELECT id FROM packages WHERE "falabellaOrderId" = $1',
+                        [falabellaOrderId]
+                    );
+                    if (existingFalabella.length > 0) {
+                        errors.push({
+                            index: i,
+                            recipientName: recipientName || 'Desconocido',
+                            error: `El pedido de Falabella #${falabellaOrderId} ya ha sido importado previamente.`
+                        });
+                        continue;
+                    }
+                }
+
                 const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
                 if (creatorRows.length === 0) {
                     errors.push({ 
