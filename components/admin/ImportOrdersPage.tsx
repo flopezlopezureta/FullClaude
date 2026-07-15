@@ -176,12 +176,17 @@ const ImportOrdersPage: React.FC = () => {
                         falabellaOrderId: source === PackageSource.Falabella ? order.id : undefined
                     };
                 });
-                await api.createMultiplePackages(packagesToCreate as any);
+                const result = await api.createMultiplePackages(packagesToCreate as any);
+                if (result && result.errorCount && result.errorCount > 0) {
+                    const errorMessages = result.errors.map((e: any) => `${e.recipientName}: ${e.error}`).join('\n');
+                    alert(`Se importaron ${result.importedCount} envíos.\n\nHubo ${result.errorCount} errores:\n${errorMessages}`);
+                } else {
+                    alert('Importación exitosa');
+                }
             }
 
             // Refetch orders to show that the imported ones are gone
             await handleFetchOrders();
-            alert('Importación exitosa');
         } catch (err: any) {
             setError(err.message || 'Ocurrió un error durante la importación.');
         } finally {
