@@ -28,7 +28,8 @@ const DriverDashboard: React.FC = () => {
       console.error("Error fetching full package details:", err);
     }
   };
-  const [deliveringPackage, setDeliveringPackage] = useState<Package | null>(null);
+  const [deliveringPackages, setDeliveringPackages] = useState<Package[] | null>(null);
+  const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [reportingProblemPackage, setReportingProblemPackage] = useState<Package | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -63,12 +64,12 @@ const DriverDashboard: React.FC = () => {
 
   // Restore delivering package if it was interrupted
   useEffect(() => {
-    if (myPackages.length > 0 && !deliveringPackage) {
+    if (myPackages.length > 0 && (!deliveringPackages || deliveringPackages.length === 0)) {
         const pendingId = localStorage.getItem(`pending_delivering_id_${auth?.user?.id}`);
         if (pendingId) {
             const pkg = myPackages.find(p => p.id === pendingId);
             if (pkg && pkg.status !== PackageStatus.Delivered && pkg.status !== PackageStatus.Problem) {
-                setDeliveringPackage(pkg);
+                setDeliveringPackages([pkg]);
             } else {
                 localStorage.removeItem(`pending_delivering_id_${auth?.user?.id}`);
             }
@@ -111,13 +112,13 @@ const DriverDashboard: React.FC = () => {
   useEffect(() => {
     // Solo iniciamos el intervalo si NO estamos en proceso de entrega o reporte
     // Esto evita que refrescos accidentales en segundo plano cierren los modales
-    if (deliveringPackage || reportingProblemPackage) return;
+    if ((deliveringPackages && deliveringPackages.length > 0) || reportingProblemPackage) return;
 
     fetchData(true); // Initial background fetch
     const intervalId = setInterval(() => fetchData(true), 15000); // Poll every 15 seconds instead of 10
     
     return () => clearInterval(intervalId);
-  }, [auth?.user, deliveringPackage, reportingProblemPackage]);
+  }, [auth?.user, deliveringPackages, reportingProblemPackage]);
 
   // Effect to detect when all packages are processed
   useEffect(() => {
@@ -199,10 +200,45 @@ const DriverDashboard: React.FC = () => {
     };
   }, [myPackages, searchTerm, auth?.systemSettings?.timezone]);
 
+  const handleSelectionChange = (pkg: Package) => {
+    setSelectedPackages(prev => {
+      const next = new Set(prev);
+      if (next.has(pkg.id)) {
+        next.delete(pkg.id);
+      } else {
+        next.add(pkg.id);
+      }
+      return next;
+    });
+  };
+
+  const handleSelectAll = () => {
+    setSelectedPackages(prev => {
+      if (prev.size === pendingPackages.length) {
+        return new Set();
+      } else {
+        return new Set(pendingPackages.map(p => p.id));
+      }
+    });
+  };
+
   const handleStartDelivery = (pkg: Package) => {
-    setDeliveringPackage(pkg);
+    // Si la dirección es la misma y hay más paquetes, los pre-seleccionamos todos automáticamente
+    const sameAddressPkgs = pendingPackages.filter(p => 
+        p.recipientAddress.trim().toLowerCase() === pkg.recipientAddress.trim().toLowerCase()
+    );
+    setDeliveringPackages(sameAddressPkgs.length > 0 ? sameAddressPkgs : [pkg]);
     if (auth?.user) {
         localStorage.setItem(`pending_delivering_id_${auth.user.id}`, pkg.id);
+    }
+  };
+
+  const handleStartBatchDelivery = () => {
+    const selectedList = pendingPackages.filter(p => selectedPackages.has(p.id));
+    if (selectedList.length === 0) return;
+    setDeliveringPackages(selectedList);
+    if (auth?.user) {
+        localStorage.setItem(`pending_delivering_id_${auth.user.id}`, selectedList[0].id);
     }
   };
 
@@ -210,45 +246,53 @@ const DriverDashboard: React.FC = () => {
     setReportingProblemPackage(pkg);
   };
 
-  const handleConfirmDelivery = async (pkgId: string, data: DeliveryConfirmationData) => {
+  const handleConfirmDelivery = async (pkgIds: string[], data: DeliveryConfirmationData) => {
     try {
-      const updatedPackage = await api.confirmDelivery(pkgId, data);
-      if (!updatedPackage || !updatedPackage.id) {
-          throw new Error("La respuesta del servidor no es válida.");
-      }
-      setMyPackages(prev => prev.map(p => p.id === pkgId ? updatedPackage : p));
-      setDeliveringPackage(null);
+      const updatedPackages = await Promise.all(pkgIds.map(async (pkgId) => {
+        const updatedPackage = await api.confirmDelivery(pkgId, data);
+        if (!updatedPackage || !updatedPackage.id) {
+            throw new Error("La respuesta del servidor no es válida.");
+        }
+        return updatedPackage;
+      }));
+
+      setMyPackages(prev => {
+        let next = [...prev];
+        updatedPackages.forEach(up => {
+          next = next.map(p => p.id === up.id ? up : p);
+        });
+        return next;
+      });
+
+      setDeliveringPackages(null);
+      setSelectedPackages(new Set()); // Limpiar selección después de entregar
+
       if (auth?.user) {
           localStorage.removeItem(`pending_delivering_id_${auth.user.id}`);
       }
 
-      // --- NEW NOTIFICATION LOGIC ---
+      // --- WhatsApp/Email notifications logic ---
       if (auth?.systemSettings.messagingPlan && auth.systemSettings.messagingPlan !== MessagingPlan.None) {
-          const creator = users.find(u => u.id === updatedPackage.creatorId);
-          if (creator) {
-              const message = `Hola ${creator.name}, te informamos que tu paquete con ID ${updatedPackage.id} para ${updatedPackage.recipientName} ha sido entregado exitosamente.`;
-              if (auth.systemSettings.messagingPlan === MessagingPlan.WhatsApp && creator.phone) {
-                  const phone = (creator.phone || '').replace(/\D/g, '');
-                  const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
-                  
-                  // @ts-ignore
-                  if (window.AndroidApp && window.AndroidApp.shareText) {
+          for (const updatedPackage of updatedPackages) {
+              const creator = users.find(u => u.id === updatedPackage.creatorId);
+              if (creator) {
+                  const message = `Hola ${creator.name}, te informamos que tu paquete con ID ${updatedPackage.id} para ${updatedPackage.recipientName} ha sido entregado exitosamente.`;
+                  if (auth.systemSettings.messagingPlan === MessagingPlan.WhatsApp && creator.phone) {
+                      const phone = (creator.phone || '').replace(/\D/g, '');
+                      const url = `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`;
+                      
                       // @ts-ignore
-                      window.AndroidApp.shareText(message, "Notificación de Entrega");
-                  } else {
-                      window.location.href = url;
+                      if (window.AndroidApp && window.AndroidApp.shareText) {
+                          // @ts-ignore
+                          window.AndroidApp.shareText(message, "Notificación de Entrega");
+                      } else {
+                          // Para lotes, redirigimos en pestaña nueva para no romper flujo
+                          window.open(url, '_blank');
+                      }
                   }
-              /* 
-              } else if (auth.systemSettings.messagingPlan === MessagingPlan.Email && creator.email) {
-                  const subject = `Paquete Entregado: ${updatedPackage.id}`;
-                  const mailtoUrl = `mailto:${creator.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(message)}`;
-                  window.location.href = mailtoUrl;
-              */
               }
           }
       }
-      // --- END NEW LOGIC ---
-
     } catch (error: any) {
         console.error("Failed to confirm delivery", error);
         throw error;
@@ -520,8 +564,26 @@ const DriverDashboard: React.FC = () => {
             onSelectPackage={handleSelectPackageDetails}
             hideDriverName={true}
             isFiltering={activeTab === 'history'}
+            selectedPackages={selectedPackages}
+            onSelectionChange={handleSelectionChange}
+            onSelectAll={activeTab === 'pending' ? handleSelectAll : undefined}
         />
       </div>
+
+      {activeTab === 'pending' && selectedPackages.size > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-[var(--border-primary)] shadow-2xl flex items-center justify-between z-40 animate-fade-in-up">
+          <div className="text-sm font-semibold text-[var(--text-primary)]">
+            <span className="text-[var(--brand-primary)] font-bold">{selectedPackages.size}</span> paquete{selectedPackages.size > 1 ? 's' : ''} seleccionado{selectedPackages.size > 1 ? 's' : ''}
+          </div>
+          <button
+            onClick={handleStartBatchDelivery}
+            className="px-6 py-2.5 text-sm font-bold text-white bg-blue-600 rounded-xl hover:bg-blue-700 shadow-md transition-all flex items-center"
+          >
+            <IconTruck className="w-4 h-4 mr-2" />
+            Entregar Seleccionados
+          </button>
+        </div>
+      )}
 
       {selectedPackage && (
         <PackageDetailModal 
@@ -546,12 +608,12 @@ const DriverDashboard: React.FC = () => {
         />
       )}
 
-      {deliveringPackage && (
+      {deliveringPackages && deliveringPackages.length > 0 && (
         <DeliveryConfirmationModal
-          key={deliveringPackage.id}
-          pkg={deliveringPackage}
+          key={deliveringPackages.map(p => p.id).join(',')}
+          packages={deliveringPackages}
           onClose={() => {
-              setDeliveringPackage(null);
+              setDeliveringPackages(null);
               if (auth?.user) {
                   localStorage.removeItem(`pending_delivering_id_${auth.user.id}`);
               }

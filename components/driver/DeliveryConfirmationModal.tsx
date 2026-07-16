@@ -7,12 +7,13 @@ import imageCompression from 'browser-image-compression';
 import { storageUtils } from '../../utils/storageUtils';
 
 interface DeliveryConfirmationModalProps {
-  pkg: Package;
+  pkg?: Package;
+  packages?: Package[];
   onClose: () => void;
-  onConfirm: (pkgId: string, data: DeliveryConfirmationData) => Promise<void>;
+  onConfirm: (pkgIds: string[], data: DeliveryConfirmationData) => Promise<void>;
 }
 
-const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () => void }> = ({ onCapture, onCancel }) => {
+const CameraView: React.FC<{ pkgId: string, onCapture: (dataUrl: string) => void, onCancel: () => void }> = ({ pkgId, onCapture, onCancel }) => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [cameraError, setCameraError] = useState<string | null>(null);
@@ -83,7 +84,7 @@ const CameraView: React.FC<{ onCapture: (dataUrl: string) => void, onCancel: () 
                 const link = document.createElement('a');
                 const timestamp = new Date().getTime();
                 link.href = dataUrl;
-                link.download = `entrega_${pkg.id}_${timestamp}.jpg`;
+                link.download = `entrega_${pkgId}_${timestamp}.jpg`;
                 document.body.appendChild(link);
                 link.click();
                 document.body.removeChild(link);
@@ -141,8 +142,13 @@ const validateRut = (rutCompleto: string): boolean => {
     return dv === dvCalculado;
 };
 
-const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ pkg, onClose, onConfirm }) => {
-  const [receiverName, setReceiverName] = useState(pkg.recipientName || '');
+const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ pkg, packages, onClose, onConfirm }) => {
+  const pkgList = packages && packages.length > 0 ? packages : (pkg ? [pkg] : []);
+  const mainPkg = pkgList[0];
+
+  if (!mainPkg) return null;
+
+  const [receiverName, setReceiverName] = useState(mainPkg.recipientName || '');
   const [receiverId, setReceiverId] = useState('');
   const [photosBase64, setPhotosBase64] = useState<string[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
@@ -156,7 +162,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const auth = useContext(AuthContext);
 
   // --- PERSISTENCE LOGIC ---
-  const STORAGE_KEY_PREFIX = `delivery_draft_${pkg.id}_`;
+  const STORAGE_KEY_PREFIX = `delivery_draft_${mainPkg.id}_`;
 
   // Hydration on mount
   useEffect(() => {
@@ -175,14 +181,14 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
         // Clear the "restored" message after 3 seconds
         setTimeout(() => setIsRestored(false), 3000);
     }
-  }, [pkg.id, STORAGE_KEY_PREFIX]);
+  }, [mainPkg.id, STORAGE_KEY_PREFIX]);
 
   // Auto-save on changes
   useEffect(() => {
-    if (receiverName && receiverName !== pkg.recipientName) {
+    if (receiverName && receiverName !== mainPkg.recipientName) {
         storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}name`, receiverName);
     }
-  }, [receiverName, STORAGE_KEY_PREFIX, pkg.recipientName]);
+  }, [receiverName, STORAGE_KEY_PREFIX, mainPkg.recipientName]);
 
   useEffect(() => {
     if (receiverId) {
@@ -315,7 +321,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     setIsLoading(true);
     setError(null);
     try {
-      await onConfirm(pkg.id, {
+      await onConfirm(pkgList.map(p => p.id), {
         receiverName,
         receiverId,
         photosBase64,
@@ -323,7 +329,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       clearDraft();
     } catch (err: any) {
       if (err.status === 404) {
-        setError('Este paquete ya no está disponible para entrega (puede haber sido reasignado o cancelado).');
+        setError('Uno de los paquetes ya no está disponible para entrega (puede haber sido reasignado o cancelado).');
       } else {
         setError(err.message || 'Ocurrió un error inesperado al confirmar la entrega.');
       }
@@ -332,8 +338,6 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
-    // Hemos desactivado el cierre por backdrop para evitar accidentes en móviles
-    // al interactuar con el selector de archivos o la cámara.
     e.stopPropagation();
   };
 
@@ -342,8 +346,15 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       <div className="bg-[var(--background-secondary)] rounded-xl shadow-2xl w-full max-w-lg animate-fade-in-up" onClick={(e) => e.stopPropagation()}>
         <header className="flex items-start justify-between p-4 border-b border-[var(--border-primary)]">
             <div>
-                <h3 className="text-lg font-bold text-[var(--text-primary)]">Confirmar Entrega: <span className="text-[var(--brand-primary)]">{pkg.id}</span></h3>
-                <p className="text-sm text-[var(--text-muted)]">Para: {pkg.recipientName}</p>
+                <h3 className="text-lg font-bold text-[var(--text-primary)]">
+                  {pkgList.length > 1 ? `Confirmar Entrega de ${pkgList.length} Paquetes` : `Confirmar Entrega: `}
+                  {pkgList.length === 1 && <span className="text-[var(--brand-primary)]">{mainPkg.id}</span>}
+                </h3>
+                <p className="text-sm text-[var(--text-muted)]">
+                  {pkgList.length > 1 
+                    ? `Destinos: ${pkgList.map(p => p.id).join(', ')}` 
+                    : `Para: ${mainPkg.recipientName}`}
+                </p>
                 {isRestored && (
                     <div className="mt-1 flex items-center text-[10px] text-green-600 font-bold bg-green-50 px-2 py-0.5 rounded-full w-fit animate-pulse">
                         <IconCheckCircle className="w-3 h-3 mr-1" /> Datos recuperados automáticamente
@@ -433,7 +444,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                 ) : (
                     <p className="text-xs text-green-600 flex items-center justify-center mt-3"><IconCheckCircle className="w-4 h-4 mr-1.5"/> Todas las fotos requeridas han sido capturadas.</p>
                 )}
-                {isCameraOpen && <CameraView onCapture={(dataUrl) => { setPhotosBase64(prev => [...prev, dataUrl]); setIsCameraOpen(false); }} onCancel={() => setIsCameraOpen(false)} />}
+                {isCameraOpen && <CameraView pkgId={mainPkg.id} onCapture={(dataUrl) => { setPhotosBase64(prev => [...prev, dataUrl]); setIsCameraOpen(false); }} onCancel={() => setIsCameraOpen(false)} />}
             </div>
           </div>
 
