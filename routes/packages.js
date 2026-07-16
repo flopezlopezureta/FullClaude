@@ -1234,29 +1234,14 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             [id]
         );
         
-        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time) - OPTIMIZADA (Paralela)
-        // Si el paquete no se encuentra y parece un código de ML, intentamos buscarlo en paralelo en todas las integraciones activas
+        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time) - ALTAMENTE OPTIMIZADA (Unificado)
         if (pkgRows.length === 0 && isMeliCode(id)) {
-            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting Optimized JIT Discovery...`);
-            const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
-            
-            if (meliUsers.length > 0) {
-                // Ejecutar todas las búsquedas en paralelo
-                const results = await Promise.all(meliUsers.map(async (u) => {
-                    try {
-                        const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id, true);
-                        return importedId ? { importedId, user: u } : null;
-                    } catch (err) {
-                        return null;
-                    }
-                }));
-
-                const success = results.find(r => r !== null);
-                if (success) {
-                    console.log(`[Dispatch] SUCCESS! Shipment ${id} found and linked as ${success.importedId}.`);
-                    const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [success.importedId]);
-                    pkgRows = reCheck;
-                }
+            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting Unified JIT Discovery...`);
+            const importedId = await meliPollingService.optimizedJITDiscovery(id);
+            if (importedId) {
+                console.log(`[Dispatch] SUCCESS! Shipment ${id} discovered and imported as ${importedId}.`);
+                const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [importedId]);
+                pkgRows = reCheck;
             }
         }
 

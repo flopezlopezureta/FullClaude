@@ -944,6 +944,93 @@ async function importSpecificMeliPackage(clientId, shipmentId, skipRegionFilter 
     }
 }
 
+// [NUEVO] Optimizado: Buscar y asociar el envío con un único llamado API usando cualquier token válido
+async function optimizedJITDiscovery(shipmentId) {
+    if (shipmentId && typeof shipmentId === 'string' && shipmentId.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(shipmentId);
+            if (parsed.id) shipmentId = String(parsed.id);
+        } catch (e) {}
+    }
+
+    console.log(`[MeliPolling] JIT: Starting optimized discovery for Shipment ID: ${shipmentId}`);
+    try {
+        // 1. Get all active ML integrations
+        const { rows: users } = await db.query(
+            "SELECT id, integrations FROM users WHERE role = 'CLIENT' AND (integrations->'meli' IS NOT NULL OR integrations->'accounts' IS NOT NULL)"
+        );
+        if (users.length === 0) {
+            console.warn(`[MeliPolling] JIT: No users with ML integrations found in DB.`);
+            return null;
+        }
+
+        // 2. Obtain a valid access token from the first available user to query shipment details
+        let accessToken = null;
+        let authUser = null;
+        for (const u of users) {
+            let accountId = null;
+            let integrations = u.integrations || {};
+            if (integrations.accounts) {
+                const acc = integrations.accounts.find(a => a.type === 'MERCADO_LIBRE');
+                if (acc) accountId = acc.id;
+            }
+            try {
+                accessToken = await getValidMeliToken(u.id, accountId);
+                if (accessToken) {
+                    authUser = u;
+                    break;
+                }
+            } catch (tokenErr) {
+                // Try next user
+            }
+        }
+
+        if (!accessToken) {
+            console.error(`[MeliPolling] JIT: Could not acquire a valid ML access token from any client.`);
+            return null;
+        }
+
+        // 3. Query ML to find who the seller is
+        console.log(`[MeliPolling] JIT: Fetching shipment metadata via client ${authUser.id}`);
+        const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+        const sellerId = shipment.sender_id?.toString() || shipment.seller_id?.toString();
+        
+        if (!sellerId) {
+            console.error(`[MeliPolling] JIT: Shipment details did not contain a seller ID.`);
+            return null;
+        }
+
+        // 4. Find the matching client by Mercado Libre user/seller ID
+        let matchingUser = null;
+        for (const u of users) {
+            let uIntegrations = u.integrations || {};
+            if (uIntegrations.meli && String(uIntegrations.meli.userId) === sellerId) {
+                matchingUser = u;
+                break;
+            }
+            if (uIntegrations.accounts) {
+                const acc = uIntegrations.accounts.find(a => a.type === 'MERCADO_LIBRE' && String(a.credentials?.userId) === sellerId);
+                if (acc) {
+                    matchingUser = u;
+                    break;
+                }
+            }
+        }
+
+        if (!matchingUser) {
+            console.warn(`[MeliPolling] JIT: Shipment ${shipmentId} belongs to ML seller ${sellerId}, but no matching client integration exists in DB.`);
+            return null;
+        }
+
+        console.log(`[MeliPolling] JIT: Matches client ${matchingUser.id} (ML User: ${sellerId}). Performing real import...`);
+        return await importSpecificMeliPackage(matchingUser.id, shipmentId, true);
+
+    } catch (err) {
+        console.error(`[MeliPolling] JIT: Fatal error in optimizedJITDiscovery for ${shipmentId}:`, err.message || err);
+        return null;
+    }
+}
+
 let timeoutId = null;
 
 function start(intervalMs = 5 * 60 * 1000, delayMs = 0) { // Default 5 minutes
@@ -1005,5 +1092,6 @@ module.exports = {
     autoImportMeliPackages, 
     syncTrackingId, 
     importSpecificMeliPackage,
+    optimizedJITDiscovery,
     triggerSync
 };
