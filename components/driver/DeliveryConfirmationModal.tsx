@@ -282,23 +282,22 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
               initialQuality: 0.8
           };
 
-          for (const file of fileList) {
-              try {
-                  const compressedFile = await imageCompression(file, compressionOptions);
-                  
-                  const base64 = await new Promise<string>((resolve, reject) => {
-                      const reader = new FileReader();
-                      reader.onloadend = () => resolve(reader.result as string);
-                      reader.onerror = () => reject(new Error("Error al leer archivo comprimido"));
-                      reader.readAsDataURL(compressedFile);
-                  });
+           for (const file of fileList) {
+               try {
+                   const compressedFile = await imageCompression(file, compressionOptions);
+                   
+                   const base64 = await new Promise<string>((resolve, reject) => {
+                       const reader = new FileReader();
+                       reader.onloadend = () => resolve(reader.result as string);
+                       reader.onerror = () => reject(new Error("Error al leer archivo comprimido"));
+                       reader.readAsDataURL(compressedFile);
+                   });
 
-                  setPhotosBase64(prev => [...prev, base64]);
-              } catch (innerErr: any) {
-                  console.error(`Error procesando archivo ${file.name}:`, innerErr);
-              }
-          }
-          alert("Imágenes optimizadas con éxito para una carga fluida.");
+                   setPhotosBase64(prev => [...prev, base64]);
+               } catch (innerErr: any) {
+                   console.error(`Error procesando archivo ${file.name}:`, innerErr);
+               }
+           }
       } catch (err: any) {
           console.error("Image processing error [DeliveryModal]:", err);
           setError('Ocurrió un error al procesar las imágenes seleccionadas.');
