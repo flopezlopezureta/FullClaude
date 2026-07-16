@@ -1533,20 +1533,23 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
 
         // 1. Intentar obtener credenciales de la cuenta específica del usuario (Multi-Account)
         const { rows: pkgRows } = await db.query(
-            'SELECT p."sourceAccountId", u.integrations FROM packages p JOIN users u ON p."creatorId" = u.id WHERE p.id = $1',
+            'SELECT p."sourceAccountId", p."falabellaOrderId", p."falabellaTrackingId", u.integrations FROM packages p JOIN users u ON p."creatorId" = u.id WHERE p.id = $1',
             [packageId]
         );
 
-        if (pkgRows.length > 0 && pkgRows[0].integrations) {
-            const integrations = typeof pkgRows[0].integrations === 'string' ? JSON.parse(pkgRows[0].integrations) : pkgRows[0].integrations;
-            const accounts = integrations.accounts || [];
-            // Buscar por ID de cuenta exacto o usar la primera cuenta Falabella disponible
-            const falabellaAccount = accounts.find(acc => acc.id === pkgRows[0].sourceAccountId && acc.type === 'FALABELLA') 
-                                     || accounts.find(acc => acc.type === 'FALABELLA');
+        let falabellaOrderId = null;
+        if (pkgRows.length > 0) {
+            falabellaOrderId = pkgRows[0].falabellaOrderId;
+            if (pkgRows[0].integrations) {
+                const integrations = typeof pkgRows[0].integrations === 'string' ? JSON.parse(pkgRows[0].integrations) : pkgRows[0].integrations;
+                const accounts = integrations.accounts || [];
+                const falabellaAccount = accounts.find(acc => acc.id === pkgRows[0].sourceAccountId && acc.type === 'FALABELLA') 
+                                         || accounts.find(acc => acc.type === 'FALABELLA');
 
-            if (falabellaAccount && falabellaAccount.credentials) {
-                apiKey = falabellaAccount.credentials.falabellaApiKey;
-                sellerId = falabellaAccount.credentials.falabellaSellerId;
+                if (falabellaAccount && falabellaAccount.credentials) {
+                    apiKey = falabellaAccount.credentials.falabellaApiKey;
+                    sellerId = falabellaAccount.credentials.falabellaSellerId;
+                }
             }
         }
 
@@ -1564,56 +1567,104 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
         if (!apiKey || !sellerId) {
             throw new Error("Credenciales de Falabella no configuradas.");
         }
-        
-        const timestamp = new Date().toISOString();
-        const params = {
-            Action: 'UpdateOrderItems',
-            Timestamp: timestamp,
-            UserID: sellerId,
-            Version: '1.0',
-            Format: 'JSON',
-            OrderItemIds: JSON.stringify([trackingId]),
-            Status: 'delivered'
-        };
-        
-        const signature = buildFalabellaSignature(params, apiKey);
-        params.Signature = signature;
-        
-        const queryString = Object.entries(params)
-            .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
-            .join('&');
 
-        const https = require('https');
-        await new Promise((resolve, reject) => {
-            const options = {
-                hostname: 'sellercenter-api.falabella.com',
-                path: `/?${queryString}`,
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
+        if (!falabellaOrderId) {
+            throw new Error("ID de orden de Falabella no encontrado en el paquete.");
+        }
+
+        // Helper local para realizar llamadas firmadas a Falabella
+        const makeFalabellaApiCall = async (action, extraParams = null) => {
+            const timestamp = new Date().toISOString();
+            const params = {
+                Action: action,
+                Timestamp: timestamp,
+                UserID: sellerId,
+                Version: '1.0',
+                Format: 'JSON',
+                ...extraParams
             };
-            const req = https.request(options, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => {
-                    if (res.statusCode >= 200 && res.statusCode < 300) {
-                        resolve(data);
-                    } else {
-                        reject(new Error(`Falabella API returned HTTP ${res.statusCode}: ${data}`));
+            const signature = buildFalabellaSignature(params, apiKey);
+            params.Signature = signature;
+            
+            const queryString = Object.entries(params)
+                .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+                .join('&');
+
+            const https = require('https');
+            return new Promise((resolve, reject) => {
+                const options = {
+                    hostname: 'sellercenter-api.falabella.com',
+                    path: `/?${queryString}`,
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     }
+                };
+                const req = https.request(options, (res) => {
+                    let data = '';
+                    res.on('data', chunk => data += chunk);
+                    res.on('end', () => {
+                        if (res.statusCode >= 200 && res.statusCode < 300) {
+                            try {
+                                resolve(JSON.parse(data));
+                            } catch (e) {
+                                resolve(data);
+                            }
+                        } else {
+                            reject(new Error(`Falabella API returned HTTP ${res.statusCode}: ${data}`));
+                        }
+                    });
                 });
+                req.on('error', reject);
+                req.end();
             });
-            req.on('error', reject);
-            req.end();
+        };
+
+        // 3. Obtener los OrderItemIds asociados a la orden
+        console.log(`[FalabellaSync] Fetching items for Falabella order ID: ${falabellaOrderId}`);
+        const itemsResponse = await makeFalabellaApiCall('GetOrderItems', { OrderId: falabellaOrderId });
+        
+        const orderItemsRaw = itemsResponse?.SuccessResponse?.Body?.OrderItems;
+        let orderItemIds = [];
+        if (orderItemsRaw) {
+            let items = [];
+            if (Array.isArray(orderItemsRaw)) {
+                items = orderItemsRaw;
+            } else if (orderItemsRaw.OrderItem) {
+                items = Array.isArray(orderItemsRaw.OrderItem) ? orderItemsRaw.OrderItem : [orderItemsRaw.OrderItem];
+            }
+            orderItemIds = items.map(item => item.OrderItemId).filter(Boolean);
+        }
+
+        if (orderItemIds.length === 0) {
+            throw new Error(`No se encontraron ítems válidos (OrderItemIds) para la orden Falabella ID ${falabellaOrderId}`);
+        }
+
+        console.log(`[FalabellaSync] Found item IDs to update:`, orderItemIds);
+
+        // 4. Intentar marcar la orden como 'shipped' (enviada) primero, por si acaso (algunos Seller Center restringen saltarse este paso)
+        try {
+            await makeFalabellaApiCall('UpdateOrderItems', {
+                OrderItemIds: JSON.stringify(orderItemIds),
+                Status: 'shipped'
+            });
+            console.log(`[FalabellaSync] Items marked as shipped in Falabella.`);
+        } catch (shippedErr) {
+            console.warn(`[FalabellaSync] Transition to 'shipped' failed (might already be shipped): ${shippedErr.message}`);
+        }
+
+        // 5. Marcar la orden como 'delivered' (entregada)
+        await makeFalabellaApiCall('UpdateOrderItems', {
+            OrderItemIds: JSON.stringify(orderItemIds),
+            Status: 'delivered'
         });
         
         await db.query(
             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-            [packageId, 'SYNC_FALABELLA_OK', 'Falabella API', `Pedido sincronizado exitosamente en Falabella.`, new Date()]
+            [packageId, 'SYNC_FALABELLA_OK', 'Falabella API', `Pedido sincronizado y cerrado exitosamente en Falabella (Items: ${orderItemIds.join(', ')}).`, new Date()]
         );
-        console.log(`[FalabellaSync] Package ${packageId} synced successfully with Falabella.`);
+        console.log(`[FalabellaSync] Package ${packageId} synced successfully (delivered) with Falabella.`);
         
     } catch (error) {
         console.error(`[FalabellaSync] Fallo en intento ${attempts}/${MAX_ATTEMPTS} para paquete ${packageId}:`, error.message);
