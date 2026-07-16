@@ -31,6 +31,7 @@ import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 import ClientSettingsPage from '../client/ClientSettingsPage';
 import ActivityAuditReport from '../admin/ActivityAuditReport';
 import SuperAdminBillingReportPage from '../admin/SuperAdminBillingReportPage';
+import ProjectionMap from '../admin/ProjectionMap';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
@@ -182,6 +183,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'live-map':
         if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Mapa en Vivo', content: <LiveMap /> };
+        break;
+
+      case 'projection-map':
+        if (isAdmin && isSuperUser) return { title: 'Proyección de Paquetes', content: <ProjectionMap /> };
         break;
 
       case 'geolocate':

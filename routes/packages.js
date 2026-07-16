@@ -13,6 +13,79 @@ const jumpsellerPollingService = require('../services/jumpsellerPollingService')
 const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geocodingService');
 const gisService = require('../services/gisService');
 
+// GET /api/packages/projection
+router.get('/projection', authMiddleware, async (req, res) => {
+    if (req.user.email !== 'admin' && req.user.email !== 'admin@admin.cl') {
+        return res.status(403).json({ message: 'No autorizado. Solo accesible por el Super Administrador.' });
+    }
+
+    const queryDate = req.query.date || new Date().toISOString().split('T')[0];
+
+    try {
+        const { rows: packages } = await db.query(
+            `SELECT p.id, p."destLatitude", p."destLongitude", p."recipientCommune", p."creatorId", u.name as "clientName"
+             FROM packages p
+             LEFT JOIN users u ON p."creatorId" = u.id
+             WHERE DATE(p."estimatedDelivery") = $1 AND p.status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')`,
+            [queryDate]
+        );
+
+        const { rows: customSectors } = await db.query('SELECT id, comuna, sector, geometry, color FROM gis_sectors');
+        const sectorProjectionMap = new Map();
+
+        customSectors.forEach(s => {
+            sectorProjectionMap.set(`${s.comuna} (${s.sector})`, {
+                id: s.id,
+                comuna: s.comuna,
+                sector: s.sector,
+                geometry: s.geometry,
+                color: s.color,
+                volume: 0,
+                clients: {}
+            });
+        });
+
+        packages.forEach(pkg => {
+            let matchedSectorLabel = null;
+            if (pkg.destLatitude && pkg.destLongitude) {
+                const sectorDetails = gisService.getSectorDetailsForCoordinates(pkg.destLatitude, pkg.destLongitude);
+                if (sectorDetails) {
+                    matchedSectorLabel = sectorDetails.sectorLabel;
+                }
+            }
+
+            if (!matchedSectorLabel) {
+                matchedSectorLabel = pkg.recipientCommune ? pkg.recipientCommune.toUpperCase() : 'DESCONOCIDO';
+            }
+
+            if (!sectorProjectionMap.has(matchedSectorLabel)) {
+                sectorProjectionMap.set(matchedSectorLabel, {
+                    id: `commune-${matchedSectorLabel.toLowerCase().replace(/\s+/g, '-')}`,
+                    comuna: matchedSectorLabel,
+                    sector: 'Comuna General',
+                    geometry: null,
+                    color: '#64748b',
+                    volume: 0,
+                    clients: {}
+                });
+            }
+
+            const sectorProj = sectorProjectionMap.get(matchedSectorLabel);
+            sectorProj.volume += 1;
+            
+            const clientName = pkg.clientName || 'Sin Cliente';
+            sectorProj.clients[clientName] = (sectorProj.clients[clientName] || 0) + 1;
+        });
+
+        const result = Array.from(sectorProjectionMap.values());
+        res.json(result);
+
+    } catch (err) {
+        console.error('Error in /packages/projection:', err);
+        res.status(500).json({ message: 'Error al calcular la proyección de carga.' });
+    }
+});
+
 // [EMERGENCIA] Ruta para normalizar todas las comunas y ciudades del historial
 router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
     if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'No autorizado.' });

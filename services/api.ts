@@ -453,4 +453,7 @@ export const api = {
   createGisSector: (data: { comuna: string; sector: string; geometry: any; color?: string }) => post<any>('/gis/sectors', data),
   updateGisSector: (id: string, data: { sector?: string; geometry?: any; color?: string }) => put<any>(`/gis/sectors/${id}`, data),
   deleteGisSector: (id: string) => del<void>(`/gis/sectors/${id}`),
+
+  // Projection
+  getPackageProjection: (date: string) => get<any[]>(`/packages/projection?date=${encodeURIComponent(date)}`),
 };
