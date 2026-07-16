@@ -425,7 +425,7 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email, enviame_api_key, enviame_environment FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
@@ -444,7 +444,9 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             falabellaSellerId: rows[0].falabella_seller_id,
             smtpFrom: rows[0].smtp_from,
             smtpGoogleEmail: rows[0].smtp_google_email,
-            hasGoogleSmtp: !!rows[0].smtp_google_refresh_token
+            hasGoogleSmtp: !!rows[0].smtp_google_refresh_token,
+            enviameApiKey: rows[0].enviame_api_key ? '************************' : '',
+            enviameEnvironment: rows[0].enviame_environment || 'stage'
         });
     } catch (err) {
         console.error(err);
@@ -461,7 +463,8 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
         githubToken, githubRepo, githubOwner,
         wooUrl, wooConsumerKey, wooConsumerSecret,
         falabellaApiKey, falabellaSellerId,
-        smtpHost, smtpPort, smtpUser, smtpPassword, smtpFrom
+        smtpHost, smtpPort, smtpUser, smtpPassword, smtpFrom,
+        enviameApiKey, enviameEnvironment
     } = req.body;
 
     try {
@@ -548,6 +551,14 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`smtp_from = $${idx++}`);
             values.push(smtpFrom);
         }
+        if (enviameApiKey !== undefined && enviameApiKey !== '************************') {
+            updates.push(`enviame_api_key = $${idx++}`);
+            values.push(encrypt(enviameApiKey));
+        }
+        if (enviameEnvironment !== undefined) {
+            updates.push(`enviame_environment = $${idx++}`);
+            values.push(enviameEnvironment);
+        }
 
         if (updates.length > 0) {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
@@ -573,7 +584,9 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 falabellaSellerId: saved.falabella_seller_id,
                 smtpFrom: saved.smtp_from,
                 smtpGoogleEmail: saved.smtp_google_email,
-                hasGoogleSmtp: !!saved.smtp_google_refresh_token
+                hasGoogleSmtp: !!saved.smtp_google_refresh_token,
+                enviameApiKey: saved.enviame_api_key ? '************************' : '',
+                enviameEnvironment: saved.enviame_environment || 'stage'
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });

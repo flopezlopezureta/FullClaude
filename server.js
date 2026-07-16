@@ -841,7 +841,9 @@ async function initializeDatabase() {
                 falabella_seller_id TEXT,
                 shopify_webhook_secret TEXT,
                 jumpseller_login TEXT,
-                jumpseller_token TEXT
+                jumpseller_token TEXT,
+                enviame_api_key TEXT,
+                enviame_environment TEXT
             );
         `);
         console.log('Table "integration_settings" is ready.');
@@ -992,6 +994,20 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "jumpseller_token" added to "integration_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during integration_settings migration (jumpseller_token):', err); }
+        }
+
+        // --- MIGRATIONS: Add Envíame fields ---
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN enviame_api_key TEXT');
+            console.log('MIGRATION APPLIED: Column "enviame_api_key" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (enviame_api_key):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE integration_settings ADD COLUMN enviame_environment TEXT');
+            console.log('MIGRATION APPLIED: Column "enviame_environment" added to "integration_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during integration_settings migration (enviame_environment):', err); }
         }
         
         // --- MIGRATIONS: Add missing package fields ---

@@ -1688,6 +1688,95 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
 }
 // --- END FALABELLA SYNC LOGIC ---
 
+// --- ENVIAME SYNC LOGIC ---
+async function syncDeliveryToEnviame(packageId, trackingId, attempts = 1) {
+    const MAX_ATTEMPTS = 3;
+    const DELAY_MULTIPLIER = 3000;
+
+    if (attempts === 1) {
+        try {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [packageId, 'SYNC_ENVIAME_START', 'Envíame API', `Iniciando sincronización de entrega con Envíame.`, new Date()]
+            );
+        } catch (e) { console.error(`[EnviameSync] Start logging failed:`, e); }
+    }
+
+    try {
+        const { rows: settingsRows } = await db.query(
+            'SELECT enviame_api_key, enviame_environment FROM integration_settings WHERE id = 1'
+        );
+
+        if (settingsRows.length === 0 || !settingsRows[0].enviame_api_key) {
+            throw new Error("Credenciales de Envíame no configuradas.");
+        }
+
+        const apiKey = decrypt(settingsRows[0].enviame_api_key);
+        const environment = settingsRows[0].enviame_environment || 'stage';
+        const baseUrl = environment === 'production' ? 'https://api.enviame.io' : 'https://stage.api.enviame.io';
+
+        const https = require('https');
+        await new Promise((resolve, reject) => {
+            const payload = JSON.stringify({
+                status_change: {
+                    status: 6,
+                    comment: "Entregado por Full Envíos"
+                }
+            });
+
+            const urlObj = new URL(`${baseUrl}/v3/deliveries/${trackingId}/status`);
+            
+            const options = {
+                hostname: urlObj.hostname,
+                path: urlObj.pathname,
+                method: 'POST',
+                headers: {
+                    'api-key': apiKey,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload)
+                }
+            };
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(`Envíame API returned HTTP ${res.statusCode}: ${data}`));
+                    }
+                });
+            });
+
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
+        });
+
+        await db.query(
+            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+            [packageId, 'SYNC_ENVIAME_OK', 'Envíame API', `Entrega sincronizada exitosamente con Envíame.`, new Date()]
+        );
+        console.log(`[EnviameSync] Package ${packageId} synced successfully with Envíame.`);
+
+    } catch (error) {
+        console.error(`[EnviameSync] Fallo en intento ${attempts}/${MAX_ATTEMPTS} para paquete ${packageId}:`, error.message);
+        
+        if (attempts < MAX_ATTEMPTS) {
+            const nextDelay = attempts * DELAY_MULTIPLIER;
+            setTimeout(() => syncDeliveryToEnviame(packageId, trackingId, attempts + 1), nextDelay);
+        } else {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [packageId, 'SYNC_ENVIAME_ERROR', 'Envíame API', `Error al sincronizar: ${error.message}.`, new Date()]
+            );
+        }
+    }
+}
+// --- END ENVIAME SYNC LOGIC ---
+
 // POST /api/packages/:id/deliver
 router.post('/:id/deliver', authMiddleware, async (req, res) => {
     const { id } = req.params;
@@ -1825,6 +1914,13 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                 .catch(err => console.error(`[Deliver] Falabella sync trigger error:`, err));
         }
         // --- END FALABELLA NOTIFICATION ---
+
+        // --- NEW ENVIAME NOTIFICATION ---
+        if (updatedPackage.source === 'ENVIAME' && updatedPackage.trackingId) {
+            syncDeliveryToEnviame(updatedPackage.id, updatedPackage.trackingId)
+                .catch(err => console.error(`[Deliver] Envíame sync trigger error:`, err));
+        }
+        // --- END ENVIAME NOTIFICATION ---
 
         // Notify recipient
         NotificationService.notifyRecipient(id, 'ENTREGADO');
