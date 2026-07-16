@@ -153,6 +153,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const [photosBase64, setPhotosBase64] = useState<string[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [isConfirmingMultiple, setIsConfirmingMultiple] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rutError, setRutError] = useState<string | null>(null);
   const [isCompressing, setIsCompressing] = useState(false);
@@ -317,6 +318,13 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isFormValid) return;
+    
+    // Si son múltiples paquetes y no han confirmado la advertencia, la mostramos
+    if (pkgList.length > 1 && !isConfirmingMultiple) {
+      setIsConfirmingMultiple(true);
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     try {
@@ -333,12 +341,46 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
         setError(err.message || 'Ocurrió un error inesperado al confirmar la entrega.');
       }
       setIsLoading(false);
+      setIsConfirmingMultiple(false);
     }
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
     e.stopPropagation();
   };
+
+  if (isConfirmingMultiple) {
+    return (
+      <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={handleBackdropClick}>
+        <div className="bg-[var(--background-secondary)] rounded-xl shadow-2xl w-full max-w-md animate-fade-in-up p-6 text-center" onClick={(e) => e.stopPropagation()}>
+          <IconAlertTriangle className="w-16 h-16 mx-auto mb-4 text-orange-500 animate-pulse" />
+          <h3 className="text-xl font-bold text-[var(--text-primary)] mb-2">¡Atención! Entrega Múltiple</h3>
+          <p className="text-sm text-[var(--text-muted)] mb-6">
+            Estás a punto de confirmar la entrega de <strong className="text-[var(--brand-primary)]">{pkgList.length} paquetes</strong> de forma simultánea. Todos se registrarán con la misma firma y datos de recepción.
+          </p>
+          <div className="flex flex-col space-y-2">
+            <button
+              onClick={(e) => {
+                handleSubmit(e);
+              }}
+              disabled={isLoading}
+              className="w-full py-3 px-4 text-sm font-bold text-white bg-orange-600 rounded-xl hover:bg-orange-700 shadow-md transition-all"
+            >
+              {isLoading ? 'Confirmando...' : 'Sí, confirmar múltiples entregas'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setIsConfirmingMultiple(false)}
+              disabled={isLoading}
+              className="w-full py-3 px-4 text-sm font-semibold text-[var(--text-secondary)] bg-[var(--background-muted)] rounded-xl hover:bg-[var(--background-hover)] transition-all"
+            >
+              Volver y revisar
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={handleBackdropClick}>
