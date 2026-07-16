@@ -599,7 +599,7 @@ async function autoImportMeliPackages(activeCommunes = []) {
                             }
 
                             // 2. Fetch recent orders for this seller
-                            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=50`, accessToken);
+                            const ordersData = await makeMeliGetRequest(`/orders/search?seller=${meliIntegration.userId}&order.status=paid&sort=date_desc&limit=100`, accessToken);
                             
                             if (!ordersData.results || ordersData.results.length === 0) {
                                 console.log(`[MeliPolling] No recent paid orders for client ${clientId} (Account: ${account.nickname})`);
