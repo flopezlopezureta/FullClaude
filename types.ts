@@ -50,6 +50,7 @@ export interface SystemSettings {
     recipientNotificationsEnabled?: boolean;
     licenseLimit?: number;
     licenseOverageFee?: number;
+    meliAutoPromptPhotos?: boolean;
 }
 
 export interface ZonePricing {
@@ -308,6 +309,7 @@ export interface Package {
   shopifyOrderNumber?: string;
   falabellaOrderId?: string;
   falabellaTrackingId?: string;
+  meliDeliveredNeedsPhotos?: boolean;
 }
 
 export interface Notification {

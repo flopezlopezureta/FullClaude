@@ -192,13 +192,17 @@ async function pollMeliPackages() {
     totalPackagesCount = 0;
     console.log('[MeliPolling] Starting poll cycle...');
     try {
-        // 0. Check if auto-import is enabled
+        // 0. Check if auto-import and auto-prompt are enabled
         let autoImportEnabled = false;
+        let meliAutoPromptPhotos = false;
         try {
-            const { rows: settingsRows } = await db.query('SELECT "meliAutoImport" FROM system_settings WHERE id = 1');
-            autoImportEnabled = settingsRows.length > 0 && settingsRows[0].meliAutoImport;
+            const { rows: settingsRows } = await db.query('SELECT "meliAutoImport", "meliAutoPromptPhotos" FROM system_settings WHERE id = 1');
+            if (settingsRows.length > 0) {
+                autoImportEnabled = settingsRows[0].meliAutoImport;
+                meliAutoPromptPhotos = settingsRows[0].meliAutoPromptPhotos;
+            }
         } catch (settingsErr) {
-            console.warn('[MeliPolling] Could not fetch meliAutoImport from DB or column missing. Defaulting to true...', settingsErr.message);
+            console.warn('[MeliPolling] Could not fetch settings from DB or column missing. Defaulting...', settingsErr.message);
             autoImportEnabled = true; // Safety default
         }
 
@@ -268,6 +272,12 @@ async function pollMeliPackages() {
                             await db.query(
                                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
                                 [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Capture)', `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
+                            );
+                        }
+                        if (meliAutoPromptPhotos && pkg.status !== 'ENTREGADO') {
+                            await db.query(
+                                'UPDATE packages SET "meliDeliveredNeedsPhotos" = true, "updatedAt" = $1 WHERE id = $2',
+                                [now, pkg.id]
                             );
                         }
                     } else if (mlStatus === 'shipped' && !['EN_TRANSITO', 'EN_RUTA', 'PROBLEMA', 'REPROGRAMADO', 'ENTREGADO', 'DEVUELTO', 'CANCELADO'].includes(pkg.status)) {

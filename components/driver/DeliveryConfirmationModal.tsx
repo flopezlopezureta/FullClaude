@@ -401,6 +401,11 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                         <IconCheckCircle className="w-3 h-3 mr-1" /> Datos recuperados automáticamente
                     </div>
                 )}
+                {mainPkg?.meliDeliveredNeedsPhotos && (
+                    <div className="mt-1 flex items-center text-[10px] text-amber-700 font-bold bg-amber-50 border border-amber-200 px-2 py-0.5 rounded-full w-fit animate-pulse">
+                        <IconAlertTriangle className="w-3 h-3 mr-1 text-amber-500" /> Entrega detectada en Mercado Libre. Toma las fotos de respaldo.
+                    </div>
+                )}
             </div>
           <button onClick={() => { clearDraft(); onClose(); }} className="p-2 rounded-full text-[var(--text-muted)] hover:bg-[var(--background-hover)]" aria-label="Cerrar modal">
             <IconX className="w-6 h-6" />

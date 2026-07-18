@@ -77,6 +77,23 @@ const DriverDashboard: React.FC = () => {
     }
   }, [myPackages, auth?.user?.id]);
 
+  // Effect to automatically open delivery modal for packages delivered in ML that need photos
+  useEffect(() => {
+    if (!auth?.systemSettings?.meliAutoPromptPhotos) return;
+    if (deliveringPackages && deliveringPackages.length > 0) return;
+    if (reportingProblemPackage) return;
+
+    const needsPhotosPackage = myPackages.find(
+      p => p.meliDeliveredNeedsPhotos === true && p.status !== PackageStatus.Delivered && p.status !== PackageStatus.Problem
+    );
+    if (needsPhotosPackage) {
+      if (navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
+      }
+      setDeliveringPackages([needsPhotosPackage]);
+    }
+  }, [myPackages, auth?.systemSettings?.meliAutoPromptPhotos, deliveringPackages, reportingProblemPackage]);
+
   const fetchData = async (silent = false) => {
       if (!auth?.user) return;
       if (isInitialLoad.current && !silent) {

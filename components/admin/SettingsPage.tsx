@@ -28,6 +28,7 @@ interface SettingsState {
     messagingPlan: MessagingPlan;
     pickupMode: PickupMode;
     meliFlexValidation: boolean;
+    meliAutoPromptPhotos: boolean;
     saveFlexLabelPhoto: boolean;
     meliAutoImport: boolean;
     shopifyAutoImport: boolean;
@@ -51,6 +52,7 @@ const SettingsPage: React.FC = () => {
         messagingPlan: MessagingPlan.None,
         pickupMode: PickupMode.Scan,
         meliFlexValidation: true,
+        meliAutoPromptPhotos: false,
         saveFlexLabelPhoto: false,
         meliAutoImport: false,
         shopifyAutoImport: false,
@@ -87,6 +89,7 @@ const SettingsPage: React.FC = () => {
                 messagingPlan: auth.systemSettings.messagingPlan || MessagingPlan.None,
                 pickupMode: auth.systemSettings.pickupMode || PickupMode.Scan,
                 meliFlexValidation: auth.systemSettings.meliFlexValidation ?? true,
+                meliAutoPromptPhotos: auth.systemSettings.meliAutoPromptPhotos ?? false,
                 saveFlexLabelPhoto: auth.systemSettings.saveFlexLabelPhoto ?? false,
                 meliAutoImport: auth.systemSettings.meliAutoImport ?? false,
                 shopifyAutoImport: auth.systemSettings.shopifyAutoImport ?? false,
@@ -128,7 +131,16 @@ const SettingsPage: React.FC = () => {
     const handleSettingsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value, type, checked } = e.target;
         if (type === 'checkbox') {
-             setSettings(prev => ({ ...prev, [name]: checked }));
+             setSettings(prev => {
+                 const newSettings = { ...prev, [name]: checked };
+                 if (name === 'meliAutoPromptPhotos' && checked === true) {
+                     newSettings.meliFlexValidation = false;
+                 }
+                 if (name === 'meliFlexValidation' && checked === true) {
+                     newSettings.meliAutoPromptPhotos = false;
+                 }
+                 return newSettings;
+             });
         } else if (type === 'number') {
             const numValue = parseInt(value, 10);
             setSettings(prev => ({ ...prev, [name]: isNaN(numValue) ? '' : numValue }));
@@ -155,6 +167,7 @@ const SettingsPage: React.FC = () => {
                 messagingPlan: settings.messagingPlan,
                 pickupMode: settings.pickupMode,
                 meliFlexValidation: settings.meliFlexValidation,
+                meliAutoPromptPhotos: settings.meliAutoPromptPhotos,
                 saveFlexLabelPhoto: settings.saveFlexLabelPhoto,
                 meliAutoImport: settings.meliAutoImport,
                 shopifyAutoImport: settings.shopifyAutoImport,
@@ -267,6 +280,7 @@ const SettingsPage: React.FC = () => {
             settings.messagingPlan !== originalSettings.messagingPlan ||
             settings.pickupMode !== originalSettings.pickupMode ||
             settings.meliFlexValidation !== originalSettings.meliFlexValidation ||
+            settings.meliAutoPromptPhotos !== originalSettings.meliAutoPromptPhotos ||
             settings.saveFlexLabelPhoto !== originalSettings.saveFlexLabelPhoto ||
             settings.meliAutoImport !== originalSettings.meliAutoImport ||
             settings.shopifyAutoImport !== originalSettings.shopifyAutoImport ||
@@ -410,6 +424,25 @@ const SettingsPage: React.FC = () => {
                                     type="checkbox"
                                     name="meliFlexValidation"
                                     checked={settings.meliFlexValidation}
+                                    onChange={handleSettingsChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className="pt-4 border-t border-[var(--border-primary)]">
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <div>
+                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Auto-abrir Cámara al Entregar en Flex</h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, cuando un paquete se marque como entregado en Mercado Libre, se abrirá automáticamente el modal de fotos en FullEnvíos para el conductor sin que tenga que buscar el paquete.</p>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    name="meliAutoPromptPhotos"
+                                    checked={settings.meliAutoPromptPhotos}
                                     onChange={handleSettingsChange}
                                     className="sr-only peer"
                                 />

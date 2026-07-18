@@ -132,7 +132,7 @@ router.post('/sync-woocommerce', authMiddleware, adminOnly, async (req, res) => 
 // GET /api/settings/system
 router.get('/system', async (req, res) => {
     try {
-        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "timezone", "recipientNotificationsEnabled", "licenseLimit", "licenseOverageFee" FROM system_settings WHERE id = 1');
+        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "timezone", "recipientNotificationsEnabled", "meliAutoPromptPhotos", "licenseLimit", "licenseOverageFee" FROM system_settings WHERE id = 1');
         const fallbackSettings = {
             companyName: 'FULL ENVIOS',
             isAppEnabled: true,
@@ -153,6 +153,7 @@ router.get('/system', async (req, res) => {
             allowRedelivery: false,
             timezone: 'America/Santiago',
             recipientNotificationsEnabled: false,
+            meliAutoPromptPhotos: false,
             licenseLimit: 70,
             licenseOverageFee: 0.1,
         };
@@ -163,13 +164,13 @@ router.get('/system', async (req, res) => {
     } catch (err) {
         console.error("ERROR in /api/settings/system:", err);
         // Fail gracefully if DB not ready
-        res.json({ companyName: 'FULL ENVIOS', isAppEnabled: true, requiredPhotos: 1, messagingPlan: 'NONE', pickupMode: 'SCAN', meliFlexValidation: true, labelFormat: 'compact_thermal', timeFormat: '12h', allowRedelivery: false, licenseLimit: 70, licenseOverageFee: 0.1 });
+        res.json({ companyName: 'FULL ENVIOS', isAppEnabled: true, requiredPhotos: 1, messagingPlan: 'NONE', pickupMode: 'SCAN', meliFlexValidation: true, labelFormat: 'compact_thermal', timeFormat: '12h', allowRedelivery: false, meliAutoPromptPhotos: false, licenseLimit: 70, licenseOverageFee: 0.1 });
     }
 });
 
 // PUT /api/settings/system
 router.put('/system', authMiddleware, adminOnly, async (req, res) => {
-    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, shopifyAutoImport, woocommerceAutoImport, publicTrackingEnabled, isRutRequired, flexDiscrepancyReportEnabled, labelFormat, circuitExportEnabled, timeFormat, allowRedelivery, timezone, recipientNotificationsEnabled, licenseLimit, licenseOverageFee } = req.body;
+    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, shopifyAutoImport, woocommerceAutoImport, publicTrackingEnabled, isRutRequired, flexDiscrepancyReportEnabled, labelFormat, circuitExportEnabled, timeFormat, allowRedelivery, timezone, recipientNotificationsEnabled, meliAutoPromptPhotos, licenseLimit, licenseOverageFee } = req.body;
 
     try {
         const { rows: currentSettingsRows } = await db.query('SELECT * FROM system_settings WHERE id = 1');
@@ -196,13 +197,14 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 allowRedelivery: allowRedelivery !== undefined ? allowRedelivery : currentSettings.allowRedelivery,
                 timezone: timezone !== undefined ? timezone : currentSettings.timezone,
                 recipientNotificationsEnabled: recipientNotificationsEnabled !== undefined ? recipientNotificationsEnabled : currentSettings.recipientNotificationsEnabled,
+                meliAutoPromptPhotos: meliAutoPromptPhotos !== undefined ? meliAutoPromptPhotos : currentSettings.meliAutoPromptPhotos,
                 licenseLimit: licenseLimit !== undefined ? licenseLimit : currentSettings.licenseLimit,
                 licenseOverageFee: licenseOverageFee !== undefined ? licenseOverageFee : currentSettings.licenseOverageFee,
             };
             
             await db.query(
-                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "shopifyAutoImport" = $9, "woocommerceAutoImport" = $10, "publicTrackingEnabled" = $11, "isRutRequired" = $12, "flexDiscrepancyReportEnabled" = $13, "labelFormat" = $14, "circuitExportEnabled" = $15, "timeFormat" = $16, "allowRedelivery" = $17, "timezone" = $18, "recipientNotificationsEnabled" = $19, "licenseLimit" = $20, "licenseOverageFee" = $21 WHERE id = 1',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.woocommerceAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.timezone, updatedSettings.recipientNotificationsEnabled, updatedSettings.licenseLimit, updatedSettings.licenseOverageFee]
+                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "shopifyAutoImport" = $9, "woocommerceAutoImport" = $10, "publicTrackingEnabled" = $11, "isRutRequired" = $12, "flexDiscrepancyReportEnabled" = $13, "labelFormat" = $14, "circuitExportEnabled" = $15, "timeFormat" = $16, "allowRedelivery" = $17, "timezone" = $18, "recipientNotificationsEnabled" = $19, "meliAutoPromptPhotos" = $20, "licenseLimit" = $21, "licenseOverageFee" = $22 WHERE id = 1',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.woocommerceAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.timezone, updatedSettings.recipientNotificationsEnabled, updatedSettings.meliAutoPromptPhotos, updatedSettings.licenseLimit, updatedSettings.licenseOverageFee]
             );
             
             await logAction(req.user.id, req.user.name, 'UPDATE_SYSTEM_SETTINGS', { updatedSettings });
@@ -230,13 +232,14 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 allowRedelivery: allowRedelivery !== undefined ? allowRedelivery : false,
                 timezone: timezone !== undefined ? timezone : 'America/Santiago',
                 recipientNotificationsEnabled: recipientNotificationsEnabled !== undefined ? recipientNotificationsEnabled : false,
+                meliAutoPromptPhotos: meliAutoPromptPhotos !== undefined ? meliAutoPromptPhotos : false,
                 licenseLimit: licenseLimit !== undefined ? licenseLimit : 70,
                 licenseOverageFee: licenseOverageFee !== undefined ? licenseOverageFee : 0.1,
             };
 
             await db.query(
-                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "timezone", "recipientNotificationsEnabled", "licenseLimit", "licenseOverageFee") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21)',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.woocommerceAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.timezone, updatedSettings.recipientNotificationsEnabled, updatedSettings.licenseLimit, updatedSettings.licenseOverageFee]
+                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "timezone", "recipientNotificationsEnabled", "meliAutoPromptPhotos", "licenseLimit", "licenseOverageFee") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22)',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.woocommerceAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.timezone, updatedSettings.recipientNotificationsEnabled, updatedSettings.meliAutoPromptPhotos, updatedSettings.licenseLimit, updatedSettings.licenseOverageFee]
             );
 
             await logAction(req.user.id, req.user.name, 'CREATE_SYSTEM_SETTINGS', { updatedSettings });

@@ -428,7 +428,8 @@ async function initializeDatabase() {
                 "trackingId" TEXT,
                 "recipientRut" TEXT,
                 "isFlexed" BOOLEAN DEFAULT false,
-                "flexedAt" TIMESTAMPTZ
+                "flexedAt" TIMESTAMPTZ,
+                "meliDeliveredNeedsPhotos" BOOLEAN DEFAULT false
             );
         `);
         console.log('Table "packages" is ready.');
@@ -556,6 +557,7 @@ async function initializeDatabase() {
                 "isRutRequired" BOOLEAN DEFAULT true,
                 "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
                 "circuitExportEnabled" BOOLEAN DEFAULT false,
+                "meliAutoPromptPhotos" BOOLEAN DEFAULT false,
                 "timezone" TEXT DEFAULT 'America/Santiago',
                 "licenseLimit" INTEGER DEFAULT 70,
                 "licenseOverageFee" NUMERIC DEFAULT 0.1
@@ -742,6 +744,18 @@ async function initializeDatabase() {
             console.log('MIGRATION APPLIED: Column "licenseOverageFee" was added to "system_settings".');
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (licenseOverageFee):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "meliAutoPromptPhotos" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "meliAutoPromptPhotos" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (meliAutoPromptPhotos):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE packages ADD COLUMN "meliDeliveredNeedsPhotos" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "meliDeliveredNeedsPhotos" was added to "packages".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during packages migration (meliDeliveredNeedsPhotos):', err); }
         }
         // --- END MIGRATION SCRIPT ---
 
