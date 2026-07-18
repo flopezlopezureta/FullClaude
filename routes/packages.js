@@ -1897,6 +1897,8 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         if (updatedPackage.source === 'FALABELLA' && updatedPackage.falabellaTrackingId) {
             syncDeliveryToFalabella(updatedPackage.id, updatedPackage.falabellaTrackingId)
                 .catch(err => console.error(`[Deliver] Falabella sync trigger error:`, err));
+            syncDeliveryToEnviame(updatedPackage.id, updatedPackage.falabellaTrackingId)
+                .catch(err => console.error(`[Deliver] Envíame sync trigger error for Falabella order:`, err));
         }
         // --- END FALABELLA NOTIFICATION ---
 
