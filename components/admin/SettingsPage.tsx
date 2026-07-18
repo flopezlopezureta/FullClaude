@@ -181,6 +181,7 @@ const SettingsPage: React.FC = () => {
                 allowRedelivery: settings.allowRedelivery,
                 timezone: settings.timezone,
                 recipientNotificationsEnabled: settings.recipientNotificationsEnabled,
+                showPendingPaymentAlert: settings.showPendingPaymentAlert,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -200,6 +201,19 @@ const SettingsPage: React.FC = () => {
             showSuccess(`Aplicación ${newStatus ? 'habilitada' : 'deshabilitada'} con éxito.`);
         } catch (error) {
             showError('Error al cambiar el estado de la aplicación.');
+        }
+    };
+    const handlePendingPaymentAlertToggle = async () => {
+        if (!auth) return;
+        try {
+            const newStatus = !settings.showPendingPaymentAlert;
+            await auth.updateSystemSettings({ showPendingPaymentAlert: newStatus });
+            const updatedSettings = { ...settings, showPendingPaymentAlert: newStatus };
+            setSettings(updatedSettings);
+            setOriginalSettings(prev => prev ? ({ ...prev, showPendingPaymentAlert: newStatus }) : null);
+            showSuccess(`Alerta de pagos pendientes ${newStatus ? 'activada' : 'desactivada'} con éxito.`);
+        } catch (error) {
+            showError('Error al cambiar el estado de la alerta.');
         }
     };
 
@@ -754,7 +768,7 @@ const SettingsPage: React.FC = () => {
                                     type="checkbox"
                                     name="showPendingPaymentAlert"
                                     checked={settings.showPendingPaymentAlert || false}
-                                    onChange={handleSettingsChange}
+                                    onChange={handlePendingPaymentAlertToggle}
                                     className="sr-only peer"
                                 />
                                 <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
