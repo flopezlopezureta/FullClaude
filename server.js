@@ -558,6 +558,7 @@ async function initializeDatabase() {
                 "flexDiscrepancyReportEnabled" BOOLEAN DEFAULT true,
                 "circuitExportEnabled" BOOLEAN DEFAULT false,
                 "meliAutoPromptPhotos" BOOLEAN DEFAULT false,
+                "showPendingPaymentAlert" BOOLEAN DEFAULT false,
                 "timezone" TEXT DEFAULT 'America/Santiago',
                 "licenseLimit" INTEGER DEFAULT 70,
                 "licenseOverageFee" NUMERIC DEFAULT 0.1
@@ -752,6 +753,12 @@ async function initializeDatabase() {
             if (err.code !== '42701') { console.error('Error during settings migration (meliAutoPromptPhotos):', err); }
         }
         try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "showPendingPaymentAlert" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "showPendingPaymentAlert" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (showPendingPaymentAlert):', err); }
+        }
+        try {
             await db.query('ALTER TABLE packages ADD COLUMN "meliDeliveredNeedsPhotos" BOOLEAN DEFAULT false');
             console.log('MIGRATION APPLIED: Column "meliDeliveredNeedsPhotos" was added to "packages".');
         } catch (err) {
@@ -787,8 +794,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit", "licenseOverageFee")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70, 0.1)
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit", "licenseOverageFee", "meliAutoPromptPhotos", "showPendingPaymentAlert")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70, 0.1, FALSE, FALSE)
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`

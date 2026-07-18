@@ -738,6 +738,28 @@ const SettingsPage: React.FC = () => {
                                 {settings.isAppEnabled ? 'DESHABILITAR APP' : 'HABILITAR APP'}
                             </button>
                         </div>
+
+                        <div className="flex items-center justify-between pt-4 border-t border-[var(--border-primary)]">
+                            <div className="pr-4">
+                                <p className="font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    <IconAlertTriangle className="w-5 h-5 text-amber-500" />
+                                    Alertar Pagos Pendientes a Administradores
+                                </p>
+                                <p className="text-xs text-[var(--text-muted)] mt-1">
+                                    Muestra una advertencia temporal a los administradores indicando que la cuenta tiene facturas pendientes de pago.
+                                </p>
+                            </div>
+                            <label className="relative inline-flex items-center cursor-pointer">
+                                <input
+                                    type="checkbox"
+                                    name="showPendingPaymentAlert"
+                                    checked={settings.showPendingPaymentAlert || false}
+                                    onChange={handleSettingsChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                            </label>
+                        </div>
                     </div>
                 </div>
             )}

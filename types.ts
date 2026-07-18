@@ -51,6 +51,7 @@ export interface SystemSettings {
     licenseLimit?: number;
     licenseOverageFee?: number;
     meliAutoPromptPhotos?: boolean;
+    showPendingPaymentAlert?: boolean;
 }
 
 export interface ZonePricing {

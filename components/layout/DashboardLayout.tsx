@@ -7,7 +7,7 @@ import Dashboard from '../Dashboard';
 import UserManagement from '../admin/UserManagement';
 import { Role, DEFAULT_OPERATOR_PERMISSIONS } from '../../constants';
 import ClientDashboard from '../client/ClientDashboard';
-import { IconMenu, IconCheckCircle, IconX } from '../Icon';
+import { IconMenu, IconCheckCircle, IconX, IconAlertTriangle } from '../Icon';
 import SettingsPage from '../admin/SettingsPage';
 import IntegrationSettingsPage from '../admin/IntegrationSettingsPage';
 import SystemLogsPage from '../admin/SystemLogsPage';
@@ -31,7 +31,6 @@ import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 import ClientSettingsPage from '../client/ClientSettingsPage';
 import ActivityAuditReport from '../admin/ActivityAuditReport';
 import SuperAdminBillingReportPage from '../admin/SuperAdminBillingReportPage';
-import ProjectionMap from '../admin/ProjectionMap';
 
 const DashboardLayout: React.FC = () => {
   const { user, systemSettings } = useContext(AuthContext)!;
@@ -60,6 +59,21 @@ const DashboardLayout: React.FC = () => {
     }
   }, [notification, clearNotification]);
   
+  const [showPaymentAlert, setShowPaymentAlert] = useState(false);
+
+  useEffect(() => {
+    // Show only to administrators when the alert switch is enabled
+    // Support synonyms like 'ADMIN' or 'ADMINISTRADOR'
+    const isUserAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'ADMINISTRADOR';
+    if (systemSettings?.showPendingPaymentAlert && isUserAdmin) {
+      setShowPaymentAlert(true);
+      const timer = setTimeout(() => {
+        setShowPaymentAlert(false);
+      }, 8000); // Hide automatically after 8 seconds
+      return () => clearTimeout(timer);
+    }
+  }, [systemSettings, user]);
+
   const isSuperUser = user?.email === 'admin' || user?.email === 'admin@admin.cl';
 
   if (user?.role === Role.Driver) {
@@ -185,10 +199,6 @@ const DashboardLayout: React.FC = () => {
         if (isAdmin || (isOp && user?.operatorPermissions?.canManageDrivers)) return { title: 'Mapa en Vivo', content: <LiveMap /> };
         break;
 
-      case 'projection-map':
-        if (isAdmin && isSuperUser) return { title: 'Proyección de Paquetes', content: <ProjectionMap /> };
-        break;
-
       case 'geolocate':
         if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: '', content: <GeolocatePage /> };
         break;
@@ -309,6 +319,28 @@ const DashboardLayout: React.FC = () => {
             </div>
           </div>
         </header>
+
+        {/* Floating Pending Payment Alert */}
+        {showPaymentAlert && (
+          <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-xl px-4 animate-in slide-in-from-top duration-500">
+            <div className="bg-amber-500 text-white rounded-xl shadow-xl border border-amber-600 p-4 flex items-start gap-3 relative">
+              <IconAlertTriangle className="w-6 h-6 shrink-0 mt-0.5 text-white" />
+              <div className="flex-1 pr-6">
+                <h4 className="font-bold text-sm">Aviso de Facturación</h4>
+                <p className="text-xs opacity-95 mt-1 leading-relaxed">
+                  Su cuenta está con pagos pendientes, favor proceder a realizar pago pendiente, si ya está normalizado favor no considerar.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowPaymentAlert(false)}
+                className="absolute top-3 right-3 p-1 hover:bg-white/20 rounded-lg transition-colors text-white"
+                aria-label="Cerrar aviso"
+              >
+                <IconX className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Floating Notifications */}
         {notification && (
