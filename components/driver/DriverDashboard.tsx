@@ -54,6 +54,72 @@ const DriverDashboard: React.FC = () => {
   const prevPackagesRef = useRef<Package[] | undefined>(undefined);
 
   const [driverCoords, setDriverCoords] = useState<{ latitude: number, longitude: number } | null>(null);
+  const [roadDistances, setRoadDistances] = useState<Record<string, { distance: number, isRoad: boolean }>>({});
+  const lastFetchCoords = useRef<{ latitude: number, longitude: number } | null>(null);
+
+  const pendingWithCoords = useMemo(() => {
+    if (!Array.isArray(myPackages)) return [];
+    return myPackages.filter(p => 
+      p && 
+      p.status !== PackageStatus.Delivered && 
+      p.status !== PackageStatus.Problem && 
+      p.status !== PackageStatus.Returned && 
+      p.status !== PackageStatus.Cancelled &&
+      p.destLatitude && p.destLongitude
+    );
+  }, [myPackages]);
+
+  useEffect(() => {
+    if (!driverCoords || pendingWithCoords.length === 0) return;
+
+    // Check displacement from last fetch
+    if (lastFetchCoords.current) {
+      const shift = calculateDistance(
+        lastFetchCoords.current.latitude,
+        lastFetchCoords.current.longitude,
+        driverCoords.latitude,
+        driverCoords.longitude
+      );
+      // Skip if displacement is less than 150 meters (0.15 km) and number of tracked packages remains unchanged
+      if (shift < 0.15 && Object.keys(roadDistances).length === pendingWithCoords.length) {
+        return;
+      }
+    }
+
+    const fetchRoadDistances = async () => {
+      try {
+        const points = [
+          [driverCoords.longitude, driverCoords.latitude],
+          ...pendingWithCoords.map(p => [Number(p.destLongitude), Number(p.destLatitude)])
+        ];
+        const coordsStr = points.map(c => `${c[0]},${c[1]}`).join(';');
+        const url = `https://router.project-osrm.org/table/v1/driving/${coordsStr}?sources=0&annotations=distance`;
+        
+        const response = await fetch(url);
+        if (!response.ok) throw new Error("OSRM table query response error");
+        const data = await response.json();
+        
+        if (data.code === 'Ok' && data.distances && data.distances[0]) {
+          const newDistances: Record<string, { distance: number, isRoad: boolean }> = {};
+          pendingWithCoords.forEach((p, index) => {
+            const meters = data.distances[0][index + 1];
+            if (typeof meters === 'number') {
+              newDistances[p.id] = {
+                distance: meters / 1000, // Convert meters to km
+                isRoad: true
+              };
+            }
+          });
+          setRoadDistances(newDistances);
+          lastFetchCoords.current = driverCoords;
+        }
+      } catch (err) {
+        console.error("[DriverDashboard] OSRM table query failed:", err);
+      }
+    };
+
+    fetchRoadDistances();
+  }, [driverCoords, pendingWithCoords]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && 'geolocation' in navigator) {
@@ -252,6 +318,13 @@ const DriverDashboard: React.FC = () => {
 
     if (driverCoords) {
         pending = pending.map(p => {
+            if (roadDistances[p.id]) {
+                return {
+                    ...p,
+                    distance: roadDistances[p.id].distance,
+                    isRoadDistance: roadDistances[p.id].isRoad
+                };
+            }
             if (p.destLatitude && p.destLongitude) {
                 const distance = calculateDistance(
                     driverCoords.latitude,
@@ -259,7 +332,7 @@ const DriverDashboard: React.FC = () => {
                     Number(p.destLatitude),
                     Number(p.destLongitude)
                 );
-                return { ...p, distance };
+                return { ...p, distance, isRoadDistance: false };
             }
             return p;
         });
@@ -285,7 +358,7 @@ const DriverDashboard: React.FC = () => {
         unflexedCount: unflexed,
         totalAssignedForToday: assignedToday
     };
-  }, [myPackages, searchTerm, auth?.systemSettings?.timezone, driverCoords]);
+  }, [myPackages, searchTerm, auth?.systemSettings?.timezone, driverCoords, roadDistances]);
 
   const handleSelectionChange = (pkg: Package) => {
     setSelectedPackages(prev => {

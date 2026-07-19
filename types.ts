@@ -312,6 +312,7 @@ export interface Package {
   falabellaTrackingId?: string;
   meliDeliveredNeedsPhotos?: boolean;
   distance?: number;
+  isRoadDistance?: boolean;
 }
 
 export interface Notification {
