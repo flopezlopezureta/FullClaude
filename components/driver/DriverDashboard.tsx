@@ -12,6 +12,7 @@ import UndeliveredModal from './UndeliveredModal';
 import { AuthContext } from '../../contexts/AuthContext';
 import { IconArchive, IconTruck, IconRoute, IconAlertTriangle, IconSearch, IconX, IconMapPin } from '../Icon';
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
+import DriverMapView from './DriverMapView';
 
 
 const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
@@ -48,6 +49,7 @@ const DriverDashboard: React.FC = () => {
   const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
   const [searchTerm, setSearchTerm] = useState('');
   const [isEndOfDayModalOpen, setIsEndOfDayModalOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   
   const auth = useContext(AuthContext);
   const isInitialLoad = useRef(true);
@@ -691,6 +693,18 @@ const DriverDashboard: React.FC = () => {
                 </button>
             )}
             
+            <button
+                onClick={() => setViewMode(prev => prev === 'list' ? 'map' : 'list')}
+                title={viewMode === 'list' ? 'Ver en Mapa' : 'Ver en Lista'}
+                className="inline-flex items-center justify-center p-2 rounded-xl shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 transition-all"
+            >
+                {viewMode === 'list' ? (
+                    <IconRoute className="w-6 h-6" />
+                ) : (
+                    <IconTruck className="w-6 h-6" />
+                )}
+            </button>
+            
             <div className="bg-[var(--brand-primary)] text-[var(--text-on-brand)] text-[10px] font-bold px-2 py-2 rounded-xl whitespace-nowrap flex flex-col items-center justify-center leading-tight shadow-sm min-w-[65px]">
                 <span className="opacity-80 text-[8px] uppercase tracking-tighter">Asignados</span>
                 <span className="text-sm">{totalAssignedForToday}</span>
@@ -698,38 +712,44 @@ const DriverDashboard: React.FC = () => {
         </div>
       </div>
 
-      <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
-        <div className="border-b border-[var(--border-primary)]">
-          <nav className="flex" aria-label="Tabs">
-            <button
-              onClick={() => setActiveTab('pending')}
-              className={`${tabStyles} ${activeTab === 'pending' ? activeTabStyles : inactiveTabStyles} rounded-tl-lg`}
-            >
-              <IconTruck className="w-5 h-5 mr-2" />
-              <span>Pendientes ({pendingPackages.length})</span>
-            </button>
-            <button
-              onClick={() => setActiveTab('history')}
-              className={`${tabStyles} ${activeTab === 'history' ? activeTabStyles : inactiveTabStyles} rounded-tr-lg`}
-            >
-              <IconArchive className="w-5 h-5 mr-2" />
-              <span>Cerrados ({dailyHistoryPackages.length})</span>
-            </button>
-          </nav>
+      {viewMode === 'map' ? (
+        <div className="bg-[var(--background-secondary)] shadow-md rounded-xl overflow-hidden border border-[var(--border-primary)] p-1">
+          <DriverMapView />
         </div>
-        <PackageList 
-            packages={packagesToShow} 
-            users={users}
-            isLoading={isLoading}
-            onSelectPackage={handleSelectPackageDetails}
-            hideDriverName={true}
-            isFiltering={activeTab === 'history'}
-            selectedPackages={selectedPackages}
-            onSelectionChange={handleSelectionChange}
-            onSelectAll={activeTab === 'pending' ? handleSelectAll : undefined}
-            disableSorting={activeTab === 'pending'}
-        />
-      </div>
+      ) : (
+        <div className="bg-[var(--background-secondary)] shadow-md rounded-lg">
+          <div className="border-b border-[var(--border-primary)]">
+            <nav className="flex" aria-label="Tabs">
+              <button
+                onClick={() => setActiveTab('pending')}
+                className={`${tabStyles} ${activeTab === 'pending' ? activeTabStyles : inactiveTabStyles} rounded-tl-lg`}
+              >
+                <IconTruck className="w-5 h-5 mr-2" />
+                <span>Pendientes ({pendingPackages.length})</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('history')}
+                className={`${tabStyles} ${activeTab === 'history' ? activeTabStyles : inactiveTabStyles} rounded-tr-lg`}
+              >
+                <IconArchive className="w-5 h-5 mr-2" />
+                <span>Cerrados ({dailyHistoryPackages.length})</span>
+              </button>
+            </nav>
+          </div>
+          <PackageList 
+              packages={packagesToShow} 
+              users={users}
+              isLoading={isLoading}
+              onSelectPackage={handleSelectPackageDetails}
+              hideDriverName={true}
+              isFiltering={activeTab === 'history'}
+              selectedPackages={selectedPackages}
+              onSelectionChange={handleSelectionChange}
+              onSelectAll={activeTab === 'pending' ? handleSelectAll : undefined}
+              disableSorting={activeTab === 'pending'}
+          />
+        </div>
+      )}
 
       {activeTab === 'pending' && selectedPackages.size > 0 && (
         <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-[var(--border-primary)] shadow-2xl flex items-center justify-between z-40 animate-fade-in-up">
