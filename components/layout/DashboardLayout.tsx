@@ -329,7 +329,7 @@ const DashboardLayout: React.FC = () => {
               <div className="flex-1 pr-6">
                 <h4 className="font-bold text-sm">Aviso de Facturación</h4>
                 <p className="text-xs opacity-95 mt-1 leading-relaxed">
-                  Su cuenta está con pagos pendientes, favor proceder a realizar pago pendiente, si ya está normalizado favor no considerar.
+                  Su cuenta esta con pagos pendientes, favor realizar pago correspondiente, si ya realizo la normalizacion de su cuenta no considerar. Gracias.
                 </p>
               </div>
               <button 
