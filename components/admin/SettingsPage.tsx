@@ -294,7 +294,8 @@ const SettingsPage: React.FC = () => {
             settings.timeFormat !== originalSettings.timeFormat ||
             settings.allowRedelivery !== originalSettings.allowRedelivery ||
             settings.timezone !== originalSettings.timezone ||
-            settings.recipientNotificationsEnabled !== originalSettings.recipientNotificationsEnabled
+            settings.recipientNotificationsEnabled !== originalSettings.recipientNotificationsEnabled ||
+            settings.showPendingPaymentAlert !== originalSettings.showPendingPaymentAlert
         );
     }, [settings, originalSettings]);
 
