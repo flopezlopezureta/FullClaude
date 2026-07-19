@@ -325,10 +325,10 @@ const DashboardLayout: React.FC = () => {
         {showPaymentAlert && (
           <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-xl px-4 animate-in slide-in-from-top duration-500">
             <div className="bg-blue-600 text-white rounded-xl shadow-xl border border-blue-700 p-4 flex items-start gap-3 relative">
-              <IconAlertTriangle className="w-6 h-6 shrink-0 mt-0.5 text-white" />
+              <IconAlertTriangle className="w-7 h-7 shrink-0 mt-0.5 text-white" />
               <div className="flex-1 pr-6">
-                <h4 className="font-bold text-sm">Aviso de Facturación</h4>
-                <p className="text-xs opacity-95 mt-1 leading-relaxed">
+                <h4 className="font-bold text-base">Aviso de Facturación</h4>
+                <p className="text-sm opacity-95 mt-1 leading-relaxed">
                   Estimado Administrador: Registramos un saldo pendiente de pago en su cuenta. Le solicitamos regularizar su situación a la brevedad. Si ya realizó la transferencia o normalizó su cuenta, por favor ignore este mensaje. ¡Muchas gracias!
                 </p>
               </div>
