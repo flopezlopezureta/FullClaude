@@ -64,7 +64,8 @@ const DashboardLayout: React.FC = () => {
   useEffect(() => {
     // Show only to administrators when the alert switch is enabled
     // Support synonyms like 'ADMIN' or 'ADMINISTRADOR'
-    const isUserAdmin = user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'ADMINISTRADOR';
+    const isUserAdmin = (user?.role?.toUpperCase() === 'ADMIN' || user?.role?.toUpperCase() === 'ADMINISTRADOR')
+                        && user?.email !== 'admin' && user?.email !== 'admin@admin.cl';
     if (systemSettings?.showPendingPaymentAlert && isUserAdmin) {
       setShowPaymentAlert(true);
       const timer = setTimeout(() => {
