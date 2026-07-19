@@ -311,6 +311,7 @@ export interface Package {
   falabellaOrderId?: string;
   falabellaTrackingId?: string;
   meliDeliveredNeedsPhotos?: boolean;
+  distance?: number;
 }
 
 export interface Notification {

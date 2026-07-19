@@ -14,6 +14,18 @@ import { IconArchive, IconTruck, IconRoute, IconAlertTriangle, IconSearch, IconX
 import EndOfDayReportModal from '../modals/EndOfDayReportModal';
 
 
+const calculateDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth's radius in km
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = 
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+    Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; // Distance in km
+};
+
 const DriverDashboard: React.FC = () => {
   const [myPackages, setMyPackages] = useState<Package[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -40,6 +52,40 @@ const DriverDashboard: React.FC = () => {
   const auth = useContext(AuthContext);
   const isInitialLoad = useRef(true);
   const prevPackagesRef = useRef<Package[] | undefined>(undefined);
+
+  const [driverCoords, setDriverCoords] = useState<{ latitude: number, longitude: number } | null>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      const handleSuccess = (position: GeolocationPosition) => {
+        setDriverCoords({
+          latitude: position.coords.latitude,
+          longitude: position.coords.longitude
+        });
+      };
+      const handleError = (error: GeolocationPositionError) => {
+        console.error("[DriverDashboard] Geolocation watch error:", error);
+      };
+      
+      // Get initial position immediately
+      navigator.geolocation.getCurrentPosition(handleSuccess, handleError, {
+        enableHighAccuracy: true,
+        timeout: 10000,
+        maximumAge: 0
+      });
+
+      // Watch for position updates
+      const watchId = navigator.geolocation.watchPosition(handleSuccess, handleError, {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      });
+
+      return () => {
+        navigator.geolocation.clearWatch(watchId);
+      };
+    }
+  }, []);
 
   // Load from cache on mount
   useEffect(() => {
@@ -201,8 +247,32 @@ const DriverDashboard: React.FC = () => {
         );
     };
 
-    const pending = allPending.filter(filterFn);
+    let pending = allPending.filter(filterFn);
     const history = allHistory.filter(filterFn);
+
+    if (driverCoords) {
+        pending = pending.map(p => {
+            if (p.destLatitude && p.destLongitude) {
+                const distance = calculateDistance(
+                    driverCoords.latitude,
+                    driverCoords.longitude,
+                    Number(p.destLatitude),
+                    Number(p.destLongitude)
+                );
+                return { ...p, distance };
+            }
+            return p;
+        });
+
+        pending.sort((a, b) => {
+            if (a.distance !== undefined && b.distance !== undefined) {
+                return a.distance - b.distance;
+            }
+            if (a.distance !== undefined) return -1;
+            if (b.distance !== undefined) return 1;
+            return 0;
+        });
+    }
 
     const unflexed = allPending.filter(p => !p.isFlexed).length; 
     
@@ -215,7 +285,7 @@ const DriverDashboard: React.FC = () => {
         unflexedCount: unflexed,
         totalAssignedForToday: assignedToday
     };
-  }, [myPackages, searchTerm, auth?.systemSettings?.timezone]);
+  }, [myPackages, searchTerm, auth?.systemSettings?.timezone, driverCoords]);
 
   const handleSelectionChange = (pkg: Package) => {
     setSelectedPackages(prev => {
@@ -584,6 +654,7 @@ const DriverDashboard: React.FC = () => {
             selectedPackages={selectedPackages}
             onSelectionChange={handleSelectionChange}
             onSelectAll={activeTab === 'pending' ? handleSelectAll : undefined}
+            disableSorting={activeTab === 'pending'}
         />
       </div>
 

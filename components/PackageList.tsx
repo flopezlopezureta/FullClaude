@@ -21,6 +21,7 @@ interface PackageListProps {
   selectedPackages?: Set<string>;
   onSelectionChange?: (pkg: Package) => void;
   onSelectAll?: () => void;
+  disableSorting?: boolean;
 }
 
 const statusPriority: { [key in PackageStatus]: number } = {
@@ -37,7 +38,7 @@ const statusPriority: { [key in PackageStatus]: number } = {
   [PackageStatus.Rescheduled]: 10,
 };
 
-const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange, onSelectAll }) => {
+const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange, onSelectAll, disableSorting }) => {
   const userMap = React.useMemo(() => {
     const map: Record<string, User> = {};
     users.forEach(u => {
@@ -66,7 +67,7 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
     );
   }
 
-  const sortedPackages = [...packages].sort((a, b) => {
+  const sortedPackages = disableSorting ? packages : [...packages].sort((a, b) => {
     // Urgent packages (SameDay/Express pending assignment) always float to top
     const isAUrgent = (a.shippingType === ShippingType.Express || a.shippingType === ShippingType.SameDay) && a.status === PackageStatus.Pending && !a.driverId;
     const isBUrgent = (b.shippingType === ShippingType.Express || b.shippingType === ShippingType.SameDay) && b.status === PackageStatus.Pending && !b.driverId;
