@@ -324,7 +324,7 @@ const DashboardLayout: React.FC = () => {
         {/* Floating Pending Payment Alert */}
         {showPaymentAlert && (
           <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 w-full max-w-xl px-4 animate-in slide-in-from-top duration-500">
-            <div className="bg-amber-500 text-white rounded-xl shadow-xl border border-amber-600 p-4 flex items-start gap-3 relative">
+            <div className="bg-blue-600 text-white rounded-xl shadow-xl border border-blue-700 p-4 flex items-start gap-3 relative">
               <IconAlertTriangle className="w-6 h-6 shrink-0 mt-0.5 text-white" />
               <div className="flex-1 pr-6">
                 <h4 className="font-bold text-sm">Aviso de Facturación</h4>
