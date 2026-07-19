@@ -196,9 +196,13 @@ const DriverMapView: React.FC = () => {
         const origin = waypoints.shift();
         const destination = waypoints.pop() || origin;
         
-        const waypointsString = waypoints.join('|');
-
-        const url = `https://www.google.com/maps/dir/?api=1&origin=${origin}&destination=${destination}&waypoints=${waypointsString}&travelmode=driving`;
+        let url = '';
+        if (waypoints.length > 0) {
+            const waypointsString = waypoints.join('+to:');
+            url = `https://maps.google.com/?saddr=${origin}&daddr=${waypointsString}+to:${destination}&dirflg=d`;
+        } else {
+            url = `https://maps.google.com/?saddr=${origin}&daddr=${destination}&dirflg=d`;
+        }
         
         window.open(url, '_blank');
     };
