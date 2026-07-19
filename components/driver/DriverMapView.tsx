@@ -19,6 +19,9 @@ const DriverMapView: React.FC = () => {
     const [error, setError] = useState<string | null>(null);
     const [route, setRoute] = useState<any | null>(null); // Estado para almacenar la ruta calculada
     const lastSentPosition = useRef<{ lat: number; lng: number; time: number } | null>(null);
+    const driverMarkerRef = useRef<any>(null);
+    const lastRoutedPosition = useRef<{ lat: number; lng: number } | null>(null);
+    const lastWaypointsCoords = useRef<string>('');
 
     // Obtiene los paquetes pendientes del conductor
     useEffect(() => {
@@ -68,6 +71,22 @@ const DriverMapView: React.FC = () => {
                 setCurrentPosition(newPos);
                 setError(null);
 
+                // Update the driver's independent marker on the map directly
+                if (mapRef.current) {
+                    const map = mapRef.current;
+                    if (!driverMarkerRef.current) {
+                        driverMarkerRef.current = L.marker([latitude, longitude], {
+                            icon: L.divIcon({
+                                html: `<div class="p-1 bg-white rounded-full shadow-lg"><div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center border-4 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></div></div>`,
+                                className: '', iconSize: [48, 48], iconAnchor: [24, 48]
+                            }),
+                            zIndexOffset: 1000
+                        }).addTo(map).bindPopup('<b>Tu Ubicación</b>');
+                    } else {
+                        driverMarkerRef.current.setLatLng([latitude, longitude]);
+                    }
+                }
+
                 // Actualiza la ubicación en el servidor periódicamente (cada 30 segundos)
                 if (!lastSentPosition.current || Date.now() - lastSentPosition.current.time > 30000) {
                     api.updateDriverLocation(user.id, latitude, longitude);
@@ -81,27 +100,59 @@ const DriverMapView: React.FC = () => {
             { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
         );
 
-        return () => navigator.geolocation.clearWatch(watchId);
-    }, [user]);
-
-    // Actualiza el mapa con marcadores y la ruta calculada
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+            if (driverMarkerRef.current && mapRef.current) {
+                mapRef.current.removeLayer(driverMarkerRef.current);
+                driverMarkerRef.current = null;
+            }
+        };
+    }, [user])    // Actualiza el mapa con marcadores y la ruta calculada
     useEffect(() => {
         if (!mapRef.current || !user || !currentPosition) return;
         const map = mapRef.current;
         
+        const packagesWithCoords = packages.filter(p => p.destLatitude && p.destLongitude);
+
+        // Check if package configurations or driver coordinates shifted by > 150m
+        const coordsKey = `${packagesWithCoords.map(p => `${p.id}:${p.destLatitude},${p.destLongitude}`).join(';')}`;
+        let shouldUpdateRoute = false;
+
+        if (lastRoutedPosition.current) {
+            // Earth radius in km
+            const R = 6371; 
+            const lat1 = lastRoutedPosition.current.lat;
+            const lon1 = lastRoutedPosition.current.lng;
+            const lat2 = currentPosition.lat;
+            const lon2 = currentPosition.lng;
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) + Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const shift = R * c; // in km
+
+            if (shift > 0.15 || coordsKey !== lastWaypointsCoords.current) {
+                shouldUpdateRoute = true;
+            }
+        } else {
+            shouldUpdateRoute = true;
+        }
+
+        if (!shouldUpdateRoute && routingControlRef.current) return;
+
+        lastWaypointsCoords.current = coordsKey;
+        lastRoutedPosition.current = currentPosition;
+
         setRoute(null); // Resetea la ruta al recalcular
 
         if (routingControlRef.current) {
             map.removeControl(routingControlRef.current);
         }
 
-        const packagesWithCoords = packages.filter(p => p.destLatitude && p.destLongitude);
-
         if (packagesWithCoords.length === 0) {
              map.setView([currentPosition.lat, currentPosition.lng], 15);
-             L.marker([currentPosition.lat, currentPosition.lng]).addTo(map).bindPopup('Tu Ubicación');
              return;
-        }
+         }
 
         // Crea los puntos de la ruta: inicia en la posición actual y luego visita cada paquete
         const waypoints = [
@@ -113,16 +164,9 @@ const DriverMapView: React.FC = () => {
         routingControlRef.current = L.Routing.control({
             waypoints: waypoints,
             createMarker: function(i: number, waypoint: any) {
-                // Personaliza el marcador del conductor
-                if (i === 0) {
-                    return L.marker(waypoint.latLng, {
-                        icon: L.divIcon({
-                            html: `<div class="p-1 bg-white rounded-full shadow-lg"><div class="w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center border-4 border-white"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></div></div>`,
-                            className: '', iconSize: [48, 48], iconAnchor: [24, 48]
-                        }),
-                        zIndexOffset: 1000
-                    }).bindPopup('<b>Tu Ubicación</b>');
-                }
+                // Driver marker is independently managed, return null
+                if (i === 0) return null;
+
                 // Marcadores para los paquetes
                 const pkg = packagesWithCoords[i - 1];
                 return L.marker(waypoint.latLng)
@@ -134,7 +178,7 @@ const DriverMapView: React.FC = () => {
             routeWhileDragging: false,
             addWaypoints: false,
             draggableWaypoints: false,
-            show: true,
+            show: false, // Hides the flashing text instructions panel
             collapsible: true,
         }).on('routesfound', (e: any) => {
             // Guarda la ruta calculada en el estado para usarla después
@@ -142,7 +186,6 @@ const DriverMapView: React.FC = () => {
                 setRoute(e.routes[0]);
             }
         }).addTo(map);
-        
     }, [currentPosition, packages, user]);
 
     // Función para abrir la ruta en Google Maps
