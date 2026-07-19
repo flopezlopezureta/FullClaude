@@ -42,6 +42,7 @@ interface SettingsState {
     allowRedelivery: boolean;
     timezone: string;
     recipientNotificationsEnabled: boolean;
+    showPendingPaymentAlert: boolean;
 }
 
 const SettingsPage: React.FC = () => {
@@ -66,6 +67,7 @@ const SettingsPage: React.FC = () => {
         allowRedelivery: false,
         timezone: 'America/Santiago',
         recipientNotificationsEnabled: false,
+        showPendingPaymentAlert: false,
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -103,6 +105,7 @@ const SettingsPage: React.FC = () => {
                 allowRedelivery: auth.systemSettings.allowRedelivery ?? false,
                 timezone: auth.systemSettings.timezone || 'America/Santiago',
                 recipientNotificationsEnabled: auth.systemSettings.recipientNotificationsEnabled ?? false,
+                showPendingPaymentAlert: auth.systemSettings.showPendingPaymentAlert ?? false,
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
