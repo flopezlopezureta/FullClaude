@@ -70,7 +70,7 @@ const DashboardLayout: React.FC = () => {
       setShowPaymentAlert(true);
       const timer = setTimeout(() => {
         setShowPaymentAlert(false);
-      }, 8000); // Hide automatically after 8 seconds
+      }, 12000); // Hide automatically after 12 seconds
       return () => clearTimeout(timer);
     }
   }, [systemSettings, user]);
