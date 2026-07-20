@@ -1044,8 +1044,15 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 
         await client.query('COMMIT');
         
-        // Notify recipients asynchronously
-        packageIds.forEach(id => NotificationService.notifyRecipient(id, targetStatus));
+        // Notify recipients asynchronously in the background using staggered timeouts
+        // to prevent event loop blocking and database connection pool exhaustion.
+        setImmediate(() => {
+            packageIds.forEach((id, index) => {
+                setTimeout(() => {
+                    NotificationService.notifyRecipient(id, targetStatus);
+                }, index * 150); // Stagger by 150ms per package
+            });
+        });
         
         res.status(200).json({ message: `${packageIds.length} paquetes asignados correctamente.` });
 
@@ -1630,9 +1637,8 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
 
         // 4. Intentar marcar la orden como 'shipped' (enviada) primero, por si acaso (algunos Seller Center restringen saltarse este paso)
         try {
-            await makeFalabellaApiCall('UpdateOrderItems', {
-                OrderItemIds: JSON.stringify(orderItemIds),
-                Status: 'shipped'
+            await makeFalabellaApiCall('SetStatusToShipped', {
+                OrderItemIds: JSON.stringify(orderItemIds)
             });
             console.log(`[FalabellaSync] Items marked as shipped in Falabella.`);
         } catch (shippedErr) {
@@ -1640,9 +1646,8 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
         }
 
         // 5. Marcar la orden como 'delivered' (entregada)
-        await makeFalabellaApiCall('UpdateOrderItems', {
-            OrderItemIds: JSON.stringify(orderItemIds),
-            Status: 'delivered'
+        await makeFalabellaApiCall('SetStatusToDelivered', {
+            OrderItemIds: JSON.stringify(orderItemIds)
         });
         
         await db.query(
