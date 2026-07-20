@@ -46,6 +46,7 @@ COPY routes ./routes
 COPY middleware ./middleware
 COPY services ./services
 COPY utils ./utils
+COPY scripts ./scripts
 COPY .env* ./
 
 # Expose port
