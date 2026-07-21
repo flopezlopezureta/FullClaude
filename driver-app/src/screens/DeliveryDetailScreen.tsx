@@ -44,7 +44,7 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
 
   const [currentStatus, setCurrentStatus] = useState(pkg.status);
   const [isRetrying, setIsRetrying] = useState(false);
-  const [receiverName, setReceiverName] = useState(pkg.receiverName || pkg.recipientName);
+  const [receiverName, setReceiverName] = useState(isCompleted ? (pkg.receiverName || '') : '');
   const [receiverId, setReceiverId] = useState(pkg.receiverId || '');
   const [photos, setPhotos] = useState<string[]>(getInitialPhotos());
   const [serverPhotos, setServerPhotos] = useState<string[]>(getInitialPhotos());
@@ -66,8 +66,11 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
         const fullPkg = await api.getPackageDetails(pkg.id);
         if (fullPkg) {
           if (fullPkg.status) setCurrentStatus(fullPkg.status);
-          if (fullPkg.receiverName || fullPkg.recipientName) {
-            setReceiverName(fullPkg.receiverName || fullPkg.recipientName);
+          const fullPkgCompleted = ['ENTREGADO', 'CANCELADO', 'DEVUELTO'].includes(fullPkg.status);
+          if (fullPkgCompleted) {
+            setReceiverName(fullPkg.receiverName || '');
+          } else {
+            setReceiverName('');
           }
           if (fullPkg.receiverId) setReceiverId(fullPkg.receiverId);
           if (fullPkg.history) setPackageHistory(fullPkg.history);

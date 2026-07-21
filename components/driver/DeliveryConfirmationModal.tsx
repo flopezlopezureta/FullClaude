@@ -186,21 +186,15 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
 
   // Auto-save on changes
   useEffect(() => {
-    if (receiverName && receiverName !== mainPkg.recipientName) {
-        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}name`, receiverName);
-    }
-  }, [receiverName, STORAGE_KEY_PREFIX, mainPkg.recipientName]);
+    storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}name`, receiverName);
+  }, [receiverName, STORAGE_KEY_PREFIX]);
 
   useEffect(() => {
-    if (receiverId) {
-        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}id`, receiverId);
-    }
+    storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}id`, receiverId);
   }, [receiverId, STORAGE_KEY_PREFIX]);
 
   useEffect(() => {
-    if (photosBase64.length > 0) {
-        storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}photos`, photosBase64);
-    }
+    storageUtils.safeSetItem(`${STORAGE_KEY_PREFIX}photos`, photosBase64);
   }, [photosBase64, STORAGE_KEY_PREFIX]);
   
 
