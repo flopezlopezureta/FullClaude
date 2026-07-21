@@ -1044,14 +1044,9 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 
         await client.query('COMMIT');
         
-        // Notify recipients asynchronously in the background using staggered timeouts
-        // to prevent event loop blocking and database connection pool exhaustion.
+        // Notify recipients asynchronously in bulk (optimized to prevent DB slamming and connection leaks)
         setImmediate(() => {
-            packageIds.forEach((id, index) => {
-                setTimeout(() => {
-                    NotificationService.notifyRecipient(id, targetStatus);
-                }, index * 150); // Stagger by 150ms per package
-            });
+            NotificationService.notifyRecipientsBulk(packageIds, targetStatus);
         });
         
         res.status(200).json({ message: `${packageIds.length} paquetes asignados correctamente.` });

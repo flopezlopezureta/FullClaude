@@ -11,6 +11,57 @@ let settingsPromise = null;
 let integrationPromise = null;
 const CACHE_TTL = 30000; // 30 seconds
 
+// Nodemailer Transporter Cache to reuse connections (pools)
+let cachedTransporter = null;
+let lastTransporterConfigStr = '';
+
+function getTransporter(integration) {
+    const config = {
+        host: integration.smtp_host,
+        port: parseInt(integration.smtp_port) || 587,
+        secure: parseInt(integration.smtp_port) === 465,
+        auth: {
+            user: integration.smtp_user,
+            pass: integration.smtp_password
+        },
+        pool: true, // Enable connection pooling
+        maxConnections: 5,
+        maxMessages: 100
+    };
+
+    if (integration.smtp_google_refresh_token) {
+        config.auth = {
+            type: 'OAuth2',
+            user: integration.smtp_google_email || integration.smtp_user,
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+            refreshToken: integration.smtp_google_refresh_token
+        };
+        
+        if (!integration.smtp_host || integration.smtp_host.includes('gmail')) {
+            config.host = 'smtp.gmail.com';
+            config.port = 465;
+            config.secure = true;
+        }
+    }
+
+    const configStr = JSON.stringify({
+        host: config.host,
+        port: config.port,
+        secure: config.secure,
+        user: config.auth.user,
+        refreshToken: config.auth.refreshToken ? 'exists' : 'none'
+    });
+
+    if (cachedTransporter && configStr === lastTransporterConfigStr) {
+        return cachedTransporter;
+    }
+
+    cachedTransporter = nodemailer.createTransport(config);
+    lastTransporterConfigStr = configStr;
+    return cachedTransporter;
+}
+
 const NotificationService = {
     /**
      * Sends a notification to the recipient of a package.
@@ -100,39 +151,84 @@ const NotificationService = {
     },
 
     /**
+     * Sends bulk notifications to recipients of packages.
+     * @param {string[]} packageIds - Array of internal IDs of packages.
+     * @param {string} status - The new status of the packages.
+     */
+    async notifyRecipientsBulk(packageIds, status) {
+        if (!packageIds || !Array.isArray(packageIds) || packageIds.length === 0) return;
+        try {
+            // 1. Check if notifications are enabled
+            const settingsRes = await db.query('SELECT "recipientNotificationsEnabled", "companyName" FROM system_settings LIMIT 1');
+            const settings = settingsRes.rows[0] || { recipientNotificationsEnabled: false };
+            if (!settings.recipientNotificationsEnabled) {
+                return;
+            }
+
+            // 2. Get integration settings (WhatsApp & SMTP)
+            const integrationRes = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
+            const integration = integrationRes.rows.length > 0 ? integrationRes.rows[0] : null;
+
+            // 3. Get all packages in a single query to prevent DB slamming
+            const placeholders = packageIds.map((_, i) => `$${i + 1}`).join(', ');
+            const { rows: pkgs } = await db.query(
+                `SELECT p.id, p."recipientName", p."recipientPhone", p."recipientEmail", p."recipientAddress", p."trackingId", p."meliOrderId", p."deliveryPhotosBase64", c.name as seller_name 
+                 FROM packages p 
+                 LEFT JOIN users c ON p."creatorId" = c.id 
+                 WHERE p.id IN (${placeholders})`,
+                packageIds
+            );
+
+            const sellerNameDefault = settings.companyName;
+            const baseUrl = process.env.APP_URL || 'https://fullenvios.selcom.cl';
+
+            // 4. Stagger sending process to avoid blocking the event loop or triggering SMTP rate limits
+            pkgs.forEach((pkg, index) => {
+                const sellerName = pkg.seller_name || sellerNameDefault;
+                const trackingUrl = `${baseUrl}/tracking/${pkg.trackingId || pkg.id}`;
+
+                // Send WhatsApp
+                if (pkg.recipientPhone) {
+                    let waMessage = '';
+                    switch (status) {
+                        case 'ASIGNADO':
+                        case 'EN_TRANSITO':
+                            waMessage = `¡Hola ${pkg.recipientName}! Tu compra a ${sellerName} está en camino. Sigue el envío aquí: ${trackingUrl}`;
+                            break;
+                        case 'ENTREGADO':
+                            waMessage = `Hola ${pkg.recipientName}, esperamos que disfrutes tu compra. ¡Gracias por preferir a ${sellerName}, entregado por ${settings.companyName}!`;
+                            break;
+                    }
+                    if (waMessage) {
+                        setTimeout(() => {
+                            if (integration && integration.whatsapp_api_key) {
+                                console.log(`[WhatsApp API Bulk] Sending to ${pkg.recipientPhone}: ${waMessage}`);
+                            } else {
+                                console.log(`[WA SIMULATION Bulk] To: ${pkg.recipientPhone} | Message: ${waMessage}`);
+                            }
+                        }, index * 50); // Small delay to stagger logging/API calls
+                    }
+                }
+
+                // Send Email
+                if (pkg.recipientEmail && integration && integration.smtp_host) {
+                    setTimeout(async () => {
+                        await this.sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName);
+                    }, index * 250); // Stagger emails by 250ms
+                }
+            });
+
+        } catch (err) {
+            console.error('Error in notifyRecipientsBulk:', err);
+        }
+    },
+
+    /**
      * Helper to send email using Nodemailer
      */
     async sendEmailNotification(pkg, status, settings, integration, trackingUrl, sellerName) {
         try {
-            const transporterConfig = {
-                host: integration.smtp_host,
-                port: parseInt(integration.smtp_port) || 587,
-                secure: parseInt(integration.smtp_port) === 465,
-                auth: {
-                    user: integration.smtp_user,
-                    pass: integration.smtp_password
-                }
-            };
-
-            // [NUEVO] Soporte para Google OAuth2
-            if (integration.smtp_google_refresh_token) {
-                transporterConfig.auth = {
-                    type: 'OAuth2',
-                    user: integration.smtp_google_email || integration.smtp_user,
-                    clientId: process.env.GOOGLE_CLIENT_ID,
-                    clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-                    refreshToken: integration.smtp_google_refresh_token
-                };
-                
-                // Si es Gmail y no hay host configurado, usamos los valores por defecto recomendados para OAuth2
-                if (!integration.smtp_host || integration.smtp_host.includes('gmail')) {
-                    transporterConfig.host = 'smtp.gmail.com';
-                    transporterConfig.port = 465;
-                    transporterConfig.secure = true;
-                }
-            }
-
-            const transporter = nodemailer.createTransport(transporterConfig);
+            const transporter = getTransporter(integration);
 
             let subject = '';
             let html = '';
@@ -171,13 +267,11 @@ const NotificationService = {
                     let photoHtml = '';
                     if (pkg.deliveryPhotosBase64) {
                         try {
-                            // deliveryPhotosBase64 is typically stored as a JSON string array
                             const photos = typeof pkg.deliveryPhotosBase64 === 'string' 
                                 ? JSON.parse(pkg.deliveryPhotosBase64) 
                                 : pkg.deliveryPhotosBase64;
                             
                             if (Array.isArray(photos) && photos.length > 0) {
-                                // Extract clean base64 data to attach it
                                 const rawBase64 = photos[0].includes('base64,') 
                                     ? photos[0].split('base64,')[1] 
                                     : photos[0];
@@ -219,7 +313,7 @@ const NotificationService = {
                     `;
                     break;
                 default:
-                    return; // Don't send other statuses for now as requested
+                    return; // Don't send other statuses for now
             }
 
             if (html) {
