@@ -132,7 +132,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       subItems: [
         { id: 'live-map', label: 'Mapa en Vivo', icon: <IconMapPin className="h-5 w-5" /> },
         { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-5 w-5" /> },
-        { id: 'sector-editor', label: 'Sectores GIS', icon: <IconMap className="h-5 w-5 text-violet-600" /> },
+        ...(systemSettings?.gisSectorsEnabled ? [{ id: 'sector-editor', label: 'Sectores GIS', icon: <IconMap className="h-5 w-5 text-violet-600" /> }] : []),
         { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-5 w-5" /> },
         ...(isSuperUser ? [{ id: 'projection-map', label: 'Proyección de Paquetes', icon: <IconChartBar className="h-5 w-5 text-indigo-500" /> }] : []),
       ]

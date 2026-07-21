@@ -41,9 +41,9 @@ interface SettingsState {
     timeFormat: '12h' | '24h';
     allowRedelivery: boolean;
     timezone: string;
-    recipientNotificationsEnabled: boolean;
     showPendingPaymentAlert: boolean;
     multiSelectEnabled: boolean;
+    gisSectorsEnabled: boolean;
 }
 
 const SettingsPage: React.FC = () => {
@@ -70,6 +70,7 @@ const SettingsPage: React.FC = () => {
         recipientNotificationsEnabled: false,
         showPendingPaymentAlert: false,
         multiSelectEnabled: true,
+        gisSectorsEnabled: true,
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -109,6 +110,7 @@ const SettingsPage: React.FC = () => {
                 recipientNotificationsEnabled: auth.systemSettings.recipientNotificationsEnabled ?? false,
                 showPendingPaymentAlert: auth.systemSettings.showPendingPaymentAlert ?? false,
                 multiSelectEnabled: auth.systemSettings.multiSelectEnabled ?? true,
+                gisSectorsEnabled: auth.systemSettings.gisSectorsEnabled ?? true,
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -186,9 +188,9 @@ const SettingsPage: React.FC = () => {
                 timeFormat: settings.timeFormat,
                 allowRedelivery: settings.allowRedelivery,
                 timezone: settings.timezone,
-                recipientNotificationsEnabled: settings.recipientNotificationsEnabled,
                 showPendingPaymentAlert: settings.showPendingPaymentAlert,
                 multiSelectEnabled: settings.multiSelectEnabled,
+                gisSectorsEnabled: settings.gisSectorsEnabled,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -303,7 +305,8 @@ const SettingsPage: React.FC = () => {
             settings.timezone !== originalSettings.timezone ||
             settings.recipientNotificationsEnabled !== originalSettings.recipientNotificationsEnabled ||
             settings.showPendingPaymentAlert !== originalSettings.showPendingPaymentAlert ||
-            settings.multiSelectEnabled !== originalSettings.multiSelectEnabled
+            settings.multiSelectEnabled !== originalSettings.multiSelectEnabled ||
+            settings.gisSectorsEnabled !== originalSettings.gisSectorsEnabled
         );
     }, [settings, originalSettings]);
 
@@ -645,6 +648,25 @@ const SettingsPage: React.FC = () => {
                                     type="checkbox"
                                     name="multiSelectEnabled"
                                     checked={settings.multiSelectEnabled}
+                                    onChange={handleSettingsChange}
+                                    className="sr-only peer"
+                                />
+                                <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div className="pt-4 border-t border-[var(--border-primary)]">
+                        <label className="flex items-center justify-between cursor-pointer">
+                            <div>
+                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Habilitar Sectores GIS (Polígonos)</h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, se habilitará la gestión y el dibujo de sectores GIS en el mapa por comunas y el módulo de Zonificación para los conductores.</p>
+                            </div>
+                            <div className="relative">
+                                <input
+                                    type="checkbox"
+                                    name="gisSectorsEnabled"
+                                    checked={settings.gisSectorsEnabled}
                                     onChange={handleSettingsChange}
                                     className="sr-only peer"
                                 />

@@ -765,6 +765,12 @@ async function initializeDatabase() {
             if (err.code !== '42701') { console.error('Error during settings migration (multiSelectEnabled):', err); }
         }
         try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "gisSectorsEnabled" BOOLEAN DEFAULT true');
+            console.log('MIGRATION APPLIED: Column "gisSectorsEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (gisSectorsEnabled):', err); }
+        }
+        try {
             await db.query('ALTER TABLE packages ADD COLUMN "meliDeliveredNeedsPhotos" BOOLEAN DEFAULT false');
             console.log('MIGRATION APPLIED: Column "meliDeliveredNeedsPhotos" was added to "packages".');
         } catch (err) {
@@ -800,8 +806,8 @@ async function initializeDatabase() {
 
         // --- NEW PICKUP TABLES ---
         await db.query(`
-            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit", "licenseOverageFee", "meliAutoPromptPhotos", "showPendingPaymentAlert", "multiSelectEnabled")
-            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70, 0.1, FALSE, FALSE, TRUE)
+            INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "circuitExportEnabled", "timezone", "licenseLimit", "licenseOverageFee", "meliAutoPromptPhotos", "showPendingPaymentAlert", "multiSelectEnabled", "gisSectorsEnabled")
+            VALUES (1, 'FULL ENVIOS', TRUE, 1, 'NONE', 'SCAN', TRUE, FALSE, FALSE, FALSE, FALSE, TRUE, TRUE, TRUE, FALSE, 'America/Santiago', 70, 0.1, FALSE, FALSE, TRUE, TRUE)
             ON CONFLICT (id) DO NOTHING;
         `);
         await db.query(`

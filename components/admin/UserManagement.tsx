@@ -617,7 +617,7 @@ const wb = XLSX.utils.book_new();
                             { key: 'canReturn', label: 'Devoluciones', icon: <IconArrowUturnLeft className="w-4 h-4"/> },
                             { key: 'canAuxiliar', label: 'Auxiliar', icon: <IconUsers className="w-4 h-4"/> },
                             { key: 'canViewHistory', label: 'Historial', icon: <IconHistory className="w-4 h-4"/> },
-                            { key: 'canZoning', label: 'Zonificación', icon: <IconMapPin className="w-4 h-4"/> },
+                            ...(auth?.systemSettings?.gisSectorsEnabled ? [{ key: 'canZoning' as keyof DriverPermissions, label: 'Zonificación', icon: <IconMapPin className="w-4 h-4"/> }] : []),
                         ];
                         return (
                             <div className="mt-3 pt-3 border-t border-[var(--border-primary)]">

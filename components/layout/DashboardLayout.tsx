@@ -193,7 +193,7 @@ const DashboardLayout: React.FC = () => {
         break;
 
       case 'sector-editor':
-        if (isAdmin) return { title: 'Editor de Sectores GIS', content: <SectorEditorPage /> };
+        if (isAdmin && systemSettings?.gisSectorsEnabled) return { title: 'Editor de Sectores GIS', content: <SectorEditorPage /> };
         break;
 
       case 'live-map':

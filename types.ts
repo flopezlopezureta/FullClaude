@@ -53,6 +53,7 @@ export interface SystemSettings {
     meliAutoPromptPhotos?: boolean;
     showPendingPaymentAlert?: boolean;
     multiSelectEnabled?: boolean;
+    gisSectorsEnabled?: boolean;
 }
 
 export interface ZonePricing {

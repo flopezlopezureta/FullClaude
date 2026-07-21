@@ -126,9 +126,12 @@ const DriverMobileLayout: React.FC = () => {
             if (item.id === 'colectas' && systemSettings.pickupMode !== 'COLECTA') {
                 return false;
             }
+            if (item.id === 'zona' && !systemSettings?.gisSectorsEnabled) {
+                return false;
+            }
             return item.permission ? driverPermissions[item.permission] : true;
         });
-    }, [driverPermissions, systemSettings.pickupMode, user?.email]);
+    }, [driverPermissions, systemSettings.pickupMode, systemSettings?.gisSectorsEnabled, user?.email]);
 
     const handleSubscriptionToggle = () => {
         if (isPushSubscribed) {
