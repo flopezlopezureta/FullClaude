@@ -640,8 +640,8 @@ const SettingsPage: React.FC = () => {
                     <div className="pt-4 border-t border-[var(--border-primary)]">
                         <label className="flex items-center justify-between cursor-pointer">
                             <div>
-                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Habilitar Selección Múltiple y Cierre Masivo</h3>
-                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, habilita las casillas de selección múltiple tanto en el Dashboard de gestión (para imprimir, asignar o eliminar en lote) como en la app del conductor (permitiendo agrupar y confirmar en una sola acción la entrega de paquetes con el mismo destinatario y dirección).</p>
+                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Habilitar Selección Múltiple y Cierre Masivo para Conductores</h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, los conductores podrán seleccionar y agrupar la entrega conjunta de múltiples paquetes que compartan el mismo destinatario y dirección. Si está desactivado, el conductor solo podrá confirmar entregas paquete por paquete.</p>
                             </div>
                             <div className="relative">
                                 <input
