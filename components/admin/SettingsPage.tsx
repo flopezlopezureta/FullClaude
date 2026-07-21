@@ -448,8 +448,8 @@ const SettingsPage: React.FC = () => {
                     <div className="pt-4 border-t border-[var(--border-primary)]">
                         <label className="flex items-center justify-between cursor-pointer">
                             <div>
-                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Auto-abrir Cámara al Entregar en Flex</h3>
-                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, cuando un paquete se marque como entregado en Mercado Libre, se abrirá automáticamente el modal de fotos en FullEnvíos para el conductor sin que tenga que buscar el paquete.</p>
+                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Auto-abrir Confirmar Entrega en FullEnvíos</h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, cuando un paquete se marque como entregado en Mercado Libre, se abrirá automáticamente el modal de Confirmar Entrega en FullEnvíos para que el conductor pueda seleccionar tomar foto con la cámara o subir desde la galería sin tener que buscar el paquete.</p>
                             </div>
                             <div className="relative">
                                 <input
