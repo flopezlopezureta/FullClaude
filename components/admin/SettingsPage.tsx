@@ -657,10 +657,12 @@ const SettingsPage: React.FC = () => {
                     </div>
 
                     <div className="pt-4 border-t border-[var(--border-primary)]">
-                        <label className="flex items-center justify-between cursor-pointer">
+                        <label className="flex items-center justify-between cursor-pointer p-3 bg-violet-50/50 dark:bg-violet-950/20 rounded-xl border border-violet-200/50">
                             <div>
-                                <h3 className="text-lg font-semibold text-[var(--text-secondary)]">Habilitar Sectores GIS (Polígonos)</h3>
-                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, se habilitará la gestión y el dibujo de sectores GIS en el mapa por comunas y el módulo de Zonificación para los conductores.</p>
+                                <h3 className="text-lg font-bold text-[var(--text-primary)] flex items-center gap-2">
+                                    🗺️ Habilitar Sectores GIS (Polígonos y Zonificación)
+                                </h3>
+                                <p className="text-xs text-[var(--text-muted)] mt-1 max-w-md">Si está activado, habilita el editor y dibujo de sectores GIS en el mapa por comunas y activa el módulo de Zonificación para los conductores.</p>
                             </div>
                             <div className="relative">
                                 <input

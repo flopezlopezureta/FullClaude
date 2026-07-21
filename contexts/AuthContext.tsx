@@ -81,6 +81,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     allowRedelivery: false,
     licenseLimit: 70,
     licenseOverageFee: 0.1,
+    gisSectorsEnabled: true,
   });
   const [activeCommunes, setActiveCommunes] = useState<string[]>([]);
   const [isPushSubscribed, setIsPushSubscribed] = useState(false);
