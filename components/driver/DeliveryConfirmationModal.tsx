@@ -148,7 +148,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
 
   if (!mainPkg) return null;
 
-  const [receiverName, setReceiverName] = useState(mainPkg.recipientName || '');
+  const [receiverName, setReceiverName] = useState('');
   const [receiverId, setReceiverId] = useState('');
   const [photosBase64, setPhotosBase64] = useState<string[]>([]);
   const [isCameraOpen, setIsCameraOpen] = useState(false);
