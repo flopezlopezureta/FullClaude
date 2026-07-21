@@ -108,7 +108,7 @@ const ActionsMenu: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     );
 };
 
-const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, creatorName, onSelect, onAssign, onEdit, onDelete, onPrint, onMarkForReturn, hideDriverName, isSelected, onSelectionChange, index }) => {
+const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, creatorName, onSelect, onAssign, onEdit, onDelete, onPrint, onMarkForReturn, hideDriverName, isSelected, onSelectionChange, index, isSelectionDisabled }) => {
   const [showQRCode, setShowQRCode] = useState(false);
   const [showNewLabel, setShowNewLabel] = useState(false);
 

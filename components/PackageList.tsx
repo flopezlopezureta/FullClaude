@@ -39,7 +39,7 @@ const statusPriority: { [key in PackageStatus]: number } = {
   [PackageStatus.Rescheduled]: 10,
 };
 
-const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange, onSelectAll, disableSorting }) => {
+const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, onSelectPackage, onAssignPackage, onEditPackage, onDeletePackage, onPrintLabel, onMarkForReturn, isFiltering, isDateFiltering, hideDriverName, selectedPackages, onSelectionChange, onSelectAll, disableSorting, isSelectionDisabled }) => {
   const userMap = React.useMemo(() => {
     const map: Record<string, User> = {};
     users.forEach(u => {
