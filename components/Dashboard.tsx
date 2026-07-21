@@ -929,15 +929,19 @@ const Dashboard: React.FC = () => {
         <div className="flex flex-col gap-3 p-3 border-b border-[var(--border-primary)]">
             <div className="flex flex-wrap items-center justify-between w-full">
                 <div className="flex items-center gap-4">
-                    <input
-                        type="checkbox"
-                        ref={checkboxRef}
-                        className={customCheckboxClass}
-                        checked={isAllOnPageSelected}
-                        onChange={handleSelectAllOnPageClick}
-                        disabled={packages.length === 0}
-                    />
-                    <div className="h-6 w-px bg-[var(--border-primary)]"></div>
+                    {auth?.systemSettings?.multiSelectEnabled && (
+                        <>
+                            <input
+                                type="checkbox"
+                                ref={checkboxRef}
+                                className={customCheckboxClass}
+                                checked={isAllOnPageSelected}
+                                onChange={handleSelectAllOnPageClick}
+                                disabled={packages.length === 0}
+                            />
+                            <div className="h-6 w-px bg-[var(--border-primary)]"></div>
+                        </>
+                    )}
                     {auth?.user?.role === Role.Admin && pollingStatus && (
                         <div className="flex items-center gap-2">
                             <div 
@@ -994,58 +998,62 @@ const Dashboard: React.FC = () => {
                              <div className={`ml-1 w-1.5 h-1.5 rounded-full ${auth?.systemSettings?.shopifyAutoImport ? 'bg-emerald-400 animate-pulse' : 'bg-gray-300'}`}></div>
                         </div>
                     )}
-                    <div className="h-6 w-px bg-[var(--border-primary)] opacity-50"></div>
-                    <div className="flex items-center gap-2">
-                        {selectedPackages.size > 0 && (
-                            <span className="text-xs font-bold text-blue-600 mr-2 tracking-tight uppercase">{selectedPackages.size} seleccionados</span>
-                        )}
-                        <button 
-                            onClick={() => setIsBulkAssignModalOpen(true)}
-                            disabled={selectedPackages.size > 0 ? false : true}
-                            title="Asignar Conductor" 
-                            className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
-                        >
-                            <IconUserPlus className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
-                        </button>
-                        <button 
-                            onClick={() => setPrintingPackages(selectedPackageObjects)} 
-                            title="Imprimir Etiquetas" 
-                            className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
-                            disabled={selectedPackages.size > 0 ? false : true}>
-                            <IconPrinter className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
-                        </button>
-                        <button 
-                            onClick={() => setIsDeletePasswordModalOpen(true)} 
-                            disabled={!canDeleteSelected} 
-                            title="Eliminar Seleccionados" 
-                            className={`p-2.5 rounded-lg transition-all ${canDeleteSelected ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}>
-                            <IconTrash className={`w-6 h-6 ${canDeleteSelected ? 'text-white' : 'text-gray-500'}`} />
-                        </button>
-                        <button 
-                            onClick={() => setIsExportModalOpen(true)} 
-                            title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
-                            className={`p-2.5 rounded-lg transition-all ${totalPackages > 0 && !isExporting ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} ${isExporting ? 'animate-pulse' : ''}`}
-                            disabled={totalPackages === 0 || isExporting}>
-                            {isExporting ? (
-                                <IconLoader className="w-6 h-6 text-white animate-spin" />
-                            ) : (
-                                <IconFileSpreadsheet className={`w-6 h-6 ${totalPackages > 0 ? 'text-white' : 'text-gray-500'}`} />
-                            )}
-                        </button>
+                    {auth?.systemSettings?.multiSelectEnabled && (
+                        <>
+                            <div className="h-6 w-px bg-[var(--border-primary)] opacity-50"></div>
+                            <div className="flex items-center gap-2">
+                                {selectedPackages.size > 0 && (
+                                    <span className="text-xs font-bold text-blue-600 mr-2 tracking-tight uppercase">{selectedPackages.size} seleccionados</span>
+                                )}
+                                <button 
+                                    onClick={() => setIsBulkAssignModalOpen(true)}
+                                    disabled={selectedPackages.size > 0 ? false : true}
+                                    title="Asignar Conductor" 
+                                    className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
+                                >
+                                    <IconUserPlus className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
+                                </button>
+                                <button 
+                                    onClick={() => setPrintingPackages(selectedPackageObjects)} 
+                                    title="Imprimir Etiquetas" 
+                                    className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-indigo-600 hover:bg-indigo-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}
+                                    disabled={selectedPackages.size > 0 ? false : true}>
+                                    <IconPrinter className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-500'}`} />
+                                </button>
+                                <button 
+                                    onClick={() => setIsDeletePasswordModalOpen(true)} 
+                                    disabled={!canDeleteSelected} 
+                                    title="Eliminar Seleccionados" 
+                                    className={`p-2.5 rounded-lg transition-all ${canDeleteSelected ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'}`}>
+                                    <IconTrash className={`w-6 h-6 ${canDeleteSelected ? 'text-white' : 'text-gray-500'}`} />
+                                </button>
+                                <button 
+                                    onClick={() => setIsExportModalOpen(true)} 
+                                    title={selectedPackages.size > 0 ? "Exportar Seleccionados" : "Exportar Vista"} 
+                                    className={`p-2.5 rounded-lg transition-all ${totalPackages > 0 && !isExporting ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} ${isExporting ? 'animate-pulse' : ''}`}
+                                    disabled={totalPackages === 0 || isExporting}>
+                                    {isExporting ? (
+                                        <IconLoader className="w-6 h-6 text-white animate-spin" />
+                                    ) : (
+                                        <IconFileSpreadsheet className={`w-6 h-6 ${totalPackages > 0 ? 'text-white' : 'text-gray-500'}`} />
+                                    )}
+                                </button>
 
-                        {/* Nueva acción masiva: Marcar como Entregado */}
-                        {auth?.user?.role === Role.Admin && (
-                            <button 
-                                onClick={handleBulkMarkDelivered}
-                                disabled={selectedPackages.size === 0}
-                                title="Entrega Masiva (Marcar Seleccionados)"
-                                className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} shadow-sm border border-cyan-700/20`}
-                            >
-                                <IconCheckCircle className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-400'}`} />
-                            </button>
-                        )}
+                                {/* Nueva acción masiva: Marcar como Entregado */}
+                                {auth?.user?.role === Role.Admin && (
+                                    <button 
+                                        onClick={handleBulkMarkDelivered}
+                                        disabled={selectedPackages.size === 0}
+                                        title="Entrega Masiva (Marcar Seleccionados)"
+                                        className={`p-2.5 rounded-lg transition-all ${selectedPackages.size > 0 ? 'bg-cyan-600 hover:bg-cyan-700' : 'bg-gray-200 opacity-50 cursor-not-allowed'} shadow-sm border border-cyan-700/20`}
+                                    >
+                                        <IconCheckCircle className={`w-6 h-6 ${selectedPackages.size > 0 ? 'text-white' : 'text-gray-400'}`} />
+                                    </button>
+                                )}
 
-                    </div>
+                            </div>
+                        </>
+                    )}
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -1210,7 +1218,7 @@ const Dashboard: React.FC = () => {
           isFiltering={searchQuery !== '' || statusFilter.length > 0 || driverFilter !== '' || communeFilter !== '' || cityFilter !== '' || startDate !== '' || endDate !== '' || flexFilter !== 'all' || quickFilter !== 'all'}
           isDateFiltering={isDateFiltering}
           selectedPackages={selectedPackages}
-          onSelectionChange={handleSelectPackage}
+          onSelectionChange={auth?.systemSettings?.multiSelectEnabled ? handleSelectPackage : undefined}
         />
 
       {/* --- Modals --- */}

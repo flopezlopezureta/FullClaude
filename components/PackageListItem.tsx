@@ -19,6 +19,7 @@ interface PackageListItemProps {
   isSelected?: boolean;
   onSelectionChange?: (pkg: Package) => void;
   index: number;
+  isSelectionDisabled?: boolean;
 }
 
 const statusIcons: { [key in PackageStatus]: React.ReactNode } = {
@@ -196,10 +197,11 @@ const PackageListItem: React.FC<PackageListItemProps> = ({ pkg, driverName, crea
                     <div className="mr-3 flex-shrink-0">
                         <input
                             type="checkbox"
-                            className={customCheckboxClass}
+                            className={`${customCheckboxClass} ${isSelectionDisabled ? 'opacity-30 cursor-not-allowed' : ''}`}
                             checked={!!isSelected}
                             onChange={() => onSelectionChange(pkg)}
                             onClick={(e) => e.stopPropagation()}
+                            disabled={isSelectionDisabled}
                         />
                     </div>
                 )}

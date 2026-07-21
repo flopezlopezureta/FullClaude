@@ -22,6 +22,7 @@ interface PackageListProps {
   onSelectionChange?: (pkg: Package) => void;
   onSelectAll?: () => void;
   disableSorting?: boolean;
+  isSelectionDisabled?: (pkg: Package) => boolean;
 }
 
 const statusPriority: { [key in PackageStatus]: number } = {
@@ -128,6 +129,7 @@ const PackageList: React.FC<PackageListProps> = ({ packages, users, isLoading, o
                 hideDriverName={hideDriverName}
                 isSelected={selectedPackages?.has(pkg.id)}
                 onSelectionChange={onSelectionChange}
+                isSelectionDisabled={isSelectionDisabled?.(pkg)}
             />
         );
       })}

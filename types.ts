@@ -52,6 +52,7 @@ export interface SystemSettings {
     licenseOverageFee?: number;
     meliAutoPromptPhotos?: boolean;
     showPendingPaymentAlert?: boolean;
+    multiSelectEnabled?: boolean;
 }
 
 export interface ZonePricing {

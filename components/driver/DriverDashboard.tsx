@@ -362,12 +362,42 @@ const DriverDashboard: React.FC = () => {
     };
   }, [myPackages, searchTerm, auth?.systemSettings?.timezone, driverCoords, roadDistances]);
 
+  const isSelectionDisabledForDriver = (pkg: Package) => {
+    if (selectedPackages.size === 0) return false;
+    const firstSelectedId = Array.from(selectedPackages)[0];
+    const firstPkg = pendingPackages.find(p => p.id === firstSelectedId);
+    if (!firstPkg) return false;
+    
+    const firstAddr = (firstPkg.recipientAddress || '').trim().toLowerCase();
+    const firstName = (firstPkg.recipientName || '').trim().toLowerCase();
+    const pkgAddr = (pkg.recipientAddress || '').trim().toLowerCase();
+    const pkgName = (pkg.recipientName || '').trim().toLowerCase();
+    
+    return firstAddr !== pkgAddr || firstName !== pkgName;
+  };
+
   const handleSelectionChange = (pkg: Package) => {
     setSelectedPackages(prev => {
       const next = new Set(prev);
       if (next.has(pkg.id)) {
         next.delete(pkg.id);
       } else {
+        // Enforce same name and address if multiSelectEnabled is active
+        if (prev.size > 0) {
+          const firstSelectedId = Array.from(prev)[0];
+          const firstPkg = pendingPackages.find(p => p.id === firstSelectedId);
+          if (firstPkg) {
+            const firstAddr = (firstPkg.recipientAddress || '').trim().toLowerCase();
+            const firstName = (firstPkg.recipientName || '').trim().toLowerCase();
+            const pkgAddr = (pkg.recipientAddress || '').trim().toLowerCase();
+            const pkgName = (pkg.recipientName || '').trim().toLowerCase();
+            
+            if (firstAddr !== pkgAddr || firstName !== pkgName) {
+              alert("Solo puedes seleccionar múltiples paquetes si tienen el mismo destinatario y dirección.");
+              return prev;
+            }
+          }
+        }
         next.add(pkg.id);
       }
       return next;
@@ -385,11 +415,18 @@ const DriverDashboard: React.FC = () => {
   };
 
   const handleStartDelivery = (pkg: Package) => {
-    // Si la dirección es la misma y hay más paquetes, los pre-seleccionamos todos automáticamente
-    const sameAddressPkgs = pendingPackages.filter(p => 
-        p.recipientAddress.trim().toLowerCase() === pkg.recipientAddress.trim().toLowerCase()
-    );
-    setDeliveringPackages(sameAddressPkgs.length > 0 ? sameAddressPkgs : [pkg]);
+    // Si la opción de selección múltiple está habilitada en el setup, pre-seleccionamos
+    // automáticamente los paquetes que tengan el mismo destinatario y dirección.
+    if (auth?.systemSettings?.multiSelectEnabled) {
+      const sameRecipientPkgs = pendingPackages.filter(p => 
+          p.recipientAddress.trim().toLowerCase() === pkg.recipientAddress.trim().toLowerCase() &&
+          p.recipientName.trim().toLowerCase() === pkg.recipientName.trim().toLowerCase()
+      );
+      setDeliveringPackages(sameRecipientPkgs.length > 0 ? sameRecipientPkgs : [pkg]);
+    } else {
+      setDeliveringPackages([pkg]);
+    }
+    
     if (auth?.user) {
         localStorage.setItem(`pending_delivering_id_${auth.user.id}`, pkg.id);
     }
@@ -744,9 +781,10 @@ const DriverDashboard: React.FC = () => {
               hideDriverName={true}
               isFiltering={activeTab === 'history'}
               selectedPackages={selectedPackages}
-              onSelectionChange={handleSelectionChange}
-              onSelectAll={activeTab === 'pending' ? handleSelectAll : undefined}
+              onSelectionChange={auth?.systemSettings?.multiSelectEnabled ? handleSelectionChange : undefined}
+              onSelectAll={undefined}
               disableSorting={activeTab === 'pending'}
+              isSelectionDisabled={isSelectionDisabledForDriver}
           />
         </div>
       )}
