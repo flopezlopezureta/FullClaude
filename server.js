@@ -1145,6 +1145,11 @@ async function initializeDatabase() {
             await db.query('CREATE INDEX IF NOT EXISTS idx_packages_woo_order ON packages("wooOrderId")');
             await db.query('CREATE INDEX IF NOT EXISTS idx_packages_status ON packages(status)');
             await db.query('CREATE INDEX IF NOT EXISTS idx_packages_createdat ON packages("createdAt")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_updatedat ON packages("updatedAt")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_estimateddelivery ON packages("estimatedDelivery")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_assignedat ON packages("assignedAt")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_creatorid ON packages("creatorId")');
+            await db.query('CREATE INDEX IF NOT EXISTS idx_packages_commune ON packages("recipientCommune")');
             await db.query('CREATE INDEX IF NOT EXISTS idx_tracking_events_packageid ON tracking_events("packageId")');
             await db.query('CREATE INDEX IF NOT EXISTS idx_notifications_userid ON notifications("userId")');
             console.log('Database indexes checked and created successfully.');
