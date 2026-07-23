@@ -140,14 +140,7 @@ const SettingsPage: React.FC = () => {
         const { name, value, type, checked } = e.target;
         if (type === 'checkbox') {
              setSettings(prev => {
-                 const newSettings = { ...prev, [name]: checked };
-                 if (name === 'meliAutoPromptPhotos' && checked === true) {
-                     newSettings.meliFlexValidation = false;
-                 }
-                 if (name === 'meliFlexValidation' && checked === true) {
-                     newSettings.meliAutoPromptPhotos = false;
-                 }
-                 return newSettings;
+                 return { ...prev, [name]: checked };
              });
         } else if (type === 'number') {
             const numValue = parseInt(value, 10);
