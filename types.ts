@@ -139,6 +139,7 @@ export interface DriverPermissions {
   canColecta: boolean;
   canAuxiliar: boolean;
   canZoning?: boolean;
+  meliAutoPromptPhotos?: boolean;
 }
 
 export interface OperatorPermissions {

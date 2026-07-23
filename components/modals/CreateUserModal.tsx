@@ -152,7 +152,8 @@ const CreateUserModal: React.FC<CreateUserModalProps> = ({ onClose, onCreate, de
             canBulkPickup: false,
             canColecta: false,
             canAuxiliar: false,
-            canZoning: false
+            canZoning: false,
+            meliAutoPromptPhotos: false
         } : undefined
     };
     if (defaultRole === Role.Client) {
