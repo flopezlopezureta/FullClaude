@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.97",
-  "versionComment": "Versión 2.6.97: Integración de mapa de rutas con OSRM y visualización de distancia en tiempo real para conductores.",
+  "version": "2.6.98",
+  "versionComment": "Versión 2.6.98: Optimización de base de datos con índices de alto rendimiento para asignaciones y script de mantenimiento VACUUM.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
