@@ -331,7 +331,7 @@ const SettingsPage: React.FC = () => {
                 {[
                     { id: 'general', label: 'General', icon: <IconSettings className="w-4 h-4" /> },
                     { id: 'impresion', label: 'Impresión', icon: <IconPrinter className="w-4 h-4" /> },
-                    { id: 'botones', label: 'Botones Config.', icon: <IconChecklist className="w-4 h-4" /> },
+                    { id: 'botones', label: 'Bot. Config.', icon: <IconChecklist className="w-4 h-4" /> },
                     { id: 'retiro', label: 'Modo Retiro', icon: <IconTruck className="w-4 h-4" /> },
                     { id: 'mensajeria', label: 'Mensajería', icon: <IconMail className="w-4 h-4" /> },
                     ...(auth?.user?.role === Role.Admin ? [{ id: 'comunas', label: 'Comunas', icon: <IconMap className="w-4 h-4" /> }] : []),
