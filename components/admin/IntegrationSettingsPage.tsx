@@ -91,6 +91,7 @@ const IntegrationSettingsPage: React.FC = () => {
     const [shopifyActiveTab, setShopifyActiveTab] = useState<'connect' | 'sync' | 'manual'>('connect');
     const [wooActiveTab, setWooActiveTab] = useState<'connect' | 'sync' | 'manual'>('connect');
     const [isAuthorizingGoogle, setIsAuthorizingGoogle] = useState(false);
+    const [activeTab, setActiveTab] = useState<'help' | 'meli' | 'shopify' | 'woocommerce' | 'falabella' | 'jumpseller' | 'smtp' | 'github'>('help');
 
     useEffect(() => {
         const fetchSettings = async () => {
@@ -460,893 +461,930 @@ const IntegrationSettingsPage: React.FC = () => {
         <div className="max-w-3xl space-y-8 pb-12">
             <h1 className="text-2xl font-bold text-[var(--text-primary)]">Configuración de Integraciones</h1>
 
-            {/* Help & Manuals Section */}
-            <div className="bg-white shadow-md rounded-lg border border-[var(--border-primary)] p-6 mb-6">
-                <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
-                        <IconInfo className="w-5 h-5" />
-                    </div>
-                    <div>
-                        <h3 className="font-bold text-gray-800">Centro de Ayuda</h3>
-                        <p className="text-xs text-gray-500">Descarga los manuales paso a paso para tus integraciones.</p>
-                    </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
-                    <a 
-                        href="/manuals/meli_guide.html" 
-                        target="_blank" 
-                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-yellow-500 hover:shadow-md transition-all flex items-center justify-between"
+            {/* TAB NAVIGATION BAR */}
+            <div className="flex flex-wrap border-b border-[var(--border-primary)] gap-1 pb-3">
+                {[
+                    { id: 'help', label: 'Ayuda', icon: <IconInfo className="w-3.5 h-3.5" /> },
+                    { id: 'meli', label: 'Meli', icon: <IconMercadoLibre className="w-3.5 h-3.5 text-yellow-500" /> },
+                    { id: 'shopify', label: 'Shopify', icon: <IconShopify className="w-3.5 h-3.5 text-green-500" /> },
+                    { id: 'woocommerce', label: 'WooCommerce', icon: <IconWoocommerce className="w-3.5 h-3.5 text-purple-500" /> },
+                    { id: 'falabella', label: 'Falabella', icon: <IconFalabella className="w-3.5 h-3.5 text-lime-500" /> },
+                    { id: 'jumpseller', label: 'Jumpseller', icon: <IconJumpseller className="w-3.5 h-3.5 text-sky-500" /> },
+                    ...((auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl') ? [
+                        { id: 'smtp', label: 'Correo', icon: <IconMail className="w-3.5 h-3.5 text-blue-500" /> },
+                        { id: 'github', label: 'GitHub', icon: <IconGithub className="w-3.5 h-3.5 text-gray-900 dark:text-white" /> }
+                    ] : [])
+                ].map(tab => (
+                    <button
+                        key={tab.id}
+                        type="button"
+                        onClick={() => setActiveTab(tab.id as any)}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap shrink-0 transition-all duration-200 ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
                     >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-yellow-50 text-yellow-600 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors">
-                                <IconMercadoLibre className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700">Guía Meli</h4>
-                                <p className="text-[10px] text-gray-400">Estrategia Multi-Cuenta</p>
-                            </div>
-                        </div>
-                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-yellow-500" />
-                    </a>
-
-                    <a 
-                        href="/manuals/shopify_guide.html" 
-                        target="_blank" 
-                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-green-500 hover:shadow-md transition-all flex items-center justify-between"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors">
-                                <IconShopify className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700">Guía Shopify</h4>
-                                <p className="text-[10px] text-gray-400">Configuración OAuth 2.0</p>
-                            </div>
-                        </div>
-                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-green-500" />
-                    </a>
-
-                    <a 
-                        href="/manuals/falabella_guide.html" 
-                        target="_blank" 
-                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-lime-500 hover:shadow-md transition-all flex items-center justify-between"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-lime-50 text-lime-600 rounded-xl group-hover:bg-lime-600 group-hover:text-white transition-colors">
-                                <IconFalabella className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700">Guía Falabella</h4>
-                                <p className="text-[10px] text-gray-400">Credenciales API Key</p>
-                            </div>
-                        </div>
-                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-lime-500" />
-                    </a>
-
-                    <a 
-                        href="/manuals/woocommerce_guide.html" 
-                        target="_blank" 
-                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-purple-500 hover:shadow-md transition-all flex items-center justify-between"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
-                                <IconWoocommerce className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700">Guía WooCommerce</h4>
-                                <p className="text-[10px] text-gray-400">Instalación del Plugin</p>
-                            </div>
-                        </div>
-                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-purple-500" />
-                    </a>
-
-                    <a 
-                        href="/manuals/jumpseller_guide.html" 
-                        target="_blank" 
-                        className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-sky-500 hover:shadow-md transition-all flex items-center justify-between"
-                    >
-                        <div className="flex items-center gap-3">
-                            <div className="p-2 bg-sky-50 text-sky-600 rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-colors">
-                                <IconJumpseller className="w-6 h-6" />
-                            </div>
-                            <div>
-                                <h4 className="text-sm font-bold text-gray-700">Guía Jumpseller</h4>
-                                <p className="text-[10px] text-gray-400">Configuración de Webhooks</p>
-                            </div>
-                        </div>
-                        <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-sky-500" />
-                    </a>
-                </div>
+                        {tab.icon}
+                        {tab.label}
+                    </button>
+                ))}
             </div>
+
+            {/* Help & Manuals Section */}
+            {activeTab === 'help' && (
+                <div className="bg-white shadow-md rounded-lg border border-[var(--border-primary)] p-6 mb-6">
+                    <div className="flex items-center gap-3 mb-6">
+                        <div className="p-2 bg-indigo-100 text-indigo-600 rounded-lg">
+                            <IconInfo className="w-5 h-5" />
+                        </div>
+                        <div>
+                            <h3 className="font-bold text-gray-800">Centro de Ayuda</h3>
+                            <p className="text-xs text-gray-500">Descarga los manuales paso a paso para tus integraciones.</p>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                        <a 
+                            href="/manuals/meli_guide.html" 
+                            target="_blank" 
+                            className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-yellow-500 hover:shadow-md transition-all flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-yellow-50 text-yellow-600 rounded-xl group-hover:bg-yellow-500 group-hover:text-white transition-colors">
+                                    <IconMercadoLibre className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700">Guía Meli</h4>
+                                    <p className="text-[10px] text-gray-400">Estrategia Multi-Cuenta</p>
+                                </div>
+                            </div>
+                            <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-yellow-500" />
+                        </a>
+
+                        <a 
+                            href="/manuals/shopify_guide.html" 
+                            target="_blank" 
+                            className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-green-500 hover:shadow-md transition-all flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-green-50 text-green-600 rounded-xl group-hover:bg-green-600 group-hover:text-white transition-colors">
+                                    <IconShopify className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700">Guía Shopify</h4>
+                                    <p className="text-[10px] text-gray-400">Configuración OAuth 2.0</p>
+                                </div>
+                            </div>
+                            <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-green-500" />
+                        </a>
+
+                        <a 
+                            href="/manuals/falabella_guide.html" 
+                            target="_blank" 
+                            className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-lime-500 hover:shadow-md transition-all flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-lime-50 text-lime-600 rounded-xl group-hover:bg-lime-600 group-hover:text-white transition-colors">
+                                    <IconFalabella className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700">Guía Falabella</h4>
+                                    <p className="text-[10px] text-gray-400">Credenciales API Key</p>
+                                </div>
+                            </div>
+                            <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-lime-500" />
+                        </a>
+
+                        <a 
+                            href="/manuals/woocommerce_guide.html" 
+                            target="_blank" 
+                            className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-purple-500 hover:shadow-md transition-all flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-purple-50 text-purple-600 rounded-xl group-hover:bg-purple-600 group-hover:text-white transition-colors">
+                                    <IconWoocommerce className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700">Guía WooCommerce</h4>
+                                    <p className="text-[10px] text-gray-400">Instalación del Plugin</p>
+                                </div>
+                            </div>
+                            <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-purple-500" />
+                        </a>
+
+                        <a 
+                            href="/manuals/jumpseller_guide.html" 
+                            target="_blank" 
+                            className="group p-4 bg-white border border-gray-200 rounded-2xl hover:border-sky-500 hover:shadow-md transition-all flex items-center justify-between"
+                        >
+                            <div className="flex items-center gap-3">
+                                <div className="p-2 bg-sky-50 text-sky-600 rounded-xl group-hover:bg-sky-600 group-hover:text-white transition-colors">
+                                    <IconJumpseller className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h4 className="text-sm font-bold text-gray-700">Guía Jumpseller</h4>
+                                    <p className="text-[10px] text-gray-400">Configuración de Webhooks</p>
+                                </div>
+                            </div>
+                            <IconDownload className="w-5 h-5 text-gray-300 group-hover:text-sky-500" />
+                        </a>
+                    </div>
+                </div>
+            )}
 
             {/* Mercado Libre Card */}
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)]">
-                <div className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                            <IconMercadoLibre className="w-6 h-6 text-yellow-500" />
-                            <h3 className="text-lg font-bold text-[var(--text-primary)]">Mercado Libre</h3>
-                        </div>
-                        <button
-                            onClick={handleSaveMeli}
-                            disabled={isSavingMeli}
-                            className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-500 hover:bg-yellow-600 disabled:bg-slate-400 transition-colors"
-                        >
-                            {isSavingMeli ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
-                            Guardar ML
-                        </button>
-                    </div>
-                    
-                    <p className="text-sm text-[var(--text-muted)] mb-4">Credenciales globales para la API de Mercado Libre.</p>
-                    <div className="space-y-4">
-                        <div>
-                            <label htmlFor="meliAppId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">App ID</label>
-                            <input
-                                type="text"
-                                id="meliAppId"
-                                name="meliAppId"
-                                value={settings.meliAppId || ''}
-                                onChange={handleChange}
-                                className={inputClasses}
-                                placeholder="Ej: 1234567890123456"
-                            />
-                        </div>
-                        <div>
-                            <label htmlFor="meliClientSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client Secret</label>
-                            <div className="relative">
-                                <input
-                                    type={passwordVisibility.meliClientSecret ? 'text' : 'password'}
-                                    id="meliClientSecret"
-                                    name="meliClientSecret"
-                                    value={settings.meliClientSecret || ''}
-                                    onChange={handleChange}
-                                    className={`${inputClasses} pr-10`}
-                                    placeholder="************************"
-                                />
-                                <button type="button" onClick={() => togglePasswordVisibility('meliClientSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                    {passwordVisibility.meliClientSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
-                                </button>
+            {activeTab === 'meli' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)]">
+                    <div className="p-6">
+                        <div className="flex items-center justify-between mb-4">
+                            <div className="flex items-center gap-2">
+                                <IconMercadoLibre className="w-6 h-6 text-yellow-500" />
+                                <h3 className="text-lg font-bold text-[var(--text-primary)]">Mercado Libre</h3>
                             </div>
-                        </div>
-                        
-                        <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">
-                             <button
-                                type="button"
-                                onClick={handleTestMeliConnection}
-                                disabled={isTestingMeli}
-                                className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
+                            <button
+                                onClick={handleSaveMeli}
+                                disabled={isSavingMeli}
+                                className="flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-yellow-500 hover:bg-yellow-600 disabled:bg-slate-400 transition-colors"
                             >
-                                {isTestingMeli ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2"/>}
-                                Probar Conexión ML
+                                {isSavingMeli ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
+                                Guardar ML
                             </button>
                         </div>
-
-                        {meliTestResult && (
-                            <div className={`p-3 rounded-md flex items-center text-sm font-medium ${meliTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {meliTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
-                                {meliTestResult.message}
-                            </div>
-                        )}
-                        {meliDebugLog.length > 0 && (
-                            <div className="p-4 bg-slate-800 rounded-md font-mono text-xs text-white max-h-40 overflow-y-auto">
-                                <div className="space-y-1">
-                                    {meliDebugLog.map((log, index) => (
-                                        <p key={index} className={`${log.includes('❌') ? 'text-red-400' : log.includes('✅') ? 'text-green-400' : 'text-slate-300'}`}>
-                                            {log}
-                                        </p>
-                                    ))}
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                </div>
-            </div>
-
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
-                <div className="bg-green-600 p-4 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <IconShopify className="w-8 h-8" />
-                        <div>
-                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Shopify</h3>
-                            <p className="text-[10px] text-green-100 font-bold uppercase tracking-widest mt-0.5">Gestión Global</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tab Navigation */}
-                <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
-                    {[
-                        { id: 'connect', label: 'Conexión', icon: <IconShopify className="w-4 h-4" /> },
-                        { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
-                        { id: 'manual', label: 'Ayuda', icon: <IconPlugConnected className="w-4 h-4" /> }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setShopifyActiveTab(tab.id as any)}
-                            className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
-                                shopifyActiveTab === tab.id 
-                                ? 'bg-[var(--background-secondary)] text-green-600 border-b-2 border-green-600' 
-                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
-                            }`}
-                        >
-                            {tab.icon}
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="p-6 min-h-[350px]">
-                    {shopifyActiveTab === 'connect' && (
-                        <div className="space-y-4 animate-fade-in-up">
-                            <p className="text-sm text-[var(--text-muted)] mb-4">Credenciales globales para la integración con Shopify (Legacy y OAuth 2026).</p>
-                            
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="shopifyShopUrl" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL Base (ejemplo.myshopify.com)</label>
-                                    <input
-                                        type="text"
-                                        id="shopifyShopUrl"
-                                        name="shopifyShopUrl"
-                                        value={settings.shopifyShopUrl || ''}
-                                        onChange={handleChange}
-                                        className={inputClasses}
-                                        placeholder="ejemplo.myshopify.com"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="shopifyAccessToken" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Admin API Access Token</label>
-                                    <div className="relative">
-                                        <input
-                                            type={passwordVisibility.shopifyAccessToken ? 'text' : 'password'}
-                                            id="shopifyAccessToken"
-                                            name="shopifyAccessToken"
-                                            value={settings.shopifyAccessToken || ''}
-                                            onChange={handleChange}
-                                            className={`${inputClasses} pr-10`}
-                                            placeholder="shpat_xxxxxxxxxxxxxxxx"
-                                        />
-                                        <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                            {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label htmlFor="shopifyClientId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client ID (OAuth 2026)</label>
-                                    <input
-                                        type="text"
-                                        id="shopifyClientId"
-                                        name="shopifyClientId"
-                                        value={settings.shopifyClientId || ''}
-                                        onChange={handleChange}
-                                        className={inputClasses}
-                                        placeholder="Ingresa el Client ID de tu App Pública de Shopify"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="shopifyClientSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client Secret (OAuth 2026)</label>
-                                    <div className="relative">
-                                        <input
-                                            type={passwordVisibility.shopifyClientSecret ? 'text' : 'password'}
-                                            id="shopifyClientSecret"
-                                            name="shopifyClientSecret"
-                                            value={settings.shopifyClientSecret || ''}
-                                            onChange={handleChange}
-                                            className={`${inputClasses} pr-10`}
-                                            placeholder="Ingresa el Client Secret de tu App Pública de Shopify"
-                                        />
-                                        <button type="button" onClick={() => togglePasswordVisibility('shopifyClientSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                            {passwordVisibility.shopifyClientSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
-                                        </button>
-                                    </div>
-                                </div>
-                                <div>
-                                    <label htmlFor="shopifyWebhookSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
-                                    <div className="relative">
-                                        <input
-                                            type={passwordVisibility.shopifyWebhookSecret ? 'text' : 'password'}
-                                            id="shopifyWebhookSecret"
-                                            name="shopifyWebhookSecret"
-                                            value={settings.shopifyWebhookSecret || ''}
-                                            onChange={handleChange}
-                                            className={`${inputClasses} pr-10`}
-                                            placeholder="Webhook Secret"
-                                        />
-                                        <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                            {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {shopifyActiveTab === 'sync' && (
-                        <div className="space-y-6 animate-fade-in-up">
-                            <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h5 className="text-[11px] font-black text-green-950 uppercase tracking-widest">Importación Global</h5>
-                                        <p className="text-[12px] text-green-800 font-bold opacity-80">Habilitar el polling automático para todos los clientes.</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only peer" 
-                                            checked={settings.shopifyAutoImport}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, shopifyAutoImport: e.target.checked }))}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                                <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest opacity-70">Frecuencia de Polling (Minutos)</label>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {[5, 15, 30, 60].map((interval) => (
-                                        <button
-                                            key={interval}
-                                            type="button"
-                                            onClick={() => setSettings(prev => ({ ...prev, shopifySyncInterval: interval }))}
-                                            className={`py-2 text-[13px] font-black rounded-lg border transition-all ${
-                                                settings.shopifySyncInterval === interval 
-                                                ? 'bg-green-600 text-white border-green-600 shadow-md transform scale-[1.02]' 
-                                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                                            }`}
-                                        >
-                                            {interval} min
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-
-                            <div className="p-4 bg-[var(--background-muted)] rounded-md border border-dashed border-[var(--border-secondary)]">
-                                <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">Endpoint de Webhook</h4>
-                                <div className="flex items-center gap-2 mt-1">
-                                    <code className="flex-1 text-xs bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)] break-all select-all">https://fullenvios.selcom.cl/api/integrations/shopify/webhook</code>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {shopifyActiveTab === 'manual' && (
-                        <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
-                            <a 
-                                href="/manuals/shopify_guide.html" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block p-4 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white/20 rounded-lg">
-                                            <IconShopify className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Shopify</h4>
-                                            <p className="text-[11px] text-green-100 font-medium">Manual paso a paso en PDF</p>
-                                        </div>
-                                    </div>
-                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                        <span className="text-xl">↓</span>
-                                    </div>
-                                </div>
-                            </a>
-
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                                    Guía Rápida
-                                </h4>
-                                <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
-                                    <li className="flex gap-2"><span className="text-green-600 font-black">1.</span> En Shopify, ve a <b>Apps &gt; Desarrollar apps</b>.</li>
-                                    <li className="flex gap-2"><span className="text-green-600 font-black">2.</span> Configura los <b>Admin API Scopes</b> requeridos.</li>
-                                    <li className="flex gap-2"><span className="text-green-600 font-black">3.</span> Habilita <b>read_orders</b>, <b>read_products</b> y <b>read_inventory</b>.</li>
-                                    <li className="flex gap-2"><span className="text-green-600 font-black">4.</span> Instala la app y obtén el <b>Access Token</b>.</li>
-                                </ol>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="p-4 bg-[var(--background-muted)]/50 border-t border-[var(--border-secondary)] flex justify-between items-center">
-                    <button
-                        type="button"
-                        onClick={handleTestShopifyConnection}
-                        disabled={isTestingShopify}
-                        className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-[10px] font-black uppercase tracking-widest rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-all"
-                    >
-                        {isTestingShopify ? <IconLoader className="w-3 h-3 animate-spin"/> : <IconPlugConnected className="w-3 h-3 text-green-600"/>}
-                        Probar
-                    </button>
-                    <button
-                        onClick={handleSaveShopify}
-                        disabled={isSavingShopify}
-                        className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
-                    >
-                        {isSavingShopify ? 'Guardando...' : 'Guardar Global'}
-                    </button>
-                </div>
-
-                {shopifyTestResult && shopifyActiveTab === 'connect' && (
-                    <div className="mx-6 mb-6">
-                        <div className={`p-3 rounded-md flex items-center text-sm font-medium ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
-                            {shopifyTestResult.message}
-                        </div>
-                    </div>
-                )}
-            </div>
-            {/* WooCommerce Card */}
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
-                <div className="bg-purple-600 p-4 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <IconWoocommerce className="w-8 h-8" />
-                        <div>
-                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">WooCommerce</h3>
-                            <p className="text-[10px] text-purple-100 font-bold uppercase tracking-widest mt-0.5">Tienda WordPress</p>
-                        </div>
-                    </div>
-                </div>
-
-                {/* Tab Navigation */}
-                <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
-                    {[
-                        { id: 'connect', label: 'Conexión', icon: <IconWoocommerce className="w-4 h-4" /> },
-                        { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
-                        { id: 'manual', label: 'Ayuda', icon: <IconPlugConnected className="w-4 h-4" /> }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setWooActiveTab(tab.id as any)}
-                            className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
-                                wooActiveTab === tab.id 
-                                ? 'bg-[var(--background-secondary)] text-purple-600 border-b-2 border-purple-600' 
-                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
-                            }`}
-                        >
-                            {tab.icon}
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
-
-                <div className="p-6 min-h-[350px]">
-                    {wooActiveTab === 'connect' && (
-                        <div className="space-y-4 animate-fade-in-up">
-                            <p className="text-sm text-[var(--text-muted)] mb-4">Credenciales globales para la API de WooCommerce.</p>
+                        
+                        <p className="text-sm text-[var(--text-muted)] mb-4">Credenciales globales para la API de Mercado Libre.</p>
+                        <div className="space-y-4">
                             <div>
-                                <label htmlFor="wooUrl" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda</label>
+                                <label htmlFor="meliAppId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">App ID</label>
                                 <input
                                     type="text"
-                                    id="wooUrl"
-                                    name="wooUrl"
-                                    value={settings.wooUrl || ''}
+                                    id="meliAppId"
+                                    name="meliAppId"
+                                    value={settings.meliAppId || ''}
                                     onChange={handleChange}
                                     className={inputClasses}
-                                    placeholder="https://mitienda.com"
-                                />
-                            </div>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label htmlFor="wooConsumerKey" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Consumer Key</label>
-                                    <input
-                                        type="text"
-                                        id="wooConsumerKey"
-                                        name="wooConsumerKey"
-                                        value={settings.wooConsumerKey || ''}
-                                        onChange={handleChange}
-                                        className={inputClasses}
-                                        placeholder="ck_xxxxxxxxxxxxxxxx"
-                                    />
-                                </div>
-                                <div>
-                                    <label htmlFor="wooConsumerSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Consumer Secret</label>
-                                    <div className="relative">
-                                        <input
-                                            type={passwordVisibility.wooConsumerSecret ? 'text' : 'password'}
-                                            id="wooConsumerSecret"
-                                            name="wooConsumerSecret"
-                                            value={settings.wooConsumerSecret || ''}
-                                            onChange={handleChange}
-                                            className={`${inputClasses} pr-10`}
-                                            placeholder="cs_xxxxxxxxxxxxxxxx"
-                                        />
-                                        <button type="button" onClick={() => togglePasswordVisibility('wooConsumerSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                            {passwordVisibility.wooConsumerSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {wooActiveTab === 'sync' && (
-                        <div className="space-y-6 animate-fade-in-up">
-                            <div className="p-4 bg-purple-50 border border-purple-100 rounded-xl">
-                                <div className="flex items-center justify-between">
-                                    <div>
-                                        <h5 className="text-[11px] font-black text-purple-950 uppercase tracking-widest">Sincronización Global</h5>
-                                        <p className="text-[12px] text-purple-800 font-bold opacity-80">Habilitar la importación automática de pedidos para WooCommerce.</p>
-                                    </div>
-                                    <label className="relative inline-flex items-center cursor-pointer">
-                                        <input 
-                                            type="checkbox" 
-                                            className="sr-only peer" 
-                                            checked={settings.wooAutoImport}
-                                            onChange={(e) => setSettings(prev => ({ ...prev, wooAutoImport: e.target.checked }))}
-                                        />
-                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 shadow-inner"></div>
-                                    </label>
-                                </div>
-                            </div>
-
-                            <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-                                <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest opacity-70">Frecuencia de Sync (Minutos)</label>
-                                <div className="grid grid-cols-4 gap-2">
-                                    {[5, 15, 30, 60].map((interval) => (
-                                        <button
-                                            key={interval}
-                                            type="button"
-                                            onClick={() => setSettings(prev => ({ ...prev, wooSyncInterval: interval }))}
-                                            className={`py-2 text-[13px] font-black rounded-lg border transition-all ${
-                                                settings.wooSyncInterval === interval 
-                                                ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-[1.02]' 
-                                                : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
-                                            }`}
-                                        >
-                                            {interval} min
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        </div>
-                    )}
-
-                    {wooActiveTab === 'manual' && (
-                        <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
-                            <a 
-                                href="/manuals/woocommerce_guide.html" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white/20 rounded-lg">
-                                            <IconWoocommerce className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía WooCommerce</h4>
-                                            <p className="text-[11px] text-purple-100 font-medium">Manual paso a paso en PDF</p>
-                                        </div>
-                                    </div>
-                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                        <span className="text-xl">↓</span>
-                                    </div>
-                                </div>
-                            </a>
-
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                                    Guía Rápida
-                                </h4>
-                                <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
-                                    <li className="flex gap-2"><span className="text-purple-600 font-black">1.</span> En WordPress: <b>WooCommerce &gt; Ajustes &gt; Avanzado</b>.</li>
-                                    <li className="flex gap-2"><span className="text-purple-600 font-black">2.</span> Ve a <b>REST API</b> y haz clic en <b>Añadir clave</b>.</li>
-                                    <li className="flex gap-2"><span className="text-purple-600 font-black">3.</span> Permisos: <b>Lectura/Escritura</b>.</li>
-                                    <li className="flex gap-2"><span className="text-purple-600 font-black">4.</span> Copia el <b>Consumer Key</b> y el <b>Consumer Secret</b>.</li>
-                                </ol>
-                            </div>
-                        </div>
-                    )}
-                </div>
-
-                <div className="p-4 bg-[var(--background-muted)]/50 border-t border-[var(--border-secondary)] flex justify-between items-center">
-                    <button
-                        type="button"
-                        onClick={handleTestWooConnection}
-                        disabled={isTestingWoo}
-                        className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-[10px] font-black uppercase tracking-widest rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-all"
-                    >
-                        {isTestingWoo ? <IconLoader className="w-3 h-3 animate-spin"/> : <IconPlugConnected className="w-3 h-3 text-purple-600"/>}
-                        Probar
-                    </button>
-                    <button
-                        onClick={handleSaveWoo}
-                        disabled={isSavingWoo}
-                        className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
-                    >
-                        {isSavingWoo ? 'Guardando...' : 'Guardar Global'}
-                    </button>
-                </div>
-
-                {wooTestResult && wooActiveTab === 'connect' && (
-                    <div className="mx-6 mb-6">
-                        <div className={`p-3 rounded-md flex items-center text-sm font-medium ${wooTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {wooTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
-                            {wooTestResult.message}
-                        </div>
-                    </div>
-                )}
-            </div>
-
-
-            {/* Falabella Card */}
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8 overflow-hidden">
-                <div className="bg-lime-600 p-4 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <IconFalabella className="w-8 h-8" />
-                        <div>
-                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Falabella / Linio</h3>
-                            <p className="text-[10px] text-lime-100 font-bold uppercase tracking-widest mt-0.5">Seller Center</p>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="p-6">
-
-                    <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Falabella Seller Center.</p>
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
-                                <label htmlFor="falabellaSellerId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Seller ID / Email</label>
-                                <input
-                                    type="text"
-                                    id="falabellaSellerId"
-                                    name="falabellaSellerId"
-                                    value={settings.falabellaSellerId || ''}
-                                    onChange={handleChange}
-                                    className={inputClasses}
-                                    placeholder="ejemplo@correo.com"
+                                    placeholder="Ej: 1234567890123456"
                                 />
                             </div>
                             <div>
-                                <label htmlFor="falabellaApiKey" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">API Key</label>
+                                <label htmlFor="meliClientSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client Secret</label>
                                 <div className="relative">
                                     <input
-                                        type={passwordVisibility.falabellaApiKey ? 'text' : 'password'}
-                                        id="falabellaApiKey"
-                                        name="falabellaApiKey"
-                                        value={settings.falabellaApiKey || ''}
+                                        type={passwordVisibility.meliClientSecret ? 'text' : 'password'}
+                                        id="meliClientSecret"
+                                        name="meliClientSecret"
+                                        value={settings.meliClientSecret || ''}
                                         onChange={handleChange}
                                         className={`${inputClasses} pr-10`}
                                         placeholder="************************"
                                     />
-                                    <button type="button" onClick={() => togglePasswordVisibility('falabellaApiKey')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                        {passwordVisibility.falabellaApiKey ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                    <button type="button" onClick={() => togglePasswordVisibility('meliClientSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                        {passwordVisibility.meliClientSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
                                     </button>
                                 </div>
                             </div>
-                        </div>
+                            
+                            <div className="flex items-center justify-end pt-2 border-t border-[var(--border-secondary)] mt-4">
+                                 <button
+                                    type="button"
+                                    onClick={handleTestMeliConnection}
+                                    disabled={isTestingMeli}
+                                    className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
+                                >
+                                    {isTestingMeli ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2"/>}
+                                    Probar Conexión ML
+                                </button>
+                            </div>
 
-                        <div className="flex items-center justify-between pt-6 border-t border-[var(--border-secondary)] mt-6">
-                             <button
-                                type="button"
-                                onClick={handleTestFalabellaConnection}
-                                disabled={isTestingFalabella}
-                                className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
-                            >
-                                {isTestingFalabella ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2 text-lime-600"/>}
-                                Probar Conexión
-                            </button>
+                            {meliTestResult && (
+                                <div className={`p-3 rounded-md flex items-center text-sm font-medium ${meliTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {meliTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                    {meliTestResult.message}
+                                </div>
+                            )}
+                            {meliDebugLog.length > 0 && (
+                                <div className="p-4 bg-slate-800 rounded-md font-mono text-xs text-white max-h-40 overflow-y-auto">
+                                    <div className="space-y-1">
+                                        {meliDebugLog.map((log, index) => (
+                                            <p key={index} className={`${log.includes('❌') ? 'text-red-400' : log.includes('✅') ? 'text-green-400' : 'text-slate-300'}`}>
+                                                {log}
+                                            </p>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Shopify Card */}
+            {activeTab === 'shopify' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    <div className="bg-green-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconShopify className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Shopify</h3>
+                                <p className="text-[10px] text-green-100 font-bold uppercase tracking-widest mt-0.5">Gestión Global</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tab Navigation */}
+                    <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                        {[
+                            { id: 'connect', label: 'Conexión', icon: <IconShopify className="w-4 h-4" /> },
+                            { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                            { id: 'manual', label: 'Ayuda', icon: <IconPlugConnected className="w-4 h-4" /> }
+                        ].map((tab) => (
                             <button
-                                onClick={handleSaveFalabella}
-                                disabled={isSavingFalabella}
-                                className="px-6 py-2 bg-lime-600 hover:bg-lime-700 text-white text-xs font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95 flex items-center gap-2"
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setShopifyActiveTab(tab.id as any)}
+                                className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                    shopifyActiveTab === tab.id 
+                                    ? 'bg-[var(--background-secondary)] text-green-600 border-b-2 border-green-600' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                                }`}
                             >
-                                {isSavingFalabella ? 'Guardando...' : 'Guardar Global'}
+                                {tab.icon}
+                                {tab.label}
                             </button>
-                        </div>
+                        ))}
+                    </div>
 
-                        {falabellaTestResult && (
-                            <div className={`p-3 rounded-md flex items-center text-sm font-medium ${falabellaTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                                {falabellaTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
-                                {falabellaTestResult.message}
+                    <div className="p-6 min-h-[350px]">
+                        {shopifyActiveTab === 'connect' && (
+                            <div className="space-y-4 animate-fade-in-up">
+                                <p className="text-sm text-[var(--text-muted)] mb-4">Credenciales globales para la integración con Shopify (Legacy y OAuth 2026).</p>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="shopifyShopUrl" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL Base (ejemplo.myshopify.com)</label>
+                                        <input
+                                            type="text"
+                                            id="shopifyShopUrl"
+                                            name="shopifyShopUrl"
+                                            value={settings.shopifyShopUrl || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="ejemplo.myshopify.com"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="shopifyAccessToken" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Admin API Access Token</label>
+                                        <div className="relative">
+                                            <input
+                                                type={passwordVisibility.shopifyAccessToken ? 'text' : 'password'}
+                                                id="shopifyAccessToken"
+                                                name="shopifyAccessToken"
+                                                value={settings.shopifyAccessToken || ''}
+                                                onChange={handleChange}
+                                                className={`${inputClasses} pr-10`}
+                                                placeholder="shpat_xxxxxxxxxxxxxxxx"
+                                            />
+                                            <button type="button" onClick={() => togglePasswordVisibility('shopifyAccessToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                {passwordVisibility.shopifyAccessToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="shopifyClientId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client ID (OAuth 2026)</label>
+                                        <input
+                                            type="text"
+                                            id="shopifyClientId"
+                                            name="shopifyClientId"
+                                            value={settings.shopifyClientId || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="Ingresa el Client ID de tu App Pública de Shopify"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="shopifyClientSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Client Secret (OAuth 2026)</label>
+                                        <div className="relative">
+                                            <input
+                                                type={passwordVisibility.shopifyClientSecret ? 'text' : 'password'}
+                                                id="shopifyClientSecret"
+                                                name="shopifyClientSecret"
+                                                value={settings.shopifyClientSecret || ''}
+                                                onChange={handleChange}
+                                                className={`${inputClasses} pr-10`}
+                                                placeholder="Ingresa el Client Secret de tu App Pública de Shopify"
+                                            />
+                                            <button type="button" onClick={() => togglePasswordVisibility('shopifyClientSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                {passwordVisibility.shopifyClientSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label htmlFor="shopifyWebhookSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Webhook Secret (Opcional)</label>
+                                        <div className="relative">
+                                            <input
+                                                type={passwordVisibility.shopifyWebhookSecret ? 'text' : 'password'}
+                                                id="shopifyWebhookSecret"
+                                                name="shopifyWebhookSecret"
+                                                value={settings.shopifyWebhookSecret || ''}
+                                                onChange={handleChange}
+                                                className={`${inputClasses} pr-10`}
+                                                placeholder="Webhook Secret"
+                                            />
+                                            <button type="button" onClick={() => togglePasswordVisibility('shopifyWebhookSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                {passwordVisibility.shopifyWebhookSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {shopifyActiveTab === 'sync' && (
+                            <div className="space-y-6 animate-fade-in-up">
+                                <div className="p-4 bg-green-50 border border-green-100 rounded-xl">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h5 className="text-[11px] font-black text-green-950 uppercase tracking-widest">Importación Global</h5>
+                                            <p className="text-[12px] text-green-800 font-bold opacity-80">Habilitar el polling automático para todos los clientes.</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only peer" 
+                                                checked={settings.shopifyAutoImport}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, shopifyAutoImport: e.target.checked }))}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-600"></div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                    <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest opacity-70">Frecuencia de Polling (Minutos)</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[5, 15, 30, 60].map((interval) => (
+                                            <button
+                                                key={interval}
+                                                type="button"
+                                                onClick={() => setSettings(prev => ({ ...prev, shopifySyncInterval: interval }))}
+                                                className={`py-2 text-[13px] font-black rounded-lg border transition-all ${
+                                                    settings.shopifySyncInterval === interval 
+                                                    ? 'bg-green-600 text-white border-green-600 shadow-md transform scale-[1.02]' 
+                                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                {interval} min
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                <div className="p-4 bg-[var(--background-muted)] rounded-md border border-dashed border-[var(--border-secondary)]">
+                                    <h4 className="text-sm font-bold text-[var(--text-primary)] mb-2">Endpoint de Webhook</h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                        <code className="flex-1 text-xs bg-[var(--background-secondary)] p-2 rounded border border-[var(--border-primary)] break-all select-all">https://fullenvios.selcom.cl/api/integrations/shopify/webhook</code>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {shopifyActiveTab === 'manual' && (
+                            <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                                <a 
+                                    href="/manuals/shopify_guide.html" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block p-4 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <IconShopify className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Shopify</h4>
+                                                <p className="text-[11px] text-green-100 font-medium">Manual paso a paso en PDF</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                            <span className="text-xl">↓</span>
+                                        </div>
+                                    </div>
+                                </a>
+
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                                        Guía Rápida
+                                    </h4>
+                                    <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
+                                        <li className="flex gap-2"><span className="text-green-600 font-black">1.</span> En Shopify, ve a <b>Apps &gt; Desarrollar apps</b>.</li>
+                                        <li className="flex gap-2"><span className="text-green-600 font-black">2.</span> Configura los <b>Admin API Scopes</b> requeridos.</li>
+                                        <li className="flex gap-2"><span className="text-green-600 font-black">3.</span> Habilita <b>read_orders</b>, <b>read_products</b> and <b>read_inventory</b>.</li>
+                                        <li className="flex gap-2"><span className="text-green-600 font-black">4.</span> Instala la app y obtén el <b>Access Token</b>.</li>
+                                    </ol>
+                                </div>
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
 
-            {/* Jumpseller Card */}
-            <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8 overflow-hidden">
-                <div className="bg-sky-600 p-4 text-white flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <IconJumpseller className="w-8 h-8" />
-                        <div>
-                            <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Jumpseller</h3>
-                            <p className="text-[10px] text-sky-100 font-bold uppercase tracking-widest mt-0.5">Integración Directa</p>
+                    <div className="p-4 bg-[var(--background-muted)]/50 border-t border-[var(--border-secondary)] flex justify-between items-center">
+                        <button
+                            type="button"
+                            onClick={handleTestShopifyConnection}
+                            disabled={isTestingShopify}
+                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-[10px] font-black uppercase tracking-widest rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-all"
+                        >
+                            {isTestingShopify ? <IconLoader className="w-3 h-3 animate-spin"/> : <IconPlugConnected className="w-3 h-3 text-green-600"/>}
+                            Probar
+                        </button>
+                        <button
+                            onClick={handleSaveShopify}
+                            disabled={isSavingShopify}
+                            className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
+                        >
+                            {isSavingShopify ? 'Guardando...' : 'Guardar Global'}
+                        </button>
+                    </div>
+
+                    {shopifyTestResult && shopifyActiveTab === 'connect' && (
+                        <div className="mx-6 mb-6">
+                            <div className={`p-3 rounded-md flex items-center text-sm font-medium ${shopifyTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {shopifyTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                {shopifyTestResult.message}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* WooCommerce Card */}
+            {activeTab === 'woocommerce' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] flex flex-col overflow-hidden">
+                    <div className="bg-purple-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconWoocommerce className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">WooCommerce</h3>
+                                <p className="text-[10px] text-purple-100 font-bold uppercase tracking-widest mt-0.5">Tienda WordPress</p>
+                            </div>
                         </div>
                     </div>
-                </div>
 
-                {/* Tab Navigation */}
-                <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
-                    {[
-                        { id: 'connect', label: 'Conexión', icon: <IconPlugConnected className="w-4 h-4" /> },
-                        { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
-                        { id: 'manual', label: 'Manual', icon: <IconAlertTriangle className="w-4 h-4" /> }
-                    ].map((tab) => (
-                        <button
-                            key={tab.id}
-                            type="button"
-                            onClick={() => setJumpsellerActiveTab(tab.id as any)}
-                            className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
-                                jumpsellerActiveTab === tab.id 
-                                ? 'bg-[var(--background-secondary)] text-sky-600 border-b-2 border-sky-600' 
-                                : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
-                            }`}
-                        >
-                            {tab.icon}
-                            {tab.label}
-                        </button>
-                    ))}
-                </div>
+                    {/* Tab Navigation */}
+                    <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                        {[
+                            { id: 'connect', label: 'Conexión', icon: <IconWoocommerce className="w-4 h-4" /> },
+                            { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                            { id: 'manual', label: 'Ayuda', icon: <IconPlugConnected className="w-4 h-4" /> }
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setWooActiveTab(tab.id as any)}
+                                className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                    wooActiveTab === tab.id 
+                                    ? 'bg-[var(--background-secondary)] text-purple-600 border-b-2 border-purple-600' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                                }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
 
-                <div className="p-6 flex-1 flex flex-col min-h-[380px]">
-                    {jumpsellerActiveTab === 'connect' && (
-                        <div className="space-y-4 animate-fade-in-up">
-                            <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Jumpseller.</p>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="p-6 min-h-[350px]">
+                        {wooActiveTab === 'connect' && (
+                            <div className="space-y-4 animate-fade-in-up">
+                                <p className="text-sm text-[var(--text-muted)] mb-4">Credenciales globales para la API de WooCommerce.</p>
                                 <div>
-                                    <label htmlFor="jumpsellerLogin" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Login (API User)</label>
+                                    <label htmlFor="wooUrl" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">URL de la Tienda</label>
                                     <input
                                         type="text"
-                                        id="jumpsellerLogin"
-                                        name="jumpsellerLogin"
-                                        value={settings.jumpsellerLogin || ''}
+                                        id="wooUrl"
+                                        name="wooUrl"
+                                        value={settings.wooUrl || ''}
                                         onChange={handleChange}
                                         className={inputClasses}
-                                        placeholder="Ingresa tu Login de API"
+                                        placeholder="https://mitienda.com"
                                     />
                                 </div>
-                                <div className="relative">
-                                    <label htmlFor="jumpsellerToken" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Auth Token</label>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="wooConsumerKey" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Consumer Key</label>
+                                        <input
+                                            type="text"
+                                            id="wooConsumerKey"
+                                            name="wooConsumerKey"
+                                            value={settings.wooConsumerKey || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="ck_xxxxxxxxxxxxxxxx"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label htmlFor="wooConsumerSecret" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Consumer Secret</label>
+                                        <div className="relative">
+                                            <input
+                                                type={passwordVisibility.wooConsumerSecret ? 'text' : 'password'}
+                                                id="wooConsumerSecret"
+                                                name="wooConsumerSecret"
+                                                value={settings.wooConsumerSecret || ''}
+                                                onChange={handleChange}
+                                                className={`${inputClasses} pr-10`}
+                                                placeholder="cs_xxxxxxxxxxxxxxxx"
+                                            />
+                                            <button type="button" onClick={() => togglePasswordVisibility('wooConsumerSecret')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                {passwordVisibility.wooConsumerSecret ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {wooActiveTab === 'sync' && (
+                            <div className="space-y-6 animate-fade-in-up">
+                                <div className="p-4 bg-purple-50 border border-purple-100 rounded-xl">
+                                    <div className="flex items-center justify-between">
+                                        <div>
+                                            <h5 className="text-[11px] font-black text-purple-950 uppercase tracking-widest">Sincronización Global</h5>
+                                            <p className="text-[12px] text-purple-800 font-bold opacity-80">Habilitar la importación automática de pedidos para WooCommerce.</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only peer" 
+                                                checked={settings.wooAutoImport}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, wooAutoImport: e.target.checked }))}
+                                            />
+                                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-purple-600 shadow-inner"></div>
+                                        </label>
+                                    </div>
+                                </div>
+
+                                <div className="bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+                                    <label className="block text-[10px] font-black text-gray-400 mb-3 uppercase tracking-widest opacity-70">Frecuencia de Sync (Minutos)</label>
+                                    <div className="grid grid-cols-4 gap-2">
+                                        {[5, 15, 30, 60].map((interval) => (
+                                            <button
+                                                key={interval}
+                                                type="button"
+                                                onClick={() => setSettings(prev => ({ ...prev, wooSyncInterval: interval }))}
+                                                className={`py-2 text-[13px] font-black rounded-lg border transition-all ${
+                                                    settings.wooSyncInterval === interval 
+                                                    ? 'bg-purple-600 text-white border-purple-600 shadow-md transform scale-[1.02]' 
+                                                    : 'bg-white text-gray-700 border-gray-200 hover:border-gray-300'
+                                                }`}
+                                            >
+                                                {interval} min
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {wooActiveTab === 'manual' && (
+                            <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                                <a 
+                                    href="/manuals/woocommerce_guide.html" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block p-4 bg-purple-600 hover:bg-purple-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <IconWoocommerce className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía WooCommerce</h4>
+                                                <p className="text-[11px] text-purple-100 font-medium">Manual paso a paso en PDF</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                            <span className="text-xl">↓</span>
+                                        </div>
+                                    </div>
+                                </a>
+
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
+                                        Guía Rápida
+                                    </h4>
+                                    <ol className="text-[12px] text-gray-600 space-y-3 font-medium">
+                                        <li className="flex gap-2"><span className="text-purple-600 font-black">1.</span> En WordPress: <b>WooCommerce &gt; Ajustes &gt; Avanzado</b>.</li>
+                                        <li className="flex gap-2"><span className="text-purple-600 font-black">2.</span> Ve a <b>REST API</b> y haz clic en <b>Añadir clave</b>.</li>
+                                        <li className="flex gap-2"><span className="text-purple-600 font-black">3.</span> Permisos: <b>Lectura/Escritura</b>.</li>
+                                        <li className="flex gap-2"><span className="text-purple-600 font-black">4.</span> Copia el <b>Consumer Key</b> y el <b>Consumer Secret</b>.</li>
+                                    </ol>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+
+                    <div className="p-4 bg-[var(--background-muted)]/50 border-t border-[var(--border-secondary)] flex justify-between items-center">
+                        <button
+                            type="button"
+                            onClick={handleTestWooConnection}
+                            disabled={isTestingWoo}
+                            className="px-4 py-2 border border-[var(--border-secondary)] bg-white text-[var(--text-primary)] hover:bg-[var(--background-muted)] text-[10px] font-black uppercase tracking-widest rounded-md shadow-sm disabled:opacity-50 flex items-center gap-2 transition-all"
+                        >
+                            {isTestingWoo ? <IconLoader className="w-3 h-3 animate-spin"/> : <IconPlugConnected className="w-3 h-3 text-purple-600"/>}
+                            Probar
+                        </button>
+                        <button
+                            onClick={handleSaveWoo}
+                            disabled={isSavingWoo}
+                            className="px-6 py-2 bg-purple-600 hover:bg-purple-700 text-white text-[10px] font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95"
+                        >
+                            {isSavingWoo ? 'Guardando...' : 'Guardar Global'}
+                        </button>
+                    </div>
+
+                    {wooTestResult && wooActiveTab === 'connect' && (
+                        <div className="mx-6 mb-6">
+                            <div className={`p-3 rounded-md flex items-center text-sm font-medium ${wooTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {wooTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                {wooTestResult.message}
+                            </div>
+                        </div>
+                    )}
+                </div>
+            )}
+
+            {/* Falabella Card */}
+            {activeTab === 'falabella' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8 overflow-hidden">
+                    <div className="bg-lime-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconFalabella className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Falabella / Linio</h3>
+                                <p className="text-[10px] text-lime-100 font-bold uppercase tracking-widest mt-0.5">Seller Center</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div className="p-6">
+                        <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Falabella Seller Center.</p>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label htmlFor="falabellaSellerId" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Seller ID / Email</label>
+                                    <input
+                                        type="text"
+                                        id="falabellaSellerId"
+                                        name="falabellaSellerId"
+                                        value={settings.falabellaSellerId || ''}
+                                        onChange={handleChange}
+                                        className={inputClasses}
+                                        placeholder="ejemplo@correo.com"
+                                    />
+                                </div>
+                                <div>
+                                    <label htmlFor="falabellaApiKey" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">API Key</label>
                                     <div className="relative">
                                         <input
-                                            type={passwordVisibility.jumpsellerToken ? 'text' : 'password'}
-                                            id="jumpsellerToken"
-                                            name="jumpsellerToken"
-                                            value={settings.jumpsellerToken || ''}
+                                            type={passwordVisibility.falabellaApiKey ? 'text' : 'password'}
+                                            id="falabellaApiKey"
+                                            name="falabellaApiKey"
+                                            value={settings.falabellaApiKey || ''}
                                             onChange={handleChange}
                                             className={`${inputClasses} pr-10`}
                                             placeholder="************************"
                                         />
-                                        <button type="button" onClick={() => togglePasswordVisibility('jumpsellerToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
-                                            {passwordVisibility.jumpsellerToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                        <button type="button" onClick={() => togglePasswordVisibility('falabellaApiKey')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                            {passwordVisibility.falabellaApiKey ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
                                         </button>
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    )}
 
-                    {jumpsellerActiveTab === 'sync' && (
-                        <div className="space-y-6 animate-fade-in-up">
-                            <div className="flex items-center justify-between p-4 bg-[var(--background-muted)] rounded-lg border border-[var(--border-secondary)]">
-                                <div>
-                                    <h4 className="text-sm font-bold text-[var(--text-primary)]">Sincronización Automática</h4>
-                                    <p className="text-xs text-[var(--text-muted)]">Importar pedidos automáticamente desde Jumpseller.</p>
-                                </div>
-                                <label className="relative inline-flex items-center cursor-pointer">
-                                    <input 
-                                        type="checkbox" 
-                                        className="sr-only peer" 
-                                        checked={!!settings.jumpsellerAutoImport}
-                                        onChange={(e) => setSettings(prev => ({ ...prev, jumpsellerAutoImport: e.target.checked }))}
-                                    />
-                                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
-                                </label>
+                            <div className="flex items-center justify-between pt-6 border-t border-[var(--border-secondary)] mt-6">
+                                 <button
+                                    type="button"
+                                    onClick={handleTestFalabellaConnection}
+                                    disabled={isTestingFalabella}
+                                    className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
+                                >
+                                    {isTestingFalabella ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2 text-lime-600"/>}
+                                    Probar Conexión
+                                </button>
+                                <button
+                                    onClick={handleSaveFalabella}
+                                    disabled={isSavingFalabella}
+                                    className="px-6 py-2 bg-lime-600 hover:bg-lime-700 text-white text-xs font-black uppercase tracking-widest rounded-md shadow-lg disabled:opacity-50 transition-all transform active:scale-95 flex items-center gap-2"
+                                >
+                                    {isSavingFalabella ? 'Guardando...' : 'Guardar Global'}
+                                </button>
                             </div>
 
-                            <div>
-                                <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Intervalo de Sincronización</label>
-                                <div className="grid grid-cols-4 gap-3">
-                                    {[5, 10, 30, 60].map((interval) => (
-                                        <button
-                                            key={interval}
-                                            type="button"
-                                            onClick={() => setSettings(prev => ({ ...prev, jumpsellerSyncInterval: interval }))}
-                                            className={`py-3 text-sm font-black rounded-lg border transition-all ${
-                                                settings.jumpsellerSyncInterval === interval 
-                                                ? 'bg-sky-600 text-white border-sky-600 shadow-md' 
-                                                : 'bg-[var(--background-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:border-sky-400'
-                                            }`}
-                                        >
-                                            {interval} min
-                                        </button>
-                                    ))}
+                            {falabellaTestResult && (
+                                <div className={`p-3 rounded-md flex items-center text-sm font-medium ${falabellaTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                    {falabellaTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                    {falabellaTestResult.message}
                                 </div>
-                            </div>
+                            )}
                         </div>
-                    )}
-
-                    {jumpsellerActiveTab === 'manual' && (
-                        <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
-                            <a 
-                                href="/manuals/jumpseller_guide.html" 
-                                target="_blank" 
-                                rel="noopener noreferrer"
-                                className="block p-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
-                            >
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-3">
-                                        <div className="p-2 bg-white/20 rounded-lg">
-                                            <IconJumpseller className="w-6 h-6 text-white" />
-                                        </div>
-                                        <div>
-                                            <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Jumpseller</h4>
-                                            <p className="text-[11px] text-sky-100 font-medium">Manual paso a paso en PDF</p>
-                                        </div>
-                                    </div>
-                                    <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
-                                        <span className="text-xl">↓</span>
-                                    </div>
-                                </div>
-                            </a>
-
-                            <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
-                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
-                                    <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
-                                    Instrucciones de Webhook
-                                </h4>
-                                <p className="text-[12px] text-gray-600 mb-2 font-medium">Configura un Webhook en Jumpseller (Ajustes &gt; Checkout &gt; API) para recibir pedidos al instante:</p>
-                                <div className="bg-white p-2 rounded border border-sky-100 font-mono text-[10px] break-all mb-2 text-sky-700">
-                                    https://api.fullenvios.cl/api/integrations/jumpseller/webhook
-                                </div>
-                                <p className="text-[11px] text-sky-600 font-bold italic">* Evento recomendado: Order Created / Order Paid</p>
-                            </div>
-
-                            <div className="p-4 border border-[var(--border-secondary)] rounded-xl">
-                                <h4 className="text-[12px] font-black text-gray-800 uppercase mb-2 tracking-widest">Reglas de Importación</h4>
-                                <ul className="text-xs text-[var(--text-secondary)] space-y-1 list-disc pl-4 font-medium">
-                                    <li>Solo pedidos en estado <span className="font-bold text-sky-600 text-[11px]">Paid/Ready</span>.</li>
-                                    <li>Solo direcciones en la <span className="font-bold">Región Metropolitana</span>.</li>
-                                </ul>
-                            </div>
-                        </div>
-                    )}
-
-                    <div className="mt-6 pt-6 border-t border-[var(--border-secondary)] flex items-center justify-between">
-                        {jumpsellerActiveTab === 'connect' ? (
-                            <button
-                                type="button"
-                                onClick={handleTestJumpsellerConnection}
-                                disabled={isTestingJumpseller}
-                                className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
-                            >
-                                {isTestingJumpseller ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2 text-sky-600"/>}
-                                Probar Conexión
-                            </button>
-                        ) : <div></div>}
-                        
-                        <button
-                            onClick={handleSaveJumpseller}
-                            disabled={isSavingJumpseller}
-                            className="flex items-center px-6 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all active:scale-95"
-                        >
-                            {isSavingJumpseller ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
-                            {isSavingJumpseller ? 'Guardando...' : 'Guardar Cambios Jumpseller'}
-                        </button>
-                    </div>
-
-                    {jumpsellerTestResult && jumpsellerActiveTab === 'connect' && (
-                        <div className={`mt-4 p-3 rounded-md flex items-center text-sm font-medium ${jumpsellerTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
-                            {jumpsellerTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
-                            {jumpsellerTestResult.message}
-                        </div>
-                    )}
                     </div>
                 </div>
-            
+            )}
+
+            {/* Jumpseller Card */}
+            {activeTab === 'jumpseller' && (
+                <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8 overflow-hidden">
+                    <div className="bg-sky-600 p-4 text-white flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                            <IconJumpseller className="w-8 h-8" />
+                            <div>
+                                <h3 className="text-lg font-black uppercase tracking-tighter leading-none">Jumpseller</h3>
+                                <p className="text-[10px] text-sky-100 font-bold uppercase tracking-widest mt-0.5">Integración Directa</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Tab Navigation */}
+                    <div className="flex bg-[var(--background-muted)] border-b border-[var(--border-primary)]">
+                        {[
+                            { id: 'connect', label: 'Conexión', icon: <IconPlugConnected className="w-4 h-4" /> },
+                            { id: 'sync', label: 'Automatización', icon: <IconLoader className="w-4 h-4" /> },
+                            { id: 'manual', label: 'Manual', icon: <IconAlertTriangle className="w-4 h-4" /> }
+                        ].map((tab) => (
+                            <button
+                                key={tab.id}
+                                type="button"
+                                onClick={() => setJumpsellerActiveTab(tab.id as any)}
+                                className={`flex-1 py-3 px-2 text-[11px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 transition-all ${
+                                    jumpsellerActiveTab === tab.id 
+                                    ? 'bg-[var(--background-secondary)] text-sky-600 border-b-2 border-sky-600' 
+                                    : 'text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--background-secondary)]/50'
+                                }`}
+                            >
+                                {tab.icon}
+                                {tab.label}
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="p-6 flex-1 flex flex-col min-h-[380px]">
+                        {jumpsellerActiveTab === 'connect' && (
+                            <div className="space-y-4 animate-fade-in-up">
+                                <p className="text-sm text-[var(--text-muted)] mb-4">Configuración global para la API de Jumpseller.</p>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label htmlFor="jumpsellerLogin" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Login (API User)</label>
+                                        <input
+                                            type="text"
+                                            id="jumpsellerLogin"
+                                            name="jumpsellerLogin"
+                                            value={settings.jumpsellerLogin || ''}
+                                            onChange={handleChange}
+                                            className={inputClasses}
+                                            placeholder="Ingresa tu Login de API"
+                                        />
+                                    </div>
+                                    <div className="relative">
+                                        <label htmlFor="jumpsellerToken" className="block text-sm font-medium text-[var(--text-secondary)] mb-1">Auth Token</label>
+                                        <div className="relative">
+                                            <input
+                                                type={passwordVisibility.jumpsellerToken ? 'text' : 'password'}
+                                                id="jumpsellerToken"
+                                                name="jumpsellerToken"
+                                                value={settings.jumpsellerToken || ''}
+                                                onChange={handleChange}
+                                                className={`${inputClasses} pr-10`}
+                                                placeholder="************************"
+                                            />
+                                            <button type="button" onClick={() => togglePasswordVisibility('jumpsellerToken')} className="absolute inset-y-0 right-0 pr-3 flex items-center">
+                                                {passwordVisibility.jumpsellerToken ? <IconEyeOff className="h-5 w-5 text-[var(--text-muted)]"/> : <IconEye className="h-5 w-5 text-[var(--text-muted)]"/>}
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {jumpsellerActiveTab === 'sync' && (
+                            <div className="space-y-6 animate-fade-in-up">
+                                <div className="flex items-center justify-between p-4 bg-[var(--background-muted)] rounded-lg border border-[var(--border-secondary)]">
+                                    <div>
+                                        <h4 className="text-sm font-bold text-[var(--text-primary)]">Sincronización Automática</h4>
+                                        <p className="text-xs text-[var(--text-muted)]">Importar pedidos automáticamente desde Jumpseller.</p>
+                                    </div>
+                                    <label className="relative inline-flex items-center cursor-pointer">
+                                        <input 
+                                            type="checkbox" 
+                                            className="sr-only peer" 
+                                            checked={!!settings.jumpsellerAutoImport}
+                                            onChange={(e) => setSettings(prev => ({ ...prev, jumpsellerAutoImport: e.target.checked }))}
+                                        />
+                                        <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                                    </label>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-black text-[var(--text-muted)] uppercase tracking-widest mb-3">Intervalo de Sincronización</label>
+                                    <div className="grid grid-cols-4 gap-3">
+                                        {[5, 10, 30, 60].map((interval) => (
+                                            <button
+                                                key={interval}
+                                                type="button"
+                                                onClick={() => setSettings(prev => ({ ...prev, jumpsellerSyncInterval: interval }))}
+                                                className={`py-3 text-sm font-black rounded-lg border transition-all ${
+                                                    settings.jumpsellerSyncInterval === interval 
+                                                    ? 'bg-sky-600 text-white border-sky-600 shadow-md' 
+                                                    : 'bg-[var(--background-secondary)] text-[var(--text-secondary)] border-[var(--border-primary)] hover:border-sky-400'
+                                                }`}
+                                            >
+                                                {interval} min
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {jumpsellerActiveTab === 'manual' && (
+                            <div className="animate-fade-in-up max-h-[350px] overflow-y-auto pr-2 custom-scrollbar space-y-4">
+                                <a 
+                                    href="/manuals/jumpseller_guide.html" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="block p-4 bg-sky-600 hover:bg-sky-700 text-white rounded-xl shadow-md transition-all transform hover:scale-[1.02] active:scale-95 group"
+                                >
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <div className="p-2 bg-white/20 rounded-lg">
+                                                <IconJumpseller className="w-6 h-6 text-white" />
+                                            </div>
+                                            <div>
+                                                <h4 className="text-[14px] font-black uppercase tracking-tight">Descargar Guía Jumpseller</h4>
+                                                <p className="text-[11px] text-sky-100 font-medium">Manual paso a paso en PDF</p>
+                                            </div>
+                                        </div>
+                                        <div className="w-8 h-8 bg-white/20 rounded-full flex items-center justify-center group-hover:bg-white/30 transition-colors">
+                                            <span className="text-xl">↓</span>
+                                        </div>
+                                    </div>
+                                </a>
+
+                                <div className="p-4 bg-gray-50 rounded-xl border border-gray-100">
+                                    <h4 className="text-[12px] font-black text-gray-800 uppercase mb-3 tracking-widest flex items-center gap-2">
+                                        <div className="w-2 h-2 bg-sky-500 rounded-full"></div>
+                                        Instrucciones de Webhook
+                                    </h4>
+                                    <p className="text-[12px] text-gray-600 mb-2 font-medium">Configura un Webhook en Jumpseller (Ajustes &gt; Checkout &gt; API) para recibir pedidos al instante:</p>
+                                    <div className="bg-white p-2 rounded border border-sky-100 font-mono text-[10px] break-all mb-2 text-sky-700">
+                                        https://api.fullenvios.cl/api/integrations/jumpseller/webhook
+                                    </div>
+                                    <p className="text-[11px] text-sky-600 font-bold italic">* Evento recomendado: Order Created / Order Paid</p>
+                                </div>
+
+                                <div className="p-4 border border-[var(--border-secondary)] rounded-xl">
+                                    <h4 className="text-[12px] font-black text-gray-800 uppercase mb-2 tracking-widest">Reglas de Importación</h4>
+                                    <ul className="text-xs text-[var(--text-secondary)] space-y-1 list-disc pl-4 font-medium">
+                                        <li>Solo pedidos en estado <span className="font-bold text-sky-600 text-[11px]">Paid/Ready</span>.</li>
+                                        <li>Solo direcciones en la <span className="font-bold">Región Metropolitana</span>.</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="mt-6 pt-6 border-t border-[var(--border-secondary)] flex items-center justify-between">
+                            {jumpsellerActiveTab === 'connect' ? (
+                                <button
+                                    type="button"
+                                    onClick={handleTestJumpsellerConnection}
+                                    disabled={isTestingJumpseller}
+                                    className="flex items-center px-4 py-2 border border-[var(--border-secondary)] text-sm font-medium rounded-md text-[var(--text-secondary)] bg-[var(--background-secondary)] hover:bg-[var(--background-hover)] disabled:opacity-50 transition-colors"
+                                >
+                                    {isTestingJumpseller ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconPlugConnected className="w-4 h-4 mr-2 text-sky-600"/>}
+                                    Probar Conexión
+                                </button>
+                            ) : <div></div>}
+                            
+                            <button
+                                onClick={handleSaveJumpseller}
+                                disabled={isSavingJumpseller}
+                                className="flex items-center px-6 py-2 bg-sky-600 hover:bg-sky-700 text-white text-sm font-bold rounded-md shadow-lg disabled:opacity-50 transition-all active:scale-95"
+                            >
+                                {isSavingJumpseller ? <IconLoader className="w-4 h-4 mr-2 animate-spin"/> : <IconCheckCircle className="w-4 h-4 mr-2"/>}
+                                {isSavingJumpseller ? 'Guardando...' : 'Guardar Cambios Jumpseller'}
+                            </button>
+                        </div>
+
+                        {jumpsellerTestResult && jumpsellerActiveTab === 'connect' && (
+                            <div className={`mt-4 p-3 rounded-md flex items-center text-sm font-medium ${jumpsellerTestResult.type === 'success' ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>
+                                {jumpsellerTestResult.type === 'success' ? <IconCheckCircle className="w-5 h-5 mr-2"/> : <IconAlertTriangle className="w-5 h-5 mr-2"/>}
+                                {jumpsellerTestResult.message}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {/* SMTP Card - Restricted to Super Admin */}
-            {(auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl') && (
+            {activeTab === 'smtp' && (auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl') && (
                 <div className="bg-[var(--background-secondary)] shadow-md rounded-lg border border-[var(--border-primary)] mb-8">
                     <div className="p-6">
                         <div className="flex items-center justify-between mb-4">
@@ -1514,7 +1552,7 @@ const IntegrationSettingsPage: React.FC = () => {
             )}
 
             {/* GitHub Backup Section */}
-            {auth?.user?.email === 'admin' && (
+            {activeTab === 'github' && auth?.user?.email === 'admin' && (
                 <div className="bg-[var(--background-paper)] rounded-xl shadow-sm border border-[var(--border-color)] overflow-hidden">
                     <div className="p-6 border-b border-[var(--border-color)] flex items-center justify-between bg-gray-50 dark:bg-gray-800/50">
                         <div className="flex items-center gap-3">
