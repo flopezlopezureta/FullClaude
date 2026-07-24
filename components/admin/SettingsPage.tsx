@@ -327,7 +327,7 @@ const SettingsPage: React.FC = () => {
             {errorMessage && <div className="bg-[var(--error-bg)] border border-[var(--error-border)] text-[var(--error-text)] px-4 py-3 rounded relative mb-4" role="alert">{errorMessage}</div>}
 
             {/* TAB NAVIGATION BAR */}
-            <div className="flex border-b border-[var(--border-primary)] overflow-x-auto no-scrollbar gap-2 pb-2">
+            <div className="flex flex-wrap border-b border-[var(--border-primary)] gap-2 pb-3">
                 {[
                     { id: 'general', label: 'General', icon: <IconSettings className="w-4 h-4" /> },
                     { id: 'impresion', label: 'Impresión', icon: <IconPrinter className="w-4 h-4" /> },
