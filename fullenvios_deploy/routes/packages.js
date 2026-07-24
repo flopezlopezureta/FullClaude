@@ -1,16 +1,68 @@
-
-
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { v4: uuidv4 } = require('uuid');
+const { normalizeCommune, normalizeCity } = require('../utils/normUtil');
 const authMiddleware = require('../middleware/auth');
+const timeService = require('../services/timeService');
 const https = require('https');
 const NotificationService = require('../services/notificationService');
 const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
 const jumpsellerPollingService = require('../services/jumpsellerPollingService');
 const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geocodingService');
+const gisService = require('../services/gisService');
+
+// [EMERGENCIA] Ruta para normalizar todas las comunas y ciudades del historial
+router.get('/sys/normalize-all', authMiddleware, async (req, res) => {
+    if (req.user.role !== 'ADMIN') return res.status(403).json({ message: 'No autorizado.' });
+    try {
+        console.log('[Maintenance] Starting system-wide commune normalization...');
+        
+        // Postgres SQL to normalize: Trim, Upper, and remove common accents (preserving Ñ)
+        const query = `
+            UPDATE packages 
+            SET 
+                "recipientCommune" = UPPER(TRIM(TRANSLATE("recipientCommune", 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU'))),
+                "recipientCity" = UPPER(TRIM(TRANSLATE("recipientCity", 'áéíóúÁÉÍÓÚ', 'aeiouAEIOU')))
+            WHERE "recipientCommune" IS NOT NULL OR "recipientCity" IS NOT NULL;
+        `;
+        
+        const result = await db.query(query);
+        console.log(`[Maintenance] Normalization complete. Rows affected: ${result.rowCount}`);
+        
+        res.json({ 
+            message: 'Normalización completada con éxito.', 
+            rowsAffected: result.rowCount 
+        });
+    } catch (err) {
+        console.error('[Maintenance] Normalization error:', err);
+        res.status(500).json({ message: 'Error durante la normalización: ' + err.message });
+    }
+});
+
+
+// [EMERGENCIA] Ruta para arreglar los egresos de hoy retroactivamente
+router.get('/fix-egress-today', async (req, res) => {
+    try {
+        const today = await timeService.getLogicalDate();
+        const query = `
+            UPDATE packages 
+            SET "assignedAt" = "updatedAt" 
+            WHERE "driverId" IS NOT NULL 
+            AND "assignedAt" IS NULL 
+            AND "updatedAt"::text LIKE $1
+        `;
+        const result = await db.query(query, [today + '%']);
+        res.json({ 
+            success: true,
+            message: `✅ Se han reparado ${result.rowCount} paquetes para el filtro de EGRESO.`, 
+            date: today 
+        });
+    } catch (err) {
+        res.status(500).json({ success: false, error: err.message });
+    }
+});
 
 // Helper to get tracking history for a package
 async function getHistory(packageId) {
@@ -33,204 +85,317 @@ const dispatchAllowed = (req, res, next) => {
 };
 
 
+// Helper function to build the package query base on request parameters
+async function buildPackageQuery(req) {
+    const {
+        statusFilter,
+        driverFilter,
+        clientFilter,
+        communeFilter,
+        cityFilter,
+        flexFilter,
+        quickFilter,
+        sourceFilter,
+        isAssigned,
+        accountId,
+        assignmentFilter, // 'all', 'first', 'reassigned'
+        excludeChecked, // 'true' or 'false'
+        dateType = 'created', // 'created' or 'egress'
+    } = req.query;
+
+    let { startDate, endDate } = req.query;
+
+    // [SEGURIDAD] Si es un conductor y no especificó fechas, forzamos que vea solo HOY para evitar descuadres
+    if (req.user.role === 'DRIVER' && !startDate && !endDate) {
+        const todayStr = await timeService.getLogicalDate();
+        startDate = todayStr;
+        endDate = todayStr;
+    }
+
+    const rawSearch = req.query.searchQuery || req.query.search || '';
+    const searchQuery = rawSearch.toString().trim() || null;
+
+    let whereClauses = [];
+    let queryParams = [];
+    let paramIndex = 1;
+
+    if (req.user.role === 'CLIENT') {
+        whereClauses.push(`"creatorId" = $${paramIndex++}`);
+        queryParams.push(req.user.id);
+    }
+
+    if (searchQuery) {
+        whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} 
+            OR p."recipientAddress" ILIKE $${paramIndex} 
+            OR p."recipientCity" ILIKE $${paramIndex} 
+            OR p."recipientCommune" ILIKE $${paramIndex} 
+            OR p.id ILIKE $${paramIndex} 
+            OR p."meliOrderId" ILIKE $${paramIndex} 
+            OR p."shopifyOrderId" ILIKE $${paramIndex} 
+            OR p."wooOrderId" ILIKE $${paramIndex} 
+            OR p."jumpsellerOrderId" ILIKE $${paramIndex} 
+            OR p."trackingId" ILIKE $${paramIndex} 
+            OR p."recipientPhone" ILIKE $${paramIndex}
+            OR p."recipientEmail" ILIKE $${paramIndex}
+            OR p."meliFlexCode" ILIKE $${paramIndex} 
+            OR p.notes ILIKE $${paramIndex}
+            OR u.name ILIKE $${paramIndex})`);
+        queryParams.push(`%${searchQuery}%`);
+        paramIndex++;
+    }
+
+    if (statusFilter) {
+        let statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
+        if (statuses.includes('closed')) {
+            statuses = statuses.filter(s => s !== 'closed');
+            if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
+            if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
+            if (!statuses.includes('PROBLEMA')) statuses.push('PROBLEMA');
+            if (!statuses.includes('REPROGRAMADO')) statuses.push('REPROGRAMADO');
+        }
+        if (statuses.length > 0) {
+            const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
+            whereClauses.push(`p.status IN (${placeholders})`);
+            queryParams.push(...statuses);
+            paramIndex += statuses.length;
+        }
+    }
+
+    if (driverFilter) {
+        whereClauses.push(`p."driverId" = $${paramIndex++}`);
+        queryParams.push(driverFilter);
+    }
+    
+    if (clientFilter) {
+        whereClauses.push(`p."creatorId" = $${paramIndex++}`);
+        queryParams.push(clientFilter);
+    }
+
+    if (communeFilter) {
+        whereClauses.push(`p."recipientCommune" = $${paramIndex++}`);
+        queryParams.push(communeFilter);
+    }
+
+    if (cityFilter) {
+        whereClauses.push(`p."recipientCity" = $${paramIndex++}`);
+        queryParams.push(cityFilter);
+    }
+
+    const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
+    
+    if (startDate && endDate && !isHistoricalSearch) {
+        const { start, nextDayStart } = await timeService.getLogicalRange(startDate, endDate);
+        
+        if (dateType === 'egress') {
+            whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
+        } else if (driverFilter && req.user.role === 'DRIVER') {
+            // [v2.6.5] Separar lógica: El Dashboard (hoy) usa filtro estricto, el Historial (rango de fechas) usa el filtro laxo original.
+            if (startDate === endDate) {
+                // Dashboard principal: Solo paquetes de hoy (creados, asignados, actualizados o estimados hoy)
+                whereClauses.push(`(
+                    p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                    p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                    p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                    p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+                )`);
+            } else {
+                // Historial de Entregas: Comportamiento exacto de ayer + Búsqueda en historial interno
+                whereClauses.push(`(
+                    (
+                        p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                        p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1} OR
+                        p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                        p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1} OR
+                        p.id IN (SELECT "packageId" FROM tracking_events WHERE timestamp >= $${paramIndex} AND timestamp < $${paramIndex + 1})
+                    ) OR (
+                        p.status NOT IN ('ENTREGADO', 'DEVUELTO', 'CANCELADO')
+                    )
+                )`);
+            }
+        } else {
+            whereClauses.push(`(
+                p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1} OR 
+                p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1} OR
+                p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1}
+            )`);
+        }
+        queryParams.push(start, nextDayStart);
+        paramIndex += 2;
+    } else if (!isHistoricalSearch) {
+        if (startDate) {
+            if (dateType === 'egress') {
+                whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
+            } else {
+                whereClauses.push(`(
+                    (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
+                    (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
+                    (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp
+                )`);
+            }
+            queryParams.push(startDate);
+            paramIndex++;
+        }
+
+        if (endDate) {
+            const end = new Date(endDate);
+            end.setDate(end.getDate() + 1);
+            const endStr = end.toISOString().split('T')[0];
+            if (dateType === 'egress') {
+                whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
+            } else {
+                whereClauses.push(`(
+                    (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
+                    (p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
+                    (p."estimatedDelivery" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp
+                )`);
+            }
+            queryParams.push(endStr);
+            paramIndex++;
+        }
+    }
+
+    if (flexFilter) {
+        if (flexFilter === 'flexed') {
+            whereClauses.push(`p."isFlexed" = true`);
+        } else if (flexFilter === 'not_flexed') {
+            whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
+        }
+    }
+
+    if (sourceFilter) {
+        if (sourceFilter === 'ml') {
+            whereClauses.push(`p.source = 'MERCADO_LIBRE'`);
+        } else if (sourceFilter === 'web') {
+            whereClauses.push(`p.source != 'MERCADO_LIBRE'`);
+        }
+    }
+
+    if (quickFilter) {
+        if (quickFilter === 'closed') {
+            whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO', 'PROBLEMA', 'REPROGRAMADO')`);
+        } else if (quickFilter === 'cancelled') {
+            whereClauses.push(`p.status = 'CANCELADO'`);
+        } else if (quickFilter === 'rescheduled') {
+            whereClauses.push(`p.status = 'REPROGRAMADO'`);
+        }
+    }
+
+    if (isAssigned === 'true') {
+        whereClauses.push(`p."driverId" IS NOT NULL`);
+    } else if (isAssigned === 'false') {
+        whereClauses.push(`p."driverId" IS NULL`);
+    }
+    
+    if (accountId) {
+        whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
+        queryParams.push(accountId);
+    }
+    
+    if (assignmentFilter === 'first') {
+        whereClauses.push(`p."driverId" IS NOT NULL AND (p."isReassigned" IS NULL OR p."isReassigned" = false)`);
+    } else if (assignmentFilter === 'reassigned') {
+        whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
+    } else if (assignmentFilter === 'all_assigned') {
+        whereClauses.push(`p."driverId" IS NOT NULL`);
+    }
+    
+    if (excludeChecked === 'true') {
+        whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
+    }
+
+    if (req.query.isDuplicate === 'true') {
+        whereClauses.push(`p."isDuplicate" = true`);
+    }
+
+    const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
+    return { whereString, queryParams, paramIndex };
+}
+
+// GET /api/packages/export/csv - Streaming CSV export for large datasets
+router.get('/export/csv', authMiddleware, async (req, res) => {
+    try {
+        const { sortOrder = 'desc' } = req.query;
+        const { whereString, queryParams } = await buildPackageQuery(req);
+
+        const orderDirection = sortOrder === 'asc' ? 'ASC' : 'DESC';
+        const query = `
+            SELECT p.*, u.name as "clientName", d.name as "driverName"
+            FROM packages p 
+            LEFT JOIN users u ON p."creatorId" = u.id 
+            LEFT JOIN users d ON p."driverId" = d.id
+            ${whereString} 
+            ORDER BY p."updatedAt" ${orderDirection}, p.id DESC
+        `;
+
+        // Set headers for file download
+        res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+        res.setHeader('Content-Disposition', 'attachment; filename=reporte_paquetes.csv');
+
+        // Write BOM for Excel
+        res.write('\uFEFF');
+
+        // Write header
+        const headers = [
+            'ID Paquete', 'Pedido', 'Cliente', 'ID Cliente', 'Fecha Creacion', 
+            'Estado', 'Destinatario', 'Direccion', 'Comuna', 'Ciudad', 
+            'Tipo Envio', 'Fecha de Egreso', 'Conductor', 'Bultos'
+        ];
+        res.write(headers.join(',') + '\n');
+
+        const escapeCSV = (val) => {
+            if (val === null || val === undefined) return '""';
+            const str = String(val).replace(/"/g, '""');
+            return `"${str}"`;
+        };
+
+        // We use a pool client to query to be safe, though simple db.query might work
+        // For very large results, we could use pg-query-stream, but let's try standard query with loop
+        const { rows: packages } = await db.query(query, queryParams);
+
+        for (const pkg of packages) {
+            const row = [
+                pkg.id,
+                pkg.meliOrderId || pkg.shopifyOrderId || pkg.wooOrderId || pkg.jumpsellerOrderId || pkg.id,
+                pkg.clientName || 'N/A',
+                pkg.creatorId || 'N/A',
+                new Date(pkg.createdAt).toLocaleString('es-CL'),
+                (pkg.status || '').replace('_', ' '),
+                pkg.recipientName,
+                pkg.recipientAddress,
+                pkg.recipientCommune,
+                pkg.recipientCity,
+                pkg.shippingType,
+                pkg.assignedAt ? new Date(pkg.assignedAt).toLocaleString('es-CL') : 'Pendiente',
+                pkg.driverName || 'No asignado',
+                1 // Bultos
+            ].map(escapeCSV).join(',');
+            res.write(row + '\n');
+        }
+
+        res.end();
+    } catch (err) {
+        console.error("Error in GET /api/packages/export/csv:", err);
+        if (!res.headersSent) {
+            res.status(500).json({ message: 'Error al exportar los paquetes.' });
+        }
+    }
+});
+
 // GET /api/packages - with server-side pagination and filtering
 router.get('/', authMiddleware, async (req, res) => {
     try {
         const {
             page = 1,
             limit = 25,
-            statusFilter,
-            driverFilter,
-            clientFilter,
-            communeFilter,
-            cityFilter,
-            startDate,
-            endDate,
-            flexFilter,
-            quickFilter,
-            sourceFilter,
-            isAssigned,
-            accountId,
             sortOrder = 'desc',
-            assignmentFilter, // 'all', 'first', 'reassigned'
-            excludeChecked, // 'true' or 'false'
-            dateType = 'created', // 'created' or 'egress'
+            includeHistory = 'true', // 'true' or 'false'
             excludePhotos = 'true', // Default to true to optimize memory/speed
         } = req.query;
 
-        // [MEJORADO] Limpiamos espacios en blanco de la búsqueda para evitar fallos por copy-paste
-        // Soportamos tanto 'search' como 'searchQuery' para compatibilidad total con el frontend
-        const rawSearch = req.query.searchQuery || req.query.search || '';
-        const searchQuery = rawSearch.toString().trim() || null;
+        const { whereString, queryParams, paramIndex: initialParamIndex } = await buildPackageQuery(req);
+        let paramIndex = initialParamIndex;
 
         const offset = (page - 1) * limit;
-        let whereClauses = [];
-        let queryParams = [];
-        let paramIndex = 1;
-
-        if (req.user.role === 'CLIENT') {
-            whereClauses.push(`"creatorId" = $${paramIndex++}`);
-            queryParams.push(req.user.id);
-        }
-
-        if (searchQuery) {
-            whereClauses.push(`(p."recipientName" ILIKE $${paramIndex} 
-                OR p."recipientAddress" ILIKE $${paramIndex} 
-                OR p."recipientCity" ILIKE $${paramIndex} 
-                OR p."recipientCommune" ILIKE $${paramIndex} 
-                OR p.id ILIKE $${paramIndex} 
-                OR p."meliOrderId" ILIKE $${paramIndex} 
-                OR p."shopifyOrderId" ILIKE $${paramIndex} 
-                OR p."wooOrderId" ILIKE $${paramIndex} 
-                OR p."jumpsellerOrderId" ILIKE $${paramIndex} 
-                OR p."trackingId" ILIKE $${paramIndex} 
-                OR p."recipientPhone" ILIKE $${paramIndex}
-                OR p."recipientEmail" ILIKE $${paramIndex}
-                OR p."meliFlexCode" ILIKE $${paramIndex} 
-                OR p.notes ILIKE $${paramIndex}
-                OR u.name ILIKE $${paramIndex})`);
-            queryParams.push(`%${searchQuery}%`);
-            paramIndex++;
-        }
-
-        if (statusFilter) {
-            let statuses = Array.isArray(statusFilter) ? statusFilter : statusFilter.split(',');
-            // Expand "closed" to include both ENTREGADO and DEVUELTO
-            if (statuses.includes('closed')) {
-                statuses = statuses.filter(s => s !== 'closed');
-                if (!statuses.includes('ENTREGADO')) statuses.push('ENTREGADO');
-                if (!statuses.includes('DEVUELTO')) statuses.push('DEVUELTO');
-            }
-            if (statuses.length > 0) {
-                const placeholders = statuses.map((_, i) => `$${paramIndex + i}`).join(',');
-                whereClauses.push(`p.status IN (${placeholders})`);
-                queryParams.push(...statuses);
-                paramIndex += statuses.length;
-            }
-        }
-
-        if (driverFilter) {
-            whereClauses.push(`p."driverId" = $${paramIndex++}`);
-            queryParams.push(driverFilter);
-        }
-        
-        if (clientFilter) { // Admin filtering by client from the filter bar
-            whereClauses.push(`p."creatorId" = $${paramIndex++}`);
-            queryParams.push(clientFilter);
-        }
-
-        if (communeFilter) {
-            whereClauses.push(`p."recipientCommune" = $${paramIndex++}`);
-            queryParams.push(communeFilter);
-        }
-
-        if (cityFilter) {
-            whereClauses.push(`p."recipientCity" = $${paramIndex++}`);
-            queryParams.push(cityFilter);
-        }
-        
-        // Relax date filtering if searching by query to find historical packages
-        const isHistoricalSearch = searchQuery && searchQuery.length >= 3;
-        
-        // Determinar qué columna usar para el filtro de fecha
-        const dateColumn = dateType === 'egress' ? 'assignedAt' : 'createdAt';
-
-        if (startDate && endDate && !isHistoricalSearch) {
-            const end = new Date(endDate);
-            end.setDate(end.getDate() + 1);
-            const endStr = end.toISOString().split('T')[0];
-            
-            if (dateType === 'egress') {
-                whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
-            } else {
-                // Para búsqueda general de creación, incluimos updatedAt y estimatedDelivery para mayor cobertura
-                whereClauses.push(`(
-                    (p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}) OR 
-                    (p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1}) OR
-                    (p."estimatedDelivery" >= $${paramIndex} AND p."estimatedDelivery" < $${paramIndex + 1})
-                )`);
-            }
-            queryParams.push(startDate, endStr);
-            paramIndex += 2;
-        } else if (!isHistoricalSearch) {
-            // Filtros individuales si no hay un rango completo
-            if (startDate) {
-                if (dateType === 'egress') {
-                    whereClauses.push(`p."assignedAt" >= $${paramIndex}`);
-                } else {
-                    whereClauses.push(`(p."createdAt" >= $${paramIndex} OR p."updatedAt" >= $${paramIndex} OR p."estimatedDelivery" >= $${paramIndex})`);
-                }
-                queryParams.push(startDate);
-                paramIndex++;
-            }
-
-            if (endDate) {
-                const end = new Date(endDate);
-                end.setDate(end.getDate() + 1);
-                if (dateType === 'egress') {
-                    whereClauses.push(`p."assignedAt" < $${paramIndex}`);
-                } else {
-                    whereClauses.push(`(p."createdAt" < $${paramIndex} OR p."updatedAt" < $${paramIndex} OR p."estimatedDelivery" < $${paramIndex})`);
-                }
-                queryParams.push(end.toISOString().split('T')[0]);
-                paramIndex++;
-            }
-        }
-
-        if (flexFilter) {
-            if (flexFilter === 'flexed') {
-                whereClauses.push(`p."isFlexed" = true`);
-            } else if (flexFilter === 'not_flexed') {
-                whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
-            }
-        }
-
-        if (sourceFilter) {
-            if (sourceFilter === 'ml') {
-                whereClauses.push(`p.source = 'MERCADO_LIBRE'`);
-            } else if (sourceFilter === 'web') {
-                whereClauses.push(`p.source != 'MERCADO_LIBRE'`);
-            }
-        }
-
-        if (quickFilter) {
-            if (quickFilter === 'closed') {
-                whereClauses.push(`p.status IN ('ENTREGADO', 'DEVUELTO')`);
-            } else if (quickFilter === 'cancelled') {
-                whereClauses.push(`p.status = 'CANCELADO'`);
-            } else if (quickFilter === 'rescheduled') {
-                whereClauses.push(`p.status = 'REPROGRAMADO'`);
-            }
-        }
-
-        if (isAssigned === 'true') {
-            whereClauses.push(`p."driverId" IS NOT NULL`);
-        } else if (isAssigned === 'false') {
-            whereClauses.push(`p."driverId" IS NULL`);
-        }
-        
-        if (accountId) {
-            whereClauses.push(`p."sourceAccountId" = $${paramIndex++}`);
-            queryParams.push(accountId);
-        }
-        
-        if (assignmentFilter === 'first') {
-            whereClauses.push(`p."driverId" IS NOT NULL AND (p."isReassigned" IS NULL OR p."isReassigned" = false)`);
-        } else if (assignmentFilter === 'reassigned') {
-            whereClauses.push(`p."driverId" IS NOT NULL AND p."isReassigned" = true`);
-        } else if (assignmentFilter === 'all_assigned') {
-            whereClauses.push(`p."driverId" IS NOT NULL`);
-        }
-        
-        if (excludeChecked === 'true') {
-            whereClauses.push(`(p."alertChecked" IS NULL OR p."alertChecked" = false)`);
-        }
-
-        if (req.query.isDuplicate === 'true') {
-            whereClauses.push(`p."isDuplicate" = true`);
-        }
-
-        const whereString = whereClauses.length > 0 ? `WHERE ${whereClauses.join(' AND ')}` : '';
 
         // Query for total count
         const countQuery = `
@@ -254,7 +419,7 @@ router.get('/', authMiddleware, async (req, res) => {
             FROM packages p 
             LEFT JOIN users u ON p."creatorId" = u.id 
             ${whereString} 
-            ORDER BY p."updatedAt" ${orderDirection}
+            ORDER BY p."updatedAt" ${orderDirection}, p.id DESC
             ${limitClause}
         `;
         
@@ -265,12 +430,12 @@ router.get('/', authMiddleware, async (req, res) => {
 
         const { rows: packages } = await db.query(packageQuery, finalQueryParams);
 
-        // Get history for only the paginated packages
+        // Get history only if requested
         const packageIds = packages.map(p => p.id);
         let eventsByPackageId = {};
-        if (packageIds.length > 0) {
+        if (includeHistory !== 'false' && packageIds.length > 0) {
             const placeholders = packageIds.map((_, i) => `$${i + 1}`).join(',');
-            const { rows: allEvents } = await db.query(`SELECT * FROM tracking_events WHERE "packageId" IN (${placeholders}) ORDER BY timestamp DESC`, packageIds);
+            const { rows: allEvents } = await db.query(`SELECT "packageId", status, timestamp, location, details FROM tracking_events WHERE "packageId" IN (${placeholders}) ORDER BY timestamp DESC`, packageIds);
             
             eventsByPackageId = allEvents.reduce((acc, event) => {
                 if (!acc[event.packageId]) acc[event.packageId] = [];
@@ -295,12 +460,15 @@ router.get('/', authMiddleware, async (req, res) => {
 // GET /api/packages/:id - Get details of a single package including history and photos
 router.get('/:id', authMiddleware, async (req, res) => {
     try {
-        const { id } = req.params;
+        let { id } = req.params;
+        if (id && id.startsWith('SCA00-')) {
+            id = id.replace('SCA00-', '');
+        }
         const { rows } = await db.query(
             `SELECT p.*, u.name as "clientName" 
              FROM packages p 
              LEFT JOIN users u ON p."creatorId" = u.id 
-             WHERE p.id = $1`, 
+             WHERE p.id = $1 OR p."meliOrderId" = $1 OR p."meliFlexCode" = $1 OR p."trackingId" = $1`, 
             [id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -326,6 +494,100 @@ router.get('/:id', authMiddleware, async (req, res) => {
         res.status(500).json({ message: 'Error al obtener detalles del paquete.' });
     }
 });
+
+function isMeliCode(code) {
+    if (!code) return false;
+    let clean = code.trim();
+    if (clean.startsWith('{')) {
+        try {
+            const parsed = JSON.parse(clean);
+            if (parsed.id) clean = String(parsed.id).trim();
+        } catch (e) {}
+    }
+    // Check if numeric (starts with 4 or 2, and is 10-12 digits long) or starts with ML
+    return /^[42]\d{9,11}$/.test(clean) || /^ML/i.test(clean);
+}
+
+router.get('/query/:searchId', authMiddleware, async (req, res) => {
+    try {
+        let { searchId } = req.params;
+        if (searchId && searchId.startsWith('SCA00-')) {
+            searchId = searchId.replace('SCA00-', '');
+        }
+        
+        // Búsqueda extendida por ID, ML, Shopify, Tracking ID, etc.
+        let { rows } = await db.query(
+            `SELECT p.*, u.name as "clientName" 
+             FROM packages p 
+             LEFT JOIN users u ON p."creatorId" = u.id 
+             WHERE p.id = $1 
+                OR p."meliOrderId" = $1 
+                OR p."shopifyOrderId" = $1 
+                OR p."wooOrderId" = $1 
+                OR p."jumpsellerOrderId" = $1 
+                OR p."trackingId" = $1 
+                OR p."meliFlexCode" = $1`, 
+            [searchId]
+        );
+        
+        // [NUEVO] IMPORTACIÓN JIT PARA CONSULTAS: si no existe localmente y parece un código de ML, buscar en Mercado Libre
+        if (rows.length === 0 && isMeliCode(searchId)) {
+            console.log(`[Query] Package ${searchId} NOT found in DB. Starting JIT Discovery...`);
+            const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
+            if (meliUsers.length > 0) {
+                const results = await Promise.all(meliUsers.map(async (u) => {
+                    try {
+                        const importedId = await meliPollingService.importSpecificMeliPackage(u.id, searchId, true);
+                        return importedId ? { importedId, user: u } : null;
+                    } catch (err) {
+                        return null;
+                    }
+                }));
+
+                const success = results.find(r => r !== null);
+                if (success) {
+                    console.log(`[Query] SUCCESS! Shipment ${searchId} found and linked as ${success.importedId}.`);
+                    const reCheck = await db.query(
+                        `SELECT p.*, u.name as "clientName" 
+                         FROM packages p 
+                         LEFT JOIN users u ON p."creatorId" = u.id 
+                         WHERE p.id = $1`,
+                        [success.importedId]
+                    );
+                    rows = reCheck.rows;
+                }
+            }
+        }
+
+        if (rows.length === 0) {
+            return res.status(404).json({ message: 'Paquete no encontrado para consulta.' });
+        }
+        
+        const pkg = rows[0];
+        pkg.history = await getHistory(pkg.id);
+        
+        // Remove heavy photo fields
+        delete pkg.flexLabelPhotoBase64;
+        delete pkg.deliveryPhotosBase64;
+        
+        // Calcular información GIS y geometría del sector
+        let sectorDetails = null;
+        if (pkg.destLatitude && pkg.destLongitude) {
+            sectorDetails = gisService.getSectorDetailsForCoordinates(pkg.destLatitude, pkg.destLongitude);
+        }
+        
+        res.json({
+            package: pkg,
+            sectorDetails
+        });
+    } catch (err) {
+        console.error('Error in GET /api/packages/query/:searchId:', err);
+        res.status(500).json({ message: 'Error al consultar sector del paquete.' });
+    }
+});
+
+
+
 
 
 // Helper to add a tracking event
@@ -394,7 +656,7 @@ router.get('/reports/flex-discrepancies/:driverId', authMiddleware, async (req, 
     }
 });
 router.post('/', authMiddleware, async (req, res) => {
-    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, wooOrderId, jumpsellerOrderId, trackingId } = req.body;
+    const { creatorId, recipientName, recipientPhone, recipientEmail, recipientAddress, recipientCommune, recipientCity, notes, estimatedDelivery, shippingType, origin, source, meliOrderId, shopifyOrderId, shopifyOrderNumber, wooOrderId, jumpsellerOrderId, trackingId, falabellaOrderId, falabellaTrackingId } = req.body;
     
     // Validation
     const requiredFields = {
@@ -422,14 +684,24 @@ router.post('/', authMiddleware, async (req, res) => {
         });
     }
 
+    // [VALIDACION] Comunas Activas
+    const { rows: activeCommunes } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+    const activeCommuneNames = activeCommunes.map(c => c.name.toUpperCase());
+    
+    if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(recipientCommune.toUpperCase().trim())) {
+        return res.status(400).json({ 
+            message: `La comuna "${recipientCommune}" no está habilitada para repartos actualmente.` 
+        });
+    }
+
     try {
         const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
         if (creatorRows.length === 0) {
             return res.status(404).json({ message: 'Cliente creador no encontrado.' });
         }
 
-        // Geocode the address
-        const coords = await geocodeAddress(recipientAddress, recipientCommune, recipientCity);
+        // Geocoding is now handled in the background for speed (similar to batch route)
+        const coords = { lat: null, lng: null };
 
         const now = new Date();
         const packageId = trackingId || `${creatorRows[0].clientIdentifier}-${uuidv4().split('-')[0]}`;
@@ -443,8 +715,8 @@ router.post('/', authMiddleware, async (req, res) => {
             origin,
             destination: recipientAddress, // legacy, can be removed later
             recipientAddress,
-            recipientCommune,
-            recipientCity,
+            recipientCommune: normalizeCommune(recipientCommune),
+            recipientCity: normalizeCity(recipientCity),
             notes,
             estimatedDelivery: new Date(estimatedDelivery),
             createdAt: now,
@@ -453,12 +725,15 @@ router.post('/', authMiddleware, async (req, res) => {
             source,
             meliOrderId,
             shopifyOrderId,
+            shopifyOrderNumber,
             wooOrderId,
             jumpsellerOrderId,
             trackingId,
             recipientEmail,
             destLatitude: coords.lat,
-            destLongitude: coords.lng
+            destLongitude: coords.lng,
+            falabellaOrderId,
+            falabellaTrackingId
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
@@ -472,8 +747,10 @@ router.post('/', authMiddleware, async (req, res) => {
 
         newPackage.history = await getHistory(newPackage.id);
         
-        // REQ: Do not send message on PENDIENTE, wait for Flex/Dispatch
-        // NotificationService.notifyRecipient(newPackage.id, 'PENDIENTE');
+        // Trigger background geocoding without awaiting it
+        setTimeout(() => {
+            triggerBackgroundGeocoding().catch(err => console.error('[PostProcess] Geocoding trigger failed:', err));
+        }, 1000);
 
         res.status(201).json(newPackage);
     } catch (err) {
@@ -508,6 +785,10 @@ router.post('/batch', authMiddleware, async (req, res) => {
     const results = [];
     const errors = [];
 
+    // Pre-fetch active communes for batch validation
+    const { rows: activeCommunes } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
+    const activeCommuneNames = activeCommunes.map(c => c.name.toUpperCase());
+
     try {
         for (let i = 0; i < packages.length; i++) {
             const pkgData = packages[i];
@@ -527,9 +808,14 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     source, 
                     meliOrderId, 
                     shopifyOrderId, 
+                    shopifyOrderNumber,
                     wooOrderId, 
                     jumpsellerOrderId,
-                    trackingId 
+                    trackingId,
+                    falabellaOrderId,
+                    falabellaTrackingId,
+                    sourceAccountId,
+                    sourceAccountName
                 } = pkgData;
                 
                 // Validate required fields for each package
@@ -561,6 +847,32 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     continue;
                 }
 
+                // [VALIDACION] Comunas Activas
+                if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(recipientCommune.toUpperCase().trim())) {
+                    errors.push({
+                        index: i,
+                        recipientName: recipientName || 'Desconocido',
+                        error: `La comuna "${recipientCommune}" no está habilitada para repartos actualmente.`
+                    });
+                    continue;
+                }
+
+                // [VALIDACION] Prevenir duplicados de Falabella
+                if (source === 'FALABELLA' && falabellaOrderId) {
+                    const { rows: existingFalabella } = await db.query(
+                        'SELECT id FROM packages WHERE "falabellaOrderId" = $1',
+                        [falabellaOrderId]
+                    );
+                    if (existingFalabella.length > 0) {
+                        errors.push({
+                            index: i,
+                            recipientName: recipientName || 'Desconocido',
+                            error: `El pedido de Falabella #${falabellaOrderId} ya ha sido importado previamente.`
+                        });
+                        continue;
+                    }
+                }
+
                 const { rows: creatorRows } = await db.query('SELECT "clientIdentifier" FROM users WHERE id = $1', [creatorId]);
                 if (creatorRows.length === 0) {
                     errors.push({ 
@@ -587,8 +899,8 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     origin, 
                     destination: recipientAddress, 
                     recipientAddress, 
-                    recipientCommune, 
-                    recipientCity, 
+                    recipientCommune: normalizeCommune(recipientCommune), 
+                    recipientCity: normalizeCity(recipientCity), 
                     notes, 
                     estimatedDelivery: new Date(estimatedDelivery), 
                     createdAt: now, 
@@ -597,12 +909,17 @@ router.post('/batch', authMiddleware, async (req, res) => {
                     source, 
                     meliOrderId, 
                     shopifyOrderId, 
+                    shopifyOrderNumber,
                     wooOrderId, 
                     jumpsellerOrderId,
                     trackingId: cleanTrackingId,
                     recipientEmail,
                     destLatitude: coords.lat,
-                    destLongitude: coords.lng
+                    destLongitude: coords.lng,
+                    falabellaOrderId,
+                    falabellaTrackingId,
+                    sourceAccountId,
+                    sourceAccountName
                 };
                 
                 const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
@@ -697,8 +1014,12 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
         
         await client.query(updateQuery, [finalDriverId, newDeliveryDate, new Date(), targetStatus, finalDriverId ? new Date() : null, ...packageIds]);
 
-        // Create tracking events for all updated packages
-        const eventPromises = packageIds.map(async (packageId) => {
+        // Create tracking events for all updated packages using a single bulk insert
+        const eventValues = [];
+        const eventParams = [];
+        const timestamp = new Date();
+
+        packageIds.forEach((packageId, index) => {
             const pkgBefore = currentStates.find(p => p.id === packageId);
             const isActuallyReassigning = !isUnassigning && pkgBefore?.driverId && pkgBefore?.driverId !== driverId;
             
@@ -709,18 +1030,24 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
                     ? `Reasignado al conductor ${driverName}. Fecha de reasignación actualizada.` 
                     : `Asignado a conductor ${driverName}. Estado actualizado a Asignado.`);
 
-            return client.query(
-                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                [packageId, eventStatus, 'Centro de Distribución', details, new Date()]
-            );
+            const offset = index * 5;
+            eventValues.push(`($${offset + 1}, $${offset + 2}, $${offset + 3}, $${offset + 4}, $${offset + 5})`);
+            eventParams.push(packageId, eventStatus, 'Centro de Distribución', details, timestamp);
         });
-        
-        await Promise.all(eventPromises);
+
+        if (eventValues.length > 0) {
+            await client.query(
+                `INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ${eventValues.join(', ')}`,
+                eventParams
+            );
+        }
 
         await client.query('COMMIT');
         
-        // Notify recipients asynchronously
-        packageIds.forEach(id => NotificationService.notifyRecipient(id, targetStatus));
+        // Notify recipients asynchronously in bulk (optimized to prevent DB slamming and connection leaks)
+        setImmediate(() => {
+            NotificationService.notifyRecipientsBulk(packageIds, targetStatus);
+        });
         
         res.status(200).json({ message: `${packageIds.length} paquetes asignados correctamente.` });
 
@@ -737,13 +1064,32 @@ router.post('/batch-assign-driver', authMiddleware, async (req, res) => {
 router.put('/:id', authMiddleware, async (req, res) => {
     try {
         const { id } = req.params;
-        const updateData = req.body;
+        const updateData = { ...req.body };
         updateData.updatedAt = new Date();
+
+        // [NUEVO] Actualizar la fecha de egreso si el paquete se asigna o despacha manualmente
+        if (updateData.status === 'EN_TRANSITO' || updateData.status === 'ASIGNADO') {
+            updateData.assignedAt = new Date();
+        } else if (updateData.driverId && updateData.driverId !== 'none' && !updateData.assignedAt) {
+            updateData.assignedAt = new Date();
+        }
+
+        // Security: Only admins can change the package creator (seller)
+        if (updateData.creatorId && req.user.role !== 'ADMIN') {
+            delete updateData.creatorId;
+        }
 
         // Fetch current data to compare and for geocoding
         const { rows: currentPkgRows } = await db.query('SELECT "recipientAddress", "recipientCommune", "recipientCity" FROM packages WHERE id = $1', [id]);
         if (currentPkgRows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
         const currentPkg = currentPkgRows[0];
+
+        if (updateData.recipientCommune) {
+            updateData.recipientCommune = normalizeCommune(updateData.recipientCommune);
+        }
+        if (updateData.recipientCity) {
+            updateData.recipientCity = normalizeCity(updateData.recipientCity);
+        }
 
         // Check if address changed to add a tracking event
         const newAddr = updateData.recipientAddress !== undefined ? updateData.recipientAddress : currentPkg.recipientAddress;
@@ -878,38 +1224,26 @@ router.post('/:id/assign-driver', authMiddleware, async (req, res) => {
 
 // POST /api/packages/:id/dispatch
 router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) => {
-    const { id } = req.params;
+    let { id } = req.params;
+    if (id && id.startsWith('SCA00-')) {
+        id = id.replace('SCA00-', '');
+    }
     const { driverId, flexCode, flexLabelPhotoBase64 } = req.body;
     try {
         // [NUEVO] Búsqueda extendida: Intentar encontrar por ID interno, ID de Mercado Libre, Shopify, Woo o Tracking ID
         let { rows: pkgRows } = await db.query(
-            'SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "jumpsellerOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
+            'SELECT id, status, "driverId", "meliFlexCode", source, "assignedAt" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "jumpsellerOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
             [id]
         );
         
-        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time) - OPTIMIZADA (Paralela)
-        // Si el paquete no se encuentra, intentamos buscarlo en paralelo en todas las integraciones activas
-        if (pkgRows.length === 0) {
-            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting Optimized JIT Discovery...`);
-            const { rows: meliUsers } = await db.query("SELECT id, name FROM users WHERE integrations->'meli' IS NOT NULL");
-            
-            if (meliUsers.length > 0) {
-                // Ejecutar todas las búsquedas en paralelo
-                const results = await Promise.all(meliUsers.map(async (u) => {
-                    try {
-                        const importedId = await meliPollingService.importSpecificMeliPackage(u.id, id, true);
-                        return importedId ? { importedId, user: u } : null;
-                    } catch (err) {
-                        return null;
-                    }
-                }));
-
-                const success = results.find(r => r !== null);
-                if (success) {
-                    console.log(`[Dispatch] SUCCESS! Shipment ${id} found and linked as ${success.importedId}.`);
-                    const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [success.importedId]);
-                    pkgRows = reCheck;
-                }
+        // [NUEVO] IMPORTACIÓN BAJO DEMANDA (Just-In-Time) - ALTAMENTE OPTIMIZADA (Unificado)
+        if (pkgRows.length === 0 && isMeliCode(id)) {
+            console.log(`[Dispatch] Package ${id} NOT found in DB. Starting Unified JIT Discovery...`);
+            const importedId = await meliPollingService.optimizedJITDiscovery(id);
+            if (importedId) {
+                console.log(`[Dispatch] SUCCESS! Shipment ${id} discovered and imported as ${importedId}.`);
+                const { rows: reCheck } = await db.query('SELECT id, status, "driverId", "meliFlexCode", source FROM packages WHERE id = $1', [importedId]);
+                pkgRows = reCheck;
             }
         }
 
@@ -928,17 +1262,31 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const { forceReassign } = req.body;
         if (['EN_TRANSITO', 'ASIGNADO'].includes(currentPkg.status)) {
             if (currentPkg.driverId === driverId) {
-                // Duplicate scan (same driver)
-                const now = new Date();
-                await db.query(
-                    'UPDATE packages SET "isDuplicate" = true, "alertChecked" = false, "updatedAt" = $1 WHERE id = $2',
-                    [now, realId]
-                );
-                await addTrackingEvent(realId, 'ALERTA_DUPLICADO', 'Centro de Distribución', 'Alerta: Paquete escaneado como duplicado.');
-                await logAction(req.user.id, req.user.name, 'DISPATCH_DUPLICATE_ALERT', { packageId: realId, driverId });
-                return res.status(400).json({ 
-                    message: '¡PAQUETE DUPLICADO! Este paquete ya fue escaneado para este conductor. Por favor, sepáralo del despacho.' 
-                });
+                // Check if it was assigned on a different logical date
+                let isSameDay = false;
+                if (currentPkg.assignedAt) {
+                    const assignedDateStr = await timeService.getLogicalDate(currentPkg.assignedAt);
+                    const todayStr = await timeService.getLogicalDate();
+                    if (assignedDateStr === todayStr) {
+                        isSameDay = true;
+                    }
+                }
+                
+                if (isSameDay) {
+                    // Duplicate scan (same driver, same day)
+                    const now = new Date();
+                    await db.query(
+                        'UPDATE packages SET "isDuplicate" = true, "alertChecked" = false, "updatedAt" = $1 WHERE id = $2',
+                        [now, realId]
+                    );
+                    await addTrackingEvent(realId, 'ALERTA_DUPLICADO', 'Centro de Distribución', 'Alerta: Paquete escaneado como duplicado.');
+                    await logAction(req.user.id, req.user.name, 'DISPATCH_DUPLICATE_ALERT', { packageId: realId, driverId });
+                    return res.status(400).json({ 
+                        message: '¡PAQUETE DUPLICADO! Este paquete ya fue escaneado para este conductor. Por favor, sepáralo del despacho.' 
+                    });
+                } else {
+                    console.log(`[Dispatch] Package ${realId} was assigned on a different day (${currentPkg.assignedAt}). Treating as re-egress.`);
+                }
             } else if (currentPkg.driverId) {
                 // Reassignment (different driver)
                 if (forceReassign !== true) {
@@ -988,6 +1336,9 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             notesUpdate = `\n[Cod. Escaneado: ${flexCode}]`;
         }
 
+        const isFlexed = currentPkg.source === 'MERCADO_LIBRE';
+        const now = new Date();
+
         // Check if saveFlexLabelPhoto is enabled in system settings
         const { rows: settingsRows } = await db.query('SELECT "saveFlexLabelPhoto" FROM system_settings WHERE id = 1');
         const saveFlexLabelPhoto = settingsRows.length > 0 ? settingsRows[0].saveFlexLabelPhoto : false;
@@ -1009,6 +1360,10 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         if (updatedPkg) {
             delete updatedPkg.flexLabelPhotoBase64;
             delete updatedPkg.deliveryPhotosBase64;
+            
+            if (updatedPkg.destLatitude && updatedPkg.destLongitude) {
+                updatedPkg.sectorName = gisService.getSectorForCoordinates(updatedPkg.destLatitude, updatedPkg.destLongitude);
+            }
         }
 
         updatedPkg.history = await getHistory(realId);
@@ -1045,7 +1400,7 @@ router.post('/:id/flex', authMiddleware, async (req, res) => {
         }
 
         const { rows } = await db.query(
-            `UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4${isFlexed ? ", status = 'EN_TRANSITO'" : ""} WHERE id = $5 RETURNING *`,
+            `UPDATE packages SET "isFlexed" = $1, "flexedAt" = $2, "updatedAt" = $3, "flexLabelPhotoBase64" = $4${isFlexed ? ", status = 'EN_TRANSITO', \"assignedAt\" = $3" : ""} WHERE id = $5 RETURNING *`,
             [isFlexed, isFlexed ? new Date() : null, new Date(), flexLabelPhotoBase64 || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -1160,67 +1515,141 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
     }
     
     try {
-        const { rows } = await db.query(
-            'SELECT settings.falabella_api_key, settings.falabella_seller_id ' +
-            'FROM integration_settings settings WHERE settings.id = 1'
+        let apiKey = null;
+        let sellerId = null;
+
+        // 1. Intentar obtener credenciales de la cuenta específica del usuario (Multi-Account)
+        const { rows: pkgRows } = await db.query(
+            'SELECT p."sourceAccountId", p."falabellaOrderId", p."falabellaTrackingId", u.integrations FROM packages p JOIN users u ON p."creatorId" = u.id WHERE p.id = $1',
+            [packageId]
         );
-        
-        if (rows.length === 0 || !rows[0].falabella_api_key) {
+
+        let falabellaOrderId = null;
+        if (pkgRows.length > 0) {
+            falabellaOrderId = pkgRows[0].falabellaOrderId;
+            if (pkgRows[0].integrations) {
+                const integrations = typeof pkgRows[0].integrations === 'string' ? JSON.parse(pkgRows[0].integrations) : pkgRows[0].integrations;
+                const accounts = integrations.accounts || [];
+                const falabellaAccount = accounts.find(acc => acc.id === pkgRows[0].sourceAccountId && acc.type === 'FALABELLA') 
+                                         || accounts.find(acc => acc.type === 'FALABELLA');
+
+                if (falabellaAccount && falabellaAccount.credentials) {
+                    apiKey = falabellaAccount.credentials.falabellaApiKey;
+                    sellerId = falabellaAccount.credentials.falabellaSellerId;
+                }
+            }
+        }
+
+        // 2. Fallback a la configuración global legacy si no se encontró en el usuario
+        if (!apiKey || !sellerId) {
+            const { rows: settingsRows } = await db.query(
+                'SELECT falabella_api_key, falabella_seller_id FROM integration_settings WHERE id = 1'
+            );
+            if (settingsRows.length > 0 && settingsRows[0].falabella_api_key) {
+                apiKey = decrypt(settingsRows[0].falabella_api_key);
+                sellerId = settingsRows[0].falabella_seller_id;
+            }
+        }
+
+        if (!apiKey || !sellerId) {
             throw new Error("Credenciales de Falabella no configuradas.");
         }
-        
-        const apiKey = decrypt(rows[0].falabella_api_key);
-        const sellerId = rows[0].falabella_seller_id;
-        
-        const timestamp = new Date().toISOString();
-        const params = {
-            Action: 'UpdateOrderItems',
-            Timestamp: timestamp,
-            UserID: sellerId,
-            Version: '1.0',
-            Format: 'JSON',
-            OrderItemIds: JSON.stringify([trackingId]),
-            Status: 'delivered'
-        };
-        
-        const signature = buildFalabellaSignature(params, apiKey);
-        params.Signature = signature;
-        
-        const queryString = Object.entries(params)
-            .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
-            .join('&');
 
-        const https = require('https');
-        await new Promise((resolve, reject) => {
-            const options = {
-                hostname: 'sellercenter-api.falabella.com',
-                path: `/?${queryString}`,
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'Content-Type': 'application/json'
-                }
+        if (!falabellaOrderId) {
+            throw new Error("ID de orden de Falabella no encontrado en el paquete.");
+        }
+
+        // Helper local para realizar llamadas firmadas a Falabella
+        const makeFalabellaApiCall = async (action, extraParams = null) => {
+            const timestamp = new Date().toISOString();
+            const params = {
+                Action: action,
+                Timestamp: timestamp,
+                UserID: sellerId,
+                Version: '1.0',
+                Format: 'JSON',
+                ...extraParams
             };
-            const req = https.request(options, (res) => {
-                let data = '';
-                res.on('data', chunk => data += chunk);
-                res.on('end', () => {
-                    if (res.statusCode >= 200 && res.statusCode < 300) {
-                        resolve(data);
-                    } else {
-                        reject(new Error(`Falabella API returned HTTP ${res.statusCode}: ${data}`));
+            const signature = buildFalabellaSignature(params, apiKey);
+            params.Signature = signature;
+            
+            const queryString = Object.entries(params)
+                .map(([key, val]) => `${encodeURIComponent(key)}=${encodeURIComponent(val)}`)
+                .join('&');
+
+            const https = require('https');
+            return new Promise((resolve, reject) => {
+                const options = {
+                    hostname: 'sellercenter-api.falabella.com',
+                    path: `/?${queryString}`,
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
                     }
+                };
+                const req = https.request(options, (res) => {
+                    let data = '';
+                    res.on('data', chunk => data += chunk);
+                    res.on('end', () => {
+                        if (res.statusCode >= 200 && res.statusCode < 300) {
+                            try {
+                                resolve(JSON.parse(data));
+                            } catch (e) {
+                                resolve(data);
+                            }
+                        } else {
+                            reject(new Error(`Falabella API returned HTTP ${res.statusCode}: ${data}`));
+                        }
+                    });
                 });
+                req.on('error', reject);
+                req.end();
             });
-            req.on('error', reject);
-            req.end();
+        };
+
+        // 3. Obtener los OrderItemIds asociados a la orden
+        console.log(`[FalabellaSync] Fetching items for Falabella order ID: ${falabellaOrderId}`);
+        const itemsResponse = await makeFalabellaApiCall('GetOrderItems', { OrderId: falabellaOrderId });
+        
+        const orderItemsRaw = itemsResponse?.SuccessResponse?.Body?.OrderItems;
+        let orderItemIds = [];
+        if (orderItemsRaw) {
+            let items = [];
+            if (Array.isArray(orderItemsRaw)) {
+                items = orderItemsRaw;
+            } else if (orderItemsRaw.OrderItem) {
+                items = Array.isArray(orderItemsRaw.OrderItem) ? orderItemsRaw.OrderItem : [orderItemsRaw.OrderItem];
+            }
+            orderItemIds = items.map(item => item.OrderItemId).filter(Boolean);
+        }
+
+        if (orderItemIds.length === 0) {
+            throw new Error(`No se encontraron ítems válidos (OrderItemIds) para la orden Falabella ID ${falabellaOrderId}`);
+        }
+
+        console.log(`[FalabellaSync] Found item IDs to update:`, orderItemIds);
+
+        // 4. Intentar marcar la orden como 'shipped' (enviada) primero, por si acaso (algunos Seller Center restringen saltarse este paso)
+        try {
+            await makeFalabellaApiCall('SetStatusToShipped', {
+                OrderItemIds: JSON.stringify(orderItemIds)
+            });
+            console.log(`[FalabellaSync] Items marked as shipped in Falabella.`);
+        } catch (shippedErr) {
+            console.warn(`[FalabellaSync] Transition to 'shipped' failed (might already be shipped): ${shippedErr.message}`);
+        }
+
+        // 5. Marcar la orden como 'delivered' (entregada)
+        await makeFalabellaApiCall('SetStatusToDelivered', {
+            OrderItemIds: JSON.stringify(orderItemIds)
         });
         
         await db.query(
             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-            [packageId, 'SYNC_FALABELLA_OK', 'Falabella API', `Pedido sincronizado exitosamente en Falabella.`, new Date()]
+            [packageId, 'SYNC_FALABELLA_OK', 'Falabella API', `Pedido sincronizado y cerrado exitosamente en Falabella (Items: ${orderItemIds.join(', ')}).`, new Date()]
         );
-        console.log(`[FalabellaSync] Package ${packageId} synced successfully with Falabella.`);
+        console.log(`[FalabellaSync] Package ${packageId} synced successfully (delivered) with Falabella.`);
         
     } catch (error) {
         console.error(`[FalabellaSync] Fallo en intento ${attempts}/${MAX_ATTEMPTS} para paquete ${packageId}:`, error.message);
@@ -1244,6 +1673,95 @@ async function syncDeliveryToFalabella(packageId, trackingId, attempts = 1) {
 }
 // --- END FALABELLA SYNC LOGIC ---
 
+// --- ENVIAME SYNC LOGIC ---
+async function syncDeliveryToEnviame(packageId, trackingId, attempts = 1) {
+    const MAX_ATTEMPTS = 3;
+    const DELAY_MULTIPLIER = 3000;
+
+    if (attempts === 1) {
+        try {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [packageId, 'SYNC_ENVIAME_START', 'Envíame API', `Iniciando sincronización de entrega con Envíame.`, new Date()]
+            );
+        } catch (e) { console.error(`[EnviameSync] Start logging failed:`, e); }
+    }
+
+    try {
+        const { rows: settingsRows } = await db.query(
+            'SELECT enviame_api_key, enviame_environment FROM integration_settings WHERE id = 1'
+        );
+
+        if (settingsRows.length === 0 || !settingsRows[0].enviame_api_key) {
+            throw new Error("Credenciales de Envíame no configuradas.");
+        }
+
+        const apiKey = decrypt(settingsRows[0].enviame_api_key);
+        const environment = settingsRows[0].enviame_environment || 'stage';
+        const baseUrl = environment === 'production' ? 'https://api.enviame.io' : 'https://stage.api.enviame.io';
+
+        const https = require('https');
+        await new Promise((resolve, reject) => {
+            const payload = JSON.stringify({
+                status_change: {
+                    status: 6,
+                    comment: "Entregado por Full Envíos"
+                }
+            });
+
+            const urlObj = new URL(`${baseUrl}/v3/deliveries/${trackingId}/status`);
+            
+            const options = {
+                hostname: urlObj.hostname,
+                path: urlObj.pathname,
+                method: 'POST',
+                headers: {
+                    'api-key': apiKey,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'Content-Length': Buffer.byteLength(payload)
+                }
+            };
+
+            const req = https.request(options, (res) => {
+                let data = '';
+                res.on('data', chunk => data += chunk);
+                res.on('end', () => {
+                    if (res.statusCode >= 200 && res.statusCode < 300) {
+                        resolve(data);
+                    } else {
+                        reject(new Error(`Envíame API returned HTTP ${res.statusCode}: ${data}`));
+                    }
+                });
+            });
+
+            req.on('error', reject);
+            req.write(payload);
+            req.end();
+        });
+
+        await db.query(
+            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+            [packageId, 'SYNC_ENVIAME_OK', 'Envíame API', `Entrega sincronizada exitosamente con Envíame.`, new Date()]
+        );
+        console.log(`[EnviameSync] Package ${packageId} synced successfully with Envíame.`);
+
+    } catch (error) {
+        console.error(`[EnviameSync] Fallo en intento ${attempts}/${MAX_ATTEMPTS} para paquete ${packageId}:`, error.message);
+        
+        if (attempts < MAX_ATTEMPTS) {
+            const nextDelay = attempts * DELAY_MULTIPLIER;
+            setTimeout(() => syncDeliveryToEnviame(packageId, trackingId, attempts + 1), nextDelay);
+        } else {
+            await db.query(
+                'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                [packageId, 'SYNC_ENVIAME_ERROR', 'Envíame API', `Error al sincronizar: ${error.message}.`, new Date()]
+            );
+        }
+    }
+}
+// --- END ENVIAME SYNC LOGIC ---
+
 // POST /api/packages/:id/deliver
 router.post('/:id/deliver', authMiddleware, async (req, res) => {
     const { id } = req.params;
@@ -1252,40 +1770,25 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         const { rows: settingsRows } = await db.query('SELECT "meliFlexValidation" FROM system_settings WHERE id = 1');
         const meliFlexValidation = settingsRows.length > 0 ? settingsRows[0].meliFlexValidation : true;
 
-        // --- NEW MELI VALIDATION (STRICT) ---
+        // --- NEW MELI VALIDATION (STRICT & UNIFIED) ---
         if (meliFlexValidation) {
             try {
-                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId", source FROM packages WHERE id = $1', [id]);
+                const { rows: pkgRows } = await db.query('SELECT "meliFlexCode", "creatorId", "source", "sourceAccountId" FROM packages WHERE id = $1', [id]);
                 if (pkgRows.length > 0 && pkgRows[0].meliFlexCode && pkgRows[0].source === 'MERCADO_LIBRE') {
-                    const { meliFlexCode, creatorId } = pkgRows[0];
+                    const { meliFlexCode, creatorId, sourceAccountId } = pkgRows[0];
 
-                    const { rows: userRows } = await db.query('SELECT integrations FROM users WHERE id = $1', [creatorId]);
-                    let meliIntegration = userRows[0]?.integrations?.meli;
+                    const accessToken = await meliPollingService.getValidMeliToken(creatorId, sourceAccountId);
                     
-                    if (meliIntegration) {
-                        if (Date.now() >= meliIntegration.expiresAt) {
-                            try {
-                                const { rows: integrationSettingsRows } = await db.query('SELECT meli_app_id, meli_client_secret FROM integration_settings WHERE id = 1');
-                                if (integrationSettingsRows[0]?.meli_app_id) {
-                                    const { meli_app_id, meli_client_secret } = integrationSettingsRows[0];
-                                    const refreshData = new URLSearchParams({ grant_type: 'refresh_token', client_id: meli_app_id.trim(), client_secret: meli_client_secret.trim(), refresh_token: meliIntegration.refreshToken }).toString();
-                                    const refreshedTokenData = await makeMeliPostRequest('/oauth/token', refreshData);
-                                    meliIntegration = { ...meliIntegration, accessToken: refreshedTokenData.access_token, refreshToken: refreshedTokenData.refresh_token, expiresAt: Date.now() + (refreshedTokenData.expires_in * 1000) };
-                                    await db.query('UPDATE users SET integrations = $1 WHERE id = $2', [JSON.stringify({ ...userRows[0].integrations, meli: meliIntegration }), creatorId]);
-                                }
-                            } catch (refreshError) {
-                                console.error(`[Deliver] Error refreshing ML token for shipment ${meliFlexCode}:`, refreshError);
-                                return res.status(400).json({ message: 'Error de conexión con Mercado Libre. Por favor, reintenta en unos momentos.' });
-                            }
-                        }
-                        
+                    if (!accessToken) {
+                        console.warn(`[Deliver] Could not obtain ML token for shipment ${meliFlexCode}. Allowing bypass.`);
+                    } else {
                         let shippingDetails = null;
                         const maxAttempts = 3;
                         const delayMs = 3000;
                         
                         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
                             try {
-                                shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, meliIntegration.accessToken);
+                                shippingDetails = await makeMeliGetRequest(`/shipments/${meliFlexCode}`, accessToken);
                                 if (shippingDetails && shippingDetails.status === 'delivered') {
                                     break; // Success!
                                 }
@@ -1308,18 +1811,67 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
                 }
             } catch (validationError) {
                 console.error('[Deliver] Fatal error in Meli validation block:', validationError);
-                return res.status(500).json({ message: 'Error interno validando estado con Mercado Libre.' });
+                // We don't return 500 here to avoid blocking the whole delivery process
             }
         }
         // --- END MELI VALIDATION ---
 
         const { rows } = await db.query(
-            'UPDATE packages SET status = $1, "deliveryReceiverName" = $2, "deliveryReceiverId" = $3, "deliveryPhotosBase64" = $4, "updatedAt" = $5 WHERE id = $6 RETURNING *',
+            'UPDATE packages SET status = $1, "deliveryReceiverName" = $2, "deliveryReceiverId" = $3, "deliveryPhotosBase64" = $4, "meliDeliveredNeedsPhotos" = false, "updatedAt" = $5 WHERE id = $6 RETURNING *',
             ['ENTREGADO', receiverName, receiverId, JSON.stringify(photosBase64), new Date(), id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
 
+        const now = new Date();
         await addTrackingEvent(id, 'ENTREGADO', rows[0].recipientAddress, `Entregado a ${receiverName}.`);
+        
+        // --- NUEVO: Capturar Cierre Oficial de ML ---
+        let meliDeliveredAt = null;
+        try {
+            const { rows: pkgFullRows } = await db.query('SELECT "meliOrderId", "creatorId", "meliFlexCode", "sourceAccountId" FROM packages WHERE id = $1', [id]);
+            if (pkgFullRows.length > 0 && (pkgFullRows[0].meliOrderId || pkgFullRows[0].meliFlexCode)) {
+                const { meliOrderId, creatorId, meliFlexCode, sourceAccountId } = pkgFullRows[0];
+                const shipmentId = meliFlexCode || meliOrderId;
+                const accessToken = await meliPollingService.getValidMeliToken(creatorId, sourceAccountId);
+                
+                if (accessToken) {
+                    const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
+                    let meliTimeStr = null;
+                    let source = '';
+
+                    // Prioridad 0: Campo oficial de entrega final (más preciso para Flex)
+                    if (shipment.status === 'delivered' && shipment.date_delivered) {
+                        meliTimeStr = shipment.date_delivered;
+                        source = 'shipment.date_delivered';
+                    }
+
+                    // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
+                    if (!meliTimeStr && shipment.status_history && Array.isArray(shipment.status_history)) {
+                        const deliveredEvent = shipment.status_history
+                            .filter(h => h.status === 'delivered')
+                            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
+                        if (deliveredEvent) {
+                            meliTimeStr = deliveredEvent.date;
+                            source = 'status_history.delivered';
+                        }
+                    }
+
+                    // Prioridad 2: Fallback campo directo de entrega
+                    if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
+                        meliTimeStr = shipment.delivered_date;
+                        source = 'shipment.delivered_date';
+                    }
+                    if (meliTimeStr) {
+                        meliDeliveredAt = new Date(meliTimeStr);
+                        await db.query(
+                            'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                            [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora real capturada de ${source}: ${meliTimeStr}`, meliDeliveredAt]
+                        );
+                    }
+                }
+            }
+        } catch (e) { console.warn('[Deliver] ML Hour fetch failed', e); }
+        // --- FIN CAPTURA ML ---
         
         await logAction(req.user.id, req.user.name, 'DELIVER_PACKAGE', { packageId: id, receiverName });
 
@@ -1345,8 +1897,17 @@ router.post('/:id/deliver', authMiddleware, async (req, res) => {
         if (updatedPackage.source === 'FALABELLA' && updatedPackage.falabellaTrackingId) {
             syncDeliveryToFalabella(updatedPackage.id, updatedPackage.falabellaTrackingId)
                 .catch(err => console.error(`[Deliver] Falabella sync trigger error:`, err));
+            syncDeliveryToEnviame(updatedPackage.id, updatedPackage.falabellaTrackingId)
+                .catch(err => console.error(`[Deliver] Envíame sync trigger error for Falabella order:`, err));
         }
         // --- END FALABELLA NOTIFICATION ---
+
+        // --- NEW ENVIAME NOTIFICATION ---
+        if (updatedPackage.source === 'ENVIAME' && updatedPackage.trackingId) {
+            syncDeliveryToEnviame(updatedPackage.id, updatedPackage.trackingId)
+                .catch(err => console.error(`[Deliver] Envíame sync trigger error:`, err));
+        }
+        // --- END ENVIAME NOTIFICATION ---
 
         // Notify recipient
         NotificationService.notifyRecipient(id, 'ENTREGADO');
@@ -1380,6 +1941,9 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
         // Notify recipient
         NotificationService.notifyRecipient(id, targetStatus);
 
+        // Notify administrator
+        NotificationService.notifyAdminPendingDelivery(id, targetStatus, reason);
+
         res.json(updatedPackage);
     } catch (err) {
         console.error(err);
@@ -1394,7 +1958,7 @@ router.post('/:id/pickup', authMiddleware, async (req, res) => {
     const driverId = req.user.id;
     try {
          const { rows } = await db.query(
-            'UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "meliFlexCode" = $4 WHERE id = $5 RETURNING *',
+            'UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "meliFlexCode" = $4, "assignedAt" = $3 WHERE id = $5 RETURNING *',
             ['RETIRADO', driverId, new Date(), flexCode || null, id]
         );
         if (rows.length === 0) return res.status(404).json({ message: 'Paquete no encontrado.' });
@@ -1447,9 +2011,10 @@ router.post('/bulk-pickup-client', authMiddleware, async (req, res) => {
 
         // Update all pending packages to RETIRADO
         const placeholders = packageIds.map((_, i) => `$${i + 4}`).join(', ');
+        const now = new Date();
         await client.query(
-            `UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3 WHERE id IN (${placeholders})`,
-            ['RETIRADO', driverId, new Date(), ...packageIds]
+            `UPDATE packages SET status = $1, "driverId" = $2, "updatedAt" = $3, "assignedAt" = $3 WHERE id IN (${placeholders})`,
+            ['RETIRADO', driverId, now, ...packageIds]
         );
 
         // Log events for each package
@@ -1469,7 +2034,7 @@ router.post('/bulk-pickup-client', authMiddleware, async (req, res) => {
         await Promise.all(eventPromises);
 
         // Update pickup_assignments table (New System)
-        const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Santiago' });
+        const today = await timeService.getLogicalDate();
         await client.query(
             `UPDATE pickup_assignments 
              SET status = 'RETIRADO', "packagesPickedUp" = $1, "updatedAt" = $2
@@ -1540,7 +2105,10 @@ router.post('/:id/return', authMiddleware, async (req, res) => {
 
 // POST /api/packages/:id/scan-admin
 router.post('/:id/scan-admin', authMiddleware, async (req, res) => {
-    const { id } = req.params;
+    let { id } = req.params;
+    if (id && id.startsWith('SCA00-')) {
+        id = id.replace('SCA00-', '');
+    }
     try {
         const { rows: pkgRows } = await db.query(
             'SELECT id, status, "meliFlexCode" FROM packages WHERE id = $1 OR "meliOrderId" = $1 OR "shopifyOrderId" = $1 OR "wooOrderId" = $1 OR "trackingId" = $1 OR "meliFlexCode" = $1', 
@@ -1703,20 +2271,26 @@ router.post('/bulk-update-status', authMiddleware, async (req, res) => {
 
     try {
         const billed = status === 'ENTREGADO' || status === 'CANCELADO' || status === 'DEVUELTO';
-        const placeholders = packageIds.map((_, i) => `$${i + 2}`).join(', ');
+        const placeholders = packageIds.map((_, i) => `$${i + 3}`).join(', ');
         
+        let assignedAtClause = '';
+        if (status === 'ASIGNADO' || status === 'EN_TRANSITO') {
+            assignedAtClause = ', "assignedAt" = NOW()';
+        }
+
         await db.query(`
             UPDATE packages 
             SET status = $1, 
                 billed = $2, 
                 "updatedAt" = NOW() 
+                ${assignedAtClause}
             WHERE id IN (${placeholders})
         `, [status, billed, ...packageIds]);
 
         // Add tracking events
         for (const pkgId of packageIds) {
             await db.query('INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, NOW())', 
-                [pkgId, status, 'Operaciones', `Estado actualizado masivamente por el administrador a ${status}.`, new Date()]);
+                [pkgId, status, 'Operaciones', `Estado actualizado masivamente por el administrador a ${status}.`]);
         }
 
         res.json({ message: `Se actualizaron ${packageIds.length} paquetes a ${status}.` });
@@ -1745,6 +2319,129 @@ router.post('/:id/check-alert', authMiddleware, async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al marcar alerta como revisada.' });
+    }
+});
+
+/**
+ * GET /api/packages/analytics/delivery-hours
+ * Returns delivery counts grouped by hour for a given date range.
+ */
+router.get('/analytics/delivery-hours', authMiddleware, async (req, res) => {
+    try {
+        const targetDate = req.query.date || await timeService.getLogicalDate();
+        const { start, nextDayStart } = await timeService.getLogicalTodayRange();
+        const tz = await timeService.getSystemTimezone();
+        
+        const query = `
+            SELECT 
+                EXTRACT(HOUR FROM (timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) as hour,
+                COUNT(*) as count
+            FROM tracking_events
+            WHERE status = 'ENTREGADO'
+            AND timestamp >= $1::timestamp 
+            AND timestamp < $2::timestamp
+            GROUP BY hour
+            ORDER BY hour ASC;
+        `;
+
+        const result = await db.query(query, [start, nextDayStart, tz]);
+        
+        const hourlyData = Array.from({ length: 24 }, (_, i) => ({
+            hour: i,
+            count: 0
+        }));
+        result.rows.forEach(row => {
+            const h = parseInt(row.hour);
+            if (h >= 0 && h < 24) {
+                hourlyData[h].count = parseInt(row.count);
+            }
+        });
+
+        res.json(hourlyData);
+    } catch (err) {
+        console.error('Error fetching delivery analytics:', err);
+        res.status(500).json({ message: 'Error al obtener estadísticas.' });
+    }
+});
+
+/**
+ * GET /api/packages/analytics/late-deliveries
+ * Returns detailed analysis of deliveries after 21:00, correlated with driver workload.
+ */
+router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
+    try {
+        const targetDate = req.query.date || await timeService.getLogicalDate();
+        const { start, nextDayStart } = await timeService.getLogicalRange(targetDate, targetDate);
+        const tz = await timeService.getSystemTimezone();
+        
+        // Define late threshold (21:00 of the logical day start)
+        const query = `
+            SELECT 
+                p.id,
+                u.name as driver_name,
+                c.name as seller_name,
+                p."recipientCommune",
+                p."driverId",
+                (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)::date as delivery_day,
+                (CASE 
+                    WHEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) < 2 
+                    THEN EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)) + 24
+                    ELSE EXTRACT(HOUR FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))
+                END + EXTRACT(MINUTE FROM (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3))/60.0) as delivery_hour,
+                (SELECT COUNT(*) FROM packages WHERE "driverId" = p."driverId" AND "assignedAt" >= $1 AND "assignedAt" < $2) as total_packages_day
+            FROM tracking_events te
+            JOIN packages p ON te."packageId" = p.id
+            JOIN users u ON p."driverId" = u.id
+            LEFT JOIN users c ON p."creatorId" = c.id
+            WHERE te.status = 'ENTREGADO'
+            AND te.timestamp >= ($1 + INTERVAL '19 hours') 
+            AND te.timestamp < $2
+            ORDER BY te.timestamp DESC;
+        `;
+
+        const result = await db.query(query, [start, nextDayStart, tz]);
+        const rows = result.rows;
+
+        const driverStatsResult = await db.query(`
+            SELECT 
+                "driverId",
+                (te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)::date as day,
+                COUNT(*) as total_day,
+                MIN(CASE WHEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) < 2 THEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) + 24 ELSE EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) END + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)/60.0) as first_h,
+                MAX(CASE WHEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) < 2 THEN EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) + 24 ELSE EXTRACT(HOUR FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3) END + EXTRACT(MINUTE FROM te.timestamp AT TIME ZONE 'UTC' AT TIME ZONE $3)/60.0) as last_h
+            FROM tracking_events te
+            JOIN packages p ON te."packageId" = p.id
+            WHERE te.status = 'ENTREGADO'
+            AND te.timestamp >= $1 AND te.timestamp < $2
+            GROUP BY "driverId", day
+        `, [start, nextDayStart, tz]);
+        const driverStats = driverStatsResult.rows;
+
+        const enrichedData = rows.map(row => {
+            const rowDate = row.delivery_day ? new Date(row.delivery_day).toISOString().split('T')[0] : '';
+            
+            const stats = driverStats.find(s => {
+                const sDate = s.day ? new Date(s.day).toISOString().split('T')[0] : '';
+                return s.driverId === row.driverId && sDate === rowDate;
+            });
+            
+            return {
+                id: row.id,
+                driver_name: row.driver_name,
+                seller_name: row.seller_name || 'Sin Seller',
+                recipientCommune: normalizeCommune(row.recipientCommune),
+                delivery_day: rowDate,
+                delivery_hour: row.delivery_hour,
+                total_packages_day: stats ? parseInt(stats.total_day) : 0,
+                first_delivery_hour: stats ? stats.first_h : row.delivery_hour,
+                last_delivery_hour: stats ? stats.last_h : row.delivery_hour
+            };
+        });
+
+        res.json(enrichedData);
+    } catch (err) {
+        console.error('Error fetching late delivery analytics:', err);
+        res.status(500).json({ error: err.message });
     }
 });
 

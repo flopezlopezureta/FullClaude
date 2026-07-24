@@ -1941,6 +1941,9 @@ router.post('/:id/problem', authMiddleware, async (req, res) => {
         // Notify recipient
         NotificationService.notifyRecipient(id, targetStatus);
 
+        // Notify administrator
+        NotificationService.notifyAdminPendingDelivery(id, targetStatus, reason);
+
         res.json(updatedPackage);
     } catch (err) {
         console.error(err);

@@ -776,6 +776,18 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during packages migration (meliDeliveredNeedsPhotos):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "pendingNotificationsEnabled" BOOLEAN DEFAULT false');
+            console.log('MIGRATION APPLIED: Column "pendingNotificationsEnabled" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (pendingNotificationsEnabled):', err); }
+        }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "adminWhatsappNumber" TEXT DEFAULT \'\'');
+            console.log('MIGRATION APPLIED: Column "adminWhatsappNumber" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (adminWhatsappNumber):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');

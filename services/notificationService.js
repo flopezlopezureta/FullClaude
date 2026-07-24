@@ -335,6 +335,56 @@ const NotificationService = {
         } catch (emailErr) {
             console.error('[Email Error] Failed to send email:', emailErr.message);
         }
+    },
+
+    /**
+     * Sends a WhatsApp notification to the administrator for a pending/problem delivery.
+     */
+    async notifyAdminPendingDelivery(packageId, status, reason) {
+        try {
+            // 1. Get system settings for pending admin notifications
+            const { rows: settingsRows } = await db.query('SELECT "pendingNotificationsEnabled", "adminWhatsappNumber", "companyName" FROM system_settings WHERE id = 1');
+            const settings = settingsRows.length > 0 ? settingsRows[0] : null;
+            if (!settings || !settings.pendingNotificationsEnabled || !settings.adminWhatsappNumber) {
+                return;
+            }
+
+            // 2. Get package details
+            const { rows: pkgRows } = await db.query(
+                `SELECT p."recipientName", p."recipientAddress", p."trackingId", p."meliOrderId", c.name as seller_name 
+                 FROM packages p 
+                 LEFT JOIN users c ON p."creatorId" = c.id 
+                 WHERE p.id = $1`,
+                [packageId]
+            );
+            if (pkgRows.length === 0) return;
+            const pkg = pkgRows[0];
+            const sellerName = pkg.seller_name || settings.companyName;
+
+            // 3. Get integration settings for WhatsApp API key
+            const { rows: integrationRows } = await db.query('SELECT whatsapp_api_key, whatsapp_phone_number FROM integration_settings WHERE id = 1');
+            const integration = integrationRows.length > 0 ? integrationRows[0] : null;
+
+            // 4. Construct WhatsApp Message
+            const trackingIdText = pkg.trackingId || pkg.id;
+            const orderIdText = pkg.meliOrderId ? ` (Order ML: ${pkg.meliOrderId})` : '';
+            const waMessage = `⚠️ *ENTREGA PENDIENTE* ⚠️\n` +
+                              `El envío *${trackingIdText}*${orderIdText} de *${sellerName}* ha quedado pendiente.\n` +
+                              `• *Cliente:* ${pkg.recipientName}\n` +
+                              `• *Dirección:* ${pkg.recipientAddress}\n` +
+                              `• *Estado:* ${status}\n` +
+                              `• *Motivo:* ${reason || 'No especificado'}`;
+
+            // 5. Send message to Administrator phone number
+            const targetPhone = settings.adminWhatsappNumber;
+            if (integration && integration.whatsapp_api_key) {
+                console.log(`[WhatsApp API - ADMIN PENDING] Sending to ${targetPhone}: ${waMessage}`);
+            } else {
+                console.log(`[WA SIMULATION - ADMIN PENDING] To: ${targetPhone} | Message: ${waMessage}`);
+            }
+        } catch (err) {
+            console.error('Error in notifyAdminPendingDelivery:', err);
+        }
     }
 };
 

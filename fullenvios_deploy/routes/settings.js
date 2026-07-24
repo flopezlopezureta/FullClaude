@@ -8,6 +8,7 @@ const bcrypt = require('bcryptjs');
 const { logAction } = require('../services/logger');
 const meliPollingService = require('../services/meliPollingService');
 const shopifyPollingService = require('../services/shopifyPollingService');
+const woocommercePollingService = require('../services/woocommercePollingService');
 const { encrypt, decrypt } = require('../services/falabellaCrypto');
 
 // Middleware to check for Admin role
@@ -26,6 +27,68 @@ async function verifyAdminPassword(userId, password) {
 }
 
 
+
+
+
+
+// GET /api/settings/license-status
+router.get('/license-status', authMiddleware, async (req, res) => {
+    try {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = now.getMonth() + 1;
+        
+        const startMonthStr = `${year}-${String(month).padStart(2, '0')}-01 00:00:00`;
+        let nextMonth = month + 1;
+        let nextYear = year;
+        if (nextMonth > 12) {
+            nextMonth = 1;
+            nextYear += 1;
+        }
+        const endMonthStr = `${nextYear}-${String(nextMonth).padStart(2, '0')}-01 00:00:00`;
+
+        const { rows: settings } = await db.query('SELECT "licenseLimit" FROM system_settings WHERE id = 1');
+        const limit = settings.length > 0 ? settings[0].licenseLimit : 70;
+
+        const { rows: nonDrivers } = await db.query(
+            `SELECT COUNT(*)::int as count 
+             FROM users 
+             WHERE role NOT IN ('DRIVER', 'CONDUCTOR', 'CHOFER', 'CLIENT', 'CLIENTE') 
+               AND status != 'ELIMINADO'
+               AND email NOT IN ('admin', 'admin@admin.cl')`
+        );
+        const nonDriversCount = nonDrivers[0].count;
+
+        const { rows: activeDrivers } = await db.query(
+            `SELECT COUNT(DISTINCT u.id)::int as count
+             FROM users u
+             WHERE u.role IN ('DRIVER', 'CONDUCTOR', 'CHOFER')
+               AND u.status != 'ELIMINADO'
+               AND u.email NOT IN ('admin', 'admin@admin.cl')
+               AND EXISTS (
+                   SELECT 1 FROM packages p
+                   WHERE p."driverId" = u.id
+                     AND (
+                         (p."assignedAt" >= $1 AND p."assignedAt" < $2)
+                         OR (p."updatedAt" >= $1 AND p."updatedAt" < $2 AND p.status IN ('ENTREGADO', 'DEVUELTO', 'EN_RUTA', 'ASIGNADO'))
+                     )
+               )`,
+            [startMonthStr, endMonthStr]
+        );
+        const driversCount = activeDrivers[0].count;
+
+        const activeCount = nonDriversCount + driversCount;
+
+        res.json({
+            activeCount,
+            limit,
+            exceeded: activeCount > limit
+        });
+    } catch (err) {
+        console.error('Error fetching license status:', err);
+        res.status(500).json({ message: 'Error al obtener estado de licencias.' });
+    }
+});
 
 // GET /api/settings/meli-polling-status
 router.get('/meli-polling-status', authMiddleware, (req, res) => {
@@ -54,10 +117,22 @@ router.post('/sync-shopify', authMiddleware, adminOnly, async (req, res) => {
     res.json({ message: 'Sincronización con Shopify iniciada en segundo plano.' });
 });
 
+// GET /api/settings/woocommerce-polling-status
+router.get('/woocommerce-polling-status', authMiddleware, (req, res) => {
+    res.json(woocommercePollingService.getStatus());
+});
+
+// POST /api/settings/sync-woocommerce
+router.post('/sync-woocommerce', authMiddleware, adminOnly, async (req, res) => {
+    console.log('[ManualSync] Triggering WooCommerce poll...');
+    woocommercePollingService.pollWooCommercePackages();
+    res.json({ message: 'Sincronización con WooCommerce iniciada en segundo plano.' });
+});
+
 // GET /api/settings/system
 router.get('/system', async (req, res) => {
     try {
-        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "recipientNotificationsEnabled" FROM system_settings WHERE id = 1');
+        const { rows: settings } = await db.query('SELECT "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "timezone", "recipientNotificationsEnabled", "meliAutoPromptPhotos", "licenseLimit", "licenseOverageFee", "showPendingPaymentAlert", "multiSelectEnabled", "gisSectorsEnabled", "pendingNotificationsEnabled", "adminWhatsappNumber" FROM system_settings WHERE id = 1');
         const fallbackSettings = {
             companyName: 'FULL ENVIOS',
             isAppEnabled: true,
@@ -68,6 +143,7 @@ router.get('/system', async (req, res) => {
             saveFlexLabelPhoto: false,
             meliAutoImport: false,
             shopifyAutoImport: false,
+            woocommerceAutoImport: false,
             publicTrackingEnabled: true,
             isRutRequired: true,
             flexDiscrepancyReportEnabled: true,
@@ -75,22 +151,31 @@ router.get('/system', async (req, res) => {
             circuitExportEnabled: false,
             timeFormat: '12h',
             allowRedelivery: false,
+            timezone: 'America/Santiago',
             recipientNotificationsEnabled: false,
+            meliAutoPromptPhotos: false,
+            licenseLimit: 70,
+            licenseOverageFee: 0.1,
+            showPendingPaymentAlert: false,
+            multiSelectEnabled: true,
+            gisSectorsEnabled: true,
+            pendingNotificationsEnabled: false,
+            adminWhatsappNumber: '',
         };
         if (settings.length === 0) {
-            return res.json(fallbackSettings);
+            return res.json({ ...fallbackSettings, appEnv: process.env.APP_ENV || 'production' });
         }
-        res.json({ ...fallbackSettings, ...settings[0] });
+        res.json({ ...fallbackSettings, ...settings[0], appEnv: process.env.APP_ENV || 'production' });
     } catch (err) {
         console.error("ERROR in /api/settings/system:", err);
         // Fail gracefully if DB not ready
-        res.json({ companyName: 'FULL ENVIOS', isAppEnabled: true, requiredPhotos: 1, messagingPlan: 'NONE', pickupMode: 'SCAN', meliFlexValidation: true, labelFormat: 'compact_thermal', timeFormat: '12h', allowRedelivery: false });
+        res.json({ companyName: 'FULL ENVIOS', isAppEnabled: true, requiredPhotos: 1, messagingPlan: 'NONE', pickupMode: 'SCAN', meliFlexValidation: true, labelFormat: 'compact_thermal', timeFormat: '12h', allowRedelivery: false, meliAutoPromptPhotos: false, licenseLimit: 70, licenseOverageFee: 0.1, multiSelectEnabled: true, pendingNotificationsEnabled: false, adminWhatsappNumber: '' });
     }
 });
 
 // PUT /api/settings/system
 router.put('/system', authMiddleware, adminOnly, async (req, res) => {
-    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, shopifyAutoImport, publicTrackingEnabled, isRutRequired, flexDiscrepancyReportEnabled, labelFormat, circuitExportEnabled, timeFormat, allowRedelivery, recipientNotificationsEnabled } = req.body;
+    const { companyName, isAppEnabled, requiredPhotos, messagingPlan, pickupMode, meliFlexValidation, saveFlexLabelPhoto, meliAutoImport, shopifyAutoImport, woocommerceAutoImport, publicTrackingEnabled, isRutRequired, flexDiscrepancyReportEnabled, labelFormat, circuitExportEnabled, timeFormat, allowRedelivery, timezone, recipientNotificationsEnabled, meliAutoPromptPhotos, licenseLimit, licenseOverageFee, showPendingPaymentAlert, multiSelectEnabled, gisSectorsEnabled, pendingNotificationsEnabled, adminWhatsappNumber } = req.body;
 
     try {
         const { rows: currentSettingsRows } = await db.query('SELECT * FROM system_settings WHERE id = 1');
@@ -107,6 +192,7 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 saveFlexLabelPhoto: saveFlexLabelPhoto !== undefined ? saveFlexLabelPhoto : currentSettings.saveFlexLabelPhoto,
                 meliAutoImport: meliAutoImport !== undefined ? meliAutoImport : currentSettings.meliAutoImport,
                 shopifyAutoImport: shopifyAutoImport !== undefined ? shopifyAutoImport : currentSettings.shopifyAutoImport,
+                woocommerceAutoImport: woocommerceAutoImport !== undefined ? woocommerceAutoImport : currentSettings.woocommerceAutoImport,
                 publicTrackingEnabled: publicTrackingEnabled !== undefined ? publicTrackingEnabled : currentSettings.publicTrackingEnabled,
                 isRutRequired: isRutRequired !== undefined ? isRutRequired : currentSettings.isRutRequired,
                 flexDiscrepancyReportEnabled: flexDiscrepancyReportEnabled !== undefined ? flexDiscrepancyReportEnabled : currentSettings.flexDiscrepancyReportEnabled,
@@ -114,12 +200,21 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 circuitExportEnabled: circuitExportEnabled !== undefined ? circuitExportEnabled : currentSettings.circuitExportEnabled,
                 timeFormat: timeFormat !== undefined ? timeFormat : currentSettings.timeFormat,
                 allowRedelivery: allowRedelivery !== undefined ? allowRedelivery : currentSettings.allowRedelivery,
+                timezone: timezone !== undefined ? timezone : currentSettings.timezone,
                 recipientNotificationsEnabled: recipientNotificationsEnabled !== undefined ? recipientNotificationsEnabled : currentSettings.recipientNotificationsEnabled,
+                meliAutoPromptPhotos: meliAutoPromptPhotos !== undefined ? meliAutoPromptPhotos : currentSettings.meliAutoPromptPhotos,
+                licenseLimit: licenseLimit !== undefined ? licenseLimit : currentSettings.licenseLimit,
+                licenseOverageFee: licenseOverageFee !== undefined ? licenseOverageFee : currentSettings.licenseOverageFee,
+                showPendingPaymentAlert: showPendingPaymentAlert !== undefined ? showPendingPaymentAlert : currentSettings.showPendingPaymentAlert,
+                multiSelectEnabled: multiSelectEnabled !== undefined ? multiSelectEnabled : currentSettings.multiSelectEnabled,
+                gisSectorsEnabled: gisSectorsEnabled !== undefined ? gisSectorsEnabled : currentSettings.gisSectorsEnabled,
+                pendingNotificationsEnabled: pendingNotificationsEnabled !== undefined ? pendingNotificationsEnabled : currentSettings.pendingNotificationsEnabled,
+                adminWhatsappNumber: adminWhatsappNumber !== undefined ? adminWhatsappNumber : currentSettings.adminWhatsappNumber,
             };
             
             await db.query(
-                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "shopifyAutoImport" = $9, "publicTrackingEnabled" = $10, "isRutRequired" = $11, "flexDiscrepancyReportEnabled" = $12, "labelFormat" = $13, "circuitExportEnabled" = $14, "timeFormat" = $15, "allowRedelivery" = $16, "recipientNotificationsEnabled" = $17 WHERE id = 1',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.recipientNotificationsEnabled]
+                'UPDATE system_settings SET "companyName" = $1, "isAppEnabled" = $2, "requiredPhotos" = $3, "messagingPlan" = $4, "pickupMode" = $5, "meliFlexValidation" = $6, "saveFlexLabelPhoto" = $7, "meliAutoImport" = $8, "shopifyAutoImport" = $9, "woocommerceAutoImport" = $10, "publicTrackingEnabled" = $11, "isRutRequired" = $12, "flexDiscrepancyReportEnabled" = $13, "labelFormat" = $14, "circuitExportEnabled" = $15, "timeFormat" = $16, "allowRedelivery" = $17, "timezone" = $18, "recipientNotificationsEnabled" = $19, "meliAutoPromptPhotos" = $20, "licenseLimit" = $21, "licenseOverageFee" = $22, "showPendingPaymentAlert" = $23, "multiSelectEnabled" = $24, "gisSectorsEnabled" = $25, "pendingNotificationsEnabled" = $26, "adminWhatsappNumber" = $27 WHERE id = 1',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.woocommerceAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.timezone, updatedSettings.recipientNotificationsEnabled, updatedSettings.meliAutoPromptPhotos, updatedSettings.licenseLimit, updatedSettings.licenseOverageFee, updatedSettings.showPendingPaymentAlert, updatedSettings.multiSelectEnabled, updatedSettings.gisSectorsEnabled, updatedSettings.pendingNotificationsEnabled, updatedSettings.adminWhatsappNumber]
             );
             
             await logAction(req.user.id, req.user.name, 'UPDATE_SYSTEM_SETTINGS', { updatedSettings });
@@ -137,6 +232,7 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 saveFlexLabelPhoto: saveFlexLabelPhoto !== undefined ? saveFlexLabelPhoto : false,
                 meliAutoImport: meliAutoImport !== undefined ? meliAutoImport : false,
                 shopifyAutoImport: shopifyAutoImport !== undefined ? shopifyAutoImport : false,
+                woocommerceAutoImport: woocommerceAutoImport !== undefined ? woocommerceAutoImport : false,
                 publicTrackingEnabled: publicTrackingEnabled !== undefined ? publicTrackingEnabled : true,
                 isRutRequired: isRutRequired !== undefined ? isRutRequired : true,
                 flexDiscrepancyReportEnabled: flexDiscrepancyReportEnabled !== undefined ? flexDiscrepancyReportEnabled : true,
@@ -144,12 +240,21 @@ router.put('/system', authMiddleware, adminOnly, async (req, res) => {
                 circuitExportEnabled: circuitExportEnabled !== undefined ? circuitExportEnabled : false,
                 timeFormat: timeFormat !== undefined ? timeFormat : '12h',
                 allowRedelivery: allowRedelivery !== undefined ? allowRedelivery : false,
+                timezone: timezone !== undefined ? timezone : 'America/Santiago',
                 recipientNotificationsEnabled: recipientNotificationsEnabled !== undefined ? recipientNotificationsEnabled : false,
+                meliAutoPromptPhotos: meliAutoPromptPhotos !== undefined ? meliAutoPromptPhotos : false,
+                licenseLimit: licenseLimit !== undefined ? licenseLimit : 70,
+                licenseOverageFee: licenseOverageFee !== undefined ? licenseOverageFee : 0.1,
+                showPendingPaymentAlert: showPendingPaymentAlert !== undefined ? showPendingPaymentAlert : false,
+                multiSelectEnabled: multiSelectEnabled !== undefined ? multiSelectEnabled : true,
+                gisSectorsEnabled: gisSectorsEnabled !== undefined ? gisSectorsEnabled : true,
+                pendingNotificationsEnabled: pendingNotificationsEnabled !== undefined ? pendingNotificationsEnabled : false,
+                adminWhatsappNumber: adminWhatsappNumber !== undefined ? adminWhatsappNumber : '',
             };
 
             await db.query(
-                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "recipientNotificationsEnabled") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)',
-                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.recipientNotificationsEnabled]
+                'INSERT INTO system_settings (id, "companyName", "isAppEnabled", "requiredPhotos", "messagingPlan", "pickupMode", "meliFlexValidation", "saveFlexLabelPhoto", "meliAutoImport", "shopifyAutoImport", "woocommerceAutoImport", "publicTrackingEnabled", "isRutRequired", "flexDiscrepancyReportEnabled", "labelFormat", "circuitExportEnabled", "timeFormat", "allowRedelivery", "timezone", "recipientNotificationsEnabled", "meliAutoPromptPhotos", "licenseLimit", "licenseOverageFee", "showPendingPaymentAlert", "multiSelectEnabled", "gisSectorsEnabled", "pendingNotificationsEnabled", "adminWhatsappNumber") VALUES (1, $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27)',
+                [updatedSettings.companyName, updatedSettings.isAppEnabled, updatedSettings.requiredPhotos, updatedSettings.messagingPlan, updatedSettings.pickupMode, updatedSettings.meliFlexValidation, updatedSettings.saveFlexLabelPhoto, updatedSettings.meliAutoImport, updatedSettings.shopifyAutoImport, updatedSettings.woocommerceAutoImport, updatedSettings.publicTrackingEnabled, updatedSettings.isRutRequired, updatedSettings.flexDiscrepancyReportEnabled, updatedSettings.labelFormat, updatedSettings.circuitExportEnabled, updatedSettings.timeFormat, updatedSettings.allowRedelivery, updatedSettings.timezone, updatedSettings.recipientNotificationsEnabled, updatedSettings.meliAutoPromptPhotos, updatedSettings.licenseLimit, updatedSettings.licenseOverageFee, updatedSettings.showPendingPaymentAlert, updatedSettings.multiSelectEnabled, updatedSettings.gisSectorsEnabled, updatedSettings.pendingNotificationsEnabled, updatedSettings.adminWhatsappNumber]
             );
 
             await logAction(req.user.id, req.user.name, 'CREATE_SYSTEM_SETTINGS', { updatedSettings });
@@ -338,7 +443,7 @@ router.post('/reset-invoices', authMiddleware, adminOnly, async (req, res) => {
 // GET /api/settings/integrations
 router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
     try {
-        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email FROM integration_settings WHERE id = 1');
+        const { rows } = await db.query('SELECT meli_app_id, meli_client_secret, shopify_client_id, shopify_client_secret, shopify_shop_url, shopify_access_token, github_token, github_repo, github_owner, woo_url, woo_consumer_key, woo_consumer_secret, falabella_api_key, falabella_seller_id, smtp_host, smtp_port, smtp_user, smtp_password, smtp_from, smtp_google_refresh_token, smtp_google_email, enviame_api_key, enviame_environment FROM integration_settings WHERE id = 1');
         if (rows.length === 0) return res.json({});
         res.json({ 
             meliAppId: rows[0].meli_app_id,
@@ -357,7 +462,9 @@ router.get('/integrations', authMiddleware, adminOnly, async (req, res) => {
             falabellaSellerId: rows[0].falabella_seller_id,
             smtpFrom: rows[0].smtp_from,
             smtpGoogleEmail: rows[0].smtp_google_email,
-            hasGoogleSmtp: !!rows[0].smtp_google_refresh_token
+            hasGoogleSmtp: !!rows[0].smtp_google_refresh_token,
+            enviameApiKey: rows[0].enviame_api_key ? '************************' : '',
+            enviameEnvironment: rows[0].enviame_environment || 'stage'
         });
     } catch (err) {
         console.error(err);
@@ -374,7 +481,8 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
         githubToken, githubRepo, githubOwner,
         wooUrl, wooConsumerKey, wooConsumerSecret,
         falabellaApiKey, falabellaSellerId,
-        smtpHost, smtpPort, smtpUser, smtpPassword, smtpFrom
+        smtpHost, smtpPort, smtpUser, smtpPassword, smtpFrom,
+        enviameApiKey, enviameEnvironment
     } = req.body;
 
     try {
@@ -461,6 +569,14 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
             updates.push(`smtp_from = $${idx++}`);
             values.push(smtpFrom);
         }
+        if (enviameApiKey !== undefined && enviameApiKey !== '************************') {
+            updates.push(`enviame_api_key = $${idx++}`);
+            values.push(encrypt(enviameApiKey));
+        }
+        if (enviameEnvironment !== undefined) {
+            updates.push(`enviame_environment = $${idx++}`);
+            values.push(enviameEnvironment);
+        }
 
         if (updates.length > 0) {
             const query = `UPDATE integration_settings SET ${updates.join(', ')} WHERE id = 1 RETURNING *`;
@@ -486,7 +602,9 @@ router.put('/integrations', authMiddleware, adminOnly, async (req, res) => {
                 falabellaSellerId: saved.falabella_seller_id,
                 smtpFrom: saved.smtp_from,
                 smtpGoogleEmail: saved.smtp_google_email,
-                hasGoogleSmtp: !!saved.smtp_google_refresh_token
+                hasGoogleSmtp: !!saved.smtp_google_refresh_token,
+                enviameApiKey: saved.enviame_api_key ? '************************' : '',
+                enviameEnvironment: saved.enviame_environment || 'stage'
             });
         } else {
             res.status(200).json({ message: "No se enviaron cambios." });
@@ -510,6 +628,16 @@ router.post('/test-meli', authMiddleware, adminOnly, async (req, res) => {
         client_id: meliAppId,
         client_secret: meliClientSecret
     }).toString();
+
+    const options = {
+        hostname: 'api.mercadolibre.com',
+        path: '/oauth/token',
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Content-Length': postData.length
+        }
+    };
 
     const reqApi = https.request(options, (resApi) => {
         let data = '';
@@ -679,6 +807,47 @@ router.post('/disconnect-google-smtp', authMiddleware, adminOnly, async (req, re
     } catch (err) {
         console.error(err);
         res.status(500).json({ message: 'Error al desconectar Google SMTP.' });
+    }
+});
+
+// GET /api/settings/communes - Public to allow initial load without token
+router.get('/communes', async (req, res) => {
+    try {
+        const { rows } = await db.query('SELECT * FROM active_communes ORDER BY name ASC');
+        res.json(rows);
+    } catch (err) {
+        console.error('Error fetching communes:', err);
+        res.status(500).json({ message: 'Error al obtener las comunas.' });
+    }
+});
+
+// POST /api/settings/communes
+router.post('/communes', authMiddleware, adminOnly, async (req, res) => {
+    const { communes } = req.body; // Expects array of { name: string, isActive: boolean }
+    if (!communes || !Array.isArray(communes)) {
+        return res.status(400).json({ message: 'Se esperaba un array de comunas.' });
+    }
+
+    const client = await db.getClient();
+    try {
+        await client.query('BEGIN');
+        for (const commune of communes) {
+            await client.query(
+                'UPDATE active_communes SET "isActive" = $1 WHERE name = $2',
+                [commune.isActive, commune.name.toUpperCase()]
+            );
+        }
+        await client.query('COMMIT');
+        
+        await logAction(req.user.id, req.user.name, 'UPDATE_ACTIVE_COMMUNES', { count: communes.length });
+        
+        res.json({ message: 'Comunas actualizadas con éxito.' });
+    } catch (err) {
+        await client.query('ROLLBACK');
+        console.error('Error updating communes:', err);
+        res.status(500).json({ message: 'Error al actualizar las comunas.' });
+    } finally {
+        client.release();
     }
 });
 

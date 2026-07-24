@@ -44,6 +44,8 @@ interface SettingsState {
     showPendingPaymentAlert: boolean;
     multiSelectEnabled: boolean;
     gisSectorsEnabled: boolean;
+    pendingNotificationsEnabled: boolean;
+    adminWhatsappNumber: string;
 }
 
 const SettingsPage: React.FC = () => {
@@ -71,6 +73,8 @@ const SettingsPage: React.FC = () => {
         showPendingPaymentAlert: false,
         multiSelectEnabled: true,
         gisSectorsEnabled: true,
+        pendingNotificationsEnabled: false,
+        adminWhatsappNumber: '',
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -112,6 +116,8 @@ const SettingsPage: React.FC = () => {
                 showPendingPaymentAlert: auth.systemSettings.showPendingPaymentAlert ?? false,
                 multiSelectEnabled: auth.systemSettings.multiSelectEnabled ?? true,
                 gisSectorsEnabled: auth.systemSettings.gisSectorsEnabled ?? true,
+                pendingNotificationsEnabled: auth.systemSettings.pendingNotificationsEnabled ?? false,
+                adminWhatsappNumber: auth.systemSettings.adminWhatsappNumber || '',
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -185,6 +191,8 @@ const SettingsPage: React.FC = () => {
                 showPendingPaymentAlert: settings.showPendingPaymentAlert,
                 multiSelectEnabled: settings.multiSelectEnabled,
                 gisSectorsEnabled: settings.gisSectorsEnabled,
+                pendingNotificationsEnabled: settings.pendingNotificationsEnabled,
+                adminWhatsappNumber: settings.adminWhatsappNumber,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -300,7 +308,9 @@ const SettingsPage: React.FC = () => {
             settings.recipientNotificationsEnabled !== originalSettings.recipientNotificationsEnabled ||
             settings.showPendingPaymentAlert !== originalSettings.showPendingPaymentAlert ||
             settings.multiSelectEnabled !== originalSettings.multiSelectEnabled ||
-            settings.gisSectorsEnabled !== originalSettings.gisSectorsEnabled
+            settings.gisSectorsEnabled !== originalSettings.gisSectorsEnabled ||
+            settings.pendingNotificationsEnabled !== originalSettings.pendingNotificationsEnabled ||
+            settings.adminWhatsappNumber !== originalSettings.adminWhatsappNumber
         );
     }, [settings, originalSettings]);
 
@@ -808,6 +818,41 @@ const SettingsPage: React.FC = () => {
                                             )}
                                         </button>
                                     ))}
+                                </div>
+
+                                <div className="pt-6 border-t border-[var(--border-primary)] space-y-4">
+                                    <h3 className="text-base font-bold text-[var(--text-primary)]">Notificaciones de Pendientes al Administrador</h3>
+                                    
+                                    <div className="flex items-center justify-between cursor-pointer py-2">
+                                        <div>
+                                            <h4 className="text-sm font-semibold text-[var(--text-secondary)]">Habilitar Mensajes a Administrador</h4>
+                                            <p className="text-xs text-[var(--text-muted)] max-w-md">Enviar una notificación automática vía WhatsApp al administrador cada vez que una entrega quede pendiente.</p>
+                                        </div>
+                                        <label className="relative inline-flex items-center cursor-pointer select-none">
+                                            <input 
+                                                type="checkbox" 
+                                                className="sr-only peer" 
+                                                checked={settings.pendingNotificationsEnabled}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, pendingNotificationsEnabled: e.target.checked }))}
+                                            />
+                                            <div className="w-14 h-8 bg-gray-200 rounded-full peer peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-offset-2 peer-focus:ring-[var(--brand-secondary)] dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-1 after:left-1 after:bg-white after:border-gray-300 after:border after:rounded-full after:h-6 after:w-6 after:transition-all dark:border-gray-600 peer-checked:bg-[var(--brand-primary)]"></div>
+                                        </label>
+                                    </div>
+
+                                    {settings.pendingNotificationsEnabled && (
+                                        <div className="space-y-2 animate-fade-in">
+                                            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Número de WhatsApp del Administrador</label>
+                                            <input
+                                                type="text"
+                                                name="adminWhatsappNumber"
+                                                value={settings.adminWhatsappNumber}
+                                                onChange={(e) => setSettings(prev => ({ ...prev, adminWhatsappNumber: e.target.value }))}
+                                                placeholder="Ej: +56912345678"
+                                                className="w-full max-w-md px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] text-sm"
+                                            />
+                                            <p className="text-[11px] text-[var(--text-muted)]">Ingresa el número con el código de país (ej. +569...)</p>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         )}

@@ -54,6 +54,8 @@ export interface SystemSettings {
     showPendingPaymentAlert?: boolean;
     multiSelectEnabled?: boolean;
     gisSectorsEnabled?: boolean;
+    pendingNotificationsEnabled?: boolean;
+    adminWhatsappNumber?: string;
 }
 
 export interface ZonePricing {
