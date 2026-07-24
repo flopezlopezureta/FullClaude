@@ -327,22 +327,22 @@ const SettingsPage: React.FC = () => {
             {errorMessage && <div className="bg-[var(--error-bg)] border border-[var(--error-border)] text-[var(--error-text)] px-4 py-3 rounded relative mb-4" role="alert">{errorMessage}</div>}
 
             {/* TAB NAVIGATION BAR */}
-            <div className="flex flex-wrap border-b border-[var(--border-primary)] gap-2 pb-3">
+            <div className="flex flex-wrap border-b border-[var(--border-primary)] gap-1 pb-3">
                 {[
-                    { id: 'general', label: 'General', icon: <IconSettings className="w-4 h-4" /> },
-                    { id: 'impresion', label: 'Impresión', icon: <IconPrinter className="w-4 h-4" /> },
-                    { id: 'botones', label: 'Bot. Config.', icon: <IconChecklist className="w-4 h-4" /> },
-                    { id: 'retiro', label: 'Modo Retiro', icon: <IconTruck className="w-4 h-4" /> },
-                    { id: 'mensajeria', label: 'Mensajería', icon: <IconMail className="w-4 h-4" /> },
-                    ...(auth?.user?.role === Role.Admin ? [{ id: 'comunas', label: 'Comunas', icon: <IconMap className="w-4 h-4" /> }] : []),
-                    { id: 'apariencia', label: 'Apariencia', icon: <IconLayoutDashboard className="w-4 h-4" /> },
-                    ...(auth?.user?.email === 'admin' ? [{ id: 'seguridad', label: 'Seguridad y Datos', icon: <IconAlertTriangle className="w-4 h-4 text-amber-500" /> }] : [])
+                    { id: 'general', label: 'General', icon: <IconSettings className="w-3.5 h-3.5" /> },
+                    { id: 'impresion', label: 'Impresión', icon: <IconPrinter className="w-3.5 h-3.5" /> },
+                    { id: 'botones', label: 'Bot. Conf.', icon: <IconChecklist className="w-3.5 h-3.5" /> },
+                    { id: 'retiro', label: 'Retiro', icon: <IconTruck className="w-3.5 h-3.5" /> },
+                    { id: 'mensajeria', label: 'Mensajes', icon: <IconMail className="w-3.5 h-3.5" /> },
+                    ...(auth?.user?.role === Role.Admin ? [{ id: 'comunas', label: 'Comunas', icon: <IconMap className="w-3.5 h-3.5" /> }] : []),
+                    { id: 'apariencia', label: 'Temas', icon: <IconLayoutDashboard className="w-3.5 h-3.5" /> },
+                    ...(auth?.user?.email === 'admin' ? [{ id: 'seguridad', label: 'Seguridad', icon: <IconAlertTriangle className="w-3.5 h-3.5 text-amber-500" /> }] : [])
                 ].map(tab => (
                     <button
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg whitespace-nowrap shrink-0 transition-all duration-200 ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
+                        className={`flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-bold rounded-lg whitespace-nowrap shrink-0 transition-all duration-200 ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
                     >
                         {tab.icon}
                         {tab.label}
