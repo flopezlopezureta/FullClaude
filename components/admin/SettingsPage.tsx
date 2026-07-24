@@ -342,7 +342,7 @@ const SettingsPage: React.FC = () => {
                         key={tab.id}
                         type="button"
                         onClick={() => setActiveTab(tab.id as any)}
-                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg whitespace-nowrap transition-all duration-200 ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
+                        className={`flex items-center gap-2 px-4 py-2.5 text-sm font-bold rounded-lg whitespace-nowrap shrink-0 transition-all duration-200 ${activeTab === tab.id ? 'bg-[var(--brand-primary)] text-white shadow-md' : 'text-[var(--text-secondary)] hover:bg-[var(--background-muted)]'}`}
                     >
                         {tab.icon}
                         {tab.label}
