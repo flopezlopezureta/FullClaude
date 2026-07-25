@@ -456,4 +456,7 @@ export const api = {
 
   // Projection
   getPackageProjection: (date: string) => get<any[]>(`/packages/projection?date=${encodeURIComponent(date)}`),
+
+  // Test WhatsApp
+  testWhatsapp: (phone: string, apikey: string) => post<{message: string}>('/settings/test-whatsapp', { phone, apikey }),
 };

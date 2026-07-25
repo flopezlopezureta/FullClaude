@@ -854,4 +854,31 @@ router.post('/communes', authMiddleware, adminOnly, async (req, res) => {
     }
 });
 
+// POST /api/settings/test-whatsapp
+router.post('/test-whatsapp', authMiddleware, adminOnly, async (req, res) => {
+    const { phone, apikey } = req.body;
+    if (!phone || !apikey) {
+        return res.status(400).json({ message: 'Se requiere el número de teléfono y el API Key.' });
+    }
+
+    const targetPhone = phone.replace(/\s+/g, '');
+    const text = `🧪 *Prueba de FullEnvíos* 🧪\n¡Hola! Esta es una prueba de tu integración con CallMeBot WhatsApp para alertas de administrador. Si recibes esto, la configuración es correcta.`;
+    const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(targetPhone)}&text=${encodeURIComponent(text)}&apikey=${encodeURIComponent(apikey)}`;
+
+    try {
+        console.log(`[CallMeBot TEST] Sending test to ${targetPhone}...`);
+        const response = await fetch(url);
+        if (response.ok) {
+            return res.json({ message: 'Mensaje de prueba enviado con éxito. Revisa tu WhatsApp.' });
+        } else {
+            const errText = await response.text();
+            console.error(`[CallMeBot TEST Error] Status: ${response.status}, Response: ${errText}`);
+            return res.status(400).json({ message: `Error del bot: ${errText || 'Respuesta no válida del servidor de CallMeBot.'}` });
+        }
+    } catch (err) {
+        console.error('[CallMeBot TEST Connection Error]:', err.message);
+        return res.status(500).json({ message: `Error de conexión: ${err.message}` });
+    }
+});
+
 module.exports = router;

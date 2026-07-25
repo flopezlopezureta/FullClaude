@@ -83,6 +83,7 @@ const SettingsPage: React.FC = () => {
     const [confirmPassword, setConfirmPassword] = useState('');
     const [successMessage, setSuccessMessage] = useState('');
     const [errorMessage, setErrorMessage] = useState('');
+    const [isTestingWhatsapp, setIsTestingWhatsapp] = useState(false);
     const [showPassword, setShowPassword] = useState(false);
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [isDeleteDbModalOpen, setIsDeleteDbModalOpen] = useState(false);
@@ -202,6 +203,22 @@ const SettingsPage: React.FC = () => {
             showSuccess('Configuración general y de plan actualizada con éxito.');
         } catch (error) {
             showError('Error al actualizar la configuración.');
+        }
+    };
+
+    const handleTestWhatsapp = async () => {
+        if (!settings.adminWhatsappNumber || !settings.adminCallmebotApiKey) {
+            showError('Por favor ingresa el número de WhatsApp y el API Key de CallMeBot.');
+            return;
+        }
+        setIsTestingWhatsapp(true);
+        try {
+            const res = await api.testWhatsapp(settings.adminWhatsappNumber, settings.adminCallmebotApiKey);
+            showSuccess(res.message || 'Mensaje de prueba enviado con éxito. Revisa tu WhatsApp.');
+        } catch (error: any) {
+            showError(error.message || 'Error al enviar el mensaje de prueba.');
+        } finally {
+            setIsTestingWhatsapp(false);
         }
     };
     
@@ -861,14 +878,24 @@ const SettingsPage: React.FC = () => {
 
                                             <div className="space-y-2 pt-2">
                                                 <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">API Key de CallMeBot del Administrador</label>
-                                                <input
-                                                    type="text"
-                                                    name="adminCallmebotApiKey"
-                                                    value={settings.adminCallmebotApiKey}
-                                                    onChange={(e) => setSettings(prev => ({ ...prev, adminCallmebotApiKey: e.target.value }))}
-                                                    placeholder="Ingresa tu apikey de CallMeBot"
-                                                    className="w-full max-w-md px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] text-sm"
-                                                />
+                                                <div className="flex gap-2 max-w-md">
+                                                    <input
+                                                        type="text"
+                                                        name="adminCallmebotApiKey"
+                                                        value={settings.adminCallmebotApiKey}
+                                                        onChange={(e) => setSettings(prev => ({ ...prev, adminCallmebotApiKey: e.target.value }))}
+                                                        placeholder="Ingresa tu apikey de CallMeBot"
+                                                        className="flex-1 px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] text-sm"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={handleTestWhatsapp}
+                                                        disabled={isTestingWhatsapp || !settings.adminWhatsappNumber || !settings.adminCallmebotApiKey}
+                                                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md text-sm font-semibold transition-colors disabled:opacity-50 flex items-center gap-1.5"
+                                                    >
+                                                        {isTestingWhatsapp ? 'Probando...' : 'Probar'}
+                                                    </button>
+                                                </div>
                                                 <p className="text-[11px] text-[var(--text-muted)]">
                                                     Para obtener tu API Key gratuita, envía un mensaje de WhatsApp a <strong>+34 644 20 23 66</strong> (número oficial de CallMeBot) indicando: <code>I allow callmebot to send me messages</code>
                                                 </p>
