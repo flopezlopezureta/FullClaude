@@ -337,13 +337,10 @@ const NotificationService = {
         }
     },
 
-    /**
-     * Sends a WhatsApp notification to the administrator for a pending/problem delivery.
-     */
     async notifyAdminPendingDelivery(packageId, status, reason) {
         try {
             // 1. Get system settings for pending admin notifications
-            const { rows: settingsRows } = await db.query('SELECT "pendingNotificationsEnabled", "adminWhatsappNumber", "companyName" FROM system_settings WHERE id = 1');
+            const { rows: settingsRows } = await db.query('SELECT "pendingNotificationsEnabled", "adminWhatsappNumber", "adminCallmebotApiKey", "companyName" FROM system_settings WHERE id = 1');
             const settings = settingsRows.length > 0 ? settingsRows[0] : null;
             if (!settings || !settings.pendingNotificationsEnabled || !settings.adminWhatsappNumber) {
                 return;
@@ -376,11 +373,30 @@ const NotificationService = {
                               `• *Motivo:* ${reason || 'No especificado'}`;
 
             // 5. Send message to Administrator phone number
-            const targetPhone = settings.adminWhatsappNumber;
-            if (integration && integration.whatsapp_api_key) {
-                console.log(`[WhatsApp API - ADMIN PENDING] Sending to ${targetPhone}: ${waMessage}`);
+            const targetPhone = settings.adminWhatsappNumber.replace(/\s+/g, '');
+            const apiKey = settings.adminCallmebotApiKey;
+
+            if (apiKey) {
+                console.log(`[CallMeBot] Sending pending alert to ${targetPhone}...`);
+                const url = `https://api.callmebot.com/whatsapp.php?phone=${encodeURIComponent(targetPhone)}&text=${encodeURIComponent(waMessage)}&apikey=${encodeURIComponent(apiKey)}`;
+                try {
+                    const response = await fetch(url);
+                    if (response.ok) {
+                        console.log(`[CallMeBot] Alert successfully sent to ${targetPhone}`);
+                    } else {
+                        const errText = await response.text();
+                        console.error(`[CallMeBot Error] Status: ${response.status}, Response: ${errText}`);
+                    }
+                } catch (fetchErr) {
+                    console.error('[CallMeBot Connection Error] Failed to call CallMeBot API:', fetchErr.message);
+                }
             } else {
-                console.log(`[WA SIMULATION - ADMIN PENDING] To: ${targetPhone} | Message: ${waMessage}`);
+                // Fallback to console simulation
+                if (integration && integration.whatsapp_api_key) {
+                    console.log(`[WhatsApp API - ADMIN PENDING] Sending to ${targetPhone}: ${waMessage}`);
+                } else {
+                    console.log(`[WA SIMULATION - ADMIN PENDING] To: ${targetPhone} | Message: ${waMessage}`);
+                }
             }
         } catch (err) {
             console.error('Error in notifyAdminPendingDelivery:', err);

@@ -46,6 +46,7 @@ interface SettingsState {
     gisSectorsEnabled: boolean;
     pendingNotificationsEnabled: boolean;
     adminWhatsappNumber: string;
+    adminCallmebotApiKey: string;
 }
 
 const SettingsPage: React.FC = () => {
@@ -75,6 +76,7 @@ const SettingsPage: React.FC = () => {
         gisSectorsEnabled: true,
         pendingNotificationsEnabled: false,
         adminWhatsappNumber: '',
+        adminCallmebotApiKey: '',
     });
     const [originalSettings, setOriginalSettings] = useState<SettingsState | null>(null);
     const [password, setPassword] = useState('');
@@ -118,6 +120,7 @@ const SettingsPage: React.FC = () => {
                 gisSectorsEnabled: auth.systemSettings.gisSectorsEnabled ?? true,
                 pendingNotificationsEnabled: auth.systemSettings.pendingNotificationsEnabled ?? false,
                 adminWhatsappNumber: auth.systemSettings.adminWhatsappNumber || '',
+                adminCallmebotApiKey: auth.systemSettings.adminCallmebotApiKey || '',
             };
             setSettings(loadedSettings);
             setOriginalSettings(loadedSettings);
@@ -193,6 +196,7 @@ const SettingsPage: React.FC = () => {
                 gisSectorsEnabled: settings.gisSectorsEnabled,
                 pendingNotificationsEnabled: settings.pendingNotificationsEnabled,
                 adminWhatsappNumber: settings.adminWhatsappNumber,
+                adminCallmebotApiKey: settings.adminCallmebotApiKey,
             });
             setOriginalSettings(settings); 
             showSuccess('Configuración general y de plan actualizada con éxito.');
@@ -310,7 +314,8 @@ const SettingsPage: React.FC = () => {
             settings.multiSelectEnabled !== originalSettings.multiSelectEnabled ||
             settings.gisSectorsEnabled !== originalSettings.gisSectorsEnabled ||
             settings.pendingNotificationsEnabled !== originalSettings.pendingNotificationsEnabled ||
-            settings.adminWhatsappNumber !== originalSettings.adminWhatsappNumber
+            settings.adminWhatsappNumber !== originalSettings.adminWhatsappNumber ||
+            settings.adminCallmebotApiKey !== originalSettings.adminCallmebotApiKey
         );
     }, [settings, originalSettings]);
 
@@ -840,17 +845,34 @@ const SettingsPage: React.FC = () => {
                                     </div>
 
                                     {settings.pendingNotificationsEnabled && (
-                                        <div className="space-y-2 animate-fade-in">
-                                            <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Número de WhatsApp del Administrador</label>
-                                            <input
-                                                type="text"
-                                                name="adminWhatsappNumber"
-                                                value={settings.adminWhatsappNumber}
-                                                onChange={(e) => setSettings(prev => ({ ...prev, adminWhatsappNumber: e.target.value }))}
-                                                placeholder="Ej: +56912345678"
-                                                className="w-full max-w-md px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] text-sm"
-                                            />
-                                            <p className="text-[11px] text-[var(--text-muted)]">Ingresa el número con el código de país (ej. +569...)</p>
+                                        <div className="space-y-4 animate-fade-in">
+                                            <div className="space-y-2">
+                                                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">Número de WhatsApp del Administrador</label>
+                                                <input
+                                                    type="text"
+                                                    name="adminWhatsappNumber"
+                                                    value={settings.adminWhatsappNumber}
+                                                    onChange={(e) => setSettings(prev => ({ ...prev, adminWhatsappNumber: e.target.value }))}
+                                                    placeholder="Ej: +56912345678"
+                                                    className="w-full max-w-md px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] text-sm"
+                                                />
+                                                <p className="text-[11px] text-[var(--text-muted)]">Ingresa el número con el código de país (ej. +569...)</p>
+                                            </div>
+
+                                            <div className="space-y-2 pt-2">
+                                                <label className="block text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider">API Key de CallMeBot del Administrador</label>
+                                                <input
+                                                    type="text"
+                                                    name="adminCallmebotApiKey"
+                                                    value={settings.adminCallmebotApiKey}
+                                                    onChange={(e) => setSettings(prev => ({ ...prev, adminCallmebotApiKey: e.target.value }))}
+                                                    placeholder="Ingresa tu apikey de CallMeBot"
+                                                    className="w-full max-w-md px-3 py-2 border border-[var(--border-secondary)] rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--brand-secondary)] bg-[var(--background-secondary)] text-[var(--text-primary)] text-sm"
+                                                />
+                                                <p className="text-[11px] text-[var(--text-muted)]">
+                                                    Para obtener tu API Key gratuita, envía un mensaje de WhatsApp a <strong>+34 644 20 23 66</strong> (número oficial de CallMeBot) indicando: <code>I allow callmebot to send me messages</code>
+                                                </p>
+                                            </div>
                                         </div>
                                     )}
                                 </div>

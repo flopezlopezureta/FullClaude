@@ -56,6 +56,7 @@ export interface SystemSettings {
     gisSectorsEnabled?: boolean;
     pendingNotificationsEnabled?: boolean;
     adminWhatsappNumber?: string;
+    adminCallmebotApiKey?: string;
 }
 
 export interface ZonePricing {

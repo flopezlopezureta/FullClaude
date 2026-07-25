@@ -788,6 +788,12 @@ async function initializeDatabase() {
         } catch (err) {
             if (err.code !== '42701') { console.error('Error during settings migration (adminWhatsappNumber):', err); }
         }
+        try {
+            await db.query('ALTER TABLE system_settings ADD COLUMN "adminCallmebotApiKey" TEXT DEFAULT \'\'');
+            console.log('MIGRATION APPLIED: Column "adminCallmebotApiKey" was added to "system_settings".');
+        } catch (err) {
+            if (err.code !== '42701') { console.error('Error during settings migration (adminCallmebotApiKey):', err); }
+        }
         // --- END MIGRATION SCRIPT ---
 
         console.log('Table "system_settings" is ready.');
