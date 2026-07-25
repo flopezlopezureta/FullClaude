@@ -343,7 +343,7 @@ const ReturnConfirmationModal: React.FC<ReturnConfirmationModalProps> = ({ pkg, 
                             </div>
                         )}
                         <p className="text-xs text-[var(--text-muted)]">
-                            Faltan {photosRemaining} foto{photosRemaining > 1 ? 's' : ''} requerida{photosRemaining > 1 ? 's' : ''}
+                            {photosRemaining > 1 ? 'Faltan' : 'Falta'} {photosRemaining} foto{photosRemaining > 1 ? 's' : ''} requerida{photosRemaining > 1 ? 's' : ''}
                         </p>
                     </div>
                 ) : (
