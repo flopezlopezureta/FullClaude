@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.6.99",
-  "versionComment": "Versión 2.6.99: Corrección de rango de fecha para alertas críticas y soporte de dateType='updated'.",
+  "version": "2.7.0",
+  "versionComment": "Versión 2.7.0: Fix final para el Centro de Alertas filtrando reasignaciones por assignedAt y duplicados por createdAt.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

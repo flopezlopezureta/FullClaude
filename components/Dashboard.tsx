@@ -833,7 +833,13 @@ const Dashboard: React.FC = () => {
                                : 'REPROGRAMADO'}
                       </span>
                       <span className="text-[10px] font-bold text-gray-400">
-                        {new Date(pkg.updatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(
+                          pkg.isDuplicate 
+                            ? pkg.createdAt 
+                            : pkg.isReassigned 
+                              ? (pkg.assignedAt || pkg.updatedAt) 
+                              : pkg.updatedAt
+                        ).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                       </span>
                    </div>
                    
