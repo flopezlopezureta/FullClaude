@@ -21,7 +21,7 @@ PENDRIVE_DIR="/mnt/d/respaldos"        # Ruta donde se monta el pendrive USB (Un
 LOCAL_FALLBACK_DIR="/opt/backups/local"  # Directorio local en el servidor (por si se desconecta el USB)
 
 # --- CONFIGURACIÓN DE HISTORIAL ---
-DIAS_HISTORIAL=30                        # Cuántos días de historial mantener antes de borrar
+RESPALDOS_A_MANTENER=2                   # Cuántos respaldos conservar (actual + anterior)
 
 # --- INICIO DEL PROCESO ---
 echo "[$(date)] Iniciando respaldo de la base de datos..."
@@ -53,13 +53,16 @@ docker exec -t "$DB_CONTAINER" pg_dump -U "$DB_USER" -d "$DB_NAME" | gzip > "$FI
 # 3. Validar generación correcta del archivo
 if [ -f "$FINAL_FILE" ] && [ -s "$FINAL_FILE" ]; then
     echo "¡Copia de seguridad completada con éxito! Archivo: $FINAL_FILE"
-    
-    # 4. Limpieza automática del historial antiguo (mantiene solo los últimos 30 respaldos)
-    echo "Limpiando copias de seguridad de más de $DIAS_HISTORIAL días en el destino actual..."
-    find "$TARGET_DIR" -type f -name "*.sql.gz" -mtime +$DIAS_HISTORIAL -delete
-    echo "Limpieza completada."
+
+    # 4. Limpieza automática: conservar solo los últimos N respaldos
+    # Lista todos los .sql.gz ordenados del más nuevo al más viejo, elimina los sobrantes
+    echo "Conservando solo los últimos $RESPALDOS_A_MANTENER respaldos en: $TARGET_DIR"
+    ls -t "$TARGET_DIR"/*.sql.gz 2>/dev/null | tail -n +$((RESPALDOS_A_MANTENER + 1)) | xargs -r rm --
+    echo "Limpieza completada. Respaldos actuales:"
+    ls -lh "$TARGET_DIR"/*.sql.gz 2>/dev/null
 else
     echo "❌ ERROR CRÍTICO: Falló la creación de la copia de seguridad o el archivo generado está vacío."
+    # No eliminar respaldos anteriores si el nuevo falló
     exit 1
 fi
 
