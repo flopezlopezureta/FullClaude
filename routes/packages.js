@@ -188,8 +188,6 @@ async function buildPackageQuery(req) {
         
         if (dateType === 'egress') {
             whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
-        } else if (dateType === 'created') {
-            whereClauses.push(`p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}`);
         } else if (dateType === 'updated') {
             if (assignmentFilter === 'reassigned') {
                 whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
@@ -235,8 +233,6 @@ async function buildPackageQuery(req) {
         if (startDate) {
             if (dateType === 'egress') {
                 whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
-            } else if (dateType === 'created') {
-                whereClauses.push(`(p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
             } else if (dateType === 'updated') {
                 if (assignmentFilter === 'reassigned') {
                     whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
@@ -262,8 +258,6 @@ async function buildPackageQuery(req) {
             const endStr = end.toISOString().split('T')[0];
             if (dateType === 'egress') {
                 whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
-            } else if (dateType === 'created') {
-                whereClauses.push(`(p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
             } else if (dateType === 'updated') {
                 if (assignmentFilter === 'reassigned') {
                     whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
