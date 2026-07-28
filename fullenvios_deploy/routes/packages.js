@@ -2459,4 +2459,29 @@ router.get('/analytics/late-deliveries', authMiddleware, async (req, res) => {
     }
 });
 
+// [DEBUG] Temporary endpoint to check why packages from previous dates appear in alerts
+router.get('/sys/debug-reassigned', async (req, res) => {
+    try {
+        const { rows } = await db.query(`
+            SELECT id, "recipientName", status, "driverId", "assignedAt", "createdAt", "updatedAt", "isReassigned", "alertChecked"
+            FROM packages 
+            WHERE ("alertChecked" IS NULL OR "alertChecked" = false)
+              AND (status IN ('CANCELADO', 'REPROGRAMADO') OR "isDuplicate" = true OR "isReassigned" = true)
+            ORDER BY "updatedAt" DESC LIMIT 30
+        `);
+        
+        const enriched = [];
+        for (const pkg of rows) {
+            const events = await db.query('SELECT timestamp, status, description FROM tracking_events WHERE "packageId" = $1 ORDER BY timestamp DESC', [pkg.id]);
+            enriched.push({
+                package: pkg,
+                events: events.rows
+            });
+        }
+        res.json(enriched);
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
