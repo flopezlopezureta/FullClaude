@@ -1,0 +1,29 @@
+# Fullenvios Workspace Rules and Context
+
+## Project Architecture & Environments
+* **Production Workspace:** `Test1` (Git remote `origin` -> `flopezlopezureta/Test1`)
+* **Staging Workspace:** `Fullenvios2` / `CLIENTE2` (Git remote `clon` -> `flopezlopezureta/Fullenvios2`)
+* **Deployment Platform:** Self-hosted VPS managed with **Coolify** (deploys automatically via Docker container builds on git push).
+
+## Database Configuration
+* **Host:** `191.113.87.123`
+* **Port:** `5433`
+* **Database Name:** `fullenvios`
+* *Note:* Production and Staging run on separate database instances on this port. Local dev runs on `192.168.1.138:5432`.
+
+## Critical Business Logic Rules (Avoid Regressions)
+
+### 1. Dashboard Date Filtering Query
+* **Default Search (`dateType = 'created'` or unspecified):** Must query broadly across multiple timestamp columns to cover the operational day.
+  * SQL matching range: `(p."createdAt" >= START AND p."createdAt" < END) OR (p."updatedAt" >= START AND p."updatedAt" < END) OR (p."estimatedDelivery" >= START AND p."estimatedDelivery" < END)`.
+  * **WARNING:** Never restrict `dateType = 'created'` to strictly match only `p."createdAt"` for the main dashboard list query, as this hides active packages created on prior days.
+
+### 2. Alert Center Strict Filtering
+* **Reassignment Alerts (`isReassigned = true`):** Must filter dates strictly by `p."assignedAt"`. This column is untouched by background status sync polling.
+* **Duplicate Alerts (`isDuplicate = true`):** Must filter dates strictly by `p."createdAt"`.
+* **Cancellation Alerts (`status = CANCELADO`):** Uses `p."updatedAt"`. Safe because cancelled packages are finished and excluded from background polling.
+
+### 3. Driver Mobile App Deliveries
+* **Query Endpoint:** `/api/mobile/entregas`.
+* **Allowed Statuses:** Must always query `status IN ('PENDIENTE', 'EN_TRANSITO', 'ASIGNADO', 'PROBLEMA')`.
+  * **CRITICAL:** Do NOT omit `'ASIGNADO'`, otherwise newly assigned packages will be hidden from the driver's mobile app before their route starts.
