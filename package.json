@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.7.2",
-  "versionComment": "Versión 2.7.2: Restauración de búsqueda por defecto amplia (createdAt, updatedAt, estimatedDelivery) al usar dateType='created'.",
+  "version": "2.7.3",
+  "versionComment": "Versión 2.7.3: Añadido endpoint de diagnóstico de tamaño de base de datos (/sys/db-size).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

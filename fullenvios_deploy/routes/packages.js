@@ -2496,4 +2496,19 @@ router.get('/sys/debug-reassigned', async (req, res) => {
     }
 });
 
+router.get('/sys/db-size', async (req, res) => {
+    try {
+        const sizeRes = await db.query("SELECT pg_size_pretty(pg_database_size('fullenvios')) as size");
+        const countRes = await db.query("SELECT COUNT(*) as count FROM packages");
+        const eventsRes = await db.query("SELECT COUNT(*) as count FROM tracking_events");
+        res.json({
+            databaseSize: sizeRes.rows[0].size,
+            totalPackages: countRes.rows[0].count,
+            totalEvents: eventsRes.rows[0].count
+        });
+    } catch (err) {
+        res.status(500).json({ error: err.message });
+    }
+});
+
 module.exports = router;
