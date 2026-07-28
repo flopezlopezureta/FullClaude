@@ -2472,7 +2472,7 @@ router.get('/sys/debug-reassigned', async (req, res) => {
         
         const enriched = [];
         for (const pkg of rows) {
-            const events = await db.query('SELECT timestamp, status, description FROM tracking_events WHERE "packageId" = $1 ORDER BY timestamp DESC', [pkg.id]);
+            const events = await db.query('SELECT timestamp, status, details FROM tracking_events WHERE "packageId" = $1 ORDER BY timestamp DESC', [pkg.id]);
             enriched.push({
                 package: pkg,
                 events: events.rows
