@@ -894,6 +894,63 @@ async function initializeDatabase() {
             console.error('Warning: Failed to ensure database indexes:', idxErr.message);
         }
 
+        // --- DEDUPLICATE ACTIVE COMMUNES (e.g. PEÑALOLÉN vs PEÑALOLEN) ---
+        try {
+            const { normalizeCommune } = require('./utils/normUtil');
+            const { rows: dbCommunes } = await db.query('SELECT id, name, "isActive" FROM active_communes');
+            
+            const RM_COMMUNES = [
+                "SANTIAGO", "LAS CONDES", "VITACURA", "LO BARNECHEA", "PROVIDENCIA", "ÑUÑOA", "LA REINA", 
+                "MACUL", "PEÑALOLÉN", "LA FLORIDA", "SAN JOAQUÍN", "LA GRANJA", "SAN RAMÓN", "LA CISTERNA", 
+                "EL BOSQUE", "SAN MIGUEL", "LO ESPEJO", "PEDRO AGUIRRE CERDA", "CERRILLOS", "MAIPÚ", 
+                "ESTACIÓN CENTRAL", "QUINTA NORMAL", "LO PRADO", "CERRO NAVIA", "RENCA", "INDEPENDENCIA", 
+                "RECOLETA", "CONCHALÍ", "HUECHURABA", "QUILICURA", "PUDAHUEL", "LA PINTANA", "SAN BERNARDO", 
+                "PUENTE ALTO", "LAMPA", "COLINA", "BUIN", "PAINE", "PEÑAFLOR", "TALAGANTE", "MELIPILLA", 
+                "CURACAVÍ", "PIRQUE", "SAN JOSÉ DE MAIPO", "CALERA DE TANGO", "PADRE HURTADO", "EL MONTE", 
+                "ISLA DE MAIPO", "MARÍA PINTO", "SAN PEDRO", "ALHUÉ"
+            ];
+
+            const groups = {};
+            for (const c of dbCommunes) {
+                const norm = normalizeCommune(c.name);
+                if (!groups[norm]) {
+                    groups[norm] = [];
+                }
+                groups[norm].push(c);
+            }
+
+            for (const [normName, list] of Object.entries(groups)) {
+                if (list.length > 1) {
+                    let bestName = list[0].name;
+                    const canonicalMatch = RM_COMMUNES.find(rm => normalizeCommune(rm) === normName);
+                    if (canonicalMatch) {
+                        bestName = canonicalMatch;
+                    }
+                    const anyActive = list.some(c => c.isActive);
+                    const existingRow = list.find(c => c.name === bestName);
+                    if (existingRow) {
+                        await db.query('UPDATE active_communes SET "isActive" = $1 WHERE id = $2', [anyActive, existingRow.id]);
+                        const toDelete = list.filter(c => c.id !== existingRow.id).map(c => c.id);
+                        await db.query('DELETE FROM active_communes WHERE id = ANY($1)', [toDelete]);
+                    } else {
+                        const first = list[0];
+                        await db.query('UPDATE active_communes SET name = $1, "isActive" = $2 WHERE id = $3', [bestName, anyActive, first.id]);
+                        const toDelete = list.slice(1).map(c => c.id);
+                        if (toDelete.length > 0) {
+                            await db.query('DELETE FROM active_communes WHERE id = ANY($1)', [toDelete]);
+                        }
+                    }
+                }
+            }
+            console.log('✓ active_communes table deduplicated successfully.');
+        } catch (dedupErr) {
+            if (dedupErr.message && dedupErr.message.includes('relation "active_communes" does not exist')) {
+                // Table might not exist yet during initial schema run
+            } else {
+                console.error('Error deduplicating active_communes:', dedupErr);
+            }
+        }
+
         console.log('Database schema initialization complete.');
     } catch (err) {
         console.error('FATAL: Could not initialize database schema.', err);
