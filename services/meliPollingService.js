@@ -209,7 +209,7 @@ async function pollMeliPackages() {
         if (autoImportEnabled) {
             // Fetch active communes once per cycle
             const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
-            const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+            const activeCommunes = activeRows.map(r => normalizeCommune(r.name).toLowerCase());
             
             await autoImportMeliPackages(activeCommunes);
         }
@@ -766,7 +766,7 @@ async function cleanupOutOfZonePackages() {
     try {
         // Fetch active communes for cleanup
         const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
-        const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+        const activeCommunes = activeRows.map(r => normalizeCommune(r.name).toLowerCase());
         
         const fallbackRM = [
             'santiago', 'cerrillos', 'cerro navia', 'conchali', 'el bosque', 'estacion central', 

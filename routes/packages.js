@@ -686,9 +686,10 @@ router.post('/', authMiddleware, async (req, res) => {
 
     // [VALIDACION] Comunas Activas
     const { rows: activeCommunes } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
-    const activeCommuneNames = activeCommunes.map(c => c.name.toUpperCase());
+    const activeCommuneNames = activeCommunes.map(c => normalizeCommune(c.name));
     
-    if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(recipientCommune.toUpperCase().trim())) {
+    const normalizedRecipientCommune = normalizeCommune(recipientCommune);
+    if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(normalizedRecipientCommune)) {
         return res.status(400).json({ 
             message: `La comuna "${recipientCommune}" no está habilitada para repartos actualmente.` 
         });
@@ -787,7 +788,7 @@ router.post('/batch', authMiddleware, async (req, res) => {
 
     // Pre-fetch active communes for batch validation
     const { rows: activeCommunes } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
-    const activeCommuneNames = activeCommunes.map(c => c.name.toUpperCase());
+    const activeCommuneNames = activeCommunes.map(c => normalizeCommune(c.name));
 
     try {
         for (let i = 0; i < packages.length; i++) {
@@ -848,7 +849,8 @@ router.post('/batch', authMiddleware, async (req, res) => {
                 }
 
                 // [VALIDACION] Comunas Activas
-                if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(recipientCommune.toUpperCase().trim())) {
+                const normalizedRecipientCommune = normalizeCommune(recipientCommune);
+                if (activeCommuneNames.length > 0 && !activeCommuneNames.includes(normalizedRecipientCommune)) {
                     errors.push({
                         index: i,
                         recipientName: recipientName || 'Desconocido',

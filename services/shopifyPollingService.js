@@ -93,7 +93,7 @@ async function pollShopifyPackages() {
         if (autoImportEnabled) {
             // Fetch active communes once per cycle
             const { rows: activeRows } = await db.query('SELECT name FROM active_communes WHERE "isActive" = true');
-            const activeCommunes = activeRows.map(r => r.name.toLowerCase());
+            const activeCommunes = activeRows.map(r => normalizeCommune(r.name).toLowerCase());
             
             await autoImportShopifyPackages(activeCommunes);
         }
