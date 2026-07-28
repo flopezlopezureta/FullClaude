@@ -234,6 +234,7 @@ const Dashboard: React.FC = () => {
         statusFilter: 'CANCELADO', 
         startDate: targetDate, 
         endDate: targetDate,
+        dateType: 'updated',
         limit: 50, 
         excludeChecked 
       });
@@ -241,6 +242,7 @@ const Dashboard: React.FC = () => {
         statusFilter: 'REPROGRAMADO', 
         startDate: targetDate, 
         endDate: targetDate,
+        dateType: 'updated',
         limit: 50, 
         excludeChecked 
       });
@@ -248,6 +250,7 @@ const Dashboard: React.FC = () => {
         isDuplicate: 'true', 
         startDate: targetDate, 
         endDate: targetDate,
+        dateType: 'updated',
         limit: 50, 
         excludeChecked 
       });
@@ -255,6 +258,7 @@ const Dashboard: React.FC = () => {
         assignmentFilter: 'reassigned', 
         startDate: targetDate, 
         endDate: targetDate,
+        dateType: 'updated',
         limit: 50, 
         excludeChecked 
       });

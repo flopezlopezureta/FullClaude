@@ -188,6 +188,10 @@ async function buildPackageQuery(req) {
         
         if (dateType === 'egress') {
             whereClauses.push(`p."assignedAt" >= $${paramIndex} AND p."assignedAt" < $${paramIndex + 1}`);
+        } else if (dateType === 'created') {
+            whereClauses.push(`p."createdAt" >= $${paramIndex} AND p."createdAt" < $${paramIndex + 1}`);
+        } else if (dateType === 'updated') {
+            whereClauses.push(`p."updatedAt" >= $${paramIndex} AND p."updatedAt" < $${paramIndex + 1}`);
         } else if (driverFilter && req.user.role === 'DRIVER') {
             // [v2.6.5] Separar lógica: El Dashboard (hoy) usa filtro estricto, el Historial (rango de fechas) usa el filtro laxo original.
             if (startDate === endDate) {
@@ -225,6 +229,10 @@ async function buildPackageQuery(req) {
         if (startDate) {
             if (dateType === 'egress') {
                 whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
+            } else if (dateType === 'created') {
+                whereClauses.push(`(p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
+            } else if (dateType === 'updated') {
+                whereClauses.push(`(p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp`);
             } else {
                 whereClauses.push(`(
                     (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') >= $${paramIndex}::timestamp OR 
@@ -242,6 +250,10 @@ async function buildPackageQuery(req) {
             const endStr = end.toISOString().split('T')[0];
             if (dateType === 'egress') {
                 whereClauses.push(`(p."assignedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
+            } else if (dateType === 'created') {
+                whereClauses.push(`(p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
+            } else if (dateType === 'updated') {
+                whereClauses.push(`(p."updatedAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp`);
             } else {
                 whereClauses.push(`(
                     (p."createdAt" AT TIME ZONE 'UTC' AT TIME ZONE 'America/Santiago') < $${paramIndex}::timestamp OR 
