@@ -2,6 +2,45 @@
 
 Todos los cambios notables en este proyecto serán documentados en este archivo.
 
+---
+
+## 🔖 CONTEXTO DE SESIÓN — 28-07-2026 (guardar para retomar)
+
+### ✅ Completado hoy
+- **v2.7.1:** App móvil — se agregó estado `ASIGNADO` al endpoint de entregas del conductor.
+- **v2.7.2:** Dashboard — restaurada la búsqueda amplia de fechas (`createdAt` OR `updatedAt` OR `estimatedDelivery`).
+- **v2.7.3:** Se agregó endpoint de diagnóstico `GET /api/packages/sys/db-size` para consultar tamaño de BD.
+- **Script de respaldo:** Se cambió la retención de 30 días a **solo 2 respaldos** (actual + anterior).
+- **Commits pusheados:** `clon` (Fullenvios2.git = producción en Coolify) y `origin` (Test1.git).
+
+### ⏳ Pendiente para esta noche
+1. **Redeploy en Coolify** del servicio `fullenvios` → botón "Deploy" en el panel.
+   - Esto aplica v2.7.3 (endpoint `/sys/db-size`) y el nuevo script de respaldo.
+   - Hay ~1 min de downtime. Hacerlo de noche cuando no haya operaciones.
+2. **Consultar tamaño real de BD** → `https://fullenvios.selcom.cl/api/packages/sys/db-size`
+3. **Instalar rclone en el servidor** (vía Google Escritorio Remoto → "Desarrollo Selcom"):
+   ```bash
+   curl https://rclone.org/install.sh | sudo bash
+   rclone config   # nombre: gdrive, tipo: drive, autenticar con cuenta Google corporativa
+   rclone lsd gdrive:   # verificar que funciona
+   ```
+4. **Agregar subida automática a Google Drive** en `scripts/backup_db.sh` (pendiente de modificar).
+5. **Restaurar el cron** de respaldo automático a las 03:00 hrs (lleva 57 días sin ejecutarse).
+
+### 📌 Datos clave del entorno
+- **Producción:** `https://fullenvios.selcom.cl` — Coolify apunta a `Fullenvios2.git` (remote `clon`)
+- **Servidor:** `191.113.87.123:5433` — acceso vía Google Chrome Remote Desktop ("Desarrollo Selcom")
+- **Google Drive:** 145 GB Workspace — 16.47 GB usados — **~128 GB libres** ✅ suficiente para respaldos
+- **Último respaldo válido en pendrive:** 31 mayo 2026 (~4.3 GB comprimido)
+- **Estimación tamaño BD actual comprimido:** ~10 GB
+
+---
+
+## [2.7.3] - 2026-07-28
+### Añadido
+* **Diagnóstico de BD:** Endpoint `GET /api/packages/sys/db-size` que retorna tamaño de base de datos, total de paquetes y total de eventos de tracking. Útil para estimar tamaño de respaldos.
+* **Script de respaldo:** Política de retención cambiada de 30 días a conservar solo los **2 respaldos más recientes**. El script NO borra respaldos anteriores si el nuevo falla.
+
 ## [2.7.2] - 2026-07-28
 ### Corregido
 * **Dashboard Principal:** Se restauró la consulta de fecha amplia original (`createdAt` OR `updatedAt` OR `estimatedDelivery`) para la opción por defecto `"created"`. Esto soluciona la regresión crítica de la versión 2.7.0 que ocultaba paquetes activos del día creados en fechas anteriores.
