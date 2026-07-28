@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.7.0",
-  "versionComment": "Versión 2.7.0: Fix final para el Centro de Alertas filtrando reasignaciones por assignedAt y duplicados por createdAt.",
+  "version": "2.7.1",
+  "versionComment": "Versión 2.7.1: Solución para visualización de pedidos en App de conductores incluyendo estado ASIGNADO.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

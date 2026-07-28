@@ -59,7 +59,7 @@ router.get('/entregas', authMiddleware, async (req, res) => {
                 "destLatitude" as latitud, 
                 "destLongitude" as longitud 
              FROM packages 
-             WHERE "driverId" = $1 AND status IN ('PENDIENTE', 'EN_TRANSITO')
+             WHERE "driverId" = $1 AND status IN ('PENDIENTE', 'EN_TRANSITO', 'ASIGNADO', 'PROBLEMA')
              ORDER BY "createdAt" ASC`,
             [driverId]
         );
