@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.4.10",
-  "versionComment": "Versión 2.4.9: Email automático al asignar conductor (estado ASIGNADO) con link de seguimiento.",
+  "version": "2.6.99",
+  "versionComment": "Versión 2.6.99: Corrección de rango de fecha para alertas críticas y soporte de dateType='updated'.",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
