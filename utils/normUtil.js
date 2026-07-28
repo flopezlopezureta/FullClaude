@@ -22,7 +22,15 @@ const normalizeCommune = (commune) => {
         'Ä': 'A', 'Ë': 'E', 'Ï': 'I', 'Ö': 'O', 'Ü': 'U'
     };
     
-    return normalized.split('').map(char => map[char] || char).join('');
+    let clean = normalized.split('').map(char => map[char] || char).join('');
+    
+    // Handle N/Ñ variations and common aliases
+    if (clean === 'PENALOLEN') return 'PEÑALOLEN';
+    if (clean === 'NUNOA') return 'ÑUÑOA';
+    if (clean === 'PENAFLOR') return 'PEÑAFLOR';
+    if (clean === 'SANTIAGO CENTRO' || clean === 'STGO CENTRO' || clean === 'STGO') return 'SANTIAGO';
+    
+    return clean;
 };
 
 /**
