@@ -4,19 +4,13 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 
 ---
 
-## 🔖 CONTEXTO DE SESIÓN — 28-07-2026 (guardar para retomar)
+## 🔖 CONTEXTO DE SESIÓN — 29-07-2026
 
 ### ✅ Completado hoy
-- **v2.7.1:** App móvil — se agregó estado `ASIGNADO` al endpoint de entregas del conductor.
-- **v2.7.2:** Dashboard — restaurada la búsqueda amplia de fechas (`createdAt` OR `updatedAt` OR `estimatedDelivery`).
-- **v2.7.3:** Se agregó endpoint de diagnóstico `GET /api/packages/sys/db-size` para consultar tamaño de BD.
-- **Script de respaldo:** Se cambió la retención de 30 días a **solo 2 respaldos** (actual + anterior).
-- **Commits pusheados:** `clon` (Fullenvios2.git = producción en Coolify) y `origin` (Test1.git).
+- **v2.7.4:** Análisis Logístico BI — corregido conteo de pendientes en `fleet-status`. El JOIN de estadísticas ahora incluye paquetes por `estimatedDelivery` OR `updatedAt` del día.
 
-### ⏳ Pendiente para esta noche
+### ⏳ Pendiente
 1. **Redeploy en Coolify** del servicio `fullenvios` → botón "Deploy" en el panel.
-   - Esto aplica v2.7.3 (endpoint `/sys/db-size`) y el nuevo script de respaldo.
-   - Hay ~1 min de downtime. Hacerlo de noche cuando no haya operaciones.
 2. **Consultar tamaño real de BD** → `https://fullenvios.selcom.cl/api/packages/sys/db-size`
 3. **Instalar rclone en el servidor** (vía Google Escritorio Remoto → "Desarrollo Selcom"):
    ```bash
@@ -25,7 +19,7 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
    rclone lsd gdrive:   # verificar que funciona
    ```
 4. **Agregar subida automática a Google Drive** en `scripts/backup_db.sh` (pendiente de modificar).
-5. **Restaurar el cron** de respaldo automático a las 03:00 hrs (lleva 57 días sin ejecutarse).
+5. **Restaurar el cron** de respaldo automático a las 03:00 hrs (lleva 58 días sin ejecutarse).
 
 ### 📌 Datos clave del entorno
 - **Producción:** `https://fullenvios.selcom.cl` — Coolify apunta a `Fullenvios2.git` (remote `clon`)
@@ -35,6 +29,10 @@ Todos los cambios notables en este proyecto serán documentados en este archivo.
 - **Estimación tamaño BD actual comprimido:** ~10 GB
 
 ---
+
+## [2.7.4] - 2026-07-29
+### Corregido
+* **Análisis Logístico BI (Fleet Monitor):** Se corrigió un bug en el endpoint `/api/users/fleet-status` donde los paquetes pendientes de un conductor **no eran contados** si su `updatedAt` era de un día anterior. El JOIN de estadísticas ahora filtra por `estimatedDelivery` OR `updatedAt` del día seleccionado, igual que el CTE de conductores activos. Esto garantiza que los paquetes asignados previamente pero programados para hoy sean visibles en la columna "Pendientes".
 
 ## [2.7.3] - 2026-07-28
 ### Añadido

@@ -309,7 +309,10 @@ router.get('/fleet-status', authMiddleware, adminOnly, async (req, res) => {
                     MAX("updatedAt") as last_pkg_update
                 FROM packages
                 WHERE "driverId" IS NOT NULL
-                AND "updatedAt" >= $1 AND "updatedAt" <= $2
+                AND (
+                    "estimatedDelivery" >= $1 AND "estimatedDelivery" <= $2
+                    OR "updatedAt" >= $1 AND "updatedAt" <= $2
+                )
                 GROUP BY "driverId"
             ) p_stats ON u.id = p_stats."driverId"
             WHERE u.status NOT IN ('ELIMINADO', 'DESHABILITADO', 'PENDIENTE')

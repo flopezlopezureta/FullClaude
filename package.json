@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.7.3",
-  "versionComment": "Versión 2.7.3: Añadido endpoint de diagnóstico de tamaño de base de datos (/sys/db-size).",
+  "version": "2.7.4",
+  "versionComment": "Versión 2.7.4: Corregido conteo de pendientes en el Análisis Logístico BI (fleet-status incluye estimatedDelivery OR updatedAt).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {
