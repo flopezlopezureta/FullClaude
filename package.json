@@ -1,7 +1,7 @@
 {
   "name": "full-envios-app",
-  "version": "2.8.4",
-  "versionComment": "Versión 2.8.4: Filtro de conductor agregado al Centro de Control de Flotas.",
+  "version": "2.8.5",
+  "versionComment": "Versión 2.8.5: Corrección de error de inicialización en UI (Cannot access s before init).",
   "private": true,
   "description": "Fixed ML auto-import type mismatch (sellerId), corrected Import Orders navigation ID, fixed mobile sidebar rendering above blur overlay, Added JSON QR Scan support.",
   "scripts": {

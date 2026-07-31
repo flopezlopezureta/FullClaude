@@ -63,8 +63,8 @@ export const FleetControlCenter: React.FC = () => {
   };
 
   const filteredClosures = selectedDriverId === 'ALL' ? data.closures : data.closures.filter((c: any) => c.driverId === selectedDriverId);
-  const filteredCadence = selectedDriverId === 'ALL' ? filteredCadence : filteredCadence.filter((c: any) => c.driverId === selectedDriverId);
-  const filteredChronometry = selectedDriverId === 'ALL' ? filteredChronometry : filteredChronometry.filter((c: any) => c.driverId === selectedDriverId);
+  const filteredCadence = selectedDriverId === 'ALL' ? data.cadence : data.cadence.filter((c: any) => c.driverId === selectedDriverId);
+  const filteredChronometry = selectedDriverId === 'ALL' ? data.chronometry : data.chronometry.filter((c: any) => c.driverId === selectedDriverId);
 
   const totalDrivers = filteredClosures.length;
   const closedInAppCount = filteredClosures.filter(c => c.hasClosedInApp).length;
