@@ -31,6 +31,7 @@ import ImportPackagesModal from './client/ImportPackagesModal';
 import BulkAssignDriverModal from './modals/BulkAssignDriverModal';
 import ExportFormatModal from './modals/ExportFormatModal';
 import QuickStatusModal from './modals/QuickStatusModal';
+import { FleetControlCenter } from './FleetControlCenter';
 import { exportToExcel, exportToCSV } from '../services/exportService';
 
 // Fix: declare Chart.js if needed
@@ -720,6 +721,9 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
+      {/* --- CENTRO DE CONTROL MULTIMODAL DE FLOTAS (STAGING) --- */}
+      <FleetControlCenter />
+
       {/* --- CRITICAL ALERTS CENTER --- */}
       {showCriticalAlerts && (
         <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up relative">
