@@ -227,7 +227,7 @@ const DashboardLayout: React.FC = () => {
         break;
 
       case 'fleet-control':
-        if (isAdmin || isOp) return { title: 'Control de Flotas & Cierres (Multimodal)', content: <FleetControlCenter /> };
+        if ((isAdmin || isOp) && (isSuperUser || systemSettings?.fleetControlEnabled !== false)) return { title: 'Control de Flotas & Cierres (Multimodal)', content: <FleetControlCenter /> };
         break;
 
       case 'delivery-analytics':

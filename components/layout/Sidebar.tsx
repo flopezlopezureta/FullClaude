@@ -118,7 +118,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
       label: 'Informes Operativos',
       icon: <IconBarChart className="h-6 w-6 text-indigo-600" />,
       subItems: [
-        { id: 'fleet-control', label: 'Control de Flotas & Cierres', icon: <IconTruck className="h-5 w-5 text-indigo-600" /> },
+        ...((isSuperUser || systemSettings?.fleetControlEnabled !== false) ? [{ id: 'fleet-control', label: 'Control de Flotas & Cierres', icon: <IconTruck className="h-5 w-5 text-indigo-600" /> }] : []),
         { id: 'delivery-analytics', label: 'Análisis Logístico (BI)', icon: <IconBarChart className="h-5 w-5" /> },
         { id: 'activity-audit', label: 'Auditoría de Actividad', icon: <IconFileText className="h-5 w-5 text-amber-600" /> },
         { id: 'late-deliveries', label: 'Auditoría Nocturna (>21h)', icon: <IconClock className="h-5 w-5 text-red-500" /> },
