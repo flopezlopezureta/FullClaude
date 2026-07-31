@@ -200,6 +200,7 @@ const SettingsPage: React.FC = () => {
                 showPendingPaymentAlert: settings.showPendingPaymentAlert,
                 multiSelectEnabled: settings.multiSelectEnabled,
                 gisSectorsEnabled: settings.gisSectorsEnabled,
+                fleetControlEnabled: settings.fleetControlEnabled,
                 pendingNotificationsEnabled: settings.pendingNotificationsEnabled,
                 adminWhatsappNumber: settings.adminWhatsappNumber,
                 adminCallmebotApiKey: settings.adminCallmebotApiKey,
@@ -335,6 +336,7 @@ const SettingsPage: React.FC = () => {
             settings.showPendingPaymentAlert !== originalSettings.showPendingPaymentAlert ||
             settings.multiSelectEnabled !== originalSettings.multiSelectEnabled ||
             settings.gisSectorsEnabled !== originalSettings.gisSectorsEnabled ||
+            settings.fleetControlEnabled !== originalSettings.fleetControlEnabled ||
             settings.pendingNotificationsEnabled !== originalSettings.pendingNotificationsEnabled ||
             settings.adminWhatsappNumber !== originalSettings.adminWhatsappNumber ||
             settings.adminCallmebotApiKey !== originalSettings.adminCallmebotApiKey
