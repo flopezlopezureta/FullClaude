@@ -721,9 +721,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div>
-      {/* --- CENTRO DE CONTROL MULTIMODAL DE FLOTAS (STAGING) --- */}
-      <FleetControlCenter />
-
       {/* --- CRITICAL ALERTS CENTER --- */}
       {showCriticalAlerts && (
         <div className="mb-6 overflow-hidden border border-red-200 rounded-xl bg-white shadow-xl animate-fade-in-up relative">
