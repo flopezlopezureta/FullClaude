@@ -71,7 +71,7 @@ export default function SetupScreen({ navigation }: any) {
   return (
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
       >
         <View style={styles.content}>

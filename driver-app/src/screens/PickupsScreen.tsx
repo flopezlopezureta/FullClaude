@@ -95,7 +95,10 @@ export default function PickupsScreen({ navigation }: any) {
           <View style={styles.actions}>
             <TouchableOpacity 
               style={styles.callBtn} 
-              onPress={() => Linking.openURL(`tel:${assignment.clientPhone}`)}
+              onPress={() => {
+                const cleanPhone = assignment.clientPhone.replace(/[^\d+]/g, '');
+                Linking.openURL(`tel:${cleanPhone}`);
+              }}
             >
               <Icon name="phone" size={20} color="#2563eb" />
             </TouchableOpacity>

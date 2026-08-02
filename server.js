@@ -85,6 +85,16 @@ async function startServer() {
       res.json({ version: pkg.version, comment: pkg.versionComment, repo: 'Fullenvios2 / CLIENTE2' });
     });
 
+    // Endpoint para obligar a actualizar la app de conductores
+    app.get('/api/driver/version', (req, res) => {
+      res.json({
+        latestVersion: "1.0.1",
+        forceUpdate: true,
+        // Asumiendo que el archivo APK se expone en la raíz estática o configuraremos Nginx/Express para ello
+        downloadUrl: "https://plataforma.fullenvios.cl/app-release.apk" 
+      });
+    });
+
     // [EMERGENCIA] Ruta directa para arreglar los egresos de hoy
     app.get('/api/fix-egress-today', async (req, res) => {
         try {

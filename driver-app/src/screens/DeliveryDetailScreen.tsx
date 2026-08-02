@@ -19,6 +19,7 @@ import { COLORS } from '../constants';
 import { MaterialCommunityIcons as Icon } from '@expo/vector-icons';
 import { AuthContext } from '../contexts/AuthContext';
 import * as ImagePicker from 'expo-image-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { PhotoService } from '../services/PhotoService';
 
@@ -52,8 +53,23 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
   const [settings, setSettings] = useState<any>(null);
   const [packageHistory, setPackageHistory] = useState<any[]>(pkg.events || pkg.history || []);
 
+  const DRAFT_KEY = `@delivery_draft_${pkg.id}`;
+
   // Sync settings and package details
   useEffect(() => {
+    const loadDraft = async () => {
+      try {
+        const draft = await AsyncStorage.getItem(DRAFT_KEY);
+        if (draft) {
+          const parsed = JSON.parse(draft);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            setPhotos(parsed);
+          }
+        }
+      } catch (e) {}
+    };
+    loadDraft();
+
     const fetchSettings = async () => {
       try {
         const data = await api.getSystemSettings();
@@ -101,7 +117,21 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
 
     fetchSettings();
     fetchPackageDetails();
-  }, []);
+  }, [pkg.id]);
+
+  // Persist photos to draft
+  useEffect(() => {
+    const saveDraft = async () => {
+      try {
+        if (photos.length > 0) {
+          await AsyncStorage.setItem(DRAFT_KEY, JSON.stringify(photos));
+        } else {
+          await AsyncStorage.removeItem(DRAFT_KEY);
+        }
+      } catch (e) {}
+    };
+    if (!isCompleted) saveDraft();
+  }, [photos, isCompleted]);
 
   // Helpers to get image URL
   const getImageUrl = (path: string) => {
@@ -178,6 +208,8 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
         photosBase64: photos
       });
       
+      try { await AsyncStorage.removeItem(DRAFT_KEY); } catch(e){}
+
       Alert.alert("¡Envío Entregado!", "La información se ha sincronizado correctamente", [
         { text: "Cerrar", onPress: () => navigation.goBack() }
       ]);
@@ -225,18 +257,43 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
     Linking.openURL(url).catch(() => Alert.alert('Error', 'WhatsApp no está instalado'));
   };
 
+  let headerBg = '#ffffff';
+  let headerText = '#0f172a';
+  let barStyle = 'dark-content';
+  
+  if (currentStatus === 'ENTREGADO') {
+    headerBg = '#22c55e';
+    headerText = '#ffffff';
+    barStyle = 'light-content';
+  } else if (currentStatus === 'CANCELADO' || currentStatus === 'PROBLEMA') {
+    headerBg = '#ef4444';
+    headerText = '#ffffff';
+    barStyle = 'light-content';
+  } else if (currentStatus === 'REPROGRAMADO') {
+    headerBg = '#f59e0b';
+    headerText = '#ffffff';
+    barStyle = 'light-content';
+  } else if (currentStatus === 'EN RUTA' || currentStatus === 'EN_RUTA') {
+    headerBg = '#3b82f6';
+    headerText = '#ffffff';
+    barStyle = 'light-content';
+  }
+
   return (
-    <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" />
-      <View style={styles.header}>
+    <View style={{ flex: 1, backgroundColor: headerBg }}>
+      <SafeAreaView style={{ flex: 0, backgroundColor: headerBg }} />
+      <StatusBar barStyle={barStyle as any} backgroundColor={headerBg} />
+      
+      <View style={[styles.header, { backgroundColor: headerBg, borderBottomColor: headerBg === '#ffffff' ? '#f1f5f9' : headerBg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Icon name="chevron-left" size={28} color="#0f172a" />
+          <Icon name="chevron-left" size={28} color={headerText} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>{isCompleted ? 'Resumen de Entrega' : 'Detalle de Entrega'}</Text>
+        <Text style={[styles.headerTitle, { color: headerText }]}>{isCompleted ? 'Resumen de Entrega' : 'Detalle de Entrega'}</Text>
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.content}>
+      <View style={styles.container}>
+        <ScrollView contentContainerStyle={styles.content}>
         {(pkg.status === 'CANCELADO' || pkg.status === 'REPROGRAMADO' || pkg.status === 'PROBLEMA') && (
           <View style={[
             styles.warningBanner, 
@@ -301,8 +358,11 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
           
            {!isCompleted && (
             <View style={styles.contactRow}>
-              <TouchableOpacity style={styles.contactBtn} onPress={() => Linking.openURL(`tel:${pkg.recipientPhone}`)}>
-                <Icon name="phone" size={22} color="#2563eb" />
+              <TouchableOpacity style={styles.contactBtn} onPress={() => {
+                const cleanPhone = pkg.recipientPhone.replace(/[^\d+]/g, '');
+                Linking.openURL(`tel:${cleanPhone}`);
+              }}>
+                <Icon name="phone" size={20} color="#fff" />
                 <Text style={styles.contactBtnText}>Llamar</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.contactBtn, styles.waBtn]} onPress={openWhatsApp}>
@@ -522,10 +582,11 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
                 {loading ? <ActivityIndicator color="#fff" /> : <Text style={styles.modalConfirmBtnText}>CONFIRMAR REPORTE</Text>}
               </TouchableOpacity>
             </View>
+            </View>
           </View>
-        </View>
-      </Modal>
-    </SafeAreaView>
+        </Modal>
+      </View>
+    </View>
   );
 }
 
@@ -533,7 +594,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#f8fafc',
-    paddingTop: Platform.OS === 'android' ? StatusBar.currentHeight : 0,
   },
   header: {
     flexDirection: 'row',
@@ -541,30 +601,27 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: 16,
     paddingVertical: 12,
-    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#f1f5f9',
   },
   headerTitle: {
     fontSize: 18,
     fontWeight: '700',
-    color: '#0f172a',
   },
   backBtn: { padding: 4 },
   content: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 120,
   },
   infoCard: {
     backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 24,
-    marginBottom: 20,
+    borderRadius: 20,
+    padding: 20,
+    marginBottom: 16,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: 12,
-    elevation: 3,
+    shadowRadius: 10,
+    elevation: 2,
   },
   idBadge: {
     backgroundColor: '#eff6ff',

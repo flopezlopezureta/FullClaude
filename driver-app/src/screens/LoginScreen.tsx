@@ -44,7 +44,7 @@ export default function LoginScreen() {
       style={styles.container}
     >
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.inner}
       >
         <View style={styles.logoContainer}>

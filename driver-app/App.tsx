@@ -14,19 +14,72 @@ import TestMLScreen from './src/screens/TestMLScreen';
 import ScannerScreen from './src/screens/ScannerScreen';
 import SetupScreen from './src/screens/SetupScreen';
 import DeliveryDetailScreen from './src/screens/DeliveryDetailScreen';
-import { ActivityIndicator, View, StyleSheet } from 'react-native';
+import { ActivityIndicator, View, StyleSheet, Text, TouchableOpacity, Linking, Alert } from 'react-native';
 import { COLORS } from './src/constants';
 import { StatusBar } from 'expo-status-bar';
+
+// Set this to the current version of the app when compiling. 
+// When the backend returns a higher latestVersion, it will force an update.
+const APP_VERSION = "1.0.1";
 
 const Stack = createNativeStackNavigator();
 
 function Navigation() {
   const { user, serverUrl, isLoading } = useContext(AuthContext);
+  const [needsUpdate, setNeedsUpdate] = React.useState(false);
+  const [updateUrl, setUpdateUrl] = React.useState("");
+
+  React.useEffect(() => {
+    if (!serverUrl) return;
+    
+    // Check for updates
+    const checkUpdate = async () => {
+      try {
+        const response = await fetch(`${serverUrl}/driver/version`);
+        const data = await response.json();
+        
+        if (data && data.latestVersion && data.latestVersion !== APP_VERSION) {
+           setNeedsUpdate(true);
+           setUpdateUrl(data.downloadUrl);
+        }
+      } catch (e) {
+        console.log("No se pudo verificar la versión", e);
+      }
+    };
+    
+    checkUpdate();
+  }, [serverUrl]);
 
   if (isLoading) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator size="large" color={COLORS.PRIMARY} />
+      </View>
+    );
+  }
+
+  if (needsUpdate) {
+    return (
+      <View style={styles.updateContainer}>
+        <StatusBar style="light" />
+        <View style={styles.updateCard}>
+          <Text style={styles.updateTitle}>⚠️ Actualización Requerida</Text>
+          <Text style={styles.updateText}>
+            Tu aplicación está desactualizada (v{APP_VERSION}). Es obligatorio descargar e instalar la nueva versión para continuar trabajando.
+          </Text>
+          <TouchableOpacity 
+            style={styles.updateButton} 
+            onPress={() => {
+              if (updateUrl) {
+                Linking.openURL(updateUrl);
+              } else {
+                Alert.alert("Error", "URL de descarga no disponible.");
+              }
+            }}
+          >
+            <Text style={styles.updateButtonText}>Descargar Nueva Versión</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   }
@@ -73,4 +126,50 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
+  updateContainer: {
+    flex: 1,
+    backgroundColor: COLORS.BACKGROUND,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  updateCard: {
+    backgroundColor: COLORS.CARD_BACKGROUND,
+    padding: 30,
+    borderRadius: 16,
+    alignItems: 'center',
+    width: '100%',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  updateTitle: {
+    fontSize: 22,
+    fontWeight: 'bold',
+    color: COLORS.ERROR,
+    marginBottom: 15,
+    textAlign: 'center',
+  },
+  updateText: {
+    fontSize: 16,
+    color: COLORS.TEXT,
+    textAlign: 'center',
+    marginBottom: 25,
+    lineHeight: 24,
+  },
+  updateButton: {
+    backgroundColor: COLORS.PRIMARY,
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  updateButtonText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+  }
 });

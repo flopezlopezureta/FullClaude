@@ -128,6 +128,16 @@ export const api = {
     return apiInstance.post('/geo/update-location', { driverId, latitude, longitude });
   },
 
+  syncMyMeliPackages: async () => {
+    try {
+      const response = await apiInstance.post('/packages/sync-my-meli');
+      return response.data;
+    } catch (err) {
+      console.warn("Failed to fast-sync meli packages", err);
+      return null;
+    }
+  },
+
   // Cierres de Jornada
   getClosureSummary: async () => {
     const response = await apiInstance.get('/closures/summary');
