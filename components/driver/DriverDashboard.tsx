@@ -193,7 +193,8 @@ const DriverDashboard: React.FC = () => {
 
   // Effect to automatically open delivery modal for packages delivered in ML that need photos
   useEffect(() => {
-    if (!auth?.systemSettings?.meliAutoPromptPhotos || auth?.user?.driverPermissions?.meliAutoPromptPhotos !== true) return;
+    if (!auth?.systemSettings?.meliAutoPromptPhotos) return;
+    if (auth?.user?.driverPermissions && auth.user.driverPermissions.meliAutoPromptPhotos === false) return;
     if (deliveringPackages && deliveringPackages.length > 0) return;
     if (reportingProblemPackage) return;
 

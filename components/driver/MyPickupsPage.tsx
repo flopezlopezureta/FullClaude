@@ -156,7 +156,7 @@ const MyPickupsPage: React.FC = () => {
                                                 {assignment.clientPhone && (
                                                     <div className="flex items-start gap-3 pl-2">
                                                         <IconPhone className="w-4 h-4 text-[var(--text-muted)] flex-shrink-0 mt-0.5"/>
-                                                        <a href={`tel:${assignment.clientPhone}`} className="text-[var(--text-secondary)] hover:text-[var(--brand-primary)]">
+                                                        <a href={`tel:${assignment.clientPhone.replace(/[^\d+]/g, '')}`} className="text-[var(--text-secondary)] hover:text-[var(--brand-primary)]">
                                                             {assignment.clientPhone}
                                                         </a>
                                                     </div>
