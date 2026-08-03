@@ -1127,7 +1127,7 @@ async function syncDriverPendingPackages(driverId) {
     // Optimizamos el caché de tokens para no sobrecargar la base de datos con peticiones iguales
     const tokenCache = new Map();
     const getTokenCached = async (creatorId, sourceAccountId) => {
-        const key = \`\${creatorId}_\${sourceAccountId || 'default'}\`;
+        const key = `${creatorId}_${sourceAccountId || 'default'}`;
         if (tokenCache.has(key)) return tokenCache.get(key);
         const token = await getValidMeliToken(creatorId, sourceAccountId);
         tokenCache.set(key, token);
@@ -1151,7 +1151,7 @@ async function syncDriverPendingPackages(driverId) {
                 
                 // Add event if it doesn't exist
                 const { rows: existingML } = await db.query(
-                    'SELECT id FROM tracking_events WHERE "packageId" = $1 AND status = \\'CIERRE_OFICIAL_ML\\'',
+                    'SELECT id FROM tracking_events WHERE "packageId" = $1 AND status = \'CIERRE_OFICIAL_ML\'',
                     [pkg.id]
                 );
                 if (existingML.length === 0) {
