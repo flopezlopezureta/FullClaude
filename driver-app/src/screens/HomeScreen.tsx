@@ -53,19 +53,12 @@ const MENU_ITEMS = [
     icon: 'history', 
     color: '#475569' 
   },
-  { 
-    id: 'Closure', 
-    title: '7. Cierre', 
-    subtitle: 'FIN DE RUTA', 
-    icon: 'check-all', 
-    color: '#000000' 
-  },
-  { 
-    id: 'TestML', 
-    title: 'Test ML Flex', 
-    subtitle: 'PRUEBA LECTURA', 
-    icon: 'flash', 
-    color: '#eab308' 
+  {
+    id: 'Closure',
+    title: '7. Cierre',
+    subtitle: 'FIN DE RUTA',
+    icon: 'check-all',
+    color: '#000000'
   },
 ];
 
