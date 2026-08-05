@@ -620,6 +620,33 @@ async function addTrackingEvent(packageId, status, location, details) {
     );
 }
 
+// --- Lightweight in-memory caches for the high-frequency dispatch endpoint ---
+// Under heavy concurrent scanning (many auxiliares / drivers dispatching at once),
+// re-querying a driver's name and a rarely-changing system setting on every single
+// scan adds avoidable DB round-trips. Same short-TTL-cache pattern already used by
+// services/timeService.js for the system timezone.
+const _driverNameCache = new Map(); // driverId -> { name, ts }
+const _DRIVER_NAME_CACHE_TTL = 5 * 60 * 1000; // 5 min
+async function getCachedDriverName(driverId) {
+    if (!driverId) return null;
+    const cached = _driverNameCache.get(driverId);
+    if (cached && (Date.now() - cached.ts) < _DRIVER_NAME_CACHE_TTL) return cached.name;
+    const { rows } = await db.query('SELECT name FROM users WHERE id = $1', [driverId]);
+    const name = rows[0]?.name || null;
+    if (name) _driverNameCache.set(driverId, { name, ts: Date.now() });
+    return name;
+}
+
+let _saveFlexLabelPhotoCache = { value: false, ts: 0 };
+const _SETTINGS_CACHE_TTL = 60 * 1000; // 1 min
+async function getCachedSaveFlexLabelPhoto() {
+    if (Date.now() - _saveFlexLabelPhotoCache.ts < _SETTINGS_CACHE_TTL) return _saveFlexLabelPhotoCache.value;
+    const { rows } = await db.query('SELECT "saveFlexLabelPhoto" FROM system_settings WHERE id = 1');
+    const value = rows.length > 0 ? rows[0].saveFlexLabelPhoto : false;
+    _saveFlexLabelPhotoCache = { value, ts: Date.now() };
+    return value;
+}
+
 // GET /api/packages/reports/flex-discrepancies
 router.get('/reports/flex-discrepancies', authMiddleware, async (req, res) => {
     if (req.user.role !== 'ADMIN') {
@@ -1343,16 +1370,21 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
             flexCodeToSave = id;
         }
 
-        const { rows: driverRows } = await db.query('SELECT name FROM users WHERE id = $1', [driverId]);
-        if (driverRows.length === 0) return res.status(404).json({ message: 'Conductor no encontrado.' });
-        const driverName = driverRows[0].name;
+        const isReassigningDriver = currentPkg.driverId && currentPkg.driverId !== driverId;
 
-        let details = `Paquete despachado por ${driverName}.`;
-        if (currentPkg.driverId && currentPkg.driverId !== driverId) {
-            const { rows: oldDriverRows } = await db.query('SELECT name FROM users WHERE id = $1', [currentPkg.driverId]);
-            const oldDriverName = oldDriverRows[0]?.name || 'desconocido';
-            details = `Paquete re-asignado de ${oldDriverName} a ${driverName}.`;
-        }
+        // Independent lookups run in parallel instead of serially, and the driver name /
+        // setting are cached (see getCachedDriverName / getCachedSaveFlexLabelPhoto above)
+        // to cut DB round-trips under high concurrent scanning load.
+        const [driverName, oldDriverName, saveFlexLabelPhoto] = await Promise.all([
+            getCachedDriverName(driverId),
+            isReassigningDriver ? getCachedDriverName(currentPkg.driverId) : Promise.resolve(null),
+            getCachedSaveFlexLabelPhoto()
+        ]);
+        if (!driverName) return res.status(404).json({ message: 'Conductor no encontrado.' });
+
+        const details = isReassigningDriver
+            ? `Paquete re-asignado de ${oldDriverName || 'desconocido'} a ${driverName}.`
+            : `Paquete despachado por ${driverName}.`;
 
         // If flexCode provided, add it to notes as requested
         let notesUpdate = '';
@@ -1363,11 +1395,7 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         const isFlexed = currentPkg.source === 'MERCADO_LIBRE';
         const now = new Date();
 
-        // Check if saveFlexLabelPhoto is enabled in system settings
-        const { rows: settingsRows } = await db.query('SELECT "saveFlexLabelPhoto" FROM system_settings WHERE id = 1');
-        const saveFlexLabelPhoto = settingsRows.length > 0 ? settingsRows[0].saveFlexLabelPhoto : false;
-
-        const isReassignedVal = (currentPkg.driverId && currentPkg.driverId !== driverId) ? true : (currentPkg.isReassigned || false);
+        const isReassignedVal = isReassigningDriver ? true : (currentPkg.isReassigned || false);
 
         const { rows } = await db.query(
             'UPDATE packages SET "driverId" = $1, status = $2, "updatedAt" = $3, "meliFlexCode" = $4, "flexLabelPhotoBase64" = $5, "isFlexed" = $6, "flexedAt" = CASE WHEN $6 = true AND "flexedAt" IS NULL THEN $3 ELSE "flexedAt" END, notes = COALESCE(notes, \'\') || $7, "assignedAt" = $3, "isReassigned" = $8, "alertChecked" = false, "isDuplicate" = false WHERE id = $9 RETURNING *',
@@ -1375,23 +1403,25 @@ router.post('/:id/dispatch', authMiddleware, dispatchAllowed, async (req, res) =
         );
 
         await addTrackingEvent(realId, 'EN_TRANSITO', 'Centro de Distribución', details + (flexCode ? ` (QR: ${flexCode})` : ''));
-        
-        await logAction(req.user.id, req.user.name, 'DISPATCH_PACKAGE', { packageId: realId, driverId });
+
+        // Audit log write doesn't need to block the scan response.
+        logAction(req.user.id, req.user.name, 'DISPATCH_PACKAGE', { packageId: realId, driverId });
 
         const updatedPkg = rows[0];
-        
+
         // Remove heavy photo fields from the scan response to save bandwidth
         if (updatedPkg) {
             delete updatedPkg.flexLabelPhotoBase64;
             delete updatedPkg.deliveryPhotosBase64;
-            
+
             if (updatedPkg.destLatitude && updatedPkg.destLongitude) {
                 updatedPkg.sectorName = gisService.getSectorForCoordinates(updatedPkg.destLatitude, updatedPkg.destLongitude);
             }
         }
 
-        updatedPkg.history = await getHistory(realId);
-        
+        // Neither the auxiliar scanner nor the driver app's scanner reads `history` from
+        // this response, so skip that extra query entirely on this hot path.
+
         // Notify recipient
         NotificationService.notifyRecipient(realId, 'EN_TRANSITO');
 
