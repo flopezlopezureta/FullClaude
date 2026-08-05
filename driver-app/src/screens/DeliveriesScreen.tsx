@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useContext, useMemo, useRef } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  FlatList, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
   RefreshControl,
   SafeAreaView,
   StatusBar,
@@ -16,6 +15,7 @@ import {
   Easing,
   AppState
 } from 'react-native';
+import { FlashList } from '@shopify/flash-list';
 import * as FileSystem from 'expo-file-system';
 import * as Sharing from 'expo-sharing';
 import { AuthContext } from '../contexts/AuthContext';
@@ -343,10 +343,11 @@ export default function DeliveriesScreen({ navigation }: any) {
         )}
       </View>
 
-      <FlatList
+      <FlashList
         data={filteredPackages}
         renderItem={renderItem}
         keyExtractor={item => item.id}
+        estimatedItemSize={112}
         contentContainerStyle={styles.listContent}
         refreshControl={
           <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563eb" />

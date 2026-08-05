@@ -1,15 +1,15 @@
 import React, { useState, useEffect, useContext } from 'react';
-import { 
-  StyleSheet, 
-  View, 
-  Text, 
-  TouchableOpacity, 
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
   Alert,
-  Vibration,
   SafeAreaView,
   StatusBar,
   Platform
 } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { COLORS } from '../constants';
 import { api } from '../services/api';
@@ -35,7 +35,7 @@ export default function DispatchScreen({ navigation }: any) {
     
     setScanned(true);
     setIsProcessing(true);
-    Vibration.vibrate(100);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
 
     try {
       // Extraer ID con regex más robusto (soporta /shipping/, /shipments/ o ID directo)
@@ -56,6 +56,7 @@ export default function DispatchScreen({ navigation }: any) {
         package: result.package
       });
       setCount(prev => prev + 1);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
 
       // Si es Mercado Libre y necesita "Flex", podrías abrir un modal aquí
       // Pero para bulk scan, solemos continuar rápido
@@ -70,7 +71,7 @@ export default function DispatchScreen({ navigation }: any) {
         success: false,
         message: error.message || 'Error al despachar'
       });
-      Vibration.vibrate([0, 200, 100, 200]);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       
       setTimeout(() => {
         setScanned(false);
