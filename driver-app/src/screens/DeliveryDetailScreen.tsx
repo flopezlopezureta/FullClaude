@@ -22,12 +22,19 @@ import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { api } from '../services/api';
 import { PhotoService } from '../services/PhotoService';
+import { tryAutoCloseRoute } from '../services/autoClosure';
 
 export default function DeliveryDetailScreen({ route, navigation }: any) {
   const { pkg } = route.params;
   const { user, serverUrl } = useContext(AuthContext);
   const isCompleted = ['ENTREGADO', 'CANCELADO', 'DEVUELTO'].includes(pkg.status);
   const isFailedAttempt = ['PROBLEMA', 'REPROGRAMADO'].includes(pkg.status);
+  // Falabella Directo's DELIVERED_001 webhook hard-requires a non-empty deliveryProof.recipientId
+  // (rejects the whole push with a 400 otherwise — confirmed against their real API) and >=2
+  // evidence photos — scoped to this source specifically, regardless of the global system
+  // settings, since those are optional for every other source by design. Mirrors the same
+  // override in components/driver/DeliveryConfirmationModal.tsx (web).
+  const isFalabellaDirectDelivery = pkg.source === 'FALABELLA_DIRECTO';
   
   // Parse initial photos if any
   const getInitialPhotos = () => {
@@ -188,15 +195,15 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
     if (isCompleted) return;
     
     // Validation based on settings
-    const requiredPhotos = settings?.requiredPhotos || 1;
+    const requiredPhotos = isFalabellaDirectDelivery ? Math.max(2, settings?.requiredPhotos || 1) : (settings?.requiredPhotos || 1);
     if (photos.length < requiredPhotos) {
       Alert.alert("Acción Requerida", `Debes añadir al menos ${requiredPhotos} foto(s) de evidencia`);
       return;
     }
 
-    const isRutRequired = settings?.isRutRequired ?? true;
+    const isRutRequired = isFalabellaDirectDelivery || (settings?.isRutRequired ?? true);
     if (isRutRequired && !receiverId.trim()) {
-      Alert.alert("Dato Obligatorio", "El RUT del receptor es obligatorio según la configuración del sistema.");
+      Alert.alert("Dato Obligatorio", isFalabellaDirectDelivery ? "Falabella Directo exige el RUT de quien recibe para poder cerrar la entrega." : "El RUT del receptor es obligatorio según la configuración del sistema.");
       return;
     }
 
@@ -210,9 +217,18 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
       
       try { await AsyncStorage.removeItem(DRAFT_KEY); } catch(e){}
 
-      Alert.alert("¡Envío Entregado!", "La información se ha sincronizado correctamente", [
-        { text: "Cerrar", onPress: () => navigation.goBack() }
-      ]);
+      const autoClosure = await tryAutoCloseRoute();
+      if (autoClosure.closed) {
+        Alert.alert(
+          "¡Ruta Completada!",
+          "Entrega registrada. Ya no tienes paquetes pendientes, así que tu cierre de jornada se registró automáticamente.",
+          [{ text: "Cerrar", onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert("¡Envío Entregado!", "La información se ha sincronizado correctamente", [
+          { text: "Cerrar", onPress: () => navigation.goBack() }
+        ]);
+      }
     } catch (error: any) {
        const errorMsg = error.response?.data?.message || error.message || "No se pudo confirmar la entrega";
        Alert.alert("Error", errorMsg);
@@ -240,9 +256,19 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
     try {
       await api.markAsProblem(pkg.id, finalReason, photos);
       setProblemModalVisible(false);
-      Alert.alert("Problema Reportado", "El paquete ha sido marcado con problema.", [
-        { text: "Cerrar", onPress: () => navigation.goBack() }
-      ]);
+
+      const autoClosure = await tryAutoCloseRoute();
+      if (autoClosure.closed) {
+        Alert.alert(
+          "¡Ruta Completada!",
+          "Problema reportado. Ya no tienes paquetes pendientes, así que tu cierre de jornada se registró automáticamente.",
+          [{ text: "Cerrar", onPress: () => navigation.goBack() }]
+        );
+      } else {
+        Alert.alert("Problema Reportado", "El paquete ha sido marcado con problema.", [
+          { text: "Cerrar", onPress: () => navigation.goBack() }
+        ]);
+      }
     } catch (error: any) {
       const errorMsg = error.response?.data?.message || error.message || "No se pudo reportar el problema";
       Alert.alert("Error", errorMsg);
@@ -387,16 +413,18 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
             />
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>RUT / Cédula {settings?.isRutRequired ? '(Obligatorio)' : '(Opcional/Recomendado)'}</Text>
-            <TextInput 
-              style={[styles.input, (isCompleted || (isFailedAttempt && !isRetrying)) && styles.disabledInput]}
-              value={receiverId}
-              onChangeText={setReceiverId}
-              editable={!isCompleted && (!isFailedAttempt || isRetrying)}
-              placeholder="12.345.678-k"
-            />
-          </View>
+          {(isFalabellaDirectDelivery || settings?.isRutRequired) && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>RUT / Cédula (Obligatorio)</Text>
+              <TextInput
+                style={[styles.input, (isCompleted || (isFailedAttempt && !isRetrying)) && styles.disabledInput]}
+                value={receiverId}
+                onChangeText={setReceiverId}
+                editable={!isCompleted && (!isFailedAttempt || isRetrying)}
+                placeholder="12.345.678-k"
+              />
+            </View>
+          )}
 
           <Text style={styles.sectionTitle}>Evidencia Fotográfica</Text>
           <View style={styles.photoGrid}>
@@ -468,8 +496,8 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
                     </View>
                     <View style={styles.timelineContent}>
                       <Text style={styles.timelineStatus}>{event.status}</Text>
-                      <Text style={styles.timelineDetail}>{event.notes || 'Evento registrado'}</Text>
-                      <Text style={styles.timelineDate}>{new Date(event.createdAt).toLocaleString()}</Text>
+                      <Text style={styles.timelineDetail}>{event.details || event.notes || 'Evento registrado'}</Text>
+                      <Text style={styles.timelineDate}>{new Date(event.timestamp || event.createdAt).toLocaleString()}</Text>
                     </View>
                   </View>
                 ))}
@@ -480,19 +508,22 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
           </View>
           
           {/* Indicador de fotos restantes */}
-          {!isCompleted && settings && (
-            <View style={styles.photoStatus}>
-               {photos.length < settings.requiredPhotos ? (
-                 <Text style={styles.photoStatusText}>
-                   Faltan {settings.requiredPhotos - photos.length} foto(s) de evidencia
-                 </Text>
-               ) : (
-                 <Text style={[styles.photoStatusText, { color: '#16a34a' }]}>
-                   ✓ Evidencia fotográfica completa
-                 </Text>
-               )}
-            </View>
-          )}
+          {!isCompleted && settings && (() => {
+            const effectiveRequiredPhotos = isFalabellaDirectDelivery ? Math.max(2, settings.requiredPhotos || 1) : settings.requiredPhotos;
+            return (
+              <View style={styles.photoStatus}>
+                 {photos.length < effectiveRequiredPhotos ? (
+                   <Text style={styles.photoStatusText}>
+                     Faltan {effectiveRequiredPhotos - photos.length} foto(s) de evidencia
+                   </Text>
+                 ) : (
+                   <Text style={[styles.photoStatusText, { color: '#16a34a' }]}>
+                     ✓ Evidencia fotográfica completa
+                   </Text>
+                 )}
+              </View>
+            );
+          })()}
         </View>
       </ScrollView>
 
@@ -506,13 +537,13 @@ export default function DeliveryDetailScreen({ route, navigation }: any) {
             <Text style={styles.problemBtnText}>NO PUEDO ENTREGAR</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[
-              styles.confirmBtn, 
-              (loading || photos.length < (settings?.requiredPhotos || 1) || (settings?.isRutRequired && !receiverId)) && styles.disabledBtn
+              styles.confirmBtn,
+              (loading || photos.length < (isFalabellaDirectDelivery ? Math.max(2, settings?.requiredPhotos || 1) : (settings?.requiredPhotos || 1)) || ((isFalabellaDirectDelivery || settings?.isRutRequired) && !receiverId)) && styles.disabledBtn
             ]}
             onPress={handleConfirm}
-            disabled={loading || photos.length < (settings?.requiredPhotos || 1) || (settings?.isRutRequired && !receiverId)}
+            disabled={loading || photos.length < (isFalabellaDirectDelivery ? Math.max(2, settings?.requiredPhotos || 1) : (settings?.requiredPhotos || 1)) || ((isFalabellaDirectDelivery || settings?.isRutRequired) && !receiverId)}
           >
             {loading ? (
               <ActivityIndicator color="#fff" />
