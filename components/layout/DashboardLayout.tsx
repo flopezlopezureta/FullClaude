@@ -11,6 +11,7 @@ import { IconMenu, IconCheckCircle, IconX, IconAlertTriangle } from '../Icon';
 import SettingsPage from '../admin/SettingsPage';
 import IntegrationSettingsPage from '../admin/IntegrationSettingsPage';
 import FalabellaTestLabelsPage from '../admin/FalabellaTestLabelsPage';
+import AppUpdatesPage from '../admin/AppUpdatesPage';
 import SystemLogsPage from '../admin/SystemLogsPage';
 import ImportOrdersPage from '../admin/ImportOrdersPage';
 import BillingReportPage from '../admin/BillingReportPage';
@@ -269,6 +270,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'falabella-direct-labels':
         if (isAdmin && isSuperUser) return { title: 'Etiquetas Falabella Directo (UAT)', content: <FalabellaTestLabelsPage /> };
+        break;
+
+      case 'app-updates':
+        if (isAdmin && isSuperUser) return { title: 'Actualizaciones de la App', content: <AppUpdatesPage /> };
         break;
 
       case 'system-logs':
