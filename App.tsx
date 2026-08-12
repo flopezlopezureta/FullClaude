@@ -12,22 +12,6 @@ const AppContent: React.FC = () => {
   const auth = useContext(AuthContext);
 
   useEffect(() => {
-    // Aggressively unregister any service workers to prevent caching issues.
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(function(registrations) {
-        for(let registration of registrations) {
-          registration.unregister()
-            .then(unregistered => {
-              if (unregistered) console.log('Service Worker unregistered successfully.');
-            });
-        }
-      }).catch(function(err) {
-        console.log('Service Worker unregistration failed: ', err);
-      });
-    }
-  }, []); // Run only once on component mount
-
-  useEffect(() => {
     if (auth?.systemSettings.companyName) {
       document.title = `${auth.systemSettings.companyName} - Sistema de Seguimiento`;
     }
