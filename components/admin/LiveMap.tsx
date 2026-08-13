@@ -155,8 +155,12 @@ const LiveMap: React.FC = () => {
             }
         });
 
-        const visiblePackages = packages.filter(p => 
-            (p.status === PackageStatus.Pending || p.status === PackageStatus.PickedUp || p.status === PackageStatus.InTransit) && 
+        // Solo paquetes realmente despachados (retirados/escaneados o en tránsito).
+        // "Pendiente" incluye paquetes importados que nunca pasan por nuestros
+        // conductores (los entrega otro courier) — mostrarlos aquí solo ensucia
+        // el mapa con puntos que ningún conductor va a tocar.
+        const visiblePackages = packages.filter(p =>
+            (p.status === PackageStatus.PickedUp || p.status === PackageStatus.InTransit) &&
             p.destLatitude && p.destLongitude
         );
 
@@ -231,12 +235,8 @@ const LiveMap: React.FC = () => {
                         <h4 className="font-bold mb-2 border-b border-[var(--border-primary)] pb-1">Leyenda</h4>
                         <div className="space-y-2">
                             <div className="flex items-center gap-2">
-                                <div className="w-3 h-3 bg-[#ef4444] rounded-full border border-white"></div>
-                                <span>Pendiente</span>
-                            </div>
-                            <div className="flex items-center gap-2">
                                 <div className="w-3 h-3 bg-[#2563eb] rounded-full border border-white"></div>
-                                <span>Escaneado / En Ruta</span>
+                                <span>Despachado / En Ruta</span>
                             </div>
                             <div className="flex items-center gap-2">
                                 <div className="w-4 h-4 bg-[var(--brand-primary)] rounded-full flex items-center justify-center">
