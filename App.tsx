@@ -12,6 +12,27 @@ const AppContent: React.FC = () => {
   const auth = useContext(AuthContext);
 
   useEffect(() => {
+    // Reverted 2026-08-13: removing this (to let the offline-shell Service Worker actually stay
+    // registered) caused a worse regression on fresh/cleared installs inside the Android WebView
+    // wrapper specifically — sometimes nothing rendered at all behind the permission dialogs,
+    // reproducible even with normal connectivity and a fully cleared app. Restored to the known-
+    // stable behavior (always loads, just doesn't support a zero-connectivity cold start) until
+    // the SW/WebView interaction can be diagnosed properly on a real device, not blind.
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for(let registration of registrations) {
+          registration.unregister()
+            .then(unregistered => {
+              if (unregistered) console.log('Service Worker unregistered successfully.');
+            });
+        }
+      }).catch(function(err) {
+        console.log('Service Worker unregistration failed: ', err);
+      });
+    }
+  }, []); // Run only once on component mount
+
+  useEffect(() => {
     if (auth?.systemSettings.companyName) {
       document.title = `${auth.systemSettings.companyName} - Sistema de Seguimiento`;
     }
