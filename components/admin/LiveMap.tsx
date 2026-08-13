@@ -32,6 +32,7 @@ const LiveMap: React.FC = () => {
     const mapRef = useRef<any>(null);
     const mapContainerRef = useRef<HTMLDivElement>(null);
     const markersLayerRef = useRef<any>(null);
+    const packageClusterRef = useRef<any>(null);
     const [activeDrivers, setActiveDrivers] = useState<User[]>([]);
     const [packages, setPackages] = useState<Package[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -68,6 +69,11 @@ const LiveMap: React.FC = () => {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(mapRef.current);
             markersLayerRef.current = L.layerGroup().addTo(mapRef.current);
+            packageClusterRef.current = L.markerClusterGroup({
+                maxClusterRadius: 60,
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: false,
+            }).addTo(mapRef.current);
             setTimeout(() => mapRef.current?.invalidateSize(), 100);
         }
 
@@ -117,9 +123,10 @@ const LiveMap: React.FC = () => {
     }, [allApprovedDrivers, activeDrivers, packages]);
 
     useEffect(() => {
-        if (!mapRef.current || !markersLayerRef.current) return;
+        if (!mapRef.current || !markersLayerRef.current || !packageClusterRef.current) return;
 
         markersLayerRef.current.clearLayers();
+        packageClusterRef.current.clearLayers();
 
         const driverIcon = L.divIcon({
             html: `<div class="p-1 bg-[var(--background-secondary)] rounded-full shadow-lg"><div class="w-8 h-8 bg-[var(--brand-primary)] text-white rounded-full flex items-center justify-center"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg></div></div>`,
@@ -142,7 +149,7 @@ const LiveMap: React.FC = () => {
                 const marker = L.marker(position, { icon: driverIcon })
                     .bindPopup(`<b>${driver.name}</b><br>${driver.email}`)
                     .bindTooltip(`<b>${driver.name}</b>`, {
-                        permanent: true, direction: 'top', offset: [0, -40], className: 'driver-name-tooltip'
+                        direction: 'top', offset: [0, -40], className: 'driver-name-tooltip'
                     });
                 markersLayerRef.current.addLayer(marker);
             }
@@ -173,10 +180,10 @@ const LiveMap: React.FC = () => {
                 </div>
             `;
             
-            const marker = L.marker(position, { 
-                icon: isScanned ? packageIconScanned : packageIconPending 
+            const marker = L.marker(position, {
+                icon: isScanned ? packageIconScanned : packageIconPending
             }).bindPopup(popupContent);
-            markersLayerRef.current.addLayer(marker);
+            packageClusterRef.current.addLayer(marker);
         });
 
     }, [activeDrivers, packages, allUsers]);
