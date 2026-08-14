@@ -141,7 +141,9 @@ router.post('/upload', authMiddleware, requireSuperUser, upload.single('apk'), a
             versionCode,
             versionName: req.body.versionName || String(versionCode),
             mandatory: req.body.mandatory !== 'false',
-            apkUrl: `${process.env.PUBLIC_BASE_URL || 'https://fullenvios.selcom.cl'}/api/app-updates/latest.apk`,
+            // Derived from the actual incoming request, not a hardcoded/env-configured base URL —
+            // publishing from Staging's admin panel must produce a Staging apkUrl, not Production's.
+            apkUrl: `${req.protocol}://${req.get('host')}/api/app-updates/latest.apk`,
             notes: req.body.notes || '',
         };
         // Written with fs directly (never through a text editor), so this can never carry a BOM
