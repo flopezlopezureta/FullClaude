@@ -293,21 +293,31 @@ const DriverMobileLayout: React.FC = () => {
             }`}>
                 {activeView === 'menu' ? (
                     <div className="p-4">
-                        <div className="mb-6 rounded-3xl bg-gradient-to-r from-blue-700 to-indigo-600 p-6 text-white shadow-lg relative overflow-hidden">
-                            <div className="relative z-10">
-                                <p className="text-xs font-medium opacity-80 mb-1">EMPRESA</p>
-                                <h2 className="text-2xl font-bold tracking-tight">{systemSettings.companyName}</h2>
-                            </div>
-                            {/* AN = running inside the native Android wrapper (window.AndroidApp exists,
-                                injected by MainActivity.kt's WebAppInterface); AW = plain web/browser.
-                                Lets you tell at a glance which one you're looking at, and confirms which
-                                version actually loaded — same version number either way since the wrapper
-                                just displays this same web app, but the prefix disambiguates the channel. */}
-                            <span className="absolute top-4 right-4 z-20 text-[10px] font-mono font-bold bg-white/20 px-2 py-0.5 rounded-full">
-                                {typeof window !== 'undefined' && (window as any).AndroidApp ? 'AN' : 'AW'}{(import.meta as any).env.VITE_APP_VERSION}
-                            </span>
-                            <IconCube className="absolute -right-4 -bottom-4 w-32 h-32 text-white opacity-10 rotate-12" />
-                        </div>
+                        {(() => {
+                            // Distinguishes Staging (full2.fullenvios.cl) from Production at a glance —
+                            // the version number badge alone isn't enough since both environments can
+                            // (and often do) show the exact same version. Amber instead of a small label
+                            // because a test APK pointed at the wrong environment by mistake is easy to
+                            // miss with only a corner tag; the whole banner changing color is not.
+                            const isStaging = typeof window !== 'undefined' && window.location.hostname.includes('full2.fullenvios.cl');
+                            return (
+                                <div className={`mb-6 rounded-3xl bg-gradient-to-r ${isStaging ? 'from-amber-600 to-orange-600' : 'from-blue-700 to-indigo-600'} p-6 text-white shadow-lg relative overflow-hidden`}>
+                                    <div className="relative z-10">
+                                        <p className="text-xs font-medium opacity-80 mb-1">{isStaging ? 'STAGING · EMPRESA' : 'EMPRESA'}</p>
+                                        <h2 className="text-2xl font-bold tracking-tight">{systemSettings.companyName}</h2>
+                                    </div>
+                                    {/* AN = running inside the native Android wrapper (window.AndroidApp exists,
+                                        injected by MainActivity.kt's WebAppInterface); AW = plain web/browser.
+                                        Lets you tell at a glance which one you're looking at, and confirms which
+                                        version actually loaded — same version number either way since the wrapper
+                                        just displays this same web app, but the prefix disambiguates the channel. */}
+                                    <span className="absolute top-4 right-4 z-20 text-[10px] font-mono font-bold bg-white/20 px-2 py-0.5 rounded-full">
+                                        {typeof window !== 'undefined' && (window as any).AndroidApp ? 'AN' : 'AW'}{(import.meta as any).env.VITE_APP_VERSION}
+                                    </span>
+                                    <IconCube className="absolute -right-4 -bottom-4 w-32 h-32 text-white opacity-10 rotate-12" />
+                                </div>
+                            );
+                        })()}
 
                         <div className="grid grid-cols-2 gap-4">
                             {availableMenuItems.map(item => (
