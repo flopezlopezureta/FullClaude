@@ -484,6 +484,13 @@ export const api = {
     version: { versionCode: number; versionName: string; mandatory: boolean; apkUrl: string; notes: string } | null;
     apk: { exists: boolean; sizeBytes?: number; modifiedAt?: string };
   }>('/app-updates/admin-status'),
+  getNetworkMetricsReport: () => get<{
+    byIp: { ip: string; requestCount: number; avgMs: number; maxMs: number; errorRate: number; errorCount: number; firstSeen: number; lastSeen: number; isp?: string | null; org?: string | null; city?: string | null }[];
+    byHour: { hour: number; requestCount: number; avgMs: number; errorRate: number }[];
+    totalRecords: number;
+    windowStart: number | null;
+    windowEnd: number | null;
+  }>('/network-metrics/report'),
   publishAppUpdate: async (file: File, data: { versionCode: number; versionName: string; mandatory: boolean; notes: string; force?: boolean }) => {
     const formData = new FormData();
     formData.append('apk', file);
