@@ -12,6 +12,7 @@ import SettingsPage from '../admin/SettingsPage';
 import IntegrationSettingsPage from '../admin/IntegrationSettingsPage';
 import FalabellaTestLabelsPage from '../admin/FalabellaTestLabelsPage';
 import AppUpdatesPage from '../admin/AppUpdatesPage';
+import CloudflareDiagnosticsPage from '../admin/CloudflareDiagnosticsPage';
 import SystemLogsPage from '../admin/SystemLogsPage';
 import ImportOrdersPage from '../admin/ImportOrdersPage';
 import BillingReportPage from '../admin/BillingReportPage';
@@ -274,6 +275,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'app-updates':
         if (isAdmin && isSuperUser) return { title: 'Actualizaciones de la App', content: <AppUpdatesPage /> };
+        break;
+
+      case 'cloudflare-diagnostics':
+        if (isAdmin && isSuperUser) return { title: 'Diagnóstico Cloudflare', content: <CloudflareDiagnosticsPage /> };
         break;
 
       case 'system-logs':

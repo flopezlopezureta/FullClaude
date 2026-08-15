@@ -2,7 +2,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
-import { IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconBarChart, IconPieChart, IconTarget, IconClock, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle, IconFileUpload } from '../Icon';
+import { IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconBarChart, IconPieChart, IconTarget, IconClock, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle, IconFileUpload, IconWifi } from '../Icon';
 import { Role, DEFAULT_OPERATOR_PERMISSIONS } from '../../constants';
 
 interface SidebarProps {
@@ -176,7 +176,8 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         ...(isSuperUser ? [
             { id: 'system-logs', label: 'Logs del Sistema', icon: <IconFileText className="h-5 w-5" /> },
             { id: 'falabella-direct-labels', label: 'Etiquetas Falabella Directo (UAT)', icon: <IconQrcode className="h-5 w-5" /> },
-            { id: 'app-updates', label: 'Actualizaciones de la App', icon: <IconFileUpload className="h-5 w-5" /> }
+            { id: 'app-updates', label: 'Actualizaciones de la App', icon: <IconFileUpload className="h-5 w-5" /> },
+            { id: 'cloudflare-diagnostics', label: 'Diagnóstico Cloudflare', icon: <IconWifi className="h-5 w-5" /> }
         ] : [])
       ]
     }
