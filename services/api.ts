@@ -486,12 +486,18 @@ export const api = {
     apk: { exists: boolean; sizeBytes?: number; modifiedAt?: string };
   }>('/app-updates/admin-status'),
   getNetworkMetricsReport: () => get<{
-    byIp: { ip: string; requestCount: number; avgMs: number; maxMs: number; errorRate: number; errorCount: number; firstSeen: number; lastSeen: number; isp?: string | null; org?: string | null; city?: string | null }[];
+    byIp: { ip: string; requestCount: number; avgMs: number; maxMs: number; errorRate: number; errorCount: number; firstSeen: number; lastSeen: number; isp?: string | null; org?: string | null; city?: string | null; users?: string[] }[];
     byHour: { hour: number; requestCount: number; avgMs: number; errorRate: number }[];
     totalRecords: number;
     windowStart: number | null;
     windowEnd: number | null;
   }>('/network-metrics/report'),
+  getNetworkMetricsHistoryDays: () => get<{ days: { date: string; requestCount: number }[] }>('/network-metrics/history-days'),
+  getNetworkMetricsHistory: (date: string) => get<{
+    byIp: { ip: string; requestCount: number; avgMs: number; maxMs: number; errorRate: number; errorCount: number; firstSeen: number; lastSeen: number; isp?: string | null; org?: string | null; city?: string | null; users?: string[] }[];
+    totalRecords: number;
+    date: string;
+  }>(`/network-metrics/history?date=${encodeURIComponent(date)}`),
   publishAppUpdate: async (file: File, data: { versionCode: number; versionName: string; mandatory: boolean; notes: string; force?: boolean }) => {
     const formData = new FormData();
     formData.append('apk', file);
