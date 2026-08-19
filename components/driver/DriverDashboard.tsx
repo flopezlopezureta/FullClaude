@@ -49,10 +49,16 @@ const DriverDashboard: React.FC = () => {
     }
   };
   const [deliveringPackages, setDeliveringPackages] = useState<Package[] | null>(null);
-  // Packages the driver explicitly dismissed from the Meli auto-open prompt this session, so
-  // it doesn't immediately reopen the instant they close it — "Cancelar" used to be a no-op
-  // because the modal's onClose set deliveringPackages back to null, which re-ran the auto-open
-  // effect below and found the same still-flagged package, reopening it in the same render pass.
+  // Packages the driver explicitly dismissed from the Meli auto-open prompt, so it doesn't
+  // immediately reopen the instant they close it — "Cancelar" used to be a no-op because the
+  // modal's onClose set deliveringPackages back to null, which re-ran the auto-open effect
+  // below and found the same still-flagged package, reopening it in the same render pass.
+  // Kept in memory only (not persisted) originally — but DriverDashboard remounts fresh every
+  // time the driver switches to another tab (Retiros, Devoluciones...) and back, which is
+  // normal mid-route behavior, not just an app restart. That reset the dismissal, so the same
+  // already-dismissed package would suddenly demand the RUT/photo prompt again out of nowhere
+  // — reported as it randomly reappearing mid-route. Persisted per-driver now for the same
+  // reason activeView is (see DriverMobileLayout.tsx).
   const [dismissedMeliPromptIds, setDismissedMeliPromptIds] = useState<Set<string>>(new Set());
   const [selectedPackages, setSelectedPackages] = useState<Set<string>>(new Set());
   const [reportingProblemPackage, setReportingProblemPackage] = useState<Package | null>(null);
@@ -188,6 +194,19 @@ const DriverDashboard: React.FC = () => {
         setUsers(cachedUsers);
     }
   }, [auth?.user?.id]);
+
+  // Load/save dismissedMeliPromptIds — see its declaration above for why this needs to survive
+  // a DriverDashboard remount (switching tabs and back), not just live in memory.
+  useEffect(() => {
+    if (!auth?.user) return;
+    const saved = storageUtils.getItem<string[]>(`dismissed_meli_prompts_${auth.user.id}`, []);
+    if (saved.length > 0) setDismissedMeliPromptIds(new Set(saved));
+  }, [auth?.user?.id]);
+
+  useEffect(() => {
+    if (!auth?.user || dismissedMeliPromptIds.size === 0) return;
+    storageUtils.safeSetItem(`dismissed_meli_prompts_${auth.user.id}`, Array.from(dismissedMeliPromptIds));
+  }, [dismissedMeliPromptIds, auth?.user?.id]);
 
   // Restore delivering package if it was interrupted
   useEffect(() => {
