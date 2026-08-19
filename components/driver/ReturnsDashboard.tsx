@@ -36,7 +36,13 @@ const ReturnsDashboard: React.FC = () => {
   useEffect(() => {
     if (!auth?.user) return;
     setOfflinePendingCount(offlineQueue.getPendingCount());
-    const onQueueChange = () => setOfflinePendingCount(offlineQueue.getPendingCount());
+    const onQueueChange = () => {
+      setOfflinePendingCount(offlineQueue.getPendingCount());
+      // Same reasoning as DriverDashboard.tsx — a queued return that synced in the
+      // background never updated local state on its own, so without this refetch
+      // it kept showing as pending even after actually syncing.
+      fetchData(true);
+    };
     window.addEventListener('offline-queue-changed', onQueueChange);
     return () => window.removeEventListener('offline-queue-changed', onQueueChange);
   }, [auth?.user]);

@@ -16,6 +16,7 @@ import { DriverPermissions, Notification } from '../../types';
 import { api } from '../../services/api';
 import { offlineQueue } from '../../services/offlineQueue';
 import { processOfflineQueue } from '../../services/offlineQueueProcessor';
+import { storageUtils } from '../../utils/storageUtils';
 
 type DriverView = 'my-packages' | 'scan-dispatch' | 'scan-dispatch-auxiliar' | 'scan-pickups' | 'colectas' | 'returns' | 'delivery-history' | 'meli-flex-test' | 'zona';
 
@@ -34,6 +35,23 @@ const menuItems: { id: DriverView; label: string; subtitle?: string; icon: React
 const DriverMobileLayout: React.FC = () => {
     const { user, logout, isPushSubscribed, isPushLoading, subscribeToPush, unsubscribeFromPush, systemSettings } = useContext(AuthContext)!;
     const [activeView, setActiveView] = useState<DriverView | 'menu'>('menu');
+
+    // Android's WebView can get killed and recreated when the driver switches to another
+    // app (phone, gallery, calculator...) and comes back — the whole React tree remounts
+    // from scratch, and without this, activeView always resets to 'menu' regardless of
+    // what screen the driver was actually on. Restoring it (and DeliveryConfirmationModal's
+    // own draft-restore logic, which already exists) together get the driver back to
+    // exactly where they left off instead of losing their place.
+    useEffect(() => {
+        if (!user) return;
+        const saved = storageUtils.getItem<DriverView | 'menu' | ''>(`driver_active_view_${user.id}`, '');
+        if (saved) setActiveView(saved);
+    }, [user?.id]);
+
+    useEffect(() => {
+        if (!user) return;
+        storageUtils.safeSetItem(`driver_active_view_${user.id}`, activeView);
+    }, [activeView, user?.id]);
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [showNotifications, setShowNotifications] = useState(false);
     

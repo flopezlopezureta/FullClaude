@@ -302,7 +302,16 @@ const DriverDashboard: React.FC = () => {
   useEffect(() => {
     if (!auth?.user) return;
     setOfflinePendingCount(offlineQueue.getPendingCount());
-    const onQueueChange = () => setOfflinePendingCount(offlineQueue.getPendingCount());
+    const onQueueChange = () => {
+      setOfflinePendingCount(offlineQueue.getPendingCount());
+      // A queued delivery/problem/return that synced in the background never
+      // touched myPackages (the offline branch above only enqueues — it doesn't
+      // optimistically update local state), so without this the package kept
+      // showing as pending/open indefinitely even after it was actually
+      // confirmed on the server — reported as "the delivery reappears open"
+      // once the driver gets signal back. Silent refetch picks up the real state.
+      fetchData(true);
+    };
     window.addEventListener('offline-queue-changed', onQueueChange);
     return () => window.removeEventListener('offline-queue-changed', onQueueChange);
   }, [auth?.user]);
