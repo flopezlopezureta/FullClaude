@@ -525,7 +525,15 @@ const DriverDashboard: React.FC = () => {
         // No connection (or the request never reached the server): save the delivery locally
         // instead of losing it. The queue is drained automatically once the connection returns
         // (see the 'online' listener + poll effect below) — the driver doesn't need to redo anything.
-        pkgIds.forEach(pkgId => offlineQueue.enqueue('DELIVER', pkgId, data));
+        try {
+          pkgIds.forEach(pkgId => offlineQueue.enqueue('DELIVER', pkgId, data));
+        } catch (queueErr) {
+          // enqueue() itself failed to save (almost certainly localStorage full — a delivery
+          // with photos can be a few MB). Re-throwing here (instead of proceeding as if it
+          // worked) keeps the modal open and its draft intact, so the driver doesn't lose the
+          // delivery silently — see the comment on writeQueue in services/offlineQueue.ts.
+          throw new Error('No se pudo guardar la entrega sin conexión: el almacenamiento del teléfono está lleno. Libera espacio (o borra fotos/apps que no uses) e inténtalo de nuevo.');
+        }
         setDeliveringPackages(null);
         setSelectedPackages(new Set());
         if (auth?.user) {
@@ -584,7 +592,12 @@ const DriverDashboard: React.FC = () => {
         setReportingProblemPackage(null);
     } catch (error: any) {
         if (isNetworkFailure(error)) {
-          offlineQueue.enqueue('PROBLEM', pkgId, { reason, photos });
+          try {
+            offlineQueue.enqueue('PROBLEM', pkgId, { reason, photos });
+          } catch (queueErr) {
+            // Same reasoning as handleConfirmDelivery above — don't pretend it saved if it didn't.
+            throw new Error('No se pudo guardar el reporte sin conexión: el almacenamiento del teléfono está lleno. Libera espacio e inténtalo de nuevo.');
+          }
           setReportingProblemPackage(null);
           setOfflinePendingCount(offlineQueue.getPendingCount());
           return;

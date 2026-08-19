@@ -110,7 +110,13 @@ const ReturnsDashboard: React.FC = () => {
       setReturningPackage(null);
     } catch (error: any) {
         if (isNetworkFailure(error)) {
-          offlineQueue.enqueue('RETURN', pkgId, data);
+          try {
+            offlineQueue.enqueue('RETURN', pkgId, data);
+          } catch (queueErr) {
+            // Same reasoning as DriverDashboard.tsx's handleConfirmDelivery — don't pretend
+            // it saved if the write actually failed (almost certainly storage full).
+            throw new Error('No se pudo guardar la devolución sin conexión: el almacenamiento del teléfono está lleno. Libera espacio e inténtalo de nuevo.');
+          }
           setReturnPackages(prev => prev.filter(p => p.id !== pkgId));
           setReturningPackage(null);
           return;
