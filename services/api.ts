@@ -499,6 +499,17 @@ export const api = {
     totalRecords: number;
     date: string;
   }>(`/network-metrics/history?date=${encodeURIComponent(date)}`),
+  getEmergencyLookups: () => get<{
+    id: number;
+    searchedCode: string;
+    driverId: string | null;
+    driverName: string | null;
+    clientId: string | null;
+    clientName: string | null;
+    success: boolean;
+    durationMs: number | null;
+    createdAt: string;
+  }[]>('/emergency-lookups'),
   publishAppUpdate: async (file: File, data: { versionCode: number; versionName: string; mandatory: boolean; notes: string; force?: boolean }) => {
     const formData = new FormData();
     formData.append('apk', file);
