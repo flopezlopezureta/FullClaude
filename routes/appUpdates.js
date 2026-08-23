@@ -66,6 +66,39 @@ router.get('/latest.apk', (req, res) => {
     res.download(apkPath, 'FullEnvios.apk');
 });
 
+// GET /api/app-updates/check?versionCode=N
+// Authenticated — called from inside the driver's web session (not from native code before
+// login) once the app has finished loading. Only tells a driver to update if an admin
+// specifically flagged their account (users.forceAppUpdate) — lets updates be rolled out to a
+// handful of drivers first instead of forcing everyone the moment a new APK is published.
+router.get('/check', authMiddleware, async (req, res) => {
+    const clientVersionCode = parseInt(req.query.versionCode, 10);
+    if (!Number.isInteger(clientVersionCode)) {
+        return res.status(400).json({ message: 'versionCode inválido.' });
+    }
+
+    try {
+        const { rows } = await db.query('SELECT "forceAppUpdate" FROM users WHERE id = $1', [req.user.id]);
+        if (!rows[0]?.forceAppUpdate) {
+            return res.json({ shouldUpdate: false });
+        }
+
+        const versionPath = path.join(UPDATES_DIR, 'version.json');
+        if (!fs.existsSync(versionPath)) {
+            return res.json({ shouldUpdate: false });
+        }
+        const versionData = JSON.parse(fs.readFileSync(versionPath, 'utf8'));
+
+        if (versionData.versionCode > clientVersionCode) {
+            return res.json({ shouldUpdate: true, ...versionData });
+        }
+        return res.json({ shouldUpdate: false });
+    } catch (err) {
+        console.error('[AppUpdates] Error checking update eligibility:', err);
+        res.status(500).json({ message: 'Error al verificar actualización.' });
+    }
+});
+
 // GET /api/app-updates/admin-status
 // Super-admin only — shows what's actually live right now (size/hash-free but with mtime,
 // which is enough to eyeball "did my last publish really take") before publishing a new one.

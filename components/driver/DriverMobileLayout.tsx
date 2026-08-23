@@ -35,6 +35,36 @@ const menuItems: { id: DriverView; label: string; subtitle?: string; icon: React
 const DriverMobileLayout: React.FC = () => {
     const { user, logout, isPushSubscribed, isPushLoading, subscribeToPush, unsubscribeFromPush, systemSettings } = useContext(AuthContext)!;
     const [activeView, setActiveView] = useState<DriverView | 'menu'>('menu');
+    const [appUpdateInfo, setAppUpdateInfo] = useState<{ versionName?: string; mandatory?: boolean; apkUrl?: string; notes?: string } | null>(null);
+
+    // Aviso de actualización: solo se le muestra al conductor si un admin lo marcó explícitamente
+    // (users.forceAppUpdate) — ver GET /api/app-updates/check. window.AndroidApp.getVersionCode
+    // solo existe dentro del wrapper nativo, así que en un navegador normal esto no hace nada.
+    useEffect(() => {
+        if (!user) return;
+        // @ts-ignore
+        if (!window.AndroidApp || typeof window.AndroidApp.getVersionCode !== 'function') return;
+
+        const checkUpdate = async () => {
+            try {
+                // @ts-ignore
+                const installedVersionCode = window.AndroidApp.getVersionCode();
+                const result = await api.checkAppUpdate(installedVersionCode);
+                if (result.shouldUpdate) {
+                    setAppUpdateInfo({ versionName: result.versionName, mandatory: result.mandatory, apkUrl: result.apkUrl, notes: result.notes });
+                }
+            } catch (e) {
+                console.error('No se pudo verificar la actualización de la app', e);
+            }
+        };
+        checkUpdate();
+    }, [user]);
+
+    const handleInstallUpdate = () => {
+        if (!appUpdateInfo?.apkUrl) return;
+        // @ts-ignore
+        window.AndroidApp.openUrl(appUpdateInfo.apkUrl);
+    };
 
     // Android's WebView can get killed and recreated when the driver switches to another
     // app (phone, gallery, calculator...) and comes back — the whole React tree remounts
@@ -208,6 +238,34 @@ const DriverMobileLayout: React.FC = () => {
 
     return (
         <div className="flex flex-col h-screen bg-[var(--background-primary)]">
+            {appUpdateInfo && (
+                <div className="fixed inset-0 bg-black bg-opacity-70 z-[100] flex items-center justify-center p-4">
+                    <div className="bg-[var(--background-secondary)] rounded-xl shadow-2xl w-full max-w-sm p-6 text-center">
+                        <IconArrowUturnLeft className="w-12 h-12 mx-auto mb-3 text-[var(--brand-primary)] rotate-180" />
+                        <h3 className="text-lg font-bold text-[var(--text-primary)] mb-1">Nueva versión disponible</h3>
+                        {appUpdateInfo.versionName && (
+                            <p className="text-sm text-[var(--text-muted)] mb-2">Versión {appUpdateInfo.versionName}</p>
+                        )}
+                        {appUpdateInfo.notes && (
+                            <p className="text-sm text-[var(--text-secondary)] mb-4">{appUpdateInfo.notes}</p>
+                        )}
+                        <button
+                            onClick={handleInstallUpdate}
+                            className="w-full px-4 py-3 text-sm font-bold text-white bg-[var(--brand-primary)] rounded-lg hover:bg-[var(--brand-secondary)] transition-colors"
+                        >
+                            Descargar e instalar
+                        </button>
+                        {!appUpdateInfo.mandatory && (
+                            <button
+                                onClick={() => setAppUpdateInfo(null)}
+                                className="w-full mt-2 px-4 py-2 text-sm font-medium text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
+                            >
+                                Más tarde
+                            </button>
+                        )}
+                    </div>
+                </div>
+            )}
             <header className="bg-[var(--background-secondary)] shadow-sm flex items-center justify-between h-16 px-4 flex-shrink-0 z-10 border-b border-[var(--border-primary)] relative">
                 {activeView === 'menu' ? (
                      <>
