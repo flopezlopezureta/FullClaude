@@ -23,6 +23,12 @@ module.exports = function(req, res, next) {
 
     try {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        // The 2FA pending-login token (issued between password success and code verification)
+        // carries this marker instead of a real user session — reject it here so it can never be
+        // used as a substitute for a completed login on any other route.
+        if (decoded.purpose === 'login_verify') {
+            return res.status(401).json({ message: 'Token no es válido.' });
+        }
         req.user = decoded.user;
         if (req.user && req.user.role) {
             const upperRole = String(req.user.role).toUpperCase();

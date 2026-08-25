@@ -25,7 +25,8 @@ interface AuthContextType {
   token: string | null;
   isInitialized: boolean;
   systemSettings: SystemSettings;
-  login: (credentials: LoginCredentials) => Promise<User>;
+  login: (credentials: LoginCredentials) => Promise<User | { requires2FA: true; tempToken: string }>;
+  completeTwoFactorLogin: (tempToken: string, code: string) => Promise<User>;
   logout: () => void;
   register: (data: RegisterData) => Promise<User>;
   updateSystemSettings: (newSettings: Partial<SystemSettings>) => Promise<void>;
@@ -211,19 +212,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
    const login = async (credentials: LoginCredentials) => {
      try {
        console.log("[Auth] Attempting login for:", credentials.email);
-       const { token: newToken, user: loggedInUser } = await api.login(credentials);
-       
+       const result = await api.login(credentials);
+
+       if ('requires2FA' in result) {
+         console.log("[Auth] Password correct, 2FA code required.");
+         return result;
+       }
+
        console.log("[Auth] Login successful, setting state and storage...");
-       localStorage.setItem('token', newToken);
-       setToken(newToken);
-       setNormalizedUser(loggedInUser);
-       return loggedInUser;
+       localStorage.setItem('token', result.token);
+       setToken(result.token);
+       setNormalizedUser(result.user);
+       return result.user;
      } catch (error) {
        console.error("[Auth] Login failed:", error);
        throw error;
      }
    };
- 
+
+   const completeTwoFactorLogin = async (tempToken: string, code: string) => {
+     const { token: newToken, user: loggedInUser } = await api.verifyLogin2FA(tempToken, code);
+     localStorage.setItem('token', newToken);
+     setToken(newToken);
+     setNormalizedUser(loggedInUser);
+     return loggedInUser;
+   };
+
    const logout = () => {
      console.log("[Auth] Logging out user...");
      console.trace("[Auth] Logout called from:");
@@ -290,7 +304,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   return (
     <AuthContext.Provider value={{ 
         user, token, isInitialized, systemSettings, activeCommunes,
-        login, logout, register, updateSystemSettings, refetchUser, refetchCommunes,
+        login, completeTwoFactorLogin, logout, register, updateSystemSettings, refetchUser, refetchCommunes,
         isPushSubscribed, isPushLoading, subscribeToPush, unsubscribeFromPush 
     }}>
       {children}

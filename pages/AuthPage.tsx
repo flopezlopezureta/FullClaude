@@ -4,7 +4,7 @@ import { IconEye, IconEyeOff } from '../components/Icon';
 import { api, RegisterData } from '../services/api';
 import { Role } from '../constants';
 
-type FormMode = 'login' | 'register' | 'forgot';
+type FormMode = 'login' | 'register' | 'forgot' | '2fa';
 
 // --- RUT Validation and Formatting Utilities ---
 const validateRut = (rutCompleto: string): boolean => {
@@ -60,6 +60,10 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const auth = useContext(AuthContext);
 
+  // 2FA second step
+  const [twoFactorTempToken, setTwoFactorTempToken] = useState<string | null>(null);
+  const [twoFactorCode, setTwoFactorCode] = useState('');
+
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const initialMode = params.get('mode') as FormMode;
@@ -103,7 +107,18 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
 
     try {
         if (mode === 'login') {
-            await auth.login({ email, password });
+            const result = await auth.login({ email, password });
+            if (result && 'requires2FA' in result) {
+                setTwoFactorTempToken(result.tempToken);
+                setMode('2fa');
+            }
+        } else if (mode === '2fa') {
+            if (!twoFactorTempToken) {
+                setError('La verificación expiró. Inicia sesión de nuevo.');
+                setMode('login');
+                return;
+            }
+            await auth.completeTwoFactorLogin(twoFactorTempToken, twoFactorCode);
         } else if (mode === 'register') {
             if (password !== confirmPassword) {
                 setError('Las contraseñas no coinciden.');
@@ -147,6 +162,8 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
     if (shouldReset) {
       setSuccess(null);
       resetFormFields();
+      setTwoFactorTempToken(null);
+      setTwoFactorCode('');
     }
   }
 
@@ -155,6 +172,7 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
           case 'login': return 'Iniciar Sesión';
           case 'register': return 'Crear Cuenta';
           case 'forgot': return 'Recuperar Contraseña';
+          case '2fa': return 'Verificación en Dos Pasos';
       }
   }
 
@@ -163,6 +181,7 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
           case 'login': return 'Ingresar';
           case 'register': return 'Registrarse';
           case 'forgot': return 'Enviar Instrucciones';
+          case '2fa': return 'Verificar';
       }
   }
 
@@ -221,14 +240,40 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
               </>
             )}
             
+            {mode === '2fa' && (
+              <div>
+                <p className="text-sm text-[var(--text-muted)] mb-4">
+                  Ingresa el código de 6 dígitos de tu aplicación de autenticación (Google Authenticator, etc.).
+                </p>
+                <label className="block text-[var(--text-secondary)] text-sm font-bold mb-2" htmlFor="twoFactorCode">
+                  Código de Verificación
+                </label>
+                <input
+                  id="twoFactorCode"
+                  type="text"
+                  inputMode="numeric"
+                  autoComplete="one-time-code"
+                  maxLength={6}
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.replace(/\D/g, ''))}
+                  required
+                  autoFocus
+                  className={`${inputClasses} text-center text-2xl tracking-[0.5em]`}
+                  placeholder="000000"
+                />
+              </div>
+            )}
+
+            {mode !== '2fa' && (
             <div>
               <label className="block text-[var(--text-secondary)] text-sm font-bold mb-2" htmlFor="email">
                 Nombre de Usuario
               </label>
               <input id="email" type="text" value={email} onChange={(e) => setEmail(e.target.value)} required className={inputClasses} />
             </div>
+            )}
 
-            {mode !== 'forgot' && (
+            {mode !== 'forgot' && mode !== '2fa' && (
                 <>
                 <div>
                     <label className="block text-[var(--text-secondary)] text-sm font-bold mb-2" htmlFor="password">
@@ -325,6 +370,13 @@ const AuthPage: React.FC<{ onBack?: () => void }> = ({ onBack }) => {
           {mode === 'login' && (
             <p className="text-center text-[var(--text-muted)] text-sm mt-6">
               ¿Eres cliente o conductor nuevo? Contacta a un administrador para que cree tu cuenta.
+            </p>
+          )}
+          {mode === '2fa' && (
+            <p className="text-center text-[var(--text-muted)] text-sm mt-6">
+              <button onClick={() => switchMode('login')} className="font-bold text-[var(--brand-primary)] hover:text-[var(--brand-secondary)]">
+                ← Volver a iniciar sesión
+              </button>
             </p>
           )}
           <p className="text-center text-xs text-[var(--text-muted)] opacity-50 mt-6">

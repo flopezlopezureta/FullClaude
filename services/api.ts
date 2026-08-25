@@ -288,7 +288,12 @@ export const getISODate = (date: Date): string => {
 
 export const api = {
   // Auth
-  login: (credentials: LoginCredentials) => post<{token: string, user: User}>('/auth/login', credentials),
+  login: (credentials: LoginCredentials) => post<{token: string, user: User} | {requires2FA: true, tempToken: string}>('/auth/login', credentials),
+  verifyLogin2FA: (tempToken: string, code: string) => post<{token: string, user: User}>('/auth/login/verify-2fa', { tempToken, code }),
+  get2FAStatus: () => get<{enabled: boolean}>('/auth/2fa/status'),
+  setup2FA: () => post<{secret: string, otpauthUri: string}>('/auth/2fa/setup', {}),
+  verifySetup2FA: (code: string) => post<{enabled: boolean}>('/auth/2fa/verify-setup', { code }),
+  disable2FA: (password: string) => post<{enabled: boolean}>('/auth/2fa/disable', { password }),
   register: (data: RegisterData) => post<User>('/auth/register', data),
   getUserByToken: () => get<User>('/auth/me'),
   requestPasswordRecovery: (email: string) => post<{message: string}>('/auth/recover-password', { email }),

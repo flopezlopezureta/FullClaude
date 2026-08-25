@@ -2,7 +2,8 @@
 import React, { useState, useEffect, useContext, useMemo } from 'react';
 import { api } from '../../services/api';
 import { AuthContext } from '../../contexts/AuthContext';
-import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcode, IconPencil, IconInfo, IconChecklist, IconTrash, IconAlertTriangle, IconTruck, IconPrinter, IconSettings, IconLayoutDashboard, IconUsers, IconMap } from '../Icon';
+import { IconEye, IconEyeOff, IconCheckCircle, IconMail, IconWhatsapp, IconQrcode, IconPencil, IconInfo, IconChecklist, IconTrash, IconAlertTriangle, IconTruck, IconPrinter, IconSettings, IconLayoutDashboard, IconUsers, IconMap, IconLock } from '../Icon';
+import { QRCodeSVG } from 'qrcode.react';
 import { useTheme } from '../../contexts/ThemeContext';
 import DeleteDatabaseModal, { ResetType } from '../modals/DeleteDatabaseModal';
 import { MessagingPlan, PickupMode, LabelFormat, Role } from '../../constants';
@@ -98,6 +99,66 @@ const SettingsPage: React.FC = () => {
     const [activeTab, setActiveTab] = useState<'general' | 'impresion' | 'botones' | 'retiro' | 'mensajeria' | 'comunas' | 'apariencia' | 'seguridad'>('general');
 
     const isSuperUser = auth?.user?.email === 'admin' || auth?.user?.email === 'admin@admin.cl';
+    const isAdmin = auth?.user?.role === Role.Admin;
+
+    // 2FA (per-admin opt-in)
+    const [twoFAEnabled, setTwoFAEnabled] = useState<boolean | null>(null);
+    const [twoFASetupData, setTwoFASetupData] = useState<{ secret: string; otpauthUri: string } | null>(null);
+    const [twoFACode, setTwoFACode] = useState('');
+    const [twoFADisablePassword, setTwoFADisablePassword] = useState('');
+    const [twoFABusy, setTwoFABusy] = useState(false);
+    const [twoFAMessage, setTwoFAMessage] = useState<{ type: 'error' | 'success'; text: string } | null>(null);
+
+    useEffect(() => {
+        if (!isAdmin) return;
+        api.get2FAStatus().then(res => setTwoFAEnabled(res.enabled)).catch(() => {});
+    }, [isAdmin]);
+
+    const handleStart2FASetup = async () => {
+        setTwoFABusy(true);
+        setTwoFAMessage(null);
+        try {
+            const data = await api.setup2FA();
+            setTwoFASetupData(data);
+        } catch (err: any) {
+            setTwoFAMessage({ type: 'error', text: err.message || 'Error al iniciar la configuración de 2FA.' });
+        } finally {
+            setTwoFABusy(false);
+        }
+    };
+
+    const handleConfirm2FASetup = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setTwoFABusy(true);
+        setTwoFAMessage(null);
+        try {
+            await api.verifySetup2FA(twoFACode);
+            setTwoFAEnabled(true);
+            setTwoFASetupData(null);
+            setTwoFACode('');
+            setTwoFAMessage({ type: 'success', text: '2FA activado correctamente.' });
+        } catch (err: any) {
+            setTwoFAMessage({ type: 'error', text: err.message || 'Código incorrecto.' });
+        } finally {
+            setTwoFABusy(false);
+        }
+    };
+
+    const handleDisable2FA = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setTwoFABusy(true);
+        setTwoFAMessage(null);
+        try {
+            await api.disable2FA(twoFADisablePassword);
+            setTwoFAEnabled(false);
+            setTwoFADisablePassword('');
+            setTwoFAMessage({ type: 'success', text: '2FA desactivado.' });
+        } catch (err: any) {
+            setTwoFAMessage({ type: 'error', text: err.message || 'Contraseña incorrecta.' });
+        } finally {
+            setTwoFABusy(false);
+        }
+    };
 
     useEffect(() => {
         if (auth?.systemSettings) {
@@ -380,7 +441,7 @@ const SettingsPage: React.FC = () => {
                     { id: 'mensajeria', label: 'Mensajes', icon: <IconMail className="w-3.5 h-3.5" /> },
                     ...(auth?.user?.role === Role.Admin ? [{ id: 'comunas', label: 'Comunas', icon: <IconMap className="w-3.5 h-3.5" /> }] : []),
                     { id: 'apariencia', label: 'Temas', icon: <IconLayoutDashboard className="w-3.5 h-3.5" /> },
-                    ...(auth?.user?.email === 'admin' ? [{ id: 'seguridad', label: 'Seguridad', icon: <IconAlertTriangle className="w-3.5 h-3.5 text-amber-500" /> }] : [])
+                    ...(isAdmin ? [{ id: 'seguridad', label: 'Seguridad', icon: <IconAlertTriangle className="w-3.5 h-3.5 text-amber-500" /> }] : [])
                 ].map(tab => (
                     <button
                         key={tab.id}
@@ -998,8 +1059,100 @@ const SettingsPage: React.FC = () => {
             )}
 
             {/* SECURITY & DATA MAINTENANCE TAB */}
-            {activeTab === 'seguridad' && auth?.user?.email === 'admin' && (
+            {activeTab === 'seguridad' && isAdmin && (
                 <div className="space-y-8">
+                    {/* Two-Factor Authentication — available to any admin account, not just the superuser */}
+                    <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
+                        <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3 flex items-center gap-2">
+                            <IconLock className="w-5 h-5" />
+                            Autenticación en Dos Pasos (2FA)
+                        </h2>
+
+                        {twoFAMessage && (
+                            <div className={`mb-4 px-4 py-3 rounded ${twoFAMessage.type === 'success' ? 'bg-[var(--success-bg)] border border-[var(--success-border)] text-[var(--success-text)]' : 'bg-[var(--error-bg)] border border-[var(--error-border)] text-[var(--error-text)]'}`}>
+                                {twoFAMessage.text}
+                            </div>
+                        )}
+
+                        {twoFAEnabled === null && (
+                            <p className="text-sm text-[var(--text-muted)]">Cargando estado...</p>
+                        )}
+
+                        {twoFAEnabled === true && !twoFASetupData && (
+                            <div className="space-y-4">
+                                <p className="text-sm text-[var(--text-secondary)] flex items-center gap-2">
+                                    <IconCheckCircle className="w-5 h-5 text-emerald-500" />
+                                    2FA está activo en tu cuenta.
+                                </p>
+                                <form onSubmit={handleDisable2FA} className="space-y-3 max-w-sm">
+                                    <label htmlFor="disable2faPassword" className="block text-sm font-medium text-[var(--text-secondary)]">
+                                        Ingresa tu contraseña para desactivarlo
+                                    </label>
+                                    <input
+                                        id="disable2faPassword"
+                                        type="password"
+                                        value={twoFADisablePassword}
+                                        onChange={(e) => setTwoFADisablePassword(e.target.value)}
+                                        required
+                                        className={`${inputClasses} text-[var(--text-primary)]`}
+                                    />
+                                    <button type="submit" disabled={twoFABusy} className="px-4 py-2 text-xs font-black uppercase tracking-widest rounded-lg shadow-sm text-white bg-red-600 hover:bg-red-700 disabled:opacity-50">
+                                        Desactivar 2FA
+                                    </button>
+                                </form>
+                            </div>
+                        )}
+
+                        {twoFAEnabled === false && !twoFASetupData && (
+                            <div className="space-y-4">
+                                <p className="text-sm text-[var(--text-muted)]">
+                                    2FA no está activo. Al activarlo, además de tu contraseña necesitarás un código de 6 dígitos generado por una app como Google Authenticator para iniciar sesión.
+                                </p>
+                                <button onClick={handleStart2FASetup} disabled={twoFABusy} className="px-4 py-2 text-sm font-medium text-[var(--text-on-brand)] bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)] disabled:opacity-50">
+                                    Activar 2FA
+                                </button>
+                            </div>
+                        )}
+
+                        {twoFASetupData && (
+                            <div className="space-y-4">
+                                <p className="text-sm text-[var(--text-secondary)]">Escanea este código con tu app de autenticación:</p>
+                                <div className="p-4 bg-white rounded-xl shadow-inner border border-gray-100 inline-block">
+                                    <QRCodeSVG value={twoFASetupData.otpauthUri} size={180} level="M" includeMargin={true} />
+                                </div>
+                                <p className="text-xs text-[var(--text-muted)]">
+                                    ¿No puedes escanear? Ingresa esta clave manualmente: <span className="font-mono font-bold">{twoFASetupData.secret}</span>
+                                </p>
+                                <form onSubmit={handleConfirm2FASetup} className="space-y-3 max-w-sm">
+                                    <label htmlFor="confirm2faCode" className="block text-sm font-medium text-[var(--text-secondary)]">
+                                        Código de verificación
+                                    </label>
+                                    <input
+                                        id="confirm2faCode"
+                                        type="text"
+                                        inputMode="numeric"
+                                        maxLength={6}
+                                        value={twoFACode}
+                                        onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, ''))}
+                                        required
+                                        className={`${inputClasses} text-[var(--text-primary)] text-center text-xl tracking-[0.4em]`}
+                                        placeholder="000000"
+                                    />
+                                    <div className="flex gap-2">
+                                        <button type="submit" disabled={twoFABusy} className="px-4 py-2 text-sm font-medium text-[var(--text-on-brand)] bg-[var(--brand-primary)] border border-transparent rounded-md shadow-sm hover:bg-[var(--brand-secondary)] disabled:opacity-50">
+                                            Confirmar y Activar
+                                        </button>
+                                        <button type="button" onClick={() => { setTwoFASetupData(null); setTwoFACode(''); }} className="px-4 py-2 text-sm font-medium text-[var(--text-secondary)] hover:underline">
+                                            Cancelar
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
+                        )}
+                    </div>
+
+                    {isSuperUser && (
+                    <>
                     {/* Maintenance Mode */}
                     <div className="bg-[var(--background-secondary)] shadow-md rounded-lg p-6">
                         <h2 className="text-xl font-bold text-[var(--text-primary)] mb-4 border-b border-[var(--border-primary)] pb-3">Estado de la Aplicación y Funciones</h2>
@@ -1129,9 +1282,11 @@ const SettingsPage: React.FC = () => {
                             </button>
                         </div>
                     </div>
+                    </>
+                    )}
                 </div>
             )}
-            
+
             {isDeleteDbModalOpen && (
                 <DeleteDatabaseModal
                     onClose={() => setIsDeleteDbModalOpen(false)}

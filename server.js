@@ -521,7 +521,9 @@ async function initializeDatabase() {
                 'lastLocationUpdate TIMESTAMPTZ',
                 'integrations JSONB',
                 'createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP',
-                'forceAppUpdate BOOLEAN DEFAULT false'
+                'forceAppUpdate BOOLEAN DEFAULT false',
+                'twoFactorSecret TEXT',
+                'twoFactorEnabled BOOLEAN DEFAULT false'
             ];
             for (const spec of userCols) {
                 const col = spec.split(' ')[0];
