@@ -513,7 +513,9 @@ async function initializeDatabase() {
                 'createdAt TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP',
                 'forceAppUpdate BOOLEAN DEFAULT false',
                 'twoFactorSecret TEXT',
-                'twoFactorEnabled BOOLEAN DEFAULT false'
+                'twoFactorEnabled BOOLEAN DEFAULT false',
+                'lastKnownAppVersionCode INTEGER',
+                'lastAppVersionCheckAt TIMESTAMPTZ'
             ];
             for (const spec of userCols) {
                 const col = spec.split(' ')[0];
