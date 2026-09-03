@@ -59,6 +59,7 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
   const [importingClient, setImportingClient] = useState<User | null>(null);
   const [importingSource, setImportingSource] = useState<PackageSource | null>(null);
   const [sortBy, setSortBy] = useState<'name' | 'newest' | 'oldest' | 'packages'>('name');
+  const [latestAppVersionCode, setLatestAppVersionCode] = useState<number | null>(null);
   const auth = useContext(AuthContext);
 
   const hasIntegration = (user: User, source: PackageSource) => {
@@ -153,7 +154,22 @@ const UserManagement: React.FC<UserManagementProps> = ({ roleFilter }) => {
     };
     fetchLicenseStatus();
   }, [users]);
-  
+
+  useEffect(() => {
+    // Para poder comparar contra lastKnownAppVersionCode de cada conductor y así saber si el
+    // botón de "Forzar actualización" tiene sentido mostrarlo activo o no. Si no hay una versión
+    // publicada (o falla la consulta) queda en null y el botón se comporta como antes.
+    const fetchLatestVersion = async () => {
+      try {
+        const version = await api.getAppUpdateVersion();
+        setLatestAppVersionCode(version.versionCode);
+      } catch (err) {
+        console.error('Failed to fetch latest app version', err);
+      }
+    };
+    fetchLatestVersion();
+  }, []);
+
   const handleApproveUser = async (userId: string) => {
     try {
         const updatedUser = await api.approveUser(userId);
@@ -565,7 +581,12 @@ const wb = XLSX.utils.book_new();
             const hasNoCustomPricing = user.role === Role.Client &&
               (!user.pricing || (user.pricing.sameDay === 0 && user.pricing.express === 0 && user.pricing.nextDay === 0)) &&
               (!user.pickupCost || user.pickupCost === 0);
-            
+            // Solo se puede afirmar que ya está al día si sabemos la última versión publicada Y
+            // este usuario ya reportó una versión alguna vez — sin eso, no hay base para bloquear
+            // el botón (mejor dejarlo disponible que ocultarlo por falta de datos).
+            const isAppUpToDate = latestAppVersionCode != null && user.lastKnownAppVersionCode != null &&
+              user.lastKnownAppVersionCode >= latestAppVersionCode;
+
             return (
             <div key={user.id} className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               <div className="flex-1 min-w-0">
@@ -715,11 +736,14 @@ const wb = XLSX.utils.book_new();
                                     <span className="text-xs font-semibold text-[var(--text-muted)] mb-2 block">Actualización de la App:</span>
                                     <button
                                         onClick={() => handleToggleForceUpdate(user)}
-                                        title="Si está activo, la app le mostrará un aviso para actualizar a la última versión publicada"
-                                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${user.forceAppUpdate ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
+                                        disabled={isAppUpToDate}
+                                        title={isAppUpToDate
+                                          ? `Ya reportó la última versión publicada (${latestAppVersionCode})`
+                                          : 'Si está activo, la app le mostrará un aviso para actualizar a la última versión publicada'}
+                                        className={`flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-full transition-colors ${isAppUpToDate ? 'bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400 cursor-default' : user.forceAppUpdate ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-300' : 'bg-slate-100 text-slate-500 dark:bg-slate-700 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-600'}`}
                                     >
-                                        <IconDownload className="w-4 h-4"/>
-                                        <span>{user.forceAppUpdate ? 'Actualización activada' : 'Forzar actualización'}</span>
+                                        {isAppUpToDate ? <IconCheck className="w-4 h-4"/> : <IconDownload className="w-4 h-4"/>}
+                                        <span>{isAppUpToDate ? 'Ya actualizado' : user.forceAppUpdate ? 'Actualización activada' : 'Forzar actualización'}</span>
                                     </button>
                                 </div>
                             </div>

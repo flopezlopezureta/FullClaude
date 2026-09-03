@@ -265,6 +265,8 @@ export interface User {
   driverPermissions?: DriverPermissions;
   operatorPermissions?: OperatorPermissions;
   forceAppUpdate?: boolean;
+  lastKnownAppVersionCode?: number | null;
+  lastAppVersionCheckAt?: string | null;
 
   // Integrations
   integrations?: {

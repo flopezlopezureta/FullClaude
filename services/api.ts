@@ -500,6 +500,10 @@ export const api = {
     version: { versionCode: number; versionName: string; mandatory: boolean; apkUrl: string; notes: string } | null;
     apk: { exists: boolean; sizeBytes?: number; modifiedAt?: string };
   }>('/app-updates/admin-status'),
+  // Público (no requiere super admin, a diferencia de admin-status) — solo el versionCode
+  // publicado, para poder comparar contra lastKnownAppVersionCode de cada usuario y así saber
+  // si ya está al día sin necesitar permisos de super admin.
+  getAppUpdateVersion: () => get<{ versionCode: number; versionName: string; mandatory: boolean; apkUrl: string; notes: string }>('/app-updates/version'),
   // Activa/desactiva el aviso de actualización para toda la flota de una sola vez, en vez de
   // tener que entrar al perfil de cada conductor.
   forceAppUpdateForAll: (enabled: boolean) =>

@@ -103,6 +103,12 @@ router.get('/check', authMiddleware, async (req, res) => {
         if (versionData.versionCode > clientVersionCode) {
             return res.json({ shouldUpdate: true, ...versionData });
         }
+
+        // Ya alcanzó la versión publicada — apaga la bandera en vez de dejarla prendida para
+        // siempre. Sin esto, un conductor que ya actualizó seguía apareciendo con "Forzar
+        // actualización" activo indefinidamente hasta que un admin entrara a apagarlo a mano.
+        db.query('UPDATE users SET "forceAppUpdate" = false WHERE id = $1', [req.user.id])
+            .catch(err => console.error('[AppUpdates] No se pudo apagar forceAppUpdate al alcanzar la versión:', err));
         return res.json({ shouldUpdate: false });
     } catch (err) {
         console.error('[AppUpdates] Error checking update eligibility:', err);
