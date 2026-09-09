@@ -509,9 +509,16 @@ router.get('/fleet-control-center', authMiddleware, adminOrRetirosOnly, async (r
                     THEN ROUND((COUNT(p.id) FILTER (WHERE p.status = 'ENTREGADO'))::numeric / COUNT(p.id) * 100, 1)
                     ELSE 0
                 END as "deliveryRate",
-                EXISTS (
-                    SELECT 1 FROM daily_closures dc
-                    WHERE dc."driverId" = u.id AND dc."date" = $1
+                (
+                    EXISTS (
+                        SELECT 1 FROM daily_closures dc
+                        WHERE dc."driverId" = u.id AND dc."date" = $1
+                    )
+                    -- Un cierre es una foto de un instante (cuando los pendientes llegaron a 0).
+                    -- Si despues de esa foto le siguen asignando paquetes al conductor, la jornada
+                    -- ya no esta realmente cerrada aunque exista el registro viejo en daily_closures
+                    -- - se vuelve a exigir 0 pendientes ACTUALES para seguir mostrandose como cerrada.
+                    AND COUNT(p.id) FILTER (WHERE p.status IN ('PENDIENTE', 'ASIGNADO', 'RETIRADO', 'EN_TRANSITO')) = 0
                 ) as "hasClosedInApp",
                 (
                     SELECT dc."closedAt" FROM daily_closures dc
