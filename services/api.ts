@@ -394,7 +394,7 @@ export const api = {
   fetchFalabellaSyncStatus: (clientId: string) => get<{ accounts: { id: string; nickname: string; lastSync: string | null; lastAttemptAt: string | null; autoImport: boolean; nextExpectedAt: string | null }[] }>(`/integrations/${clientId}/falabella/sync-status`),
   fetchJumpsellerOrders: (clientId: string) => get<any[]>(`/integrations/${clientId}/jumpseller/orders`),
   importScannedMeliOrder: (clientId: string, scannedId: string, flexCode?: string) => post<{message: string, pkg: Package}>(`/integrations/import/meli-scanned`, { clientId, scannedId, flexCode }),
-  importFalabellaDirectScanned: (rawCode: string, driverId: string, labelPhotoBase64?: string) => post<{message: string, pkg: Package, alreadyImported?: boolean}>('/falabella-direct/import-scanned', { rawCode, driverId, labelPhotoBase64 }),
+  importFalabellaDirectScanned: (rawCode: string, driverId: string, labelPhotoBase64?: string) => post<{message: string, pkg: Package, alreadyImported?: boolean, redispatched?: boolean}>('/falabella-direct/import-scanned', { rawCode, driverId, labelPhotoBase64 }),
   checkMeliShipmentStatus: (shipmentId: string) => get<{status: string, substatus: string}>(`/integrations/status/${shipmentId}`),
   syncMeliPackage: (shipmentId: string) => post<Package>(`/integrations/sync-shipment/${shipmentId}`, {}),
   
