@@ -174,6 +174,7 @@ router.post('/import-scanned', authMiddleware, requireFalabellaDirectAccess, asy
             falabellaDirectLastPushedStatus: 'IN_TRANSIT_001',
             falabellaDirectLastPushedAt: now,
             falabellaDirectLabelPhotoBase64: labelPhotoBase64 || null,
+            falabellaDirectSellerId: order?.shipFrom?.sellerId || null,
         };
 
         const columns = Object.keys(newPackage).map(k => `"${k}"`).join(', ');
