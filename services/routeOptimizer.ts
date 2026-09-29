@@ -100,21 +100,19 @@ export const optimizeRoute = (packages: Package[], startLocation?: { lat: number
 };
 
 // K-Means Clustering for Multi-Driver Optimization with Time Constraint
-export const optimizeMultiDriverRoute = (packages: Package[], driverCount: number, startLocation: { lat: number, lng: number }, endTimeStr: string = "21:00"): Package[][] => {
+// `startTime` is the moment the route begins — defaults to the real current time (GeolocatePage's
+// "plan the rest of today, starting now" use case). Callers planning a route for a different day
+// or a specific start hour (e.g. the route-plan wizard's "Fecha de Salida" + "Rango de tiempo")
+// must pass it explicitly, otherwise `endTimeStr` gets compared against the real wall-clock time
+// instead of the planned date — silently rejecting every package if the plan is for the past, a
+// future day, or just an end time that's already gone by on the real clock.
+export const optimizeMultiDriverRoute = (packages: Package[], driverCount: number, startLocation: { lat: number, lng: number }, endTimeStr: string = "21:00", startTime: Date = new Date()): Package[][] => {
     // 1. Parse Time Constraint
-    const now = new Date();
+    const now = startTime;
     const [endHour, endMinute] = endTimeStr.split(':').map(Number);
-    const endDate = new Date();
+    const endDate = new Date(now);
     endDate.setHours(endHour, endMinute, 0, 0);
-    
-    // If end time is before now (e.g. next day), add 24 hours. 
-    // For simplicity, assume same day if time is later than now, otherwise just fail safe.
-    if (endDate < now) {
-        // If it's 23:00 and target is 01:00, add a day. 
-        // But usually user selects 21:00. If it's currently 22:00, time is negative.
-        // We'll assume minimal operational time remaining if late.
-    }
-    
+
     const maxDurationMinutes = Math.max(0, (endDate.getTime() - now.getTime()) / 60000);
 
     // 2. Prepare points

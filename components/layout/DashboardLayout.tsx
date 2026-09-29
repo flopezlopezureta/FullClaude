@@ -32,6 +32,7 @@ import { PickupDashboard } from '../admin/PickupDashboard';
 import PickupReportPage from '../admin/PickupReportPage';
 import LiveMap from '../admin/LiveMap';
 import GeolocatePage from '../admin/GeolocatePage';
+import RoutePlanWizard from '../admin/RoutePlanWizard';
 import DriverMobileLayout from '../driver/DriverMobileLayout';
 import DriverFlexDiscrepancyPage from '../admin/DriverFlexDiscrepancyPage';
 import ClientSettingsPage from '../client/ClientSettingsPage';
@@ -209,6 +210,10 @@ const DashboardLayout: React.FC = () => {
 
       case 'geolocate':
         if (isAdmin || (isOp && user?.operatorPermissions?.canManagePackages)) return { title: '', content: <GeolocatePage /> };
+        break;
+
+      case 'route-plan-wizard':
+        if (isAdmin && isSuperUser) return { title: '', content: <RoutePlanWizard /> };
         break;
 
       // Billing

@@ -2,7 +2,7 @@
 import React, { useContext, useState, useEffect } from 'react';
 import { AuthContext } from '../../contexts/AuthContext';
 import { api } from '../../services/api';
-import { IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconBarChart, IconPieChart, IconTarget, IconClock, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle, IconFileUpload, IconWifi, IconSearch } from '../Icon';
+import { IconPackage, IconUsers, IconUser, IconLogOut, IconLayoutDashboard, IconX, IconChevronDown, IconTruck, IconUserCheck, IconSettings, IconQrcode, IconFileText, IconMapPin, IconChartBar, IconBarChart, IconPieChart, IconTarget, IconClock, IconFileInvoice, IconPlugConnected, IconDownload, IconMap, IconAlertTriangle, IconFileUpload, IconWifi, IconSearch, IconRoute } from '../Icon';
 import { Role, DEFAULT_OPERATOR_PERMISSIONS } from '../../constants';
 
 interface SidebarProps {
@@ -50,7 +50,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
     if (['assign-pickups', 'pickup-report'].includes(activeView)) menus.add('pickups');
     if (['settings', 'integrations'].includes(activeView)) menus.add('configuration');
     if (['delivery-analytics', 'late-deliveries', 'activity-audit', 'fleet-control'].includes(activeView)) menus.add('reports');
-    if (['geolocate', 'zone-settings', 'live-map', 'sector-editor', 'projection-map'].includes(activeView)) menus.add('logistics');
+    if (['geolocate', 'zone-settings', 'live-map', 'sector-editor', 'projection-map', 'route-plan-wizard'].includes(activeView)) menus.add('logistics');
     return menus;
   });
 
@@ -159,6 +159,7 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, onNavigate, isOpen, onClo
         { id: 'zone-settings', label: 'Gestión de Zonas', icon: <IconMapPin className="h-5 w-5" /> },
         ...(systemSettings?.gisSectorsEnabled ? [{ id: 'sector-editor', label: 'Sectores GIS', icon: <IconMap className="h-5 w-5 text-violet-600" /> }] : []),
         { id: 'geolocate', label: 'Geolocalizar', icon: <IconMap className="h-5 w-5" /> },
+        ...(isSuperUser ? [{ id: 'route-plan-wizard', label: 'Plan de Rutas (Beta)', icon: <IconRoute className="h-5 w-5 text-teal-600" /> }] : []),
         ...(isSuperUser ? [{ id: 'projection-map', label: 'Proyección de Paquetes', icon: <IconChartBar className="h-5 w-5 text-indigo-500" /> }] : []),
       ]
     },
