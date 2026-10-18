@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Software de ruteo para e-commerce en Chile | Full Envíos</title>
-<meta name="description" content="Optimiza las rutas de entrega de tu tienda online en Chile: importa pedidos de Shopify, Mercado Libre, Falabella y WooCommerce, asigna conductores y sigue cada entrega en vivo. Desde 5 UF/mes.">
+<meta name="description" content="Optimiza las rutas de entrega de tu tienda online en Chile: importa pedidos de Shopify, Mercado Libre, Falabella y WooCommerce, asigna conductores y sigue cada entrega en vivo.">
 <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1">
 <link rel="canonical" href="https://fullenvios.cl/ruteo-ecommerce-chile">
 <meta name="theme-color" content="#0b1020">
@@ -12,7 +12,7 @@
 <meta property="og:locale" content="es_CL">
 <meta property="og:site_name" content="Full Envíos">
 <meta property="og:title" content="Software de ruteo para e-commerce en Chile | Full Envíos">
-<meta property="og:description" content="Importa pedidos de tu tienda, optimiza rutas y controla a tus conductores en vivo. Desde 5 UF/mes.">
+<meta property="og:description" content="Importa pedidos de tu tienda, optimiza rutas y controla a tus conductores en vivo.">
 <meta property="og:url" content="https://fullenvios.cl/ruteo-ecommerce-chile">
 <meta property="og:image" content="https://fullenvios.cl/assets/landing/web/og-fullenvios.jpg">
 <meta property="og:image:width" content="1200">
@@ -95,10 +95,10 @@
         },
         {
           "@type": "Question",
-          "name": "¿Cuántos conductores puedo rutear?",
+          "name": "¿Puedo ver dónde está cada conductor mientras ejecuta su ruta?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Depende del plan: Starter incluye hasta 3 licencias de ruteo, Medium hasta 10 y Advanced hasta 30."
+            "text": "Sí. La torre de control muestra la ubicación de cada conductor y el estado de sus pedidos en tiempo real."
           }
         },
         {
@@ -119,10 +119,10 @@
         },
         {
           "@type": "Question",
-          "name": "¿Cuánto cuesta?",
+          "name": "¿Cómo se define la propuesta comercial?",
           "acceptedAnswer": {
             "@type": "Answer",
-            "text": "Desde 5 UF al mes + IVA con el plan Starter, que se puede cancelar cuando quieras. Medium cuesta 15 UF y Advanced 40 UF al mes, más implementación."
+            "text": "Cada caso se evalúa según el volumen de pedidos, el tamaño de la flota y las integraciones requeridas. Contáctanos y preparamos una propuesta a la medida de tu operación."
           }
         }
       ]
@@ -269,6 +269,11 @@ summary::after{content:"+";font-size:26px;font-weight:400;color:var(--m);transit
 details[open] summary::after{transform:rotate(45deg)}
 details p{padding:0 26px 24px;color:var(--mut);font-size:16px}
 
+.live{margin-top:28px;display:flex;align-items:center;gap:28px;padding:26px 32px;border-radius:var(--r);background:linear-gradient(135deg,rgba(109,93,252,.22),rgba(236,72,153,.18));border:1px solid var(--line)}
+.live div{display:flex;align-items:center;gap:12px;font-size:19px;white-space:nowrap}
+.live p{color:#d4d9f2;font-size:16px}
+.live .dot{width:12px;height:12px;border-radius:50%;background:#34d399;box-shadow:0 0 0 5px rgba(52,211,153,.25)}
+@media(max-width:760px){.live{flex-direction:column;align-items:flex-start;gap:12px}}
 /* final cta */
 .final{padding:30px 0 100px}
 .box{border-radius:32px;padding:72px 32px;text-align:center;background:var(--grad);position:relative;overflow:hidden}
@@ -307,6 +312,7 @@ footer li a:hover{color:#fff}
   .menu .btn{justify-content:center}
   .burger{display:block}
 }
+@media(max-width:860px){#contacto .steps{grid-template-columns:1fr!important}}
 @media(max-width:560px){
   .steps,.fgrid{grid-template-columns:1fr}
   .chip{padding:9px 12px}
@@ -324,10 +330,10 @@ footer li a:hover{color:#fff}
     <nav class="menu" id="menu" aria-label="Principal">
       <a href="/fullenvios#plataforma">Plataforma</a>
       <a href="#como-funciona">Cómo funciona</a>
-      <a href="#planes">Planes</a>
+      <a href="#contacto">Contacto</a>
       <a href="#faq">Preguntas</a>
       <a class="btn line sm" href="/">Ingresar</a>
-      <a class="btn primary sm" href="https://wa.me/56985367387?text=Hola%2C%20quiero%20una%20demo%20de%20Full%20Env%C3%ADos" rel="noopener">Solicitar demo</a>
+      <a class="btn primary sm" href="#contacto">Solicitar reunión</a>
     </nav>
   </div>
 </header>
@@ -337,12 +343,12 @@ footer li a:hover{color:#fff}
     <div>
       <p class="crumbs"><a href="/fullenvios">Full Envíos</a> › Software de ruteo para e-commerce</p>
       <h1>Software de ruteo para e-commerce en Chile: <span class="grad-text">más entregas por ruta, menos costo</span></h1>
-      <p class="lead">Importa los pedidos de tu tienda online, agrúpalos por zona y entrega a cada conductor una ruta optimizada. Tú ves todo en un mapa en vivo y tu cliente sigue su pedido.</p>
+      <p class="lead">Importa los pedidos de tu tienda online, agrúpalos por zona y entrega a cada conductor una ruta optimizada. Tú ves todo en un mapa en vivo y tu cliente sigue su pedido. Forma parte de la suite completa de Full Envíos para conductores, sellers y administración.</p>
       <div class="cta">
-        <a class="btn primary" href="https://wa.me/56985367387?text=Hola%2C%20quiero%20una%20demo%20del%20software%20de%20ruteo" rel="noopener">Solicitar demo gratuita →</a>
-        <a class="btn line" href="#planes">Ver precios</a>
+        <a class="btn primary" href="#contacto">Solicitar una reunión →</a>
+        <a class="btn line" href="#como-funciona">Cómo funciona</a>
       </div>
-      <div class="proof"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Desde 5 UF/mes + IVA</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Sin equipos especiales</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hecho en Chile</span></div>
+      <div class="proof"><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Ubicación de conductores en vivo</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Sin equipos especiales</span><span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Integración con tu e-commerce</span></div>
     </div>
     <div class="visual"><div class="img"><img src="/assets/landing/web/rutas-ciudad.webp" alt="Rutas de reparto optimizadas sobre el mapa de una ciudad con furgones y estados de entrega" width="900" height="900" fetchpriority="high"></div></div>
   </div>
@@ -387,41 +393,32 @@ footer li a:hover{color:#fff}
 
 <section class="light">
   <div class="wrap">
-    <div class="row"><div class="txt"><h3>Rutas pensadas para la última milla urbana</h3><p>Reduce kilómetros recorridos y tiempos muertos ordenando las paradas de cada conductor. Menos combustible por pedido y más entregas por jornada.</p><ul class="ticks"><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Ruteo por zona y por conductor</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hasta 3, 10 o 30 licencias de ruteo según el plan</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Control de zonas y tarifas por comuna</li></ul></div><img src="/assets/landing/web/rutas-ciudad.webp" alt="Rutas de reparto optimizadas sobre una ciudad" width="900" height="900" loading="lazy"></div>
+    <div class="row"><div class="txt"><h3>Rutas pensadas para la última milla urbana</h3><p>Reduce kilómetros recorridos y tiempos muertos ordenando las paradas de cada conductor. Menos combustible por pedido y más entregas por jornada.</p><ul class="ticks"><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Ruteo por zona y por conductor</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Licencias de ruteo según el tamaño de tu flota</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Control de zonas y tarifas por comuna</li></ul></div><img src="/assets/landing/web/rutas-ciudad.webp" alt="Rutas de reparto optimizadas sobre una ciudad" width="900" height="900" loading="lazy"></div>
     <div class="row rev"><div class="txt"><h3>Una app que tus conductores sí van a usar</h3><p>Cada conductor ve su ruta, escanea las etiquetas y cierra la entrega con foto y geolocalización, desde su propio celular Android.</p><ul class="ticks"><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Escáner de etiquetas integrado</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Evidencia de entrega con foto y ubicación</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>No requiere equipos especiales</li></ul></div><img src="/assets/landing/web/conductor-app.webp" alt="Conductor de Full Envíos usando la app de ruteo en su furgón" width="900" height="900" loading="lazy"></div>
     <div class="row"><div class="txt"><h3>Visibilidad total para ti y para tu cliente</h3><p>En la torre de control ves a todos tus conductores y el estado de cada pedido. Tu cliente recibe su propio link de seguimiento.</p><ul class="ticks"><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Mapa en vivo de conductores y pedidos</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Link de seguimiento y correos de estado</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Reportes de rendimiento descargables en Excel</li></ul></div><img src="/assets/landing/web/torre-control.webp" alt="Torre de control con seguimiento de entregas en tiempo real" width="900" height="900" loading="lazy"></div>
   </div>
 </section>
 
-<section id="planes">
-  <div class="wrap">
-    <div class="head">
-      <span class="kicker grad-text">Precios</span>
-      <h2>Cuánto cuesta el software de ruteo</h2>
-      <p class="sub">Planes en UF + IVA, según tus órdenes y conductores.</p>
-    </div>
-    <div class="plans" style="color:var(--link2)">
-      <article class="plan"><h3>Starter</h3><div class="price">5 UF<small> /mes</small></div><p class="note">Cancela cuando quieras</p><ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>3.000 órdenes</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hasta 3 licencias de ruteo</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Integraciones nativas</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Portal de clientes (hasta 5)</li></ul><a class="btn out" href="https://wa.me/56985367387?text=Quiero%20el%20plan%20Starter" rel="noopener">Consultar</a></article>
-      <article class="plan hl"><h3>Medium</h3><div class="price">15 UF<small> /mes</small></div><p class="note">+ 15 UF de implementación</p><ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>10.000 órdenes</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hasta 10 licencias de ruteo</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hasta 15 clientes</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Etiquetas whitelabel</li></ul><a class="btn primary" href="https://wa.me/56985367387?text=Quiero%20el%20plan%20Medium" rel="noopener">Consultar</a></article>
-      <article class="plan"><h3>Advanced</h3><div class="price">40 UF<small> /mes</small></div><p class="note">+ 25 UF de implementación</p><ul><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>30.000 órdenes</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Hasta 30 licencias de ruteo</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Clientes ilimitados</li><li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>Whitelabel completo</li></ul><a class="btn out" href="https://wa.me/56985367387?text=Quiero%20el%20plan%20Advanced" rel="noopener">Consultar</a></article>
-    </div>
-    <p class="fine" style="color:var(--mut)">Detalle completo de cada plan en <a href="/fullenvios#planes" style="color:#fff">la página principal</a>.</p>
-  </div>
-</section>
-
-<section class="light" id="faq">
+<section id="faq">
   <div class="wrap">
     <div class="head"><span class="kicker grad-text">Preguntas frecuentes</span><h2>Sobre el software de ruteo</h2></div>
-    <div class="faq"><details><summary>¿Qué es un software de ruteo para e-commerce?</summary><p>Es una herramienta que toma los pedidos de tu tienda online, los agrupa por zona y ordena el recorrido de cada conductor para entregar más pedidos en menos tiempo y con menos kilómetros.</p></details><details><summary>¿Se integra con mi tienda online?</summary><p>Sí. Full Envíos importa pedidos automáticamente desde Shopify, Mercado Libre, Falabella, WooCommerce y Jumpseller, y también permite carga masiva desde Excel.</p></details><details><summary>¿Cuántos conductores puedo rutear?</summary><p>Depende del plan: Starter incluye hasta 3 licencias de ruteo, Medium hasta 10 y Advanced hasta 30.</p></details><details><summary>¿Mis conductores necesitan comprar equipos?</summary><p>No. Usan la app Android de Full Envíos en su propio celular, con escáner de etiquetas incluido.</p></details><details><summary>¿Mi cliente puede seguir su pedido?</summary><p>Sí. Recibe un link de seguimiento y correos con cada cambio de estado, y cada entrega queda con foto y geolocalización.</p></details><details><summary>¿Cuánto cuesta?</summary><p>Desde 5 UF al mes + IVA con el plan Starter, que se puede cancelar cuando quieras. Medium cuesta 15 UF y Advanced 40 UF al mes, más implementación.</p></details></div>
+    <div class="faq"><details><summary>¿Qué es un software de ruteo para e-commerce?</summary><p>Es una herramienta que toma los pedidos de tu tienda online, los agrupa por zona y ordena el recorrido de cada conductor para entregar más pedidos en menos tiempo y con menos kilómetros.</p></details><details><summary>¿Se integra con mi tienda online?</summary><p>Sí. Full Envíos importa pedidos automáticamente desde Shopify, Mercado Libre, Falabella, WooCommerce y Jumpseller, y también permite carga masiva desde Excel.</p></details><details><summary>¿Puedo ver dónde está cada conductor mientras ejecuta su ruta?</summary><p>Sí. La torre de control muestra la ubicación de cada conductor y el estado de sus pedidos en tiempo real.</p></details><details><summary>¿Mis conductores necesitan comprar equipos?</summary><p>No. Usan la app Android de Full Envíos en su propio celular, con escáner de etiquetas incluido.</p></details><details><summary>¿Mi cliente puede seguir su pedido?</summary><p>Sí. Recibe un link de seguimiento y correos con cada cambio de estado, y cada entrega queda con foto y geolocalización.</p></details><details><summary>¿Cómo se define la propuesta comercial?</summary><p>Cada caso se evalúa según el volumen de pedidos, el tamaño de la flota y las integraciones requeridas. Contáctanos y preparamos una propuesta a la medida de tu operación.</p></details></div>
   </div>
 </section>
 
-<section class="final" style="padding-top:100px">
-  <div class="wrap"><div class="box">
-    <h2>Prueba el ruteo con tus propios pedidos</h2>
-    <p>Te mostramos la plataforma funcionando con los pedidos de tu tienda. Sin compromiso.</p>
-    <div class="cta" style="justify-content:center"><a class="btn" href="https://wa.me/56985367387?text=Hola%2C%20quiero%20una%20demo%20del%20software%20de%20ruteo" rel="noopener">Hablar por WhatsApp</a><a class="btn line" href="mailto:info@fullenvios.cl">info@fullenvios.cl</a></div>
-  </div></div>
+<section id="contacto" class="light">
+  <div class="wrap">
+    <div class="head">
+      <span class="kicker grad-text">Contacto</span>
+      <h2>Cada operación es distinta. Evaluemos la tuya</h2>
+      <p class="sub">Cuéntanos tu volumen de pedidos, el tamaño de tu flota y tus canales de venta. Preparamos una demostración y una propuesta a la medida de tu caso.</p>
+    </div>
+    <div class="box">
+      <h2>Conversemos sobre tu operación</h2>
+      <p>Escríbenos y coordinamos una reunión sin compromiso.</p>
+      <div class="cta" style="justify-content:center"><a class="btn" href="https://wa.me/56985367387?text=Hola%2C%20quiero%20coordinar%20una%20reuni%C3%B3n%20para%20conocer%20el%20software%20de%20ruteo" rel="noopener">Escribir por WhatsApp</a><a class="btn line" href="mailto:info@fullenvios.cl">info@fullenvios.cl</a></div>
+    </div>
+  </div>
 </section>
 </main>
 <footer>
@@ -431,11 +428,11 @@ footer li a:hover{color:#fff}
         <a class="brand" href="/fullenvios"><img src="/logo.png" alt="" width="36" height="36">Full Envíos</a>
         <p>Software de última milla, ruteo y seguimiento de entregas para e-commerce y operadores logísticos en Chile.</p>
       </div>
-      <div><h4>Plataforma</h4><ul><li><a href="#plataforma">Funciones</a></li><li><a href="#como-funciona">Cómo funciona</a></li><li><a href="#planes">Planes</a></li><li><a href="#faq">Preguntas</a></li></ul></div>
+      <div><h4>Plataforma</h4><ul><li><a href="/fullenvios#plataforma">Funciones</a></li><li><a href="#como-funciona">Cómo funciona</a></li><li><a href="#contacto">Contacto</a></li><li><a href="#faq">Preguntas</a></li><li><a href="/ruteo-ecommerce-chile">Software de ruteo para e-commerce</a></li></ul></div>
       <div><h4>Acceso</h4><ul><li><a href="/">Ingresar</a></li><li><a href="/privacidad.html">Política de privacidad</a></li></ul></div>
       <div><h4>Contacto</h4><ul><li><a href="mailto:info@fullenvios.cl">info@fullenvios.cl</a></li><li><a href="https://wa.me/56985367387" rel="noopener">+56 9 8536 7387</a></li><li>Santiago, Chile</li></ul></div>
     </div>
-    <div class="copy"><span>© 2026 Full Envíos. Todos los derechos reservados.</span><span>Valores en UF + IVA</span></div>
+    <div class="copy"><span>© 2026 Full Envíos. Todos los derechos reservados.</span><span>Software de última milla</span></div>
   </div>
 </footer>
 <a class="wa" href="https://wa.me/56985367387?text=Hola%2C%20quiero%20informaci%C3%B3n%20de%20Full%20Env%C3%ADos" rel="noopener" aria-label="Escribir por WhatsApp">
