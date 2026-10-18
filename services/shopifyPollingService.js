@@ -1,7 +1,7 @@
 const db = require('../db');
 const https = require('https');
 const { v4: uuidv4 } = require('uuid');
-const { normalizeCommune, normalizeCity, checkOrderCommune } = require('../utils/normUtil');
+const { normalizeCommune, normalizeCity, checkOrderCommune, allowsIncompleteShopifyData } = require('../utils/normUtil');
 const { triggerBackgroundGeocoding } = require('./geocodingService');
 const { decrypt } = require('./falabellaCrypto');
 
@@ -167,6 +167,7 @@ async function autoImportShopifyPackages(activeCommunes = []) {
         for (const user of users) {
             const clientId = user.id;
             const clientIdentifier = user.clientIdentifier || 'CLI';
+            const incompleteOk = allowsIncompleteShopifyData(clientIdentifier);
             
             let integrations = ensureMultiAccountStructure(user.integrations);
             const shopifyAccounts = integrations.accounts.filter(acc => acc.type === 'SHOPIFY');
@@ -223,7 +224,13 @@ async function autoImportShopifyPackages(activeCommunes = []) {
                                     // desaparecían de la lista todo el día. Un pedido sin comuna reconocible ("N/A", sin datos del
                                     // comprador) tampoco entra: esa misma limpieza lo borraría igual.
                                     const zone = checkOrderCommune([address.city], validCommunes, { strict: true });
-                                    if (!zone.allow) {
+                                    // Cliente con pedidos de datos incompletos (SHOPIFY_INCOMPLETE_DATA_CLIENTS): el pedido es válido aunque la
+                                    // tienda no entregue la comuna, así que entra igual. Una comuna reconocida pero deshabilitada se sigue descartando.
+                                    const incompleteAllowed = incompleteOk && !zone.commune;
+                                    if (incompleteAllowed) {
+                                        console.log(`[ShopifyPolling] Order ${order.name || orderId} imported with incomplete buyer data (client ${clientIdentifier}, ${account.nickname}).`);
+                                    }
+                                    if (!zone.allow && !incompleteAllowed) {
                                         console.log(`[ShopifyPolling] Skipping order ${order.name || orderId} - ${zone.commune ? `comuna "${zone.commune}" NO habilitada` : 'sin comuna reconocible'} (${account.nickname}).`);
                                         continue;
                                     }
@@ -238,7 +245,7 @@ async function autoImportShopifyPackages(activeCommunes = []) {
                                         shippingType: 'SAME_DAY',
                                         origin: 'Centro de Distribución',
                                         recipientAddress: `${address.address1 || ''} ${address.address2 || ''}`.trim() || 'N/A',
-                                        recipientCommune: zone.commune,
+                                        recipientCommune: zone.commune || 'N/A',
                                         recipientCity: normalizeCity('Región Metropolitana'),
                                         notes: `Auto-Import Shopify Order: ${order.name || orderId}`,
                                         estimatedDelivery: nowImport,
