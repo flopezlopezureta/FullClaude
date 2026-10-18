@@ -373,14 +373,14 @@ async function startServer() {
         app.use(vite.middlewares);
     } else {
         const distPath = path.join(__dirname, 'dist');
+        const { createSpaFallback } = require('./utils/spaFallback');
         // Serve static files from the 'dist' directory (Vite's build output).
         app.use(express.static(distPath));
 
         // The SPA fallback (catch-all) MUST be the last route.
-        // It handles all GET requests that didn't match an API route or a static file.
-        app.get('*', (req, res) => {
-            res.sendFile(path.join(distPath, 'index.html'));
-        });
+        // It handles all GET requests that didn't match an API route or a static file. Un archivo estático que no existe
+        // (/assets/*.js, *.css, imágenes...) responde 404 sin caché y NO la página HTML: ver utils/spaFallback.js.
+        app.get('*', createSpaFallback(distPath));
     }
 
     app.listen(PORT, '0.0.0.0', async () => {

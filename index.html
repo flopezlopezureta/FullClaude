@@ -3,6 +3,133 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- fe-heal:start -->
+    <script>
+      /* Auto-recuperación de la pantalla.
+         Si el archivo principal de la app (el .js de la carpeta /assets/) no se puede cargar porque el navegador, el teléfono o Cloudflare
+         guardaron una copia mala (típicamente una página HTML en lugar del JavaScript, justo después de un despliegue), la pantalla
+         quedaría en blanco ("Failed to load module script ... text/html"). Este bloque lo detecta y:
+           1) comprueba que la red SÍ entrega el archivo (si no hay conexión no toca nada), lo vuelve a pedir con otra dirección
+              (?heal=...) para saltarse la copia mala y arranca la app con él;
+           2) en segundo plano limpia el service worker y las cachés viejas, refresca los archivos de la pantalla y vuelve a registrar
+              el service worker, para que la próxima carga sea limpia (no toca localStorage ni IndexedDB: se conservan la sesión y la
+              cola de acciones sin conexión);
+           3) si tampoco así carga, muestra un mensaje con el botón «Reparar y reintentar» en lugar de la pantalla en blanco.
+         Se intenta una sola vez por archivo y por sesión (no entra en bucles). ES5 a propósito: debe funcionar en WebView antiguos. */
+      (function () {
+        var KEY = 'fe_heal_';
+
+        function mem(k, v) {
+          try {
+            if (v === undefined) return window.sessionStorage.getItem(k);
+            window.sessionStorage.setItem(k, v);
+          } catch (e) {}
+          return null;
+        }
+        function forget() {
+          try {
+            var s = window.sessionStorage, ks = [], i, name;
+            for (i = 0; i < s.length; i++) { name = s.key(i); if (name && name.indexOf(KEY) === 0) ks.push(name); }
+            for (i = 0; i < ks.length; i++) s.removeItem(ks[i]);
+          } catch (e) {}
+        }
+        function base(u) { return String(u).split('#')[0].split('?')[0]; }
+
+        function clearAll() {
+          var jobs = [];
+          try {
+            if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+              jobs.push(navigator.serviceWorker.getRegistrations().then(function (rs) {
+                return Promise.all(rs.map(function (r) { return r.unregister(); }));
+              }));
+            }
+          } catch (e) {}
+          try {
+            if (window.caches && window.caches.keys) {
+              jobs.push(window.caches.keys().then(function (ks) {
+                return Promise.all(ks.map(function (k) { return window.caches.delete(k); }));
+              }));
+            }
+          } catch (e) {}
+          return Promise.all(jobs).then(function () {}, function () {});
+        }
+
+        function resolved() { return window.Promise ? Promise.resolve() : { then: function (f) { f(); return this; } }; }
+
+        // Pide de nuevo a la red, sin usar la copia guardada, los archivos de la pantalla: reemplaza copias malas de la caché HTTP.
+        function refreshAssets() {
+          try {
+            if (!window.fetch || !window.Promise) return resolved();
+            var els = document.querySelectorAll('link[rel="modulepreload"],link[rel="stylesheet"],script[type="module"]');
+            var urls = [], i, u;
+            for (i = 0; i < els.length; i++) {
+              u = els[i].href || els[i].src;
+              if (u && u.indexOf('/assets/') > -1) urls.push(base(u));
+            }
+            return Promise.all(urls.map(function (x) {
+              return window.fetch(x, { cache: 'reload', credentials: 'same-origin' }).then(null, function () {});
+            })).then(function () {});
+          } catch (e) { return resolved(); }
+        }
+
+        function repair() {
+          var go = function () { forget(); window.location.replace('/?r=' + Date.now()); };
+          // Sin conexión no se borra nada (se perdería lo guardado para trabajar sin red): solo se vuelve a intentar.
+          if (window.navigator && window.navigator.onLine === false) { go(); return; }
+          try { Promise.all([clearAll(), refreshAssets()]).then(go, go); } catch (e) { go(); }
+        }
+
+        function showPanel() {
+          try {
+            if (document.getElementById('fe-heal-panel')) return;
+            var build = function () {
+              if (document.getElementById('fe-heal-panel')) return;
+              var d = document.createElement('div');
+              d.id = 'fe-heal-panel';
+              d.setAttribute('style', 'position:fixed;left:0;right:0;top:0;bottom:0;z-index:2147483647;background:#f8fafc;display:flex;align-items:center;justify-content:center;padding:24px;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;');
+              d.innerHTML = '<div style="max-width:360px;text-align:center;color:#0f172a">' +
+                '<div style="font-size:18px;font-weight:700;margin-bottom:8px">No se pudo cargar la aplicación</div>' +
+                '<div style="font-size:14px;color:#475569;margin-bottom:18px;line-height:1.4">Revisa tu conexión a internet. Si el problema continúa, toca el botón para reparar y reintentar.</div>' +
+                '<button id="fe-heal-btn" type="button" style="background:#4f46e5;color:#fff;border:0;border-radius:10px;padding:12px 20px;font-size:15px;font-weight:600">Reparar y reintentar</button>' +
+                '</div>';
+              document.body.appendChild(d);
+              document.getElementById('fe-heal-btn').onclick = repair;
+            };
+            if (document.body) build(); else document.addEventListener('DOMContentLoaded', build);
+          } catch (e) {}
+        }
+
+        window.__feHeal = { repair: repair, show: showPanel };
+
+        window.addEventListener('error', function (ev) {
+          try {
+            var t = ev && ev.target;
+            if (!t || t.tagName !== 'SCRIPT' || t.type !== 'module' || !t.src) return;
+            var src = base(t.src);
+            if (src.indexOf('/assets/') < 0) return;
+            if (t.getAttribute('data-heal')) { showPanel(); return; }   // el reintento también falló
+            if (mem(KEY + src)) { showPanel(); return; }                // ya se intentó en esta sesión
+            mem(KEY + src, '1');
+            if (!window.fetch || !window.Promise) { showPanel(); return; }
+            var retry = src + '?heal=' + Date.now();
+            window.fetch(retry, { cache: 'no-store', credentials: 'same-origin' }).then(function (r) {
+              var ct = String((r.headers && r.headers.get('content-type')) || '').toLowerCase();
+              if (!r.ok || ct.indexOf('javascript') < 0) throw new Error('not-js');
+              var s = document.createElement('script');
+              s.type = 'module';
+              s.crossOrigin = 'anonymous';
+              s.src = retry;
+              s.setAttribute('data-heal', '1');
+              document.head.appendChild(s);
+              clearAll().then(refreshAssets).then(function () {
+                try { if (navigator.serviceWorker) navigator.serviceWorker.register('/sw.js', { scope: '/' }); } catch (e) {}
+              });
+            }).then(null, function () { showPanel(); });
+          } catch (e) {}
+        }, true);
+      })();
+    </script>
+    <!-- fe-heal:end -->
     <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
     <meta http-equiv="Pragma" content="no-cache" />
     <meta http-equiv="Expires" content="0" />
