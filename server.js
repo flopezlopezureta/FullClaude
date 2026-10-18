@@ -363,6 +363,11 @@ async function startServer() {
     });
 
 
+    // Página pública de presentación (SEO): HTML estático indexable, no forma parte de la app React.
+    app.get(['/fullenvios', '/fullenvios/'], (req, res) => {
+        res.set('Cache-Control', 'public, max-age=300').sendFile(path.join(__dirname, 'public', 'fullenvios.html'));
+    });
+
     // --- Frontend Serving & SPA Fallback ---
     if (process.env.NODE_ENV !== 'production') {
         const { createServer: createViteServer } = require('vite');
