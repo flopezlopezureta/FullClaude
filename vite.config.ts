@@ -26,7 +26,7 @@ export default defineConfig({
         // loaded with a required ?ref=<uuid> query string, which never matches its query-less
         // precache entry, so any returning visitor (SW already registered) got the SPA dashboard
         // shell instead of their Shopify token, with no error of any kind. Confirmed live 2026-09-20.
-        navigateFallbackDenylist: [/^\/api\//, /^\/shopify-conectado\.html/, /^\/privacidad\.html/, /^\/fullenvios/, /^\/robots\.txt/, /^\/sitemap\.xml/, /^\/manuals\//],
+        navigateFallbackDenylist: [/^\/api\//, /^\/shopify-conectado\.html/, /^\/privacidad\.html/, /^\/fullenvios/, /^\/ruteo-ecommerce-chile/,/^\/robots\.txt/, /^\/sitemap\.xml/, /^\/manuals\//],
         globPatterns: ['**/*.{js,css,html,ico,png,svg,json}'],
         // Marketing/landing-page screenshots — not needed for a driver to work offline, and one
         // of them exceeds Workbox's default 2 MiB precache limit.
