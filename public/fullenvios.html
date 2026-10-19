@@ -330,6 +330,22 @@ details p{padding:0 26px 24px;color:var(--mut);font-size:16px}
 .live p{color:#d4d9f2;font-size:16px}
 .live .dot{width:12px;height:12px;border-radius:50%;background:#34d399;box-shadow:0 0 0 5px rgba(52,211,153,.25)}
 @media(max-width:760px){.live{flex-direction:column;align-items:flex-start;gap:12px}}
+
+.gal{margin:0 0 56px}
+.tabs{display:flex;gap:8px;overflow-x:auto;padding:4px 2px 14px;justify-content:center;flex-wrap:wrap}
+.tab{border:1px solid #d9dcf2;background:#fff;color:#3b456e;font:inherit;font-weight:700;font-size:14px;padding:10px 18px;border-radius:99px;cursor:pointer;white-space:nowrap;transition:.2s}
+.tab:hover{border-color:var(--p)}
+.tab[aria-selected=true]{background:var(--grad);color:#fff;border-color:transparent;box-shadow:0 10px 24px -10px rgba(192,38,211,.7)}
+.pane{display:grid;grid-template-columns:1.9fr 1fr;gap:36px;align-items:center}
+.pane[hidden]{display:none}
+.shot{border-radius:18px;overflow:hidden;border:1px solid #dfe2f4;box-shadow:0 40px 80px -30px rgba(15,21,53,.45);background:#fff}
+.shot .bar2{height:30px;background:#f1f2fa;border-bottom:1px solid #e3e5f4;display:flex;align-items:center;gap:6px;padding:0 12px}
+.shot .bar2 i{width:10px;height:10px;border-radius:50%;background:#d3d6ea}
+.shot img{width:100%;height:auto;display:block}
+.pane h3{font-size:clamp(22px,2.4vw,30px);letter-spacing:-.02em;line-height:1.15;margin-bottom:12px}
+.pane p{color:var(--lmut);font-size:17px}
+.note2{text-align:center;color:var(--lmut);font-size:13px;margin-top:18px}
+@media(max-width:980px){.pane{grid-template-columns:1fr;gap:22px}.tabs{justify-content:flex-start;flex-wrap:nowrap}}
 /* final cta */
 .final{padding:30px 0 100px}
 .box{border-radius:32px;padding:72px 32px;text-align:center;background:var(--grad);position:relative;overflow:hidden}
@@ -495,8 +511,10 @@ footer li a:hover{color:#fff}
   <div class="wrap">
     <div class="head">
       <span class="kicker grad-text">Funcionalidades</span>
-      <h2>Herramientas diseñadas para operaciones reales</h2>
+      <h2>Conoce la plataforma por dentro</h2>
+      <p class="sub">Herramientas diseñadas para operaciones reales, desde el mapa en vivo hasta la facturación.</p>
     </div>
+    <div class="gal" id="galeria"><div class="tabs" role="tablist" aria-label="Pantallas de la plataforma"><button class="tab" role="tab" id="tab0" aria-selected="true" aria-controls="pane0" data-i="0">Mapa en vivo</button><button class="tab" role="tab" id="tab1" aria-selected="false" aria-controls="pane1" data-i="1">Paquetes y alertas</button><button class="tab" role="tab" id="tab2" aria-selected="false" aria-controls="pane2" data-i="2">Conductores</button><button class="tab" role="tab" id="tab3" aria-selected="false" aria-controls="pane3" data-i="3">Facturación</button><button class="tab" role="tab" id="tab4" aria-selected="false" aria-controls="pane4" data-i="4">Cobro</button><button class="tab" role="tab" id="tab5" aria-selected="false" aria-controls="pane5" data-i="5">Importar pedidos</button></div><div class="pane" role="tabpanel" id="pane0" aria-labelledby="tab0"><div class="shot"><div class="bar2"><i></i><i></i><i></i></div><img src="/assets/landing/web/app-mapa-en-vivo.webp" alt="Mapa en vivo con la ubicación y las rutas de cada conductor" width="1600" height="1000" loading="eager"></div><div><h3>Ubicación de conductores en tiempo real</h3><p>Cada conductor aparece en el mapa con su ruta, el avance de sus entregas y su última actualización, para que administración reaccione a tiempo.</p></div></div><div class="pane" role="tabpanel" id="pane1" aria-labelledby="tab1" hidden><div class="shot"><div class="bar2"><i></i><i></i><i></i></div><img src="/assets/landing/web/app-gestion-paquetes.webp" alt="Gestión de paquetes con centro de alertas críticas y filtros" width="1600" height="1000" loading="lazy"></div><div><h3>Control de cada pedido y alertas críticas</h3><p>Centro de alertas con las cancelaciones del día, filtros por origen, conductor y comuna, y el estado de cada paquete en un solo lugar.</p></div></div><div class="pane" role="tabpanel" id="pane2" aria-labelledby="tab2" hidden><div class="shot"><div class="bar2"><i></i><i></i><i></i></div><img src="/assets/landing/web/app-reporte-conductores.webp" alt="Reporte de conductores con efectividad y total a pagar" width="1600" height="1000" loading="lazy"></div><div><h3>Estadísticas y liquidación por conductor</h3><p>Entregas, efectividad y retiros por período, con el total a pagar listo para compartir por WhatsApp o descargar en PDF y Excel.</p></div></div><div class="pane" role="tabpanel" id="pane3" aria-labelledby="tab3" hidden><div class="shot"><div class="bar2"><i></i><i></i><i></i></div><img src="/assets/landing/web/app-facturacion.webp" alt="Facturación masiva por cliente con neto e IVA" width="1600" height="1000" loading="lazy"></div><div><h3>Facturación masiva por cliente</h3><p>Selecciona los clientes del período, revisa neto e IVA y factura en un solo paso, con historial de facturas.</p></div></div><div class="pane" role="tabpanel" id="pane4" aria-labelledby="tab4" hidden><div class="shot"><div class="bar2"><i></i><i></i><i></i></div><img src="/assets/landing/web/app-cobro.webp" alt="Resumen operativo de cobro con entregas por día y cobro por cliente" width="1600" height="1000" loading="lazy"></div><div><h3>Resumen operativo de cobro</h3><p>Entregas por día y cobro por cliente en un solo panel, para saber qué está cobrado y qué falta por cobrar.</p></div></div><div class="pane" role="tabpanel" id="pane5" aria-labelledby="tab5" hidden><div class="shot"><div class="bar2"><i></i><i></i><i></i></div><img src="/assets/landing/web/app-importar-envios.webp" alt="Importación de envíos desde Excel y canales conectados" width="1600" height="1000" loading="lazy"></div><div><h3>Ingreso de pedidos sin digitar</h3><p>Carga masiva desde Excel y canales de venta conectados que sincronizan los pedidos automáticamente.</p></div></div><p class="note2">Pantallas ilustrativas con datos ficticios.</p></div>
     <div class="feat">
       <article class="fc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="2"/><circle cx="18" cy="5" r="2"/><path d="M8 19h6a4 4 0 0 0 0-8h-4a4 4 0 0 1 0-8h6"/></svg></div><h3>Ruteo optimizado</h3><p>Reduce kilómetros, tiempos y combustible con rutas ordenadas por zona. <a href="/software-ruteo-ecommerce" style="color:var(--p);font-weight:700">Conoce el software de ruteo →</a></p></article>
       <article class="fc"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12S4 16 4 10a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div><h3>Mapa en vivo</h3><p>Conductores y pedidos sobre el mapa, con estados que se actualizan solos.</p></article>
@@ -588,6 +606,14 @@ footer li a:hover{color:#fff}
   s();window.addEventListener('scroll',s,{passive:true});
   b.addEventListener('click',function(){var o=m.classList.toggle('open');b.setAttribute('aria-expanded',o);b.textContent=o?'✕':'☰'});
   m.addEventListener('click',function(e){if(e.target.tagName==='A'){m.classList.remove('open');b.textContent='☰';b.setAttribute('aria-expanded','false')}});
+})();
+
+(function(){
+  var tabs=document.querySelectorAll('.tab');
+  function show(i){tabs.forEach(function(t,j){var on=j===i;t.setAttribute('aria-selected',on);var p=document.getElementById('pane'+j);if(on)p.removeAttribute('hidden');else p.setAttribute('hidden','')});}
+  tabs.forEach(function(t){t.addEventListener('click',function(){show(+t.dataset.i)})});
+  var cur=0,timer=setInterval(function(){cur=(cur+1)%tabs.length;show(cur)},6000);
+  document.getElementById('galeria').addEventListener('click',function(){clearInterval(timer)});
 })();
 </script>
 </body>
