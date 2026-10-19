@@ -1,9 +1,0 @@
-User-agent: *
-Allow: /fullenvios
-Allow: /ruteo-ecommerce-chile
-Allow: /privacidad.html
-Allow: /assets/landing/
-Disallow: /api/
-Disallow: /tracking/
-
-Sitemap: https://fullenvios.cl/sitemap.xml

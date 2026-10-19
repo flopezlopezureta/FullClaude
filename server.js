@@ -367,8 +367,8 @@ async function startServer() {
     app.get(['/fullenvios', '/fullenvios/'], (req, res) => {
         res.set('Cache-Control', 'public, max-age=300').sendFile(path.join(__dirname, 'public', 'fullenvios.html'));
     });
-    app.get(['/ruteo-ecommerce-chile', '/ruteo-ecommerce-chile/'], (req, res) => {
-        res.set('Cache-Control', 'public, max-age=300').sendFile(path.join(__dirname, 'public', 'ruteo-ecommerce-chile.html'));
+    app.get(['/software-ruteo-ecommerce', '/software-ruteo-ecommerce/'], (req, res) => {
+        res.set('Cache-Control', 'public, max-age=300').sendFile(path.join(__dirname, 'public', 'software-ruteo-ecommerce.html'));
     });
 
     // --- Frontend Serving & SPA Fallback ---
