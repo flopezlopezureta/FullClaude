@@ -364,12 +364,10 @@ async function startServer() {
 
 
     // Página pública de presentación (SEO): HTML estático indexable, no forma parte de la app React.
-    app.get(['/fullenvios', '/fullenvios/'], (req, res) => {
-        res.set('Cache-Control', 'public, max-age=300').sendFile(path.join(__dirname, 'public', 'fullenvios.html'));
-    });
-    app.get(['/software-ruteo-ecommerce', '/software-ruteo-ecommerce/'], (req, res) => {
-        res.set('Cache-Control', 'public, max-age=300').sendFile(path.join(__dirname, 'public', 'software-ruteo-ecommerce.html'));
-    });
+    // En producción la imagen solo trae dist/ (Vite copia public/ dentro de dist/): ver utils/publicPages.js.
+    const { servePublicPage } = require('./utils/publicPages');
+    app.get(['/fullenvios', '/fullenvios/'], servePublicPage(__dirname, 'fullenvios.html'));
+    app.get(['/software-ruteo-ecommerce', '/software-ruteo-ecommerce/'], servePublicPage(__dirname, 'software-ruteo-ecommerce.html'));
 
     // --- Frontend Serving & SPA Fallback ---
     if (process.env.NODE_ENV !== 'production') {
