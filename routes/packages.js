@@ -15,6 +15,7 @@ const gisService = require('../services/gisService');
 const { buildSellerNameSql } = require('../services/falabellaDirectSellers');
 const rutValidator = require('../services/rutValidator');
 const cancelled = require('../services/cancelledPackages');
+const meliStatuses = require('../services/meliStatuses');
 const falabellaDirectClientNameSql = `CASE WHEN p.source = 'FALABELLA_DIRECTO' THEN 'Falabella Directo / ' || ${buildSellerNameSql()} ELSE u.name END as "clientName"`;
 
 // [EMERGENCIA] Ruta para normalizar todas las comunas y ciudades del historial
@@ -99,6 +100,7 @@ async function buildPackageQuery(req) {
         communeFilter,
         cityFilter,
         flexFilter,
+        meliStatusFilter, // estado del envío EN Mercado Libre (services/meliStatuses.js): pending | ready | shipped | delivered | not_delivered | cancelled | unknown
         quickFilter,
         sourceFilter,
         isAssigned,
@@ -287,6 +289,12 @@ async function buildPackageQuery(req) {
         } else if (flexFilter === 'not_flexed') {
             whereClauses.push(`(p."isFlexed" IS NULL OR p."isFlexed" = false)`);
         }
+    }
+
+    // Estado del envío en Mercado Libre. Solo se aceptan los valores conocidos (la condición sale de constantes, nunca del texto recibido); otro valor se ignora.
+    if (meliStatusFilter) {
+        const meliClause = meliStatuses.filterClause(String(meliStatusFilter));
+        if (meliClause) whereClauses.push(meliClause);
     }
 
     if (sourceFilter) {
@@ -479,7 +487,7 @@ router.get('/', authMiddleware, async (req, res) => {
         const limitClause = limit > 0 ? `LIMIT $${paramIndex++} OFFSET $${paramIndex++}` : '';
         
         const selectFields = excludePhotos === 'true'
-            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", p."isDuplicate", p."falabellaOrderId", p."falabellaTrackingId", p."meliDeliveredNeedsPhotos", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", ${falabellaDirectClientNameSql}`
+            ? `p.id, p."recipientName", p."recipientPhone", p.status, p."shippingType", p.origin, p.destination, p."recipientAddress", p."recipientCommune", p."recipientCity", p.notes, p."estimatedDelivery", p."createdAt", p."updatedAt", p."assignedAt", p."driverId", p."creatorId", p."destLatitude", p."destLongitude", p."deliveryReceiverName", p."deliveryReceiverId", p.billed, p.source, p."meliOrderId", p."wooOrderId", p."shopifyOrderId", p."jumpsellerOrderId", p."trackingId", p."meliFlexCode", p."isFlexed", p."flexedAt", p."recipientRut", p."recipientEmail", p."sourceAccountId", p."sourceAccountName", p."alertChecked", p."shopifyOrderNumber", p."meliSellerId", p."isReassigned", p."isDuplicate", p."falabellaOrderId", p."falabellaTrackingId", p."meliDeliveredNeedsPhotos", p."meliStatus", p."meliSubstatus", p."meliStatusCheckedAt", NULL as "flexLabelPhotoBase64", NULL as "deliveryPhotosBase64", ${falabellaDirectClientNameSql}`
             : `p.*, ${falabellaDirectClientNameSql}`;
 
         const packageQuery = `
