@@ -4,6 +4,7 @@ const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const https = require('https');
 const timeService = require('../services/timeService');
+const { extractMeliDeliveredAt } = require('../services/meliDeliveredAt');
 const { bus: driverEventBus } = require('../services/driverEvents');
 
 /**
@@ -198,13 +199,8 @@ router.post('/cerrar-entrega', authMiddleware, async (req, res) => {
                             return res.status(400).json({ message: 'No se logro cerrar la entrega en la app de Mercado Libre Flex. Por favor intentelo en unos segundos mas y luego confirma nuevamente aquí.' });
                         }
                         
-                        // Extract delivery time from ML history
-                        if (shippingDetails && shippingDetails.status_history && Array.isArray(shippingDetails.status_history)) {
-                            const deliveredEvent = shippingDetails.status_history.find(h => h.status === 'delivered');
-                            if (deliveredEvent && deliveredEvent.date) {
-                                meliDeliveredAt = new Date(deliveredEvent.date);
-                            }
-                        }
+                        // Hora REAL de la entrega según Mercado Libre (status_history.date_delivered); null si ML no la informa.
+                        meliDeliveredAt = extractMeliDeliveredAt(shippingDetails).date;
                     }
                 }
             } catch (validationError) {

@@ -6,6 +6,7 @@ const { triggerBackgroundGeocoding, geocodeAddress } = require('./geocodingServi
 const gisService = require('./gisService');
 const { emitDriverEvent } = require('./driverEvents');
 const meliStatuses = require('./meliStatuses');
+const { extractMeliDeliveredAt } = require('./meliDeliveredAt');
 
 // --- MELI API HELPERS (Duplicated from integrations.js for independence) ---
 const makeMeliRequest = (options, postData = null) => {
@@ -410,14 +411,13 @@ async function pollPackageStatuses() {
                             [pkg.id]
                         );
                         if (existingML.length === 0) {
-                            let meliTime = now;
-                            if (shipment.status_history && Array.isArray(shipment.status_history)) {
-                                const deliveredEvent = shipment.status_history.find(h => h.status === 'delivered');
-                                if (deliveredEvent && deliveredEvent.date) meliTime = new Date(deliveredEvent.date);
-                            }
+                            // La hora que cuenta es la REAL de Mercado Libre (status_history.date_delivered), no la de este sondeo: reportes y cronometría
+                            // la comparan con el cierre de la app. Solo si ML no la informa se usa la hora de detección.
+                            const mlDelivered = extractMeliDeliveredAt(shipment, { now });
+                            const meliTime = mlDelivered.date || now;
                             await db.query(
                                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Capture)', `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
+                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Capture)', mlDelivered.date ? `Hora real capturada de ${mlDelivered.source}: ${meliTime.toISOString()}` : `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
                             );
                         }
                         // meliDeliveredNeedsPhotos records an objective fact (Meli confirmed this
@@ -521,39 +521,15 @@ async function pollPackageStatuses() {
                         const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
                         await saveMeliStatus(pkg.id, shipment.status, shipment.substatus);
 
-                        let meliTimeStr = null;
-                        let source = '';
+                        // Hora REAL de la entrega según Mercado Libre; solo si ML ya da el envío por entregado.
+                        const { date: mDate, source } = shipment.status === 'delivered' ? extractMeliDeliveredAt(shipment) : { date: null, source: null };
 
-                        // Prioridad 0: Campo oficial de entrega final (más preciso para Flex)
-                        if (shipment.status === 'delivered' && shipment.date_delivered) {
-                            meliTimeStr = shipment.date_delivered;
-                            source = 'shipment.date_delivered';
-                        }
-
-                        // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
-                        if (!meliTimeStr && shipment.status_history && Array.isArray(shipment.status_history)) {
-                            const deliveredEvent = shipment.status_history
-                                .filter(h => h.status === 'delivered')
-                                .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-                            if (deliveredEvent) {
-                                meliTimeStr = deliveredEvent.date;
-                                source = 'status_history.delivered';
-                            }
-                        }
-
-                        // Prioridad 2: Fallback campo directo de entrega
-                        if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
-                            meliTimeStr = shipment.delivered_date;
-                            source = 'shipment.delivered_date';
-                        }
-
-                        if (meliTimeStr) {
-                            const mDate = new Date(meliTimeStr);
+                        if (mDate) {
                             await db.query(
                                 'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Sync)', `Hora real capturada de ${source}: ${meliTimeStr}`, mDate]
+                                [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Auto-Sync)', `Hora real capturada de ${source}: ${mDate.toISOString()}`, mDate]
                             );
-                            console.log(`[MeliPolling] Retroactively synced ML hour for ${pkg.id} from ${source}: ${meliTimeStr}`);
+                            console.log(`[MeliPolling] Retroactively synced ML hour for ${pkg.id} from ${source}: ${mDate.toISOString()}`);
                         }
                     }
                 } catch (e) {
@@ -1659,14 +1635,12 @@ async function syncDriverPendingPackages(driverId) {
                     [pkg.id]
                 );
                 if (existingML.length === 0) {
-                    let meliTime = now;
-                    if (shipment.status_history && Array.isArray(shipment.status_history)) {
-                        const deliveredEvent = shipment.status_history.find(h => h.status === 'delivered');
-                        if (deliveredEvent && deliveredEvent.date) meliTime = new Date(deliveredEvent.date);
-                    }
+                    // Hora REAL de la entrega según Mercado Libre; solo si ML no la informa se usa la de este chequeo.
+                    const mlDelivered = extractMeliDeliveredAt(shipment, { now });
+                    const meliTime = mlDelivered.date || now;
                     await db.query(
                         'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                        [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Fast-Sync)', `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
+                        [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API (Fast-Sync)', mlDelivered.date ? `Hora real capturada de ${mlDelivered.source}: ${meliTime.toISOString()}` : `Entrega detectada en Meli: ${meliTime.toISOString()}`, meliTime]
                     );
                 }
                 

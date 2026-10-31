@@ -16,6 +16,7 @@ const { buildSellerNameSql } = require('../services/falabellaDirectSellers');
 const rutValidator = require('../services/rutValidator');
 const cancelled = require('../services/cancelledPackages');
 const meliStatuses = require('../services/meliStatuses');
+const { extractMeliDeliveredAt } = require('../services/meliDeliveredAt');
 const falabellaDirectClientNameSql = `CASE WHEN p.source = 'FALABELLA_DIRECTO' THEN 'Falabella Directo / ' || ${buildSellerNameSql()} ELSE u.name END as "clientName"`;
 
 // [EMERGENCIA] Ruta para normalizar todas las comunas y ciudades del historial
@@ -2541,36 +2542,13 @@ async function handleDeliver(req, res) {
                 
                 if (accessToken) {
                     const shipment = await makeMeliGetRequest(`/shipments/${shipmentId}`, accessToken);
-                    let meliTimeStr = null;
-                    let source = '';
-
-                    // Prioridad 0: Campo oficial de entrega final (más preciso para Flex)
-                    if (shipment.status === 'delivered' && shipment.date_delivered) {
-                        meliTimeStr = shipment.date_delivered;
-                        source = 'shipment.date_delivered';
-                    }
-
-                    // Prioridad 1: Historial de estados (el más reciente de tipo 'delivered')
-                    if (!meliTimeStr && shipment.status_history && Array.isArray(shipment.status_history)) {
-                        const deliveredEvent = shipment.status_history
-                            .filter(h => h.status === 'delivered')
-                            .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-                        if (deliveredEvent) {
-                            meliTimeStr = deliveredEvent.date;
-                            source = 'status_history.delivered';
-                        }
-                    }
-
-                    // Prioridad 2: Fallback campo directo de entrega
-                    if (!meliTimeStr && shipment.status === 'delivered' && shipment.delivered_date) {
-                        meliTimeStr = shipment.delivered_date;
-                        source = 'shipment.delivered_date';
-                    }
-                    if (meliTimeStr) {
-                        meliDeliveredAt = new Date(meliTimeStr);
+                    // Hora REAL de la entrega según Mercado Libre; solo si ML ya da el envío por entregado.
+                    const mlDelivered = shipment.status === 'delivered' ? extractMeliDeliveredAt(shipment) : { date: null, source: null };
+                    if (mlDelivered.date) {
+                        meliDeliveredAt = mlDelivered.date;
                         await db.query(
                             'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
-                            [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora real capturada de ${source}: ${meliTimeStr}`, meliDeliveredAt]
+                            [id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora real capturada de ${mlDelivered.source}: ${meliDeliveredAt.toISOString()}`, meliDeliveredAt]
                         );
                     }
                 }
@@ -2735,19 +2713,8 @@ router.post('/billing/reconcile-meli-delivered', authMiddleware, async (req, res
                     continue;
                 }
 
-                // Misma lógica de prioridad para la hora real que usa POST /:id/deliver, para
-                // mantener consistencia en cómo se registra la hora de cierre oficial de ML.
-                let meliTimeStr = null;
-                let source = '';
-                if (shipment.date_delivered) { meliTimeStr = shipment.date_delivered; source = 'shipment.date_delivered'; }
-                if (!meliTimeStr && Array.isArray(shipment.status_history)) {
-                    const deliveredEvent = shipment.status_history
-                        .filter(h => h.status === 'delivered')
-                        .sort((a, b) => new Date(b.date) - new Date(a.date))[0];
-                    if (deliveredEvent) { meliTimeStr = deliveredEvent.date; source = 'status_history.delivered'; }
-                }
-                if (!meliTimeStr && shipment.delivered_date) { meliTimeStr = shipment.delivered_date; source = 'shipment.delivered_date'; }
-                const meliDeliveredAt = meliTimeStr ? new Date(meliTimeStr) : new Date();
+                // Hora REAL de la entrega según Mercado Libre (la misma lectura que usa POST /:id/deliver); aquí ML ya confirmó "delivered".
+                const { date: meliDeliveredAt, source } = extractMeliDeliveredAt(shipment);
 
                 await db.query(
                     `UPDATE packages SET status = 'ENTREGADO', "deliveryReceiverName" = $1, "updatedAt" = $2 WHERE id = $3`,
@@ -2757,10 +2724,11 @@ router.post('/billing/reconcile-meli-delivered', authMiddleware, async (req, res
                     pkg.id, 'ENTREGADO', pkg.recipientAddress,
                     'Cierre automático: Mercado Libre confirma la entrega; el conductor no había cerrado el paquete en el sistema.'
                 );
-                if (meliTimeStr) {
-                    await addTrackingEvent(
-                        pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API',
-                        `Hora real capturada de ${source}: ${meliTimeStr}`
+                if (meliDeliveredAt) {
+                    // El cierre oficial lleva la hora de ML, no la de esta conciliación (que puede correr días después de la entrega).
+                    await db.query(
+                        'INSERT INTO tracking_events ("packageId", status, location, details, timestamp) VALUES ($1, $2, $3, $4, $5)',
+                        [pkg.id, 'CIERRE_OFICIAL_ML', 'Mercado Libre API', `Hora real capturada de ${source}: ${meliDeliveredAt.toISOString()}`, meliDeliveredAt]
                     );
                 }
                 confirmedDelivered++;
