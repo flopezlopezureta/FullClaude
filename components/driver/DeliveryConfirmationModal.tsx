@@ -6,6 +6,8 @@ import { AuthContext } from '../../contexts/AuthContext';
 import imageCompression from 'browser-image-compression';
 import { storageUtils } from '../../utils/storageUtils';
 import { formatRut, rutErrorMessage, validateRut } from '../../utils/rut';
+import { receiverNameErrorMessage } from '../../utils/receiverName';
+import { usePhotoRepeats } from '../../hooks/usePhotoRepeats';
 
 interface DeliveryConfirmationModalProps {
   pkg?: Package;
@@ -166,9 +168,13 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const [isConfirmingMultiple, setIsConfirmingMultiple] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [rutFocused, setRutFocused] = useState(false);
+  const [nameFocused, setNameFocused] = useState(false);
   const [isCompressing, setIsCompressing] = useState(false);
   const [isRestored, setIsRestored] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  // Fotos que repiten a una anterior (la misma foto dos veces, o dos tomas casi iguales): ver utils/photoSimilarity.ts. También revisa las que vuelven de un borrador.
+  const { repeatOf, checking: checkingPhotos } = usePhotoRepeats(photosBase64);
+  const repeatedPhotos = repeatOf.filter(i => i !== null).length;
 
   // Espera automática a Mercado Libre (ver MELI_WAIT_SECONDS): segundos que quedan, o null si no se está esperando.
   const [meliWaitLeft, setMeliWaitLeft] = useState<number | null>(null);
@@ -233,7 +239,9 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
     ? Math.max(2, auth?.systemSettings.requiredPhotos || 1)
     : (auth?.systemSettings.requiredPhotos || 1);
   const isRutRequired = isFalabellaDirectDelivery || (auth?.systemSettings.isRutRequired ?? true);
-  const photosRemaining = requiredPhotos - photosBase64.length;
+  // Una foto repetida no cuenta: hacen falta tantas fotos DISTINTAS como pide el cierre.
+  const distinctPhotos = photosBase64.length - repeatedPhotos;
+  const photosRemaining = requiredPhotos - distinctPhotos;
 
   // La validez del RUT se calcula en cada render a partir de lo escrito, no solo al salir del campo:
   // antes, un RUT inválido pasaba si el conductor tocaba "Confirmar" sin haber salido del campo o si
@@ -242,6 +250,12 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
   const rutProblemText = rutErrorMessage(receiverId);
   const rutDigitsTyped = receiverId.replace(/[^0-9kK]/g, '').length;
   const rutError = rutProblemText && (!rutFocused || rutDigitsTyped >= 9) ? rutProblemText : null;
+
+  // El nombre de quien recibe tiene que ser un nombre —o quién fue: Conserje, Vecino…—, no un «.» ni una letra suelta (utils/receiverName.ts; el servidor aplica la
+  // misma regla). Igual que con el RUT, el aviso no aparece mientras se escribe un nombre todavía corto, pero el botón sigue bloqueado.
+  const nameProblemText = receiverNameErrorMessage(receiverName);
+  const nameLettersTyped = (receiverName.match(/\p{L}/gu) ?? []).length;
+  const nameError = nameProblemText && (!nameFocused || nameLettersTyped >= 3) ? nameProblemText : null;
 
   const handleRutChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
@@ -313,7 +327,7 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
       setPhotosBase64(prev => prev.filter((_, index) => index !== indexToRemove));
   };
 
-  const isFormValid = receiverName.trim() !== '' && (!isRutRequired || (receiverId.trim() !== '' && !rutProblemText)) && photosBase64.length >= requiredPhotos && !isCompressing;
+  const isFormValid = receiverName.trim() !== '' && !nameProblemText && (!isRutRequired || (receiverId.trim() !== '' && !rutProblemText)) && distinctPhotos >= requiredPhotos && repeatedPhotos === 0 && !checkingPhotos && !isCompressing;
 
   const pauseMs = (ms: number) => new Promise<void>(resolve => setTimeout(resolve, ms));
 
@@ -475,11 +489,24 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                 </div>
             )}
 
-            <div className="relative">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <IconUser className="h-5 w-5 text-[var(--text-muted)]" />
+            <div>
+                <div className="relative">
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <IconUser className="h-5 w-5 text-[var(--text-muted)]" />
+                    </div>
+                    <input
+                        type="text"
+                        value={receiverName}
+                        onChange={(e) => setReceiverName(e.target.value)}
+                        onFocus={() => setNameFocused(true)}
+                        onBlur={() => setNameFocused(false)}
+                        placeholder="Nombre de quien recibe"
+                        required
+                        className={`w-full pl-10 pr-3 py-2 border rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)] ${nameError ? 'border-red-500' : 'border-[var(--border-secondary)]'}`}
+                        aria-invalid={!!nameError}
+                    />
                 </div>
-                <input type="text" value={receiverName} onChange={(e) => setReceiverName(e.target.value)} placeholder="Nombre de quien recibe" required className="w-full pl-10 pr-3 py-2 border border-[var(--border-secondary)] rounded-md bg-[var(--background-secondary)] text-[var(--text-primary)]"/>
+                {nameError && <p className="text-xs text-red-600 mt-1 ml-1">{nameError}</p>}
             </div>
             {isRutRequired && (
                 <div>
@@ -512,13 +539,21 @@ const DeliveryConfirmationModal: React.FC<DeliveryConfirmationModalProps> = ({ p
                         <div className="grid grid-cols-3 gap-2">
                             {photosBase64.map((photo, index) => (
                                 <div key={index} className="relative aspect-square">
-                                    <img src={photo} alt={`Prueba de entrega ${index + 1}`} className="rounded-md w-full h-full object-cover" />
+                                    <img src={photo} alt={`Prueba de entrega ${index + 1}`} className={`rounded-md w-full h-full object-cover ${repeatOf[index] !== null ? 'ring-4 ring-red-500' : ''}`} />
+                                    {repeatOf[index] !== null && (
+                                        <span className="absolute bottom-1 left-1 right-1 rounded bg-red-600 px-1 py-0.5 text-center text-[10px] font-bold text-white">Repetida</span>
+                                    )}
                                     <button type="button" onClick={() => handleRemovePhoto(index)} className="absolute top-1 right-1 p-1 bg-black bg-opacity-60 text-white rounded-full hover:bg-opacity-80" aria-label={`Quitar foto ${index + 1}`}>
                                         <IconX className="w-3 h-3" />
                                     </button>
                                 </div>
                             ))}
                         </div>
+                        {repeatedPhotos > 0 && (
+                            <p role="alert" className="text-xs font-semibold text-red-600">
+                                Hay {repeatedPhotos > 1 ? 'fotos repetidas' : 'una foto repetida'}: cada foto debe ser distinta. Quita la marcada (✕) y toma otra.
+                            </p>
+                        )}
                     </div>
                 )}
                 {photosRemaining > 0 ? (

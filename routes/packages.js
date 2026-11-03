@@ -14,6 +14,8 @@ const { geocodeAddress, triggerBackgroundGeocoding } = require('../services/geoc
 const gisService = require('../services/gisService');
 const { buildSellerNameSql } = require('../services/falabellaDirectSellers');
 const rutValidator = require('../services/rutValidator');
+const receiverNameRules = require('../services/receiverName');
+const deliveryPhotos = require('../services/deliveryPhotos');
 const cancelled = require('../services/cancelledPackages');
 const meliStatuses = require('../services/meliStatuses');
 const { extractMeliDeliveredAt } = require('../services/meliDeliveredAt');
@@ -2402,10 +2404,26 @@ async function handleDeliver(req, res) {
             }
         }
 
+        const { rows: sourceCheckRows } = await db.query('SELECT source, "falabellaDirectLpn", "driverId" FROM packages WHERE id = $1', [id]);
+
+        // Controles de calidad del cierre. Van después del "cierre repetido" de arriba: repetir un cierre que ya quedó guardado no se vuelve a juzgar.
+        // Nombre de quien recibe: un «.» o una «m» cumplía el campo obligatorio sin decir quién recibió (14 de cada 100 cierres, casi todos de unos pocos conductores).
+        const nameProblem = receiverNameRules.receiverNameProblem(receiverName);
+        if (nameProblem) {
+            console.log(`[Deliver] Cierre de ${id} rechazado: nombre de quien recibe no válido (${nameProblem}), usuario ${req.user.id}.`);
+            return res.status(400).json({ code: receiverNameRules.INVALID_RECEIVER_NAME, message: receiverNameRules.receiverNameMessage(nameProblem) });
+        }
+        // Fotos: quien cierra desde su casa cumplía las «2 fotos» mandando la misma imagen dos veces. Se exigen tantas imágenes DISTINTAS como fotos pide el cierre
+        // (la configuración del cliente, o 2 en Falabella Directo). Las tomas casi iguales las frena el formulario del teléfono; aquí solo se reconoce la idéntica byte a byte.
+        const neededPhotos = Math.max(requiredPhotos, sourceCheckRows.length > 0 && sourceCheckRows[0].source === 'FALABELLA_DIRECTO' ? 2 : 0);
+        if (deliveryPhotos.distinctPhotoCount(photosBase64) < neededPhotos) {
+            console.log(`[Deliver] Cierre de ${id} rechazado: fotos de evidencia repetidas (${photosBase64.length} enviadas, ${deliveryPhotos.distinctPhotoCount(photosBase64)} distintas), usuario ${req.user.id}.`);
+            return res.status(400).json({ code: deliveryPhotos.DUPLICATE_PHOTOS, message: deliveryPhotos.duplicatePhotosMessage(neededPhotos) });
+        }
+
         // Falabella Directo requires >=2 delivery-evidence photos for DELIVERED_001 — kept as an
         // extra floor on top of the general check above, since Falabella's own requirement can be
         // higher than the client's configured requiredPhotos.
-        const { rows: sourceCheckRows } = await db.query('SELECT source, "falabellaDirectLpn", "driverId" FROM packages WHERE id = $1', [id]);
         if (sourceCheckRows.length > 0 && sourceCheckRows[0].source === 'FALABELLA_DIRECTO') {
             if (!Array.isArray(photosBase64) || photosBase64.length < 2) {
                 return res.status(400).json({ message: 'Falabella Directo exige al menos 2 fotos de evidencia para confirmar la entrega.' });

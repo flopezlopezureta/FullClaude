@@ -1,4 +1,4 @@
-import { api, ApiError } from './api';
+import { api, ApiError, isCloseDataRejected } from './api';
 import { offlineQueue, QueuedAction } from './offlineQueue';
 
 /**
@@ -6,12 +6,15 @@ import { offlineQueue, QueuedAction } from './offlineQueue';
  * Called on 'online' events and periodically while the tab is open — mirrors driver-app's
  * api.syncPendingActions() (driver-app/src/services/api.ts). Returns the number of actions
  * that were successfully synced, so callers can refresh their local package lists.
+ * `discarded` lists the closures the server refused for good (receiver name or photos not acceptable): they leave the queue
+ * and the caller must tell the driver, because the package is still open in their list.
  */
-export async function processOfflineQueue(): Promise<{ synced: string[]; stillPending: number }> {
-  if (!navigator.onLine) return { synced: [], stillPending: offlineQueue.getPendingCount() };
+export async function processOfflineQueue(): Promise<{ synced: string[]; stillPending: number; discarded: { pkgId: string; message: string }[] }> {
+  if (!navigator.onLine) return { synced: [], stillPending: offlineQueue.getPendingCount(), discarded: [] };
 
   const pending = offlineQueue.getPending();
   const synced: string[] = [];
+  const discarded: { pkgId: string; message: string }[] = [];
   // Paquetes cuyo envío rechazó el servidor en este ciclo: sus acciones siguientes se saltan para conservar el orden.
   const rejectedPackages = new Set<string>();
 
@@ -23,11 +26,19 @@ export async function processOfflineQueue(): Promise<{ synced: string[]; stillPe
       synced.push(action.pkgId);
     } catch (e) {
       if (e instanceof ApiError && e.status) {
+        rejectedPackages.add(action.pkgId);
+        // El servidor rechazó los DATOS del cierre (nombre de quien recibe inservible o fotos repetidas): volver a mandar lo mismo nunca va a resultar y la cola
+        // quedaría reintentándolo para siempre. Se saca de la cola y se avisa; el paquete sigue abierto en la lista del conductor para cerrarlo de nuevo.
+        if (isCloseDataRejected(e)) {
+          const stillQueued = offlineQueue.getPending().some(a => a.id === action.id); // otro ciclo pudo haberlo sacado ya
+          offlineQueue.remove(action.id);
+          if (stillQueued) discarded.push({ pkgId: action.pkgId, message: e.message });
+          continue;
+        }
         // El servidor SÍ respondió, pero rechazó esta acción (p. ej. Mercado Libre aún no confirma la entrega). Antes cualquier
         // error detenía todo el ciclo, así que un solo paquete bloqueado dejaba sin sincronizar para siempre TODO lo que había
         // detrás en la cola. Se deja esta acción para el próximo ciclo y se sigue con los demás paquetes.
         console.warn('[OfflineQueue] Server rejected a queued action, keeping it for the next cycle.', action.pkgId, e.message);
-        rejectedPackages.add(action.pkgId);
         continue;
       }
       // Stop at the first network failure (likely connection dropped again mid-sync) rather than
@@ -38,7 +49,7 @@ export async function processOfflineQueue(): Promise<{ synced: string[]; stillPe
     }
   }
 
-  return { synced, stillPending: offlineQueue.getPendingCount() };
+  return { synced, stillPending: offlineQueue.getPendingCount(), discarded };
 }
 
 async function syncAction(action: QueuedAction) {

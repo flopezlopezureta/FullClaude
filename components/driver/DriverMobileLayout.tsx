@@ -239,10 +239,14 @@ const DriverMobileLayout: React.FC = () => {
 
         const syncQueue = async () => {
             if (offlineQueue.getPendingCount() === 0) return;
-            await processOfflineQueue();
+            const { discarded } = await processOfflineQueue();
             // Individual dashboards listen for 'offline-queue-changed' (dispatched by
             // offlineQueue itself on every enqueue/remove) to refresh their own package lists
             // and pending-count banners — no direct coupling needed from here.
+            // Lo único que se avisa aquí: un cierre guardado sin conexión que el servidor rechazó por sus datos (se sacó de la cola y el paquete sigue abierto).
+            if (discarded.length > 0) {
+                alert(`No se pudo enviar ${discarded.length > 1 ? 'estas entregas guardadas' : 'esta entrega guardada'} sin conexión:\n\n${discarded.map(d => `• ${d.pkgId}: ${d.message}`).join('\n')}\n\nEl paquete sigue en tu lista: ciérralo de nuevo con los datos correctos.`);
+            }
         };
 
         syncQueue();
