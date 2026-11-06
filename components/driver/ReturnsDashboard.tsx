@@ -35,9 +35,10 @@ const ReturnsDashboard: React.FC = () => {
   // happens in DriverMobileLayout.tsx (see DriverDashboard.tsx for the full rationale).
   useEffect(() => {
     if (!auth?.user) return;
-    setOfflinePendingCount(offlineQueue.getPendingCount());
+    // Solo las acciones guardadas por falta de conexión: las entregas que esperan a Mercado Libre tienen su propio aviso en "Entregas".
+    setOfflinePendingCount(offlineQueue.getOfflineCount());
     const onQueueChange = () => {
-      setOfflinePendingCount(offlineQueue.getPendingCount());
+      setOfflinePendingCount(offlineQueue.getOfflineCount());
       // Same reasoning as DriverDashboard.tsx — a queued return that synced in the
       // background never updated local state on its own, so without this refetch
       // it kept showing as pending even after actually syncing.

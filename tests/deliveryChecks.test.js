@@ -260,7 +260,12 @@ t('E6 una foto que no se puede leer (o que tarda demasiado) queda sin huella en 
 const queueModule = async () => {
     const entry = `export { processOfflineQueue } from './services/offlineQueueProcessor.ts'; export { api, ApiError } from './services/api.ts';`;
     const fakeQueue = `const state = globalThis.__queue = { items: [] };
-        export const offlineQueue = { getPending: () => state.items.slice(), getPendingCount: () => state.items.length, remove: (id) => { state.items = state.items.filter(a => a.id !== id); } };`;
+        const waiting = (a) => a.type === 'DELIVER' && !!(a.meta && a.meta.waitingMeli);
+        export const offlineQueue = {
+            getPending: () => state.items.map(a => ({ ...a })), getPendingCount: () => state.items.length, getWaitingMeliCount: () => state.items.filter(waiting).length,
+            remove: (id) => { state.items = state.items.filter(a => a.id !== id); },
+            setMeta: (id, meta) => { state.items = state.items.map(a => (a.id === id ? { ...a, meta } : a)); },
+        };`;
     const out = await esbuild.build({ stdin: { contents: entry, resolveDir: ROOT, loader: 'ts' }, bundle: true, write: false, format: 'cjs', platform: 'node', logLevel: 'silent',
         plugins: [{ name: 'cola-falsa', setup(b) {
             b.onResolve({ filter: /\.\/offlineQueue$/ }, () => ({ path: 'cola-falsa', namespace: 'falso' }));
@@ -285,8 +290,9 @@ t('F1 un cierre rechazado por su nombre o sus fotos sale de la cola y se avisa; 
     assert.deepStrictEqual(sent, ['PK-1', 'PK-2', 'PK-3', 'PK-4']);
     assert.deepStrictEqual(r.discarded.map(d => d.pkgId), ['PK-1', 'PK-2']); assert.ok(/nombre real/.test(r.discarded[0].message));
     assert.deepStrictEqual(r.synced, ['PK-4']);
-    assert.deepStrictEqual(globalThis.__queue.items.map(a => a.id), ['a3'], 'solo el rechazado por Mercado Libre se queda para el próximo ciclo');
-    assert.strictEqual(r.stillPending, 1);
+    assert.deepStrictEqual(globalThis.__queue.items.map(a => a.id), ['a3'], 'solo el rechazado por Mercado Libre se queda en la cola');
+    assert.strictEqual(globalThis.__queue.items[0].meta.waitingMeli, true, 'y queda marcado como esperando a Mercado Libre (se reintenta solo, sin reenviarlo cada 30 s)');
+    assert.strictEqual(r.stillPending, 1); assert.strictEqual(r.waiting, 1);
 });
 t('F2 un corte de red detiene el ciclo sin descartar nada', async () => {
     Object.defineProperty(globalThis, 'navigator', { value: { onLine: true }, configurable: true, writable: true });
