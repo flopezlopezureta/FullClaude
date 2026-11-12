@@ -8,6 +8,7 @@ const db = require('../db');
 const authMiddleware = require('../middleware/auth');
 const { checkVpnOrProxy } = require('../services/ipIntelligence');
 const { logAction } = require('../services/logger');
+const accountAccess = require('../services/accountAccess');
 const { encrypt, decrypt } = require('../services/falabellaCrypto');
 const { generateSecret, buildOtpAuthUri, verifyTotp } = require('../services/totp');
 
@@ -97,6 +98,12 @@ router.post('/login', loginLimiter, async (req, res) => {
             return res.status(403).json({ message: 'Tu cuenta ha sido deshabilitada.' });
         }
 
+        // ELIMINADO: la pantalla de eliminar promete que el usuario «no podrá volver a ingresar hasta ser reintegrado»; antes no se cumplía (ver services/accountAccess.js).
+        if (accountAccess.isBlockedStatus(user.status)) {
+            await logAction(user.id, user.name, 'LOGIN_BLOCKED_INACTIVE_PROFILE', { status: user.status, email: user.email });
+            return res.status(403).json({ message: accountAccess.blockedMessage(user.status) });
+        }
+
         // Password (and VPN/status checks) already passed at this point. If this account has 2FA
         // enabled, don't issue the real session token yet — issue a short-lived one that's only
         // good for /login/verify-2fa (rejected everywhere else by middleware/auth.js), and make
@@ -153,6 +160,12 @@ router.post('/login/verify-2fa', loginLimiter, async (req, res) => {
         const user = rows[0];
         if (!user || !user.twoFactorEnabled || !user.twoFactorSecret) {
             return res.status(401).json({ message: 'Token no válido.' });
+        }
+
+        // El perfil pudo eliminarse o deshabilitarse entre la contraseña y el código.
+        if (accountAccess.isBlockedStatus(user.status)) {
+            await logAction(user.id, user.name, 'LOGIN_BLOCKED_INACTIVE_PROFILE', { status: user.status, email: user.email });
+            return res.status(403).json({ message: accountAccess.blockedMessage(user.status) });
         }
 
         const secret = decrypt(user.twoFactorSecret);

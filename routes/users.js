@@ -10,6 +10,7 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { logAction } = require('../services/logger');
 const userDuplicates = require('../services/userDuplicates');
+const accountAccess = require('../services/accountAccess');
 
 // Middleware to check for Admin or Retiros role
 const adminOrRetirosOnly = (req, res, next) => {
@@ -246,6 +247,7 @@ router.put('/:id', authMiddleware, async (req, res) => {
         const queryParams = [...values, id];
         
         const result = await db.query(queryText, queryParams);
+        accountAccess.invalidate(id);   // el estado pudo cambiar: la próxima petición de ese perfil vuelve a consultar la base
 
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
@@ -350,6 +352,7 @@ router.delete('/:id', authMiddleware, adminOnly, async (req, res) => {
 
         // 2. Soft delete user (mark as ELIMINADO)
         const result = await db.query("UPDATE users SET status = 'ELIMINADO' WHERE id = $1", [id]);
+        accountAccess.invalidate(id);   // el bloqueo rige al instante, no a los 30 s
         
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
@@ -373,6 +376,7 @@ router.post('/:id/reintegrate', authMiddleware, adminOnly, async (req, res) => {
     try {
         // 1. Reactivate user
         const result = await db.query("UPDATE users SET status = 'APROBADO' WHERE id = $1", [id]);
+        accountAccess.invalidate(id);
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
@@ -396,6 +400,7 @@ router.post('/:id/reintegrate', authMiddleware, adminOnly, async (req, res) => {
 router.post('/:id/approve', authMiddleware, adminOnly, async (req, res) => {
     try {
         const result = await db.query("UPDATE users SET status = 'APROBADO' WHERE id = $1", [req.params.id]);
+        accountAccess.invalidate(req.params.id);
         if (result.rowCount === 0) {
             return res.status(404).json({ message: 'Usuario no encontrado.' });
         }
@@ -417,6 +422,7 @@ router.post('/:id/toggle-status', authMiddleware, adminOnly, async (req, res) =>
         if (rows.length === 0) return res.status(404).json({ message: 'Usuario no encontrado.' });
         const newStatus = rows[0].status === 'APROBADO' ? 'DESHABILITADO' : 'APROBADO';
         await db.query('UPDATE users SET status = $1 WHERE id = $2', [newStatus, id]);
+        accountAccess.invalidate(id);   // deshabilitar rige al instante
         const { rows: updatedRows } = await db.query('SELECT * FROM users WHERE id = $1', [id]);
         const user = updatedRows[0];
         delete user.password;
